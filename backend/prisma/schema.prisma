@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User{
+  id Int @id @default(autoincrement())
+  email String? @unique
+  username String @unique @db.VarChar(100)
+  password String 
+  role     String? @default("user") 
+
+  @@map("user")
+}
+
+
+model Branch {
+  branchCode  String    @id @db.VarChar(20) @map("BranchCode")
+  Company     String?    @db.VarChar(50)
+  Location    String?   @db.VarChar(50)
+  Employees String?  @db.VarChar(10) @map("Employees")
+  BranchImage String?   @db.VarChar(100)
+  employees   Employee[] @relation
+
+  @@map("branches")
+}
+
+model Employee {
+  EmpCode        String   @id @db.VarChar(20) @map("EmpCode")
+  IdNo           String?  @db.VarChar(5) @map("IdNo")
+  Firstname      String?   @db.VarChar(20) @map("Firstname")
+  Middlename     String?   @db.VarChar(20) @map("Middlename")
+  Lastname       String?   @db.VarChar(20) @map("Lastname")
+  Suffix         String?  @db.VarChar(5) @map("Suffix")
+  DateofBirth    String? @db.VarChar(20) @map("DateofBirth")
+  BirthPlace     String?  @db.VarChar(50) @map("BirthPlace")
+  Age            String?  @db.VarChar(5) @map("Age")
+  BloodType      String?   @db.VarChar(3) @map("BloodType")
+  Gender         String?   @db.VarChar(8) @map("Gender")
+  CivilStatus    String?   @db.VarChar(10) @map("CivilStatus")
+  Address        String?   @db.VarChar(200) @map("Address")
+  HomeAddress    String?  @db.VarChar(200) @map("HomeAddress")
+  PhoneNo        String?  @db.VarChar(12) @map("PhoneNo")
+  Email          String?  @db.VarChar(50) @map("Email")
+  Position       String?   @db.VarChar(50) @map("Position")
+  Department     String?  @db.VarChar(50) @map("Department")
+  EmployementDate DateTime? @db.Date @map("EmployementDate")
+  EmploymentStatus String? @db.VarChar(15) @map("EmploymentStatus")
+  EmployeeStatus String?   @db.VarChar(15) @map("EmployeeStatus")
+  EmpImage       String?  @db.VarChar(50) @map("EmpImage")
+  BranchCode     Branch?  @relation(fields: [BranchCodeId], references: [branchCode])
+  BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
+  ApprovedId     String?  @db.VarChar(20) @map("ApprovedId_id")
+
+  employeepr EmpPR[] @relation
+  empprevemployer EmprevEmployer[] @relation
+  empeducbg EmpEducBg[] @relation()
+  familybgrnd FamilyBgrnd[] @relation()
+  employeesummary EmployeeSummary[] @relation()
+  employeepayroll Employee_payroll[] @relation()
+  pagibig_list PagIbig_List[] @relation()
+  archive_employee_payroll EmployeePayrollArchive[] @relation()
+  employee_loan employee_loan[] @relation()
+
+  @@map("employee")
+}
+
+model EmpPR {
+  Payrollid Int @id @default(autoincrement())
+  BasicSalary String? @db.VarChar(30)
+  Allowance String? @db.VarChar(20)
+  Ecola String? @db.VarChar(30)
+  EmpTin String? @db.VarChar(30)
+  EmpSSSNo String? @db.VarChar(30)
+  EmpPhilhlthNo String? @db.VarChar(30)
+  EmpPagibigNo String? @db.VarChar(30)
+  
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("employee_details")
+}
+
+model EmprevEmployer{
+  EmpEducBgID Int @id @default(autoincrement())
+  EmployerName String? @db.VarChar(50)
+  EmployerOccupation String? @db.VarChar(50)
+  EmployerYear String? @db.VarChar(30)
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("empprevemployer")
+}
+
+
+
+
+model EmpEducBg{
+  EmpEducBgID Int @id @default(autoincrement())
+  ElEmpEducSchool String? @db.VarChar(50)
+  ElEmpEducCourse String? @db.VarChar(30)
+  ElEmpEducYearAttended DateTime? @db.Date
+  HighEmpEducSchool String? @db.VarChar(50)
+  HighEmpEducCourse String? @db.VarChar(30)
+  HighEmpEducYearAttended DateTime? @db.Date
+  GradEmpEducSchool String? @db.VarChar(50)
+  GradEmpEducCourse String? @db.VarChar(30)
+  GradEmpEducYearAttended DateTime? @db.Date
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("empeducbg")
+}
+
+model FamilyBgrnd{
+  FamilyBgrndID String @id @db.VarChar(20) @map("FamilyBgrndID")
+  MotherMaidenName String? @db.VarChar(50)
+  MotherBirthday DateTime? @db.Date
+  MotherBirthplace String? @db.VarChar(50)
+  MotherOccupation String? @db.VarChar(50)
+  MotherEmployersName String? @db.VarChar(50)
+  MotherEmployersAddress String? @db.VarChar(50)
+  FatherName String? @db.VarChar(50)
+  FatherBirthday DateTime? @db.Date
+  FatherBirthplace String? @db.VarChar(50)
+  FatherOccupation String? @db.VarChar(50)
+  FatherEmployersName String? @db.VarChar(50)
+  FatherEmployersAddress String? @db.VarChar(50)
+  EmergPersonName String? @db.VarChar(30)
+  EmergPersonNo String? @db.VarChar(15)
+  EmergPersonAddd String? @db.VarChar(30)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  empsiblings EmpSiblings[] @relation()
+  empspouse EmpSpouse[] @relation()
+  empchildren EmpChildren[] @relation()
+
+  @@map("familybgrnd")
+}
+
+model EmpSiblings{
+  EmpSiblingID Int @id @default(autoincrement())
+  SiblingName String? @db.VarChar(50)
+  SiblingBirthday DateTime? @db.Date
+  SiblingBirthplace String? @db.VarChar(50)
+
+  FamilyBgrnd_ID String  @db.VarChar(20) @map("FamilyBgrndID_id")
+  FamilyBgrndID FamilyBgrnd @relation(fields: [FamilyBgrnd_ID], references: [FamilyBgrndID])
+
+  @@map("empsiblings")
+}
+
+model EmpSpouse{
+  EmpSpousedID Int @id @default(autoincrement())
+  EmpSpouseName String? @db.VarChar(50)
+  EmpSpouseBirthday DateTime? @db.Date
+  EmpSpouseBplace String? @db.VarChar(50)
+  EmpSpouseOccup String? @db.VarChar(30)
+  EmpSpouseEmployer String? @db.VarChar(50)
+  EmpSpouseEmpAdd String? @db.VarChar(50)
+
+  FamilyBgrnd_ID String  @db.VarChar(20) @map("FamilyBgrndID_id")
+  FamilyBgrndID FamilyBgrnd @relation(fields: [FamilyBgrnd_ID], references: [FamilyBgrndID])
+  @@map("empspouse")
+}
+
+model EmpChildren{
+  EmpChildrenID Int @id @default(autoincrement())
+  EmpChildrenName String? @db.VarChar(50)
+  EmpChildrenBirthday DateTime? @db.Date
+  EmpChildrenBplace String? @db.VarChar(50)
+
+  FamilyBgrnd_ID String  @db.VarChar(20) @map("FamilyBgrndID_id")
+  FamilyBgrndID FamilyBgrnd @relation(fields: [FamilyBgrnd_ID], references: [FamilyBgrndID])
+
+  @@map("empchildren")
+}
+
+model EmployeeSummary{
+  PayCode String  @db.VarChar(20)
+  TotalHoursWorked String? @db.VarChar(20)
+  LateCount String? @db.VarChar(20)
+  TotalAbsentHours String? @db.VarChar(20)
+  TotalUndertime String? @db.VarChar(20)
+  TotalOvertime String? @db.VarChar(20)
+  RegularAtt Json?
+  OvertimeAtt Json?
+  NightShiftAtt Json?
+  NightShiftOtAtt Json?
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@id([PayCode, EmpCodeId])
+  @@map("employee_summary")
+  @@index([PayCode, EmpCodeId])
+
+}
+
+
+
+model PayslipArchive{
+  PayCycle String @db.VarChar(20)
+  PayDate String? @db.VarChar(20)
+  Total_GrossPay Decimal? @db.Decimal(10,2)
+  Total_Deduction  Decimal? @db.Decimal(10,2)
+  Total_NetPay Decimal? @db.Decimal(10,2)
+  Total_Contribution Decimal? @db.Decimal(10,2)
+  CurrentDate DateTime? @default(now())
+  Path String @db.VarChar(200)
+  Total_Late  Decimal? @db.Decimal(10,2)
+  Total_Absent  Decimal? @db.Decimal(10,2)
+  Total_OverTimePay Decimal? @db.Decimal(10,2) 
+  Total_SSSContribution Decimal? @db.Decimal(10,2)
+  Total_PagibigContribution  Decimal? @db.Decimal(10,2)
+  Total_FCHLoan Decimal? @db.Decimal(10,2) 
+  Total_PhilhealthContribution Decimal? @db.Decimal(10,2)
+  Total_SalaryLoan Decimal? @db.Decimal(10,2)
+  Total_CalamityLoan Decimal? @db.Decimal(10,2)
+  Total_HousingLoan Decimal? @db.Decimal(10,2)
+
+  @@id([PayCycle])
+  @@map("Payslip_Archive")
+}
+
+model Employee_payroll{
+  payroll_id Int @id @default(autoincrement())
+  basic_salary Decimal? @db.Decimal(10,2) 
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  // pagibigId String? @map("pagibig_id")
+  // pagibig_id PagIbig_List? @relation(fields: [pagibigId], references: [pagibig_id])
+
+
+  @@map("employee_payroll")
+
+}
+
+
+model PagIbig_List{
+  pagibig_id String @id @db.VarChar(20)
+  pagibig_employee_share Decimal? @db.Decimal(10,2)
+  pagibig_employer_share Decimal? @db.Decimal(10,2)
+    
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  // employee_payroll Employee_payroll[] @relation
+  @@map("pagibig_list")
+}
+
+
+
+model SSS_Contributions{
+  sss_contrib_id Int @id @default(autoincrement())
+  start_range Decimal? @db.Decimal(10,2)
+  end_range Decimal? @db.Decimal(10,2)
+  employer_share Decimal? @db.Decimal(10,2)
+  employee_share Decimal? @db.Decimal(10,2)
+
+  @@map("sss_contributions")
+}
+
+model Payroll_Parameters{
+  id Int @id @default(autoincrement())
+  SettingName String? @db.VarChar(100)
+  SettingPercentage Decimal? @db.Decimal(10,2)
+  LastModifiedBy String? @db.VarChar(100)
+  LastModifiedDate DateTime? @db.Date
+  Created_at DateTime? @default(now()) 
+  @@map("payroll_parameters")
+}
+
+
+model EmployeePayrollArchive {
+  id Int @id @default(autoincrement())
+  PayCode String  @db.VarChar(20)
+  Late  Decimal? @db.Decimal(10,2)
+  Absent  Decimal? @db.Decimal(10,2)
+  Overtime  Decimal? @db.Decimal(10,2)
+  Grosspay  Decimal? @db.Decimal(10,2)
+  Netpay  Decimal? @db.Decimal(10,2)
+  Basic_salary  Decimal? @db.Decimal(10,2)
+  SSS_share  Decimal? @db.Decimal(10,2)
+  Pagibig_share Decimal? @db.Decimal(10,2)
+  Philhealth_share Decimal? @db.Decimal(10,2)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("employee_payroll_archive")
+}
+
+
+model employee_loan {
+  id Int @id @default(autoincrement())
+  amount Decimal? @db.Decimal(10,2) 
+  loan_type String? @db.VarChar(20)
+  loan_term Int? 
+  date_start DateTime? @db.Date
+  date_end DateTime? @db.Date
+  created_at DateTime?
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("employee_loan")
+}
+
+
+
