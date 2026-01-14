@@ -1,26 +1,163 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+
+
+@theme {
+
+  /* Main Payroll */
+  --color-mainLight: #FCFBF9;
+  --color-mainDark: #212121;
+  --color-mainNeutral: #3B3B3B;
+  --color-mainGrey: #DEDEDE;
+
+
+  /* Font */
+  --font-sans: "Inter", sans-serif;
+  /* payroll Font */
+  --font-payrollFont: "Montserrat", sans-serif;
+
+  
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
+  /* Light mode defaults */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-background: #ffffff;
+    --color-foreground: #171717;
+    
+  }
+
+  /* Dark mode (activated when <html class="dark"> is present) */
+  .dark {
+    --color-background: #0a0a0a;
+    --color-foreground: #ededed;
+  }
+
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-payrollFont);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+
+  .scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;  
+    scrollbar-width: none;   
+  }
+
+
+
+.scrollbar-custom::-webkit-scrollbar {
+  height: 10px; 
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: var(--color-primaryNaya); 
+  border-radius: 10px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background-color: var(--color-lightNeutralNaya); 
+  border-radius: 10px;
+  border: 2px solid var(--color-primaryNaya)
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background-color:  var(--color-lightNeutralNaya); 
+}
+
+
+/* Firefox support */
+.scrollbar-custom {
+  scrollbar-color: var(--color-lightNeutralNaya) var(--color-primaryNaya); 
+  scrollbar-width: thin;
+}
+
+
+
+}
+
+
+:root {
+  /* Font Families */
+  --ff-primary: 'Poppins', sans-serif;
+  --ff-body: var(--ff-primary);
+
+  /* Font Size Scale (Major Third – 1.25) */
+  --fs-50: 0.75rem;   /* 12px */
+  --fs-75: 0.875rem;  /* 14px */
+  --fs-100: 1rem;     /* 16px */
+  --fs-125: 1.125rem; /* 18px */
+  --fs-150: 1.25rem;  /* 20px */
+  --fs-200: 1.5rem;   /* 24px */
+  --fs-250: 1.875rem; /* 30px */
+  --fs-300: 2.25rem;  /* 36px */
+  --fs-400: 3rem;     /* 48px */
+
+  /* Font Weights */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semi-bold: 600;
+  --fw-bold: 700;
+  --fw-extra-bold: 800;
+
+  /* Spacing (4px scale system) */
+  --size-100: 0.25rem; /* 4px */
+  --size-200: 0.5rem;  /* 8px */
+  --size-300: 0.75rem; /* 12px */
+  --size-400: 1rem;    /* 16px */
+  --size-500: 1.5rem;  /* 24px */
+  --size-600: 2rem;    /* 32px */
+  --size-700: 3rem;    /* 48px */
+  --size-800: 4rem;    /* 64px */
+  --size-900: 6rem;    /* 96px */
+
+  /* Semantic Font Tokens */
+  --body-fs: var(--fs-100);
+  --heading-fs: var(--fs-200);
+  --subheading-fs: var(--fs-150);
+  --caption-fs: var(--fs-75);
+  --display-fs: var(--fs-300);
+
+  /* Padding Defaults */
+  --padding-inline: var(--size-400);
+  --padding-block: var(--size-400);
+}
+
+/* ===========================================
+   5️⃣ Responsive Adjustments
+   (Use em-based breakpoints)
+=========================================== */
+@media (min-width: 50em) and (max-width: 90em) {
+  :root {
+    --body-fs: var(--fs-125);
+    --heading-fs: var(--fs-250);
+    --subheading-fs: var(--fs-200);
+    --caption-fs: var(--fs-100);
+    --display-fs: var(--fs-400);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (min-width: 90em) {
+  :root {
+    --body-fs: var(--fs-150);
+    --heading-fs: var(--fs-700);
+    --subheading-fs: var(--fs-250);
+    --caption-fs: var(--fs-125);
+    --display-fs: var(--fs-400);
+  }
 }
+
+@container (min-width: 40rem) {
+  .card {
+    background: var(--color-primary);
+    color: red;
+  }
+}
+
+
