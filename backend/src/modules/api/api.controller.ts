@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { hrApi } from "../../lib/hrApi";
 import { ApiParams } from "../../types/utilsTypes";
-import { fetchHrAttendance } from "./api.services";
+import { fetchHrAttendance, saveEmployeeAttendance, transformAttendanceData } from "./api.services";
 
 export const getAttendance = async (req: Request, res: Response) => {
     try {
@@ -19,8 +19,12 @@ export const getAttendance = async (req: Request, res: Response) => {
         });
       }
         const data = await fetchHrAttendance(params)
+   
+        const employees = transformAttendanceData(data, params);
+        
+        const saveEmployeeSummary =saveEmployeeAttendance(employees);
       
-      res.status(200).json(data);
+         res.status(200).json(saveEmployeeSummary);
 
 
 

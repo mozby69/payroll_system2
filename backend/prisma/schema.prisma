@@ -185,15 +185,19 @@ model EmpChildren{
 
 model EmployeeSummary{
   PayCode String  @db.VarChar(20)
-  TotalHoursWorked String? @db.VarChar(20)
-  LateCount String? @db.VarChar(20)
-  TotalAbsentHours String? @db.VarChar(20)
-  TotalUndertime String? @db.VarChar(20)
-  TotalOvertime String? @db.VarChar(20)
+  CycleCategory String @db.VarChar(50)
+  PayrollPeriod String @db.VarChar(50)
+  LateCount Int?
+  TotalAbsentHours Decimal? @db.Decimal(10,2)
+  TotalUndertime Int? 
+  TotalOvertime Decimal? @db.Decimal(10,2)
   RegularAtt Json?
   OvertimeAtt Json?
   NightShiftAtt Json?
   NightShiftOtAtt Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
