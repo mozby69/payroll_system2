@@ -14,3 +14,8 @@ export type SSSRange = {
     employee_share: Decimal | null;
   };
   
+
+  export interface FetchEmployeesByCycleParams {
+    cycle: "10-25-Cycle" | "15-30-Cycle";
+  }
+  

@@ -27,6 +27,9 @@ model Branch {
   BranchImage String?   @db.VarChar(100)
   employees   Employee[] @relation
 
+  company_id String? @db.VarChar(20) @map("company_id")
+  CompanyCode   company_details? @relation(fields: [company_id], references: [CompanyCode])
+
   @@map("branches")
 }
 
@@ -142,10 +145,6 @@ model Employee_payroll{
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
-  // pagibigId String? @map("pagibig_id")
-  // pagibig_id PagIbig_List? @relation(fields: [pagibigId], references: [pagibig_id])
-
-
   @@map("employee_payroll")
 
 }
@@ -222,4 +221,12 @@ model employee_loan {
 }
 
 
+model company_details{
+    CompanyCode   String   @id @db.VarChar(20) 
+    CompanyCycle String? @db.VarChar(50)
+    CompanyName String? @db.VarChar(50)
 
+    branch_code Branch[] @relation
+
+    @@map("companydetails")
+}

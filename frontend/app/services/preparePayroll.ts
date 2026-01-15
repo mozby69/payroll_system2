@@ -1,5 +1,5 @@
 import api from "./axios";
-import { PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
+import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 import { ImportResponse } from "../hooks/usePreparePayroll";
 
 
@@ -20,4 +20,21 @@ export const importBranches = async (): Promise<ImportResponse> => {
   );
 
   return data;
+};
+
+
+
+export const fetchEmployeesByCycle = async (
+  params: {
+    cycle: string;
+    page: number;
+    limit: number;
+    search?: string;
+  }
+): Promise<PaginatedResponse<EmployeeRow>> => {
+  const res = await api.get("/prepare-payroll/employee-category-cycle", {
+    params,
+  });
+
+  return res.data;
 };

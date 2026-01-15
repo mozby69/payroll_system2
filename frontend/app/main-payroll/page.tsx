@@ -12,14 +12,27 @@ import Stepper, { Step } from "../components/Stepper";
 import StepConfirmEmployees from "../components/payroll/StepConfirmEmployees";
 import StepComputePayroll from "../components/payroll/StepComputePayroll";
 import StepReviewSave from "../components/payroll/StepReviewSave";
+import { useEmployeesByCycle } from "../hooks/usePreparePayroll";
+import { useDebounce } from "../utils/useDebounce";
 
 type PayrollStep = 1 | 2 | 3;
 
 export default function PreparePayroll() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
   const [range, setDateRange] = useState<DateRange | null>(null);
-  const [branchCycle, setBranchCycle] = useState("15-30-Cycle");
+  const [branchCycle, setBranchCycle] = useState("");
   const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
+  const { data: employee } = useEmployeesByCycle({
+    cycle: branchCycle,
+    page,
+    limit: 6,
+    search: debouncedSearch,
+  });
+  
+
   const { data, isLoading, isFetching } = useFetchApiAttendance(
     range
       ? {
@@ -29,6 +42,7 @@ export default function PreparePayroll() {
         }
       : null
   );
+
   useEffect(() => {
     if (isFetching && range) {
       setShowProcessing(true);
@@ -90,8 +104,7 @@ export default function PreparePayroll() {
                 onChange={(e) => setBranchCycle(e.target.value)}
                 className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2
                            text-sm text-slate-700 shadow-sm
-                           focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100"
-              >
+                           focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100">
                 <option value="">Select Payroll Cycle</option>
                 <option value="10-25-Cycle">10–25 Cycle</option>
                 <option value="15-30-Cycle">15–30 Cycle</option>
@@ -126,13 +139,19 @@ export default function PreparePayroll() {
             <Stepper steps={steps} />
         </div>
       </div>
-      <div className="mt-6 rounded-xl bg-white p-6 shadow-sm border">
-        {currentStep === 1 && (
+      <div className="mt-6 rounded-xl bg-white p-6 shadow-sm border border-gray-200">
+      {currentStep === 1 && (
           <StepConfirmEmployees
-            data={data}
+            data={employee?.data ?? []}
+            meta={employee?.meta ?? { total: 0, page: 1, limit: 10, totalPages: 0 }}
+            search={search}
+            onSearchChange={setSearch}
+            page={page}
+            onPageChange={setPage}
             onNext={() => setCurrentStep(2)}
           />
         )}
+
 
         {currentStep === 2 && (
           <StepComputePayroll

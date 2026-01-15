@@ -3,6 +3,7 @@ export type BranchDTO = {
     Company: string;
     Location: string;
     Employees: string;
+    company__CompanyCode: string | null;
   };
   
 
@@ -17,6 +18,12 @@ export type BranchDTO = {
     EmploymentStatus:string;
     EmployeeStatus:string;
   };
+
+  export type CompanyDTO = {
+    CompanyCode: string;
+    CompanyCycle:string;
+    CompanyName:string;
+  }
 
   export type EmployeeDetailsDTO = {
     EmpCode__EmpCode: string;
@@ -37,4 +44,5 @@ export type DjangoExportResponse = {
     branches: BranchDTO[];
     employees: EmployeeDTO[];
     employees_details: EmployeeDetailsDTO[];
+    company_details:CompanyDTO[];
   };
