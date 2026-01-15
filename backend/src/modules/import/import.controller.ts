@@ -1,21 +1,13 @@
-import { Request,Response } from "express";
-import { importSQLService } from "./import.service";
+// modules/import/import.controller.ts
+import { Request, Response } from "express";
+import { importBranchesService, saveBranches } from "./import.service";
 
 
-export const importSQLHandler = async (req:Request,res:Response): Promise<void> => {
-
-    try{
-
-    const filePath = req.file?.path;
-    const originalFileName = req.file?.originalname || '';
-
-    const result = await importSQLService(filePath,originalFileName);
-    res.status(200).json({message:result.message});
-        
-    }
-    catch(error){
-        console.error("error occured in controller");
-        res.status(500).json({message:'error occured in controller'});
-    }
-};
-
+export const importBranches = async (_req: Request, res: Response) => {
+    const inserted = await importBranchesService();
+  
+    res.status(200).json({
+      message: "Import completed",
+      inserted,
+    });
+  };

@@ -1,6 +1,6 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
-import { fetchPayroll } from "../services/preparePayroll";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { fetchPayroll, importBranches } from "../services/preparePayroll";
 import { PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 
 
@@ -13,3 +13,21 @@ export function useFetchSummary (page:number,limit:number,search?:string,payCode
   })
 };
 
+
+
+export type ImportResult = {
+  branches: number;
+  employees: number;
+  employeeDetails:number;
+};
+
+export type ImportResponse = {
+  message: string;
+  inserted: ImportResult;
+};
+
+export const useImportBranches = () => {
+  return useMutation<ImportResponse, Error>({
+    mutationFn: importBranches,
+  });
+};
