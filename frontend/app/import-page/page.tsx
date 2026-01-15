@@ -1,68 +1,39 @@
 "use client";
+import { useImportBranches } from "../hooks/usePreparePayroll";
 
-import Image from "next/image";
-import { useState,useRef } from "react";
-import { useImportSQL } from '@/app/hooks/useImport';
-import SweetAlert from '@/app/components/Swal';
+export default function Import2() {
+  const { mutate, isPending, data, error } = useImportBranches();
 
+  const handleImport = () => {
+    if (isPending) return;
+    mutate();
+  };
 
+  return (
+    <div className="p-6">
+      <h1 className="text-lg font-semibold mb-4">Import Branches</h1>
 
-function ImportPage() {
-    const [file, setFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const importMutation = useImportSQL();
-  
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.[0]) {
-        setFile(e.target.files[0]);
-      }
-    };
-  
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-  
-      if (file) {
-        importMutation.mutate(file, {
-          onSuccess: () => {
-            SweetAlert.successAlert("Success", "Import data successfully!");
-  
-            setFile(null);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = ""; 
-            }
-          },
-          onError: () => {
-            SweetAlert.errorAlert("Error", "Error occurred");
-          },
-        });
-      }
-    };
-  
+      <button
+        onClick={handleImport}
+        disabled={isPending}
+        className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+      >
+        {isPending ? "Importing..." : "Import Branches"}
+      </button>
 
-    
-    return (
-
-
-
-      <form onSubmit={handleSubmit} className="bg-white h-screen text-black">
-
-        <div>
-      
-    
-          
-          <div>
-            <input ref={fileInputRef} type="file" accept=".sql" onChange={handleFileChange} className="bg-green-200"/>
-            <button type="submit" disabled={importMutation.isPending}>
-              {importMutation.isPending ? "Importing..." : "Import"}
-            </button>
-          </div>
+      {data && (
+        <div className="mt-3 text-green-700">
+          <p>Branches imported: {data.inserted.branches}</p>
+          <p>Employees imported: {data.inserted.employees}</p>
+          <p>Employees Details imported: {data.inserted.employeeDetails}</p>
         </div>
-        
-      </form>
+      )}
 
-
-    );
-  }
-  
-
-  export default ImportPage;
+      {error && (
+        <p className="mt-3 text-red-600">
+          Import failed
+        </p>
+      )}
+    </div>
+  );
+}

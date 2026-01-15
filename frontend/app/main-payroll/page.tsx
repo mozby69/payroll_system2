@@ -1,149 +1,151 @@
 "use client";
-//pay code , emp code, basic pay, late, absent, gross pay , overtime, monthly rate, action 
-import { useEffect, useMemo, useState } from "react";
-import Datatable from "../components/Datatable";
-import { useFetchSummary } from "../hooks/usePreparePayroll"; 
-import { PayrollSummary } from "../types/preparePayroll";
-import { Column } from "../types/preparePayroll";
-import { Pagination } from "../components/Pagination";
-import { useDebounce } from "../utils/useDebounce";
-import { generatePayCodeOptions } from "../utils/payCode";
-import { FileText } from "lucide-react";
-import RequestModal from "../components/Modal";
-import { ViewEmployeePayroll } from "../ModalContent/main_payroll";
+
+import dynamic from "next/dynamic";
+import "flatpickr/dist/flatpickr.min.css";
+import { useEffect, useState } from "react";
+import DateRangePicker from "../ui/DateRangePicker";
+import { DateRange } from "../types/utilsTypes";
+import { useFetchApiAttendance } from "../hooks/useApiProcess";
+import { ProcessingOverlay } from "../ui/loader/ProcessingOverlay";
+import SweetAlert from "../components/Swal";
+import Stepper, { Step } from "../components/Stepper";
+import StepConfirmEmployees from "../components/payroll/StepConfirmEmployees";
+import StepComputePayroll from "../components/payroll/StepComputePayroll";
+import StepReviewSave from "../components/payroll/StepReviewSave";
+
+type PayrollStep = 1 | 2 | 3;
 
 export default function PreparePayroll() {
-  const PAGE_SIZE = 7;
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const [payCode, setPayCode] = useState<string>("");
-  const payCodeOptions = useMemo( () => generatePayCodeOptions(5), []);
-  const { data } = useFetchSummary(page, PAGE_SIZE, debouncedSearch || undefined, payCode || undefined);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<PayrollSummary | null>(null);
-
-
-  const columns: Column<PayrollSummary>[] = [
-    {
-      header: "EmpCode",
-      accessor: (row) => row.EmpCodeId,
-    },
-    {
-      header: "Paycode",
-      accessor: (row) => row.PayCode,
-    },
-    {
-      header: "Basic Pay",
-      accessor: (row) => Number(row.semi_monthly_rate),
-    },
-    {
-      header: "Absence",
-      accessor: (row) => Number(row.absence),
-    },
-    {
-      header: "Late",
-      accessor: (row) => Number(row.late_count),
-    },
-    {
-      header: "Overtime",
-      accessor: (row) => Number(row.overtime),
-    },
-    {
-      header:"Actions",
-      render: (row) => (
-        <div className="flex gap-2">
-          <button
-           onClick={() => openModal(row)}
-           className="px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded">
-          <FileText />
-          </button>
-        </div>
-      ),
+  const [range, setDateRange] = useState<DateRange | null>(null);
+  const [branchCycle, setBranchCycle] = useState("15-30-Cycle");
+  const [showProcessing, setShowProcessing] = useState(false);
+  const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
+  const { data, isLoading, isFetching } = useFetchApiAttendance(
+    range
+      ? {
+          startDate: range.startDate,
+          endDate: range.endDate,
+          branchCycle,
+        }
+      : null
+  );
+  useEffect(() => {
+    if (isFetching && range) {
+      setShowProcessing(true);
     }
+  }, [isFetching, range]);
+  
+  useEffect(() => {
+    if (!isFetching && showProcessing) {
+      const timer = setTimeout(() => {
+        setShowProcessing(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isFetching, showProcessing]);
+
+  const steps: Step[] = [
+    {
+      id: 1,
+      title: "Confirm Employees",
+      status:
+        currentStep > 1 ? "completed" : currentStep === 1 ? "current" : "pending",
+    },
+    {
+      id: 2,
+      title: "Compute Payroll",
+      status:
+        currentStep > 2 ? "completed" : currentStep === 2 ? "current" : "pending",
+    },
+    {
+      id: 3,
+      title: "Review & Save",
+      status: currentStep === 3 ? "current" : "pending",
+    },
   ];
 
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch]);
-
-
-  const openModal = (row: PayrollSummary) => {
-    setSelectedRow(row);
-    setIsModalOpen(true);
-  };
-  
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedRow(null);
-  };
-  
-
-
   return (
-    <div className="py-10 px-8 bg-gray-50 h-screen">
-
-
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-x-4">
-          <input 
-            type="text" 
-            placeholder="Search..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 text-slate-700 placeholder-slate-400"
-          />
-
-          <select
-            value={payCode}
-            onChange={(e) => {
-              setPayCode(e.target.value);
-              setPage(1);
-            }}
-            className="border border-slate-300 py-2.5 px-4 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 text-slate-700">
-            <option value="">All Pay Periods</option>
-            {payCodeOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button className="bg-green-700 hover:bg-green-600 rounded-lg text-white py-2.5 px-6 shadow-sm transition-colors duration-200 font-medium">
-          Save Payroll
-        </button>
-
-
-
-
-      </div>
+    <div className="relative min-h-screen bg-slate-100 px-6 py-8">
+      {showProcessing && (
+        <ProcessingOverlay message="Fetching HR data and computing payroll…" />
+      )}
+  
+  
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-800">
+          Prepare Payroll
+        </h1>
       
-      <Datatable
-        columns={columns}
-        data={data?.data ?? []}
-      />
-
-      <Pagination
-        page={page}
-        totalPages={data?.meta.totalPages ?? 0}
-        totalItems={data?.meta.total ?? 0}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-      />
-
-
-    
-
-        {isModalOpen && selectedRow && (
-          <RequestModal size="xxxl" title={`PAYCYCLE : ${selectedRow.PayCode}`} onClose={closeModal}>
-            <ViewEmployeePayroll employeeSummary={selectedRow}/>
-          </RequestModal>
+      </div>
+  
+ 
+      <div className="rounded-xl bg-white p-5 shadow-sm border border-slate-200">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Payroll Cycle
+              </label>
+              <select
+                onChange={(e) => setBranchCycle(e.target.value)}
+                className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2
+                           text-sm text-slate-700 shadow-sm
+                           focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100"
+              >
+                <option value="">Select Payroll Cycle</option>
+                <option value="10-25-Cycle">10–25 Cycle</option>
+                <option value="15-30-Cycle">15–30 Cycle</option>
+              </select>
+            </div>
+  
+          
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Payroll Period
+              </label>
+              <DateRangePicker
+                onChange={(range) => {
+                  SweetAlert.confirmationAlert(
+                    "Confirm Payroll Period",
+                    `${range.startDate} → ${range.endDate}`,
+                    () => setDateRange(range)
+                  );
+                }}
+              />
+            </div>
+          </div>
+  
+      
+          <div className="text-xs text-slate-500">
+            {range
+              ? `Selected: ${range.startDate} → ${range.endDate}`
+              : "No payroll period selected"}
+          </div>
+        </div>
+        <div className="flex justify-center items-center mt-2">
+            <Stepper steps={steps} />
+        </div>
+      </div>
+      <div className="mt-6 rounded-xl bg-white p-6 shadow-sm border">
+        {currentStep === 1 && (
+          <StepConfirmEmployees
+            data={data}
+            onNext={() => setCurrentStep(2)}
+          />
         )}
 
+        {currentStep === 2 && (
+          <StepComputePayroll
+            onBack={() => setCurrentStep(1)}
+            onNext={() => setCurrentStep(3)}
+          />
+        )}
 
-
-
+        {currentStep === 3 && (
+          <StepReviewSave onBack={() => setCurrentStep(2)} />
+        )}
+      </div>
     </div>
   );
+  
 }
