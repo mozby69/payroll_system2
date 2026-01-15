@@ -1,13 +1,10 @@
-import { Router} from "express";
-import { authenticateToken } from "../../middleware/authMiddleware";
-import { importSQLHandler } from "./import.controller";
-import multer from 'multer';
+// modules/import/import.routes.ts
+import { Router } from "express";
+import { importBranches } from "./import.controller";
+
+
 
 const router = Router();
-const upload = multer({ dest:'uploads/'});
-
-
-router.post('/import-data',upload.single('sqlfile'),importSQLHandler);
-
+router.post("/branches", importBranches);
 
 export default router;
