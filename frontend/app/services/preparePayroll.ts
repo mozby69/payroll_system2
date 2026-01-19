@@ -38,3 +38,22 @@ export const fetchEmployeesByCycle = async (
 
   return res.data;
 };
+
+
+export interface UpdateEmployeePayrollPayload {
+  empCode: string;
+  basic_salary?: number;
+  pagibig_employee_share?: number;
+  pagibig_employer_share?:number;
+}
+
+export const updateEmployeePayroll = async (
+  payload: UpdateEmployeePayrollPayload
+): Promise<{ message: string }> => {
+  const res = await api.patch(
+    "/prepare-payroll/edit-payroll",
+    payload
+  );
+
+  return res.data;
+};

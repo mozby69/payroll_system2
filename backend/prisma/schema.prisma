@@ -141,6 +141,8 @@ model PayslipArchive{
 model Employee_payroll{
   payroll_id Int @id @default(autoincrement())
   basic_salary Decimal? @db.Decimal(10,2) 
+  cash_assistance Decimal? @db.Decimal(10,2)
+  ecola Decimal? @default(500) @db.Decimal(10,2)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -154,7 +156,7 @@ model PagIbig_List{
   pagibig_id String @id @db.VarChar(20)
   pagibig_employee_share Decimal? @db.Decimal(10,2)
   pagibig_employer_share Decimal? @db.Decimal(10,2)
-    
+
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 

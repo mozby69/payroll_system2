@@ -1,13 +1,10 @@
 import { Request, Response } from "express";
-import { fetchEmployeesByPayrollCycle } from "./prepare_payroll.service";
+import { fetchEmployeesByPayrollCycle, saveEmployeePayroll } from "./prepare_payroll.service";
 
 
 
 
-export const getEmployeesByCycle = async (
-  req: Request,
-  res: Response
-) => {
+export const getEmployeesByCycle = async (req: Request,res: Response) => {
   const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
@@ -32,3 +29,37 @@ export const getEmployeesByCycle = async (
 
 
 
+export const saveEmployeePayrollController = async (req: Request,res: Response) => {
+  const {
+    empCode,
+    basic_salary,
+    cash_assistance,
+    pagibig_employee_share,
+    pagibig_employer_share,
+  } = req.body;
+
+  if (!empCode) {
+    return res.status(400).json({ message: "empCode is required" });
+  }
+
+  await saveEmployeePayroll({
+    empCode,
+    basic_salary:
+      basic_salary !== undefined ? Number(basic_salary) : undefined,
+
+    cash_assistance:
+      cash_assistance !== undefined ? Number(cash_assistance) : undefined,
+
+    pagibig_employee_share:
+      pagibig_employee_share !== undefined
+        ? Number(pagibig_employee_share)
+        : undefined,
+
+    pagibig_employer_share:
+      pagibig_employer_share !== undefined
+        ? Number(pagibig_employer_share)
+        : undefined,
+  });
+
+  res.json({ message: "Payroll saved successfully" });
+};

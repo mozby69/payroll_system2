@@ -102,7 +102,7 @@ export default function PreparePayroll() {
               </label>
               <select
                 onChange={(e) => setBranchCycle(e.target.value)}
-                className="w-56 rounded-lg border border-slate-300 bg-white px-3 py-2
+                className="rounded-lg border border-slate-300 bg-white w-50 px-3 py-2.5
                            text-sm text-slate-700 shadow-sm
                            focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100">
                 <option value="">Select Payroll Cycle</option>
@@ -139,8 +139,11 @@ export default function PreparePayroll() {
             <Stepper steps={steps} />
         </div>
       </div>
+
+
       <div className="mt-6 rounded-xl bg-white p-6 shadow-sm border border-gray-200">
-      {currentStep === 1 && (
+
+        <div className={currentStep === 1 ? "block" : "hidden"}>
           <StepConfirmEmployees
             data={employee?.data ?? []}
             meta={employee?.meta ?? { total: 0, page: 1, limit: 10, totalPages: 0 }}
@@ -150,20 +153,23 @@ export default function PreparePayroll() {
             onPageChange={setPage}
             onNext={() => setCurrentStep(2)}
           />
-        )}
+        </div>
 
-
-        {currentStep === 2 && (
+        <div className={currentStep === 2 ? "block" : "hidden"}>
           <StepComputePayroll
             onBack={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}
           />
-        )}
+        </div>
 
-        {currentStep === 3 && (
+        <div className={currentStep === 3 ? "block" : "hidden"}>
           <StepReviewSave onBack={() => setCurrentStep(2)} />
-        )}
-      </div>
+        </div>
+
+        </div>
+
+
+
     </div>
   );
   

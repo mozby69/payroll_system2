@@ -32,6 +32,13 @@ export type Column<T> = {
     Position?: string | null;
     EmploymentStatus?: string | null;
     basic_salary: number;
+    sss_contrib:number | string;
+    phil_rate:number;
+    pagibig_share:number | string;
+    pagibig_employee_share: number;
+    pagibig_employer_share: number;
+    cash_assistance?:number | string;
+    pagibig_id:string;  
     BranchCode?: {
       branchCode: string;
       Location: string | null;

@@ -53,46 +53,31 @@ export const computeGrossPay = (overtime:number | null,basicPay:number | null,la
 
 
 
-export const computePhilRate = (basicPay: number | null,philPercentage: number | null,payCode: string | null): number => {
-  if (basicPay  == null || philPercentage == null || payCode == null) 
+export const computePhilRate = (basicPay: number | null,philPercentage: number | null): number => {
+  if (basicPay  == null || philPercentage == null) 
     return 0;
 
-
-  const parts = payCode.split("-");
-
-  if (parts.length < 4) return 0;
-
-  const startDay = Number(parts[1]);
-
-
-  if (startDay !== 1) return 0;
-
-  const result = basicPay * philPercentage;
+  const result = basicPay * Number(philPercentage);
   return Number(result.toFixed(2));
 };
 
-export const computePagibig = (payCode:string | null, pagibigContrib:number | null):number => {
-  if(payCode == null || pagibigContrib == null)
+
+
+export const computePagibig = (pagibigContrib:number | null):number => {
+  if(pagibigContrib == null){
     return 0
-
-  const parts = payCode.split("-");
-  if (parts.length < 4) return 0;
-
-  const startDay = Number(parts[1]);
-
-
-  if (startDay === 16) {
-    return pagibigContrib;
   }
-  else {
-    return 0;
+  else{
+
+    return Number(pagibigContrib.toFixed(2));
   }
-}
+
+};
 
 
 
-export const computeSSSContribution = (basicSalary: number | null,ranges: SSSRange[],payCode:string | null): number => {
-  if (!basicSalary || !ranges.length || !payCode) return 0;
+export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[]): string => {
+  if (!monthlySalary || !ranges.length) return '0.00';
 
   const match = ranges.find(r => {
     if (!r.start_range || !r.end_range) return false;
@@ -100,28 +85,11 @@ export const computeSSSContribution = (basicSalary: number | null,ranges: SSSRan
     const start = r.start_range.toNumber();
     const end = r.end_range.toNumber();
 
-    const parts = payCode.split("-");
-    if (parts.length < 4) return 0;
-
-    const startDay = Number(parts[1]);
-
-
-    if (startDay === 1) {
-      return  basicSalary >= start && basicSalary <= end;;
-    }
-    else{
-      return 0;
-    }
-
-    // return basicSalary >= start && basicSalary <= end;
+    return monthlySalary >= start && monthlySalary <= end;
   });
 
-  return match?.employee_share
-    ? Number(match.employee_share.toNumber().toFixed(2))
-    : 0;
+  return (match?.employee_share?.toNumber() ?? 0).toFixed(2);
 };
-
-
 
 
 

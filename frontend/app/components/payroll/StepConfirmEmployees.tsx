@@ -1,9 +1,12 @@
 import { Column, EmployeeRow } from "@/app/types/preparePayroll";
 import Datatable from "../Datatable";
 import { Pagination } from "../Pagination";
-
-
-const PAGE_SIZE = 6;
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FileText } from "lucide-react";
+import RequestModal from "../Modal";
+import { PayrollSavePayload, ViewEmployeePayroll } from "@/app/ModalContent/main_payroll";
+import { useUpdateEmployeePayroll } from "@/app/hooks/usePreparePayroll";
+import SweetAlert from "../Swal";
 
 
 interface Props {
@@ -22,37 +25,105 @@ interface Props {
 }
 
 
-const columns: Column<EmployeeRow>[] = [
-  {
-    header: "Employee",
-    render: (row) =>
-      `${row.Lastname}, ${row.Firstname}`,
-  },
-  {
-    header:"Emp Code",
-    accessor: (row) => row.EmpCode,
-  },
-  {
-    header:"Branch",
-    render: (row) =>
-      `${row.BranchCode?.branchCode}`,
-  },
-  {
-    header:"Basic Pay",
-    accessor: (row) => row.basic_salary,
-  }
-]
 
-export default function StepConfirmEmployees({
-  data,
-  meta,
-  search,
-  onSearchChange,
-  page,
-  onPageChange,
-  onNext,
-}: Props) {
+export default function StepConfirmEmployees({data,meta,search,onSearchChange,page,onPageChange,onNext}: Props) {
+
+  const PAGE_SIZE = 6;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<EmployeeRow | null>(null);
+  const [rows, setRows] = useState<EmployeeRow[]>([]);
+  const updatePayrollMutation = useUpdateEmployeePayroll();
+
+
+  const openModal = (row: EmployeeRow) => {
+    setSelectedRow(row);
+    setIsModalOpen(true);
+  };
+  
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedRow(null);
+  };
+  
+  
+  
+  useEffect(() => {
+    setRows(data);
+  }, [data]);
+    
+  const columns: Column<EmployeeRow>[] = [
+    {
+      header: "Employee",
+      render: (row) =>
+        `${row.Lastname}, ${row.Firstname}`,
+    },
+    {
+      header:"Emp Code",
+      accessor: (row) => row.EmpCode,
+    },
+    {
+      header:"Branch",
+      render: (row) =>
+        `${row.BranchCode?.branchCode}`,
+    },
+    {
+      header:"Basic Pay",
+      accessor: (row) => row.basic_salary,
+    },
+    {
+      header:"SSS",
+      accessor: (row) => row.sss_contrib,
+    },
+    {
+      header:"Actions",
+      render: (row) => (
+        <div className="flex gap-2">
+          <button
+          onClick={() => openModal(row)}
+          className="px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded">
+          <FileText />
+          </button>
+        </div>
+      ),
+    }
+
+  ]
+
+
+
+  const savePayrollSilently = async (payload: PayrollSavePayload) => {
+    if (!selectedRow) return;
+  
+    await updatePayrollMutation.mutateAsync({
+      empCode: selectedRow.EmpCode,
+      ...payload,
+    });
+  
+    // update table UI
+    setRows((prev) =>
+      prev.map((row) =>
+        row.EmpCode === selectedRow.EmpCode
+          ? { ...row, ...payload }
+          : row
+      )
+    );
+  };
+  
+
+
+const handleSavePayroll = async (payload: PayrollSavePayload) => {
+  await savePayrollSilently(payload);
+
+  SweetAlert.successAlert("Saved successfully");
+  closeModal(); 
+};
+
+  
+  
+  
+
   return (
+
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-slate-800">
         Confirm Employee Details
@@ -66,24 +137,48 @@ export default function StepConfirmEmployees({
         className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
       />
 
-      <Datatable columns={columns} data={data} />
+      <Datatable columns={columns} data={rows} />
 
-      <Pagination
-        page={page}
-        totalPages={meta.totalPages}
-        totalItems={meta.total}
-        pageSize={PAGE_SIZE}
-        onPageChange={onPageChange}
-      />
+
+        <Pagination
+          page={page}
+          totalPages={meta.totalPages}
+          totalItems={meta.total}
+          pageSize={PAGE_SIZE}
+          onPageChange={onPageChange}
+        />
+
 
       <div className="flex justify-end">
         <button
           onClick={onNext}
-          className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white hover:bg-blue-500"
-        >
+          className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white hover:bg-blue-500">
           Continue
         </button>
       </div>
+
+
+
+
+     {isModalOpen && selectedRow && (
+      <RequestModal size="xxxl" title={`Employee:${selectedRow.Firstname}, ${selectedRow.Lastname}`} onClose={closeModal}>
+        <ViewEmployeePayroll
+          employeeSummary={selectedRow}
+          onFinalSave={handleSavePayroll}
+          onQuickSave={savePayrollSilently}
+          onClose={closeModal}
+        />
+      </RequestModal>
+    )}
+
+
+      
+
+
     </div>
+
+
+
+
   );
 }
