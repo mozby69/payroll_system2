@@ -7,6 +7,8 @@ import RequestModal from "../Modal";
 import { PayrollSavePayload, ViewEmployeePayroll } from "@/app/ModalContent/main_payroll";
 import { useUpdateEmployeePayroll } from "@/app/hooks/usePreparePayroll";
 import SweetAlert from "../Swal";
+import { useQueryClient } from "@tanstack/react-query";
+import { AddLoanModal } from "@/app/ModalContent/AddLoan";
 
 
 interface Props {
@@ -30,11 +32,18 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
   const PAGE_SIZE = 6;
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen2, setIsModalOpen2] = useState(false);
   const [selectedRow, setSelectedRow] = useState<EmployeeRow | null>(null);
-  const [rows, setRows] = useState<EmployeeRow[]>([]);
   const updatePayrollMutation = useUpdateEmployeePayroll();
+  const [rows, setRows] = useState<EmployeeRow[]>(data);
 
+  const openModal2 = () => {;
+    setIsModalOpen2(true);
+  };
 
+  const closeModal2 = () => {;
+    setIsModalOpen2(false);
+  };
   const openModal = (row: EmployeeRow) => {
     setSelectedRow(row);
     setIsModalOpen(true);
@@ -45,11 +54,20 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     setSelectedRow(null);
   };
   
-  
-  
   useEffect(() => {
     setRows(data);
   }, [data]);
+
+  useEffect(() => {
+    if (!selectedRow) return;
+  
+    const fresh = rows.find(r => r.EmpCode === selectedRow.EmpCode);
+    if (fresh) {
+      setSelectedRow(fresh);
+    }
+  }, [rows]);
+  
+
     
   const columns: Column<EmployeeRow>[] = [
     {
@@ -91,34 +109,27 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
 
 
+  const queryClient = useQueryClient();
+
   const savePayrollSilently = async (payload: PayrollSavePayload) => {
     if (!selectedRow) return;
-  
+
     await updatePayrollMutation.mutateAsync({
       empCode: selectedRow.EmpCode,
       ...payload,
     });
-  
-    // update table UI
-    setRows((prev) =>
-      prev.map((row) =>
-        row.EmpCode === selectedRow.EmpCode
-          ? { ...row, ...payload }
-          : row
-      )
-    );
+
+    await queryClient.invalidateQueries({
+      queryKey: ["employees"],
+    });
   };
-  
 
+  const handleSavePayroll = async (payload: PayrollSavePayload) => {
+    await savePayrollSilently(payload);
 
-const handleSavePayroll = async (payload: PayrollSavePayload) => {
-  await savePayrollSilently(payload);
-
-  SweetAlert.successAlert("Saved successfully");
-  closeModal(); 
-};
-
-  
+    SweetAlert.successAlert("Saved successfully");
+    closeModal();
+  };
   
   
 
@@ -129,15 +140,22 @@ const handleSavePayroll = async (payload: PayrollSavePayload) => {
         Confirm Employee Details
       </h2>
 
+      <div className="flex justify-between">
       <input
         type="text"
         placeholder="Search..."
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-      />
+      />   
+       <div>
+        <button 
+        onClick={() => openModal2()}
+        className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded shadow-lg text-white">Add Loan</button>
+      </div>
+      </div>
 
-      <Datatable columns={columns} data={rows} />
+      <Datatable columns={columns} data={data} />
 
 
         <Pagination
@@ -171,6 +189,12 @@ const handleSavePayroll = async (payload: PayrollSavePayload) => {
       </RequestModal>
     )}
 
+
+      {isModalOpen2 && (
+          <RequestModal size="xxl" title="ADD LOAN" onClose={closeModal2}>
+            <AddLoanModal onClose={closeModal2}/>
+          </RequestModal>
+        )}
 
       
 

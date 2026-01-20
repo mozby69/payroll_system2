@@ -11,27 +11,34 @@ interface AddBasicSalaryModalProps {
 
 
   export const AddBasicSalaryModal: React.FC<AddBasicSalaryModalProps> = ({onSave,onClose}) => {
-    const [basicSalary, setBasicSalary] = useState<number>(0);
-    const [cashAssistance, setCashAssistance] = useState(0);
+    const [basicSalary, setBasicSalary] = useState<number | "">("");
+    const [cashAssistance, setCashAssistance] = useState<number | "">("");
+    
   
     return (
         <div className="space-y-4">
           <div className="grid gap-y-2">
             <label className="font-bold">Basic Salary</label>
             <input
-              type="number"
-              value={basicSalary}
-              onChange={(e) => setBasicSalary(Number(e.target.value))}
-              className="border py-2 px-2 rounded-lg"
-            />
+                type="number"
+                placeholder="Enter amount"
+                value={basicSalary}
+                onChange={(e) =>
+                  setBasicSalary(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="border py-2 px-2 rounded-lg"
+              />
           </div>
     
           <div className="grid gap-y-2">
             <label className="font-bold">Cash Assistance</label>
             <input
               type="number"
+              placeholder="Enter amount"
               value={cashAssistance}
-              onChange={(e) => setCashAssistance(Number(e.target.value))}
+              onChange={(e) =>
+                setCashAssistance(e.target.value === "" ? "" : Number(e.target.value))
+              }
               className="border py-2 px-2 rounded-lg"
             />
           </div>
@@ -44,8 +51,8 @@ interface AddBasicSalaryModalProps {
             <button
               onClick={() =>
                 onSave({
-                  basic_salary: basicSalary,
-                  cash_assistance: cashAssistance,
+                  basic_salary: Number(basicSalary || 0),
+                  cash_assistance: Number(cashAssistance || 0),
                 })
               }
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded">

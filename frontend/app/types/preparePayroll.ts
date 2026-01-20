@@ -37,7 +37,10 @@ export type Column<T> = {
     pagibig_share:number | string;
     pagibig_employee_share: number;
     pagibig_employer_share: number;
-    cash_assistance?:number | string;
+    cash_assistance?:number;
+    fch_loan: number;
+    sss_loan: number;
+    pagibig_loan: number;
     pagibig_id:string;  
     BranchCode?: {
       branchCode: string;

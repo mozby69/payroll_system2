@@ -57,3 +57,23 @@ export const updateEmployeePayroll = async (
 
   return res.data;
 };
+
+
+
+export type AddLoanPayload = {
+  empCode: string;
+  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
+  principal: number;
+  term_value: number;
+  term_unit: "MONTHS" | "YEARS";
+  start_date: string;
+};
+
+
+export function addEmployeeLoan(payload: AddLoanPayload) {
+  return api.post("/prepare-payroll/loans-add", payload);
+}
+
+export function searchEmployees(q: string) {
+  return api.get("/prepare-payroll/employees/search", { params: { q } });
+}

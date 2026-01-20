@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fetchEmployeesByPayrollCycle, saveEmployeePayroll } from "./prepare_payroll.service";
+import { fetchEmployeesByPayrollCycle, saveEmployeeLoan, saveEmployeePayroll, searchEmployees } from "./prepare_payroll.service";
 
 
 
@@ -62,4 +62,45 @@ export const saveEmployeePayrollController = async (req: Request,res: Response) 
   });
 
   res.json({ message: "Payroll saved successfully" });
+};
+
+
+
+
+
+
+
+export const addEmployeeLoanController = async (req: Request,res: Response) => {
+  const {
+    empCode,
+    loan_type,
+    principal,
+    term_value,
+    term_unit,
+    start_date,
+  } = req.body;
+
+  if (!empCode || !loan_type || !principal || !term_value || !term_unit) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const loan = await saveEmployeeLoan({
+    empCode,
+    loan_type,
+    principal: Number(principal),
+    term_value: Number(term_value),
+    term_unit,
+    start_date: new Date(start_date),
+  });
+
+  res.json(loan);
+
+};
+
+
+
+export const searchEmployeeController = async (req: Request, res: Response) => {
+  const q = req.query.q?.toString() ?? "";
+  const data = await searchEmployees(q);
+  res.json(data);
 };

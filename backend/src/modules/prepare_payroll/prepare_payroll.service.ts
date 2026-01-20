@@ -1,7 +1,7 @@
 import { prisma } from "../../config/prismaClient";
 import { generateNextPagibigId } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution } from "./prepare_payroll.computation";
-import { FetchEmployeesByCycleParams, PaginationParams } from "./prepare_payroll.types";
+import { FetchEmployeesByCycleParams, loanProps, PaginationParams } from "./prepare_payroll.types";
 
 export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
 cycle: "10-25-Cycle" | "15-30-Cycle";
@@ -51,6 +51,13 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
       Department: true,
       Position: true,
       EmploymentStatus: true,
+
+      loan_details:{
+         select:{
+          loan_type:true,
+          per_payroll_deduct:true,
+         }
+      },
       
       pagibig_list:{
         take:1,
@@ -90,7 +97,7 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
 
 
 
-const normalized = data.map(emp => {
+  const normalized = data.map(emp => {
 
   const basicSalary = emp.employeepayroll[0]?.basic_salary?.toNumber() ?? 0;
   const cashAssitance = emp.employeepayroll[0]?.cash_assistance?.toNumber() ?? 0;
@@ -104,6 +111,21 @@ const normalized = data.map(emp => {
   const philhealthRate = computePhilRate(semiPay, phil_percentage);
   const pagibigShare = computePagibig(rawPagibigShare).toFixed(2);
 
+  const loanMap = {
+    FCH_LOAN: 0,
+    SSS_LOAN: 0,
+    PAGIBIG_LOAN: 0,
+  };
+
+  emp.loan_details.forEach(loan => {
+    if (loan.loan_type && loan.per_payroll_deduct) {
+      loanMap[loan.loan_type as keyof typeof loanMap] =
+        loan.per_payroll_deduct.toNumber();
+    }
+  });
+
+
+
   return {
     ...emp,
     basic_salary: basicSalary,
@@ -114,6 +136,9 @@ const normalized = data.map(emp => {
     pagibig_employer_share:rawPagibigShareEmployer,
     pagibig_id:pagibigId,
     cash_assistance:cashAssitance,
+    fch_loan: loanMap.FCH_LOAN,
+    sss_loan: loanMap.SSS_LOAN,
+    pagibig_loan: loanMap.PAGIBIG_LOAN,
   };
 });
 
@@ -135,13 +160,7 @@ const normalized = data.map(emp => {
 
 
 
-export async function saveEmployeePayroll({
-  empCode,
-  basic_salary,
-  cash_assistance,
-  pagibig_employee_share,
-  pagibig_employer_share,
-}: {
+export async function saveEmployeePayroll({empCode,basic_salary,cash_assistance,pagibig_employee_share,pagibig_employer_share}: {
   empCode: string;
   basic_salary?: number;
   cash_assistance?: number;
@@ -207,5 +226,49 @@ export async function saveEmployeePayroll({
         });
       }
     }
+  });
+}
+
+
+
+
+
+
+export async function saveEmployeeLoan(data: loanProps) {
+  const totalTerms = data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
+  const monthlyDeduct = (data.principal / totalTerms);
+  const res = monthlyDeduct / 2;
+  const truncatedRes = Math.floor(res * 100) / 100;
+
+  return prisma.loan_details.create({
+    data: {
+      EmpCodeId: data.empCode,
+      loan_type: data.loan_type,
+      principal: data.principal,
+      term_value: data.term_value,
+      term_unit: data.term_unit,
+      start_date: data.start_date,
+      deduct_allowance: false,
+      per_payroll_deduct: truncatedRes.toFixed(2),
+    },
+  });
+}
+
+
+export async function searchEmployees(keyword: string) {
+  return prisma.employee.findMany({
+    where: {
+      OR: [
+        { Firstname: { contains: keyword } },
+        { Lastname: { contains: keyword } },
+        { EmpCode: { contains: keyword } },
+      ],
+    },
+    take: 10,
+    select: {
+      EmpCode: true,
+      Firstname: true,
+      Lastname: true,
+    },
   });
 }

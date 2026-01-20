@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchEmployeesByCycle, fetchPayroll, importBranches, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { addEmployeeLoan, fetchEmployeesByCycle, fetchPayroll, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
 import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 
 
@@ -71,5 +71,27 @@ export function useUpdateEmployeePayroll() {
         queryKey: ["employees"],
       });
     },
+  });
+}
+
+
+
+
+export function useAddLoan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addEmployeeLoan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+export function useEmployeeSearch(keyword: string) {
+  return useQuery({
+    queryKey: ["employee-search", keyword],
+    queryFn: () => searchEmployees(keyword).then(res => res.data),
+    enabled: keyword.length >= 2,
   });
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EmployeeRow, PayrollSummary } from "../types/preparePayroll";
 import Image from 'next/image'
 import { AddPagibigModal } from "./AddPagibigModal";
@@ -23,6 +23,8 @@ interface ViewEmployeePayrollProps {
   onClose: () => void;
 }
 
+
+
 export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employeeSummary,onFinalSave,onQuickSave,onClose}) => {
   const [basicSalary, setBasicSalary] = useState<number>(employeeSummary.basic_salary ?? 0);
   const [pagibigEmployeeShare, setPagibigEmployeeShare] = useState<number>(employeeSummary.pagibig_employee_share ?? 0);
@@ -36,8 +38,16 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
   const [hasPagibig, setHasPagibig] = useState(employeeSummary.pagibig_id !== "N/A");
   const [showAddPagibig, setShowAddPagibig] = useState(false);
   const [showAddBasicSalary, setShowAddBasicSalary] = useState(false);
+  const [fchLoan, setFchLoan] = useState(employeeSummary.fch_loan ?? 0);
+  const [sssLoan, setSssLoan] = useState(employeeSummary.sss_loan ?? 0);
+  const [pagibigLoan, setPagibigLoan] = useState(employeeSummary.pagibig_loan ?? 0);
 
 
+  useEffect(() => {
+    setFchLoan(employeeSummary.fch_loan ?? 0);
+    setSssLoan(employeeSummary.sss_loan ?? 0);
+    setPagibigLoan(employeeSummary.pagibig_loan ?? 0);
+  }, [employeeSummary]);
   
 
   const onAddBasicSalary = () => {
@@ -45,6 +55,19 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
   };
 
   const canUpdate = hasBasicSalary || hasPagibig;
+
+  useEffect(() => {
+    setBasicSalary(employeeSummary.basic_salary ?? 0);
+    setCashAssistance(Number(employeeSummary.cash_assistance ?? 0));
+    setPagibigEmployeeShare(employeeSummary.pagibig_employee_share ?? 0);
+    setPagibigEmployerShare(employeeSummary.pagibig_employer_share ?? 0);
+    setSSS(Number(employeeSummary.sss_contrib ?? 0));
+    setPhilHealth(Number(employeeSummary.phil_rate ?? 0));
+  
+    setHasBasicSalary((employeeSummary.basic_salary ?? 0) > 0);
+    setHasPagibig(employeeSummary.pagibig_id !== "N/A");
+  }, [employeeSummary]);
+  
 
 
   return (
@@ -147,7 +170,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
           <label className="font-bold">SSS</label>
           <input
             type="text"
-            value={employeeSummary.sss_contrib}
+            value={sss}
             readOnly
             className="border py-2 px-2 rounded-lg bg-gray-100"
           />
@@ -157,11 +180,42 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
           <label className="font-bold">PhilHealth</label>
           <input
             type="text"
-            value={employeeSummary.phil_rate}
+            value={philHealth}
             readOnly
             className="border py-2 px-2 rounded-lg bg-gray-100"
           />
         </div>
+
+        <div className="grid gap-y-1">
+          <label className="font-bold">FCH LOAN</label>
+          <input
+            type="number"
+            value={fchLoan}
+            readOnly
+            className="border py-2 px-2 rounded-lg bg-gray-100"
+          />
+        </div>
+
+        <div className="grid gap-y-1">
+          <label className="font-bold">SSS LOAN</label>
+          <input
+            type="number"
+            value={sssLoan}
+            readOnly
+            className="border py-2 px-2 rounded-lg bg-gray-100"
+          />
+        </div>
+
+        <div className="grid gap-y-1">
+          <label className="font-bold">PAG-IBIG LOAN</label>
+          <input
+            type="number"
+            value={pagibigLoan}
+            readOnly
+            className="border py-2 px-2 rounded-lg bg-gray-100"
+          />
+        </div>
+
 
       </div>
 
@@ -230,15 +284,13 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
             await onQuickSave({
               basic_salary: payload.basic_salary,
               cash_assistance: payload.cash_assistance,
+    
             });
-
             setBasicSalary(payload.basic_salary);
             setCashAssistance(payload.cash_assistance);
-            
             setHasBasicSalary(true);
-
             SweetAlert.successAlert("Salary added");
-            setShowAddBasicSalary(false); 
+            setShowAddBasicSalary(false);
           }}
           onClose={() => setShowAddBasicSalary(false)}
         />
