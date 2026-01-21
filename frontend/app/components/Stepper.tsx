@@ -14,7 +14,12 @@ export default function Stepper({ steps }: StepperProps) {
   return (
     <div className="flex w-full items-center justify-center">
       {steps.map((step, index) => (
-        <div key={step.id} className="flex flex-1 items-center">
+       <div
+       key={step.id}
+       className={`flex items-center ${
+         index < steps.length - 1 ? "flex-1" : ""
+       }`}
+     >
           <div className="flex flex-col items-center">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold

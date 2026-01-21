@@ -123,7 +123,9 @@ export default function PreparePayroll() {
           </div>
         </div>
         <div className="flex justify-center items-center mt-2">
-            <Stepper steps={steps} />
+          <div className="w-300">
+             <Stepper steps={steps} />
+          </div>
         </div>
       </div>
       <div className="mt-6 rounded-xl bg-white p-6 shadow-sm border">
