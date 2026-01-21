@@ -27,6 +27,9 @@ model Branch {
   BranchImage String?   @db.VarChar(100)
   employees   Employee[] @relation
 
+  company_id String? @db.VarChar(20) @map("company_id")
+  CompanyCode   company_details? @relation(fields: [company_id], references: [CompanyCode])
+
   @@map("branches")
 }
 
@@ -63,7 +66,7 @@ model Employee {
   pagibig_list PagIbig_List[] @relation()
   archive_employee_payroll EmployeePayrollArchive[] @relation()
   employee_loan employee_loan[] @relation()
-
+  loan_details loan_details[] @relation()
   @@map("employee")
 }
 
@@ -138,13 +141,11 @@ model PayslipArchive{
 model Employee_payroll{
   payroll_id Int @id @default(autoincrement())
   basic_salary Decimal? @db.Decimal(10,2) 
+  cash_assistance Decimal? @db.Decimal(10,2)
+  ecola Decimal? @default(500) @db.Decimal(10,2)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
-
-  // pagibigId String? @map("pagibig_id")
-  // pagibig_id PagIbig_List? @relation(fields: [pagibigId], references: [pagibig_id])
-
 
   @@map("employee_payroll")
 
@@ -155,7 +156,7 @@ model PagIbig_List{
   pagibig_id String @id @db.VarChar(20)
   pagibig_employee_share Decimal? @db.Decimal(10,2)
   pagibig_employer_share Decimal? @db.Decimal(10,2)
-    
+
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
@@ -222,4 +223,30 @@ model employee_loan {
 }
 
 
+model company_details{
+    CompanyCode   String   @id @db.VarChar(20) 
+    CompanyCycle String? @db.VarChar(50)
+    CompanyName String? @db.VarChar(50)
 
+    branch_code Branch[] @relation
+
+    @@map("companydetails")
+}
+
+
+model loan_details{
+  loan_id Int @id @default(autoincrement())
+  principal Decimal? @db.Decimal(10,2)
+  loan_type String? @db.VarChar(100)
+  term_value        Int?
+  term_unit         String?  @db.VarChar(10) 
+  start_date DateTime? @db.Date
+  deduct_allowance Boolean?
+  per_payroll_deduct Decimal? @db.Decimal(10,2)
+  created_at DateTime? @default(now()) 
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("loan_details")
+}

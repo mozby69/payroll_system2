@@ -26,6 +26,7 @@ export default function Import2() {
           <p>Branches imported: {data.inserted.branches}</p>
           <p>Employees imported: {data.inserted.employees}</p>
           <p>Employees Details imported: {data.inserted.employeeDetails}</p>
+          <p>Company Details imported: {data.inserted.companyDetails}</p>
         </div>
       )}
 

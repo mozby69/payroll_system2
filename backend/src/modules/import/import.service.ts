@@ -1,7 +1,7 @@
 // modules/import/import.service.ts
 import axios from "axios";
 import { prisma } from "../../config/prismaClient";
-import { BranchDTO, DjangoExportResponse, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { BranchDTO, CompanyDTO, DjangoExportResponse, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
 
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
 const DJANGO_EXPORT_API_KEY = process.env.DJANGO_EXPORT_API_KEY;
@@ -21,7 +21,30 @@ export const fetchFromDjango = async (): Promise<DjangoExportResponse> => {
   return data;
 };
 
-  
+export const saveCompany = async (company: CompanyDTO[]): Promise<number> => {
+  if (!Array.isArray(company)) {
+    throw new Error("saveBranches received invalid data");
+  }
+
+  await prisma.$transaction(
+    company.map((b) =>
+      prisma.company_details.upsert({
+        where: { CompanyCode: b.CompanyCode },
+        create: {
+          CompanyCode: b.CompanyCode,
+          CompanyCycle: b.CompanyCycle,
+          CompanyName: b.CompanyName,
+        },
+        update: {
+          CompanyCycle: b.CompanyCycle,
+          CompanyName: b.CompanyName,
+        },
+      })
+    )
+  );
+
+  return company.length;
+};
 
 export const saveBranches = async (branches: BranchDTO[]): Promise<number> => {
   if (!Array.isArray(branches)) {
@@ -37,11 +60,14 @@ export const saveBranches = async (branches: BranchDTO[]): Promise<number> => {
           Company: b.Company,
           Location: b.Location,
           Employees: b.Employees,
+          company_id: b.company__CompanyCode ?? null,
+          
         },
         update: {
           Company: b.Company,
           Location: b.Location,
           Employees: b.Employees,
+          company_id: b.company__CompanyCode ?? null,
         },
       })
     )
@@ -156,12 +182,13 @@ const toDateOrNull = (value?: string | null): Date | null => {
 
   
   export const importBranchesService = async () => {
-    const { branches, employees,employees_details  } = await fetchFromDjango();
+    const { branches, employees,employees_details,company_details } = await fetchFromDjango();
   
     if (!Array.isArray(branches)) {
       throw new Error("Branches payload is invalid");
     }
   
+    await saveCompany(company_details);
     await saveBranches(branches);
     const employeeCount = await saveEmployees(employees);
     const detailsCount = await saveEmployeeDetails(employees_details);
@@ -170,6 +197,7 @@ const toDateOrNull = (value?: string | null): Date | null => {
       branches: branches.length,
       employees: employeeCount,
       employeeDetails: detailsCount,
+      companyDetails: company_details.length,
     };
   };
   
