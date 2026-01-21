@@ -162,8 +162,7 @@ export const AddLoanModal = ({ onClose }: { onClose: () => void }) => {
           <select 
             value={termUnit} 
             onChange={e => setTermUnit(e.target.value as any)}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          >
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
             <option value="MONTHS">Months</option>
             <option value="YEARS">Years</option>
           </select>
@@ -173,8 +172,7 @@ export const AddLoanModal = ({ onClose }: { onClose: () => void }) => {
      
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
         <button onClick={onClose}
-          className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
-        >
+          className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors">
           Cancel
         </button>
         <button 
