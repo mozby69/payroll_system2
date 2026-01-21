@@ -14,3 +14,19 @@ export type SSSRange = {
     employee_share: Decimal | null;
   };
   
+
+  export interface FetchEmployeesByCycleParams {
+    cycle: "10-25-Cycle" | "15-30-Cycle";
+  }
+  
+
+  export interface loanProps{
+    empCode: string;
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
+    principal: number;
+    term_value: number;
+    term_unit: "MONTHS" | "YEARS";
+    start_date: Date;
+  }
+  
+  

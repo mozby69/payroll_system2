@@ -23,6 +23,36 @@ export type Column<T> = {
     sss_contribution:number | null;
   };
 
+
+  export interface EmployeeRow {
+    EmpCode: string;
+    Firstname: string | null;
+    Lastname: string | null;
+    Department?: string | null;
+    Position?: string | null;
+    EmploymentStatus?: string | null;
+    basic_salary: number;
+    sss_contrib:number | string;
+    phil_rate:number;
+    pagibig_share:number | string;
+    pagibig_employee_share: number;
+    pagibig_employer_share: number;
+    cash_assistance?:number;
+    fch_loan: number;
+    sss_loan: number;
+    pagibig_loan: number;
+    pagibig_id:string;  
+    BranchCode?: {
+      branchCode: string;
+      Location: string | null;
+      CompanyCode: {
+        CompanyName: string | null;
+        CompanyCycle: string | null;
+      } | null;
+    } | null;
+  }
+  
+
   export type PaginatedResponse<T> = {
     data: T[];
     meta: {

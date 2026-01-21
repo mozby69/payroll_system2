@@ -1,7 +1,7 @@
 "use client";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { fetchPayroll, importBranches } from "../services/preparePayroll";
-import { PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { addEmployeeLoan, fetchEmployeesByCycle, fetchPayroll, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 
 
 
@@ -19,6 +19,7 @@ export type ImportResult = {
   branches: number;
   employees: number;
   employeeDetails:number;
+  companyDetails:number;
 };
 
 export type ImportResponse = {
@@ -31,3 +32,66 @@ export const useImportBranches = () => {
     mutationFn: importBranches,
   });
 };
+
+
+export function useEmployeesByCycle(
+  params: {
+    cycle: string | null;
+    page: number;
+    limit: number;
+    search?: string;
+  }
+) {
+  return useQuery<PaginatedResponse<EmployeeRow>>({
+    queryKey: ["employees", params],
+    queryFn: () =>
+      fetchEmployeesByCycle({
+        cycle: params.cycle!,
+        page: params.page,
+        limit: params.limit,
+        search: params.search,
+      }),
+    enabled: !!params.cycle,
+  });
+}
+
+
+
+
+export function useUpdateEmployeePayroll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateEmployeePayrollPayload) =>
+      updateEmployeePayroll(payload),
+
+    onSuccess: () => {
+      // 🔄 Refetch employees list after update
+      queryClient.invalidateQueries({
+        queryKey: ["employees"],
+      });
+    },
+  });
+}
+
+
+
+
+export function useAddLoan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addEmployeeLoan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+export function useEmployeeSearch(keyword: string) {
+  return useQuery({
+    queryKey: ["employee-search", keyword],
+    queryFn: () => searchEmployees(keyword).then(res => res.data),
+    enabled: keyword.length >= 2,
+  });
+}
