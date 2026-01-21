@@ -1,5 +1,5 @@
 "use client";
-import { useImportBranches } from "../hooks/usePreparePayroll";
+import { useImportBranches } from "../../hooks/usePreparePayroll";
 
 export default function Import2() {
   const { mutate, isPending, data, error } = useImportBranches();

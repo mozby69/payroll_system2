@@ -1,9 +1,10 @@
 "use client"
 
 import { Printer, ViewIcon } from "lucide-react"
-import { formatCurrency } from "../utils/currencyConverter"
-import { paySlipDummyData } from "../types/dummyData"
+import { formatCurrency } from "../../utils/currencyConverter"
+
 import { useState } from "react"
+import { paySlipDummyData } from "@/app/types/dummyData"
 
   
   
