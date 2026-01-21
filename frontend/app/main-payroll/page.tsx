@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import "flatpickr/dist/flatpickr.min.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DateRangePicker from "../ui/DateRangePicker";
 import { DateRange } from "../types/utilsTypes";
 import { useFetchApiAttendance } from "../hooks/useApiProcess";
@@ -12,7 +12,7 @@ import Stepper, { Step } from "../components/Stepper";
 import StepConfirmEmployees from "../components/payroll/StepConfirmEmployees";
 import StepComputePayroll from "../components/payroll/StepComputePayroll";
 import StepReviewSave from "../components/payroll/StepReviewSave";
-import { useEmployeesByCycle } from "../hooks/usePreparePayroll";
+import { useEmployeesByCycle, useImportBranches } from "../hooks/usePreparePayroll";
 import { useDebounce } from "../utils/useDebounce";
 
 type PayrollStep = 1 | 2 | 3;
@@ -22,15 +22,39 @@ export default function PreparePayroll() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const [range, setDateRange] = useState<DateRange | null>(null);
-  const [branchCycle, setBranchCycle] = useState("");
+  const [branchCycle, setBranchCycle] = useState<"" | "10-25-Cycle" | "15-30-Cycle">("");
+
   const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
-  const { data: employee } = useEmployeesByCycle({
+  const {
+    data: employee,
+    refetch: refetchEmployees,
+  } = useEmployeesByCycle({
     cycle: branchCycle,
     page,
     limit: 6,
     search: debouncedSearch,
   });
+  
+  const importMutation = useImportBranches();
+  const lastImportedRef = useRef<string | null>(null);
+
+
+  useEffect(() => {
+    if (!branchCycle) return;
+    if (branchCycle === lastImportedRef.current) return;
+  
+    SweetAlert.loadingAlert("Importing data");
+  
+    importMutation.mutate(undefined, {
+      onSuccess: () => {
+        lastImportedRef.current = branchCycle;
+    
+        SweetAlert.successAlert("Import successful");
+        refetchEmployees();
+      },
+    });
+  }, [branchCycle]);
   
 
   const { data, isLoading, isFetching } = useFetchApiAttendance(
@@ -78,12 +102,14 @@ export default function PreparePayroll() {
     },
   ];
 
+
+
   return (
+
     <div className="relative min-h-screen bg-slate-100 px-6 py-8">
       {showProcessing && (
         <ProcessingOverlay message="Fetching HR data and computing payroll…" />
       )}
-  
   
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">
@@ -91,17 +117,18 @@ export default function PreparePayroll() {
         </h1>
       
       </div>
-  
- 
+   
       <div className="rounded-xl bg-white p-5 shadow-sm border border-slate-200">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Payroll Cycle
-              </label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Payroll Cycle</label>
               <select
-                onChange={(e) => setBranchCycle(e.target.value)}
+              disabled={importMutation.isPending}
+                onChange={(e) =>
+                  setBranchCycle(e.target.value as "10-25-Cycle" | "15-30-Cycle")
+                }
                 className="rounded-lg border border-slate-300 bg-white w-50 px-3 py-2.5
                            text-sm text-slate-700 shadow-sm
                            focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100">
@@ -167,7 +194,6 @@ export default function PreparePayroll() {
         </div>
 
         </div>
-
 
 
     </div>

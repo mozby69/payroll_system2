@@ -1,6 +1,23 @@
 import Swal from "sweetalert2";
 
 const SweetAlert = {
+
+
+  
+  loadingAlert: (title: string = "Loading...", text: string = "") => {
+    return Swal.fire({
+      title,
+      text,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+  },
+
+
+
     
   successAlert: (title: string = "Success", text: string = "") => {
     return Swal.fire({
@@ -73,5 +90,11 @@ const SweetAlert = {
     });
   },
 };
+
+
+
+
+
+
 
 export default SweetAlert;
