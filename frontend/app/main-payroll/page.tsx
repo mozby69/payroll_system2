@@ -12,7 +12,7 @@ import Stepper, { Step } from "../components/Stepper";
 import StepConfirmEmployees from "../components/payroll/StepConfirmEmployees";
 import StepComputePayroll from "../components/payroll/StepComputePayroll";
 import StepReviewSave from "../components/payroll/StepReviewSave";
-import { useEmployeesByCycle } from "../hooks/usePreparePayroll";
+import { useEmployeesByCycle, useImportBranches } from "../hooks/usePreparePayroll";
 import { useDebounce } from "../utils/useDebounce";
 
 type PayrollStep = 1 | 2 | 3;
@@ -25,13 +25,26 @@ export default function PreparePayroll() {
   const [branchCycle, setBranchCycle] = useState("");
   const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
+  const { mutate, isPending} = useImportBranches();
+
   const { data: employee } = useEmployeesByCycle({
     cycle: branchCycle,
     page,
     limit: 6,
     search: debouncedSearch,
   });
-  
+
+      const handleCycleChanges = (cycle: string) => {
+        if (isPending) return;
+        SweetAlert.loadingAlert("Importing data");
+        mutate(undefined, {
+          onSuccess: () => {
+            setBranchCycle(cycle);
+            setPage(1);
+            SweetAlert.successAlert("Import successful");
+          },
+        });
+      };
 
   const { data, isLoading, isFetching } = useFetchApiAttendance(
     range
@@ -42,6 +55,7 @@ export default function PreparePayroll() {
         }
       : null
   );
+
 
   useEffect(() => {
     if (isFetching && range) {
@@ -83,7 +97,7 @@ export default function PreparePayroll() {
       {showProcessing && (
         <ProcessingOverlay message="Fetching HR data and computing payroll…" />
       )}
-  
+   
   
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">
@@ -101,7 +115,7 @@ export default function PreparePayroll() {
                 Payroll Cycle
               </label>
               <select
-                onChange={(e) => setBranchCycle(e.target.value)}
+                onChange={(e)=>handleCycleChanges(e.target.value)}
                 className="rounded-lg border border-slate-300 bg-white w-50 px-3 py-2.5
                            text-sm text-slate-700 shadow-sm
                            focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100">
@@ -136,7 +150,9 @@ export default function PreparePayroll() {
           </div>
         </div>
         <div className="flex justify-center items-center mt-2">
-            <Stepper steps={steps} />
+          <div className="w-300">
+             <Stepper steps={steps} />
+          </div>
         </div>
       </div>
 

@@ -8,7 +8,7 @@ export default function Import2() {
     if (isPending) return;
     mutate();
   };
-
+ 
   return (
     <div className="p-6">
       <h1 className="text-lg font-semibold mb-4">Import Branches</h1>

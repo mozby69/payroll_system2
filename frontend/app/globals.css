@@ -24,3 +24,61 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+@media print {
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
+  html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  /* KEY FIX */
+  .print-page {
+    width: 100%;
+    display: block;
+    padding-bottom: 1px; 
+  }
+
+  table {
+    width: 100%;
+    margin: 0;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
+
+
+/* ================= TABLE STYLES ================= */
+.th {
+  border: 1px solid #000;
+  padding: 3mm;
+  font-weight: 600;
+  background: #f3f3f3;
+}
+
+.td {
+  border: 1px solid #000;
+  padding: 3mm;
+}
