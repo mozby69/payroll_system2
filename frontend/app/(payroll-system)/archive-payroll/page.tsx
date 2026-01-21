@@ -1,16 +1,16 @@
 "use client";
 //pay code , emp code, basic pay, late, absent, gross pay , overtime, monthly rate, action 
 import { useEffect, useMemo, useState } from "react";
-import Datatable from "../components/Datatable";
-import { useFetchSummary } from "../hooks/usePreparePayroll"; 
-import { PayrollSummary } from "../types/preparePayroll";
-import { Column } from "../types/preparePayroll";
-import { Pagination } from "../components/Pagination";
-import { useDebounce } from "../utils/useDebounce";
-import { generatePayCodeOptions } from "../utils/payCode";
+import Datatable from "../../components/Datatable";
+import { useFetchSummary } from "../../hooks/usePreparePayroll"; 
+import { PayrollSummary } from "../../types/preparePayroll";
+import { Column } from "../../types/preparePayroll";
+import { Pagination } from "../../components/Pagination";
+import { useDebounce } from "../../utils/useDebounce";
+import { generatePayCodeOptions } from "../../utils/payCode";
 import { FileText } from "lucide-react";
-import RequestModal from "../components/Modal";
-import { ViewEmployeePayroll } from "../ModalContent/main_payroll";
+import RequestModal from "../../components/Modal";
+import { ViewEmployeePayroll } from "../../ModalContent/main_payroll";
 
 export default function PreparePayroll() {
   const PAGE_SIZE = 7;

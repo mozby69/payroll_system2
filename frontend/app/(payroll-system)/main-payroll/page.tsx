@@ -3,17 +3,17 @@
 import dynamic from "next/dynamic";
 import "flatpickr/dist/flatpickr.min.css";
 import { useEffect, useState } from "react";
-import DateRangePicker from "../ui/DateRangePicker";
-import { DateRange } from "../types/utilsTypes";
-import { useFetchApiAttendance } from "../hooks/useApiProcess";
-import { ProcessingOverlay } from "../ui/loader/ProcessingOverlay";
-import SweetAlert from "../components/Swal";
-import Stepper, { Step } from "../components/Stepper";
-import StepConfirmEmployees from "../components/payroll/StepConfirmEmployees";
-import StepComputePayroll from "../components/payroll/StepComputePayroll";
-import StepReviewSave from "../components/payroll/StepReviewSave";
-import { useEmployeesByCycle, useImportBranches } from "../hooks/usePreparePayroll";
-import { useDebounce } from "../utils/useDebounce";
+import DateRangePicker from "../../ui/DateRangePicker";
+import { DateRange } from "../../types/utilsTypes";
+import { useFetchApiAttendance } from "../../hooks/useApiProcess";
+import { ProcessingOverlay } from "../../ui/loader/ProcessingOverlay";
+import SweetAlert from "../../components/Swal";
+import Stepper, { Step } from "../../components/Stepper";
+import StepConfirmEmployees from "../../components/payroll/StepConfirmEmployees";
+import StepComputePayroll from "../../components/payroll/StepComputePayroll";
+import StepReviewSave from "../../components/payroll/StepReviewSave";
+import { useEmployeesByCycle, useImportBranches } from "../../hooks/usePreparePayroll";
+import { useDebounce } from "../../utils/useDebounce";
 
 type PayrollStep = 1 | 2 | 3;
 
