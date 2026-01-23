@@ -92,6 +92,19 @@ export default function PreparePayroll() {
     },
   ];
 
+  const goToStep2 = () => {
+    if (!branchCycle) {
+      SweetAlert.warningAlert(
+        "Payroll Cycle Required",
+        "Please select a payroll cycle before proceeding."
+      );
+      return;
+    }
+  
+    setCurrentStep(2);
+  };
+  
+
   return (
     <div className="relative min-h-screen bg-slate-100 px-6 py-8">
       {showProcessing && (
@@ -126,20 +139,9 @@ export default function PreparePayroll() {
             </div>
   
           
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Payroll Period
-              </label>
-              <DateRangePicker
-                onChange={(range) => {
-                  SweetAlert.confirmationAlert(
-                    "Confirm Payroll Period",
-                    `${range.startDate} → ${range.endDate}`,
-                    () => setDateRange(range)
-                  );
-                }}
-              />
-            </div>
+         
+
+
           </div>
   
       
@@ -173,6 +175,8 @@ export default function PreparePayroll() {
 
         <div className={currentStep === 2 ? "block" : "hidden"}>
           <StepComputePayroll
+          range={range}
+          setRange={setDateRange}
             onBack={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}
           />

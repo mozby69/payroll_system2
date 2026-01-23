@@ -3,3 +3,25 @@
   //   ['February-1-15-2025',45.5,3,1],
   //   ['February-1-15-2025',30,2,3],
   // ];
+
+
+  DUMMY
+
+    const data: EmployeeRow[] = [
+      {
+        EmpCode: "EMB1001",
+        Firstname: "Juan",
+        Lastname: "Dela Cruz",
+        basic_salary: 20000,
+        sss_contrib: 500,
+        phil_rate: 300,
+        pagibig_share: 200,
+        pagibig_employee_share: 100,
+        pagibig_employer_share: 100,
+        pagibig_id: "PAG-001",
+        cash_assistance: 0,
+        fch_loan: 0,
+        sss_loan: 0,
+        pagibig_loan: 0,
+      },
+    ];

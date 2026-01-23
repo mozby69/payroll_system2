@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import "flatpickr/dist/flatpickr.min.css";
-import { useState } from "react";
+import { useState,useRef,useEffect } from "react";
 import { DateRange } from "../types/utilsTypes";
 
 const Flatpickr = dynamic(() => import("react-flatpickr"), {
@@ -32,9 +32,30 @@ export default function DateRangePicker({
 }: DateRangePickerProps) {
   const [range, setRange] = useState<Date[]>(value);
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
 
   return (
-    <div className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-4/12 ${className}`}>
       {/* Input */}
       <input
         readOnly
@@ -43,9 +64,11 @@ export default function DateRangePicker({
             ? `${formatPHDate(range[0])} to ${formatPHDate(range[1])}`
             : ""
         }
-        onClick={() => setOpen(true)}
+        //onClick={() => setOpen(true)}
+        onClick={() => setOpen((prev) => !prev)}
+
         placeholder={placeholder}
-        className="border px-3 py-2 rounded w-full cursor-pointer bg-white"
+        className="border border-slate-300 px-3 py-2.5 rounded w-full cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
       />
 
       {/* Calendar */}

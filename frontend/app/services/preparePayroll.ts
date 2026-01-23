@@ -1,6 +1,7 @@
 import api from "./axios";
 import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 import { ImportResponse } from "../hooks/usePreparePayroll";
+import { DateRange } from "../types/utilsTypes";
 
 
 
@@ -70,10 +71,44 @@ export type AddLoanPayload = {
 };
 
 
-export function addEmployeeLoan(payload: AddLoanPayload) {
-  return api.post("/prepare-payroll/loans-add", payload);
-}
+export const addEmployeeLoan = async (payload: AddLoanPayload) => {
+  const res = await api.post("/prepare-payroll/loans-add", payload);
+  return res.data;
+};
+
+
 
 export function searchEmployees(q: string) {
   return api.get("/prepare-payroll/employees/search", { params: { q } });
 }
+
+
+
+
+export interface ComputedProps{
+  PayCode:string;
+  EmpCodeId:string;
+  PayrollPeriod:string;
+  LateCount:number;
+  late_count:number;
+  absence_count:number;
+  overtime:number;
+  gross_pay:number;
+}
+
+export const fetchComputedPayroll = async (params: {
+  page: number;
+  limit: number;
+  search?: string;
+  range: DateRange | null;
+}): Promise<PaginatedResponse<ComputedProps>> => {
+  const res = await api.get("/prepare-payroll/computed-payroll", {
+    params: {
+      ...params,
+      startDate: params.range?.startDate,
+      endDate: params.range?.endDate,
+    },
+  });
+
+  return res.data;
+};

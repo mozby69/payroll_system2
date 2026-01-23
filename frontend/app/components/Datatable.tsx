@@ -11,10 +11,10 @@ export default function Datatable<T>({ columns, data }: DataTableProps<T>) {
     <div className="w-full overflow-x-auto">
       <table className="w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
         <thead>
-          <tr className="bg-linear-to-r from-green-700 to-green-800 text-white">
+          <tr className="bg-linear-to-r from-blue-950 to-blue-900 text-white">
             {columns.map((col, index) => (
               <th key={index}
-                className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider border-b border-lime-600">
+                className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider border-b border-blue-600">
                 {col.header}
               </th>
             ))}
@@ -33,7 +33,7 @@ export default function Datatable<T>({ columns, data }: DataTableProps<T>) {
           ) : (
             data.map((row, rowIndex) => ( 
               <tr key={rowIndex}
-                className="hover:bg-slate-50 transition-colors duration-150 border border-green-100">
+                className="hover:bg-slate-50 transition-colors duration-150 border border-blue-100">
                 {columns.map((col, colIndex) => (
                   <td key={colIndex}
                     className="px-6 py-4 text-sm text-slate-700 whitespace-nowrap">

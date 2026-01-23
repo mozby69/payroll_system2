@@ -1,5 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { generateNextPagibigId } from "../../helper/prepare_payroll_helper";
+import { addMonths, generateNextPagibigId, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution } from "./prepare_payroll.computation";
 import { FetchEmployeesByCycleParams, loanProps, PaginationParams } from "./prepare_payroll.types";
 
@@ -56,6 +57,8 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
          select:{
           loan_type:true,
           per_payroll_deduct:true,
+          start_date:true,
+          end_date:true,
          }
       },
       
@@ -116,14 +119,21 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
     SSS_LOAN: 0,
     PAGIBIG_LOAN: 0,
   };
-
+  
+  const currentMonth = toMonth(new Date());
+  
   emp.loan_details.forEach(loan => {
-    if (loan.loan_type && loan.per_payroll_deduct) {
-      loanMap[loan.loan_type as keyof typeof loanMap] =
-        loan.per_payroll_deduct.toNumber();
+    if (!loan.loan_type || !loan.per_payroll_deduct) return;
+    if (!loan.start_date || !loan.end_date) return;
+  
+    const startMonth = toMonth(new Date(loan.start_date));
+    const endMonth = toMonth(new Date(loan.end_date));
+    const isActive = currentMonth >= startMonth && currentMonth <= endMonth;
+  
+    if (isActive) {
+      loanMap[loan.loan_type as keyof typeof loanMap] = loan.per_payroll_deduct.toNumber();
     }
   });
-
 
 
   return {
@@ -236,23 +246,39 @@ export async function saveEmployeePayroll({empCode,basic_salary,cash_assistance,
 
 export async function saveEmployeeLoan(data: loanProps) {
   const totalTerms = data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
-  const monthlyDeduct = (data.principal / totalTerms);
-  const res = monthlyDeduct / 2;
-  const truncatedRes = Math.floor(res * 100) / 100;
 
-  return prisma.loan_details.create({
+  if (totalTerms <= 0) {
+    throw new Error("Invalid loan terms");
+  }
+
+  const perPayroll = Math.floor((data.principal / totalTerms / 2) * 100) / 100;
+  const startDate = new Date(data.start_date);
+  const endDate = addMonths(startDate, totalTerms - 1);
+
+  const loan = await prisma.loan_details.create({
     data: {
       EmpCodeId: data.empCode,
       loan_type: data.loan_type,
       principal: data.principal,
       term_value: data.term_value,
       term_unit: data.term_unit,
-      start_date: data.start_date,
+      start_date: startDate,
+      end_date: endDate,
       deduct_allowance: false,
-      per_payroll_deduct: truncatedRes.toFixed(2),
+      per_payroll_deduct: perPayroll,
+      status: "Active",
     },
   });
+
+  if (!loan?.loan_id) {
+    throw new Error("Loan not persisted");
+  }
+
+  return loan;
 }
+
+
+
 
 
 export async function searchEmployees(keyword: string) {
@@ -272,3 +298,100 @@ export async function searchEmployees(keyword: string) {
     },
   });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export async function ComputePayroll({page,limit,search}: {
+  page: number;
+  limit: number;
+  search?: string;
+}) {
+  const where: Prisma.EmployeeSummaryWhereInput = {
+    ...(search && {
+      OR: [{ EmpCodeId: { contains: search } }],
+    }),
+  };
+
+  const [total, data] = await Promise.all([
+    prisma.employeeSummary.count({ where }),
+    prisma.employeeSummary.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      select:{
+        PayCode:true,
+        EmpCodeId:true,
+        LateCount:true,
+        TotalAbsentHours:true,
+        RegularAtt:true,
+        OvertimeAtt: true,
+        NightShiftAtt: true,
+        NightShiftOtAtt: true,
+        EmpCode:{
+          select:{
+            employeepayroll:{
+              orderBy:{payroll_id:"desc"},
+              take:1,
+              select:{
+                basic_salary:true,
+                
+              }
+            },
+          },
+        }
+      },
+      orderBy: {
+        EmpCodeId: "asc",
+      },
+    }),
+  ]);
+
+  const normalized = data.map((emp) => {
+    const salaryDecimal = emp.EmpCode.employeepayroll[0]?.basic_salary;
+    const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
+    const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+    const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+
+    const lateCount = computeLate(totalLateCount,basicSalary);
+    const absent = computeAbsent(totalAbsent,basicSalary);
+    const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
+
+    const overTime = computeOvertime(basicSalary, {
+      regular: emp.RegularAtt,
+      overtime: emp.OvertimeAtt,
+      nightShift: emp.NightShiftAtt,
+      nightShiftOt: emp.NightShiftOtAtt,
+    });
+
+    return {
+      ...emp,
+      late_count:lateCount,
+      absence_count:absent,
+      overtime:overTime,
+      gross_pay:computeGrossPay(overTime,semiMonthlyRate,lateCount,absent),
+    };
+  });
+
+  return {
+    data: normalized,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+  

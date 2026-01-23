@@ -84,8 +84,8 @@ export function Pagination({
                 onClick={() => onPageChange(p)}
                 className={`min-w-10 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                   page === p
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-emerald-600 hover:text-emerald-600"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-blue-600 hover:text-blue-600"
                 }`}
               >
                 {p}

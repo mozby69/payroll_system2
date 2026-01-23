@@ -98,8 +98,8 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
         <div className="flex gap-2">
           <button
           onClick={() => openModal(row)}
-          className="px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded">
-          <FileText />
+          className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
+          <FileText/>
           </button>
         </div>
       ),
@@ -151,7 +151,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
        <div>
         <button 
         onClick={() => openModal2()}
-        className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded shadow-lg text-white">Add Loan</button>
+        className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded shadow-lg text-white cursor-pointer">Add Loan</button>
       </div>
       </div>
 

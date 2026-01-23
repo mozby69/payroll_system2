@@ -9,6 +9,7 @@ export function useFetchApiAttendance(params: ApiParams | null) {
       queryFn: () => fetchApiAttendance(params!),
       enabled: !!params,        // ⬅ only fetch when ready
       staleTime: 5 * 60 * 1000, // ⬅ cache for 5 minutes
+      
     });
   }
   
