@@ -46,22 +46,24 @@ export async function POST(req: Request) {
       <html>
         <head>
           <style>
-            @page { size: ${paper} ${orientation}; margin: 7mm; }
+            @page { size: ${paper} ${orientation}; margin: 3mm; }
             body { font-family: Arial, sans-serif; font-size: 9pt; }
             .payslip {
                 display: flex;
-                font-size: 0.6rem;
+                font-size: 11px;
                 gap: .5rem;
+                font-weight: 500; 
+                max-height: 265px;
             }
             .payslip-main {
                 position: relative;
                 display: flex;
                 flex-direction: column;
-                width: 65%;
+                width: 70%;
                 border: thin solid black;
             }
             .payslip-company{
-              padding: 2px;
+              padding: 1px;
               display: flex;
               flex-direction: column;
               justify-content: center;
@@ -78,11 +80,10 @@ export async function POST(req: Request) {
 
             .payslip-details1{
               display: flex;
-              gap: 5rem;
+              gap: 1.6rem;
             }
             .payslip-details2{
               display: flex;
-              gap: 3.3rem;
             }
             .payslip-company p{
               margin: 0px;
@@ -97,13 +98,16 @@ export async function POST(req: Request) {
             }
           .payslip-table > div {
               border: 1px solid black;
-              padding: 6px;
+              padding: 7px;
           }
 
           .payslip-acknowledge {
               border: .2px dotted black;
               padding: 4px;
-              width: 35%;
+              width: 30%;
+              display: flex;
+              flex-direction: column;
+                justify-content: space-between;
           }
               .border-bottom{
                 border-bottom: none;
@@ -128,6 +132,17 @@ export async function POST(req: Request) {
           .justify-between {
             justify-content: space-between;
           }
+
+          .p-0 p{
+            padding: 3px;
+            margin: 0px;
+          }
+            .bg-red{
+              background-color: red;
+            }
+              .p-2{
+                line-height: 10ox;
+              }
 
           </style>
         </head>
