@@ -14,6 +14,7 @@ import StepComputePayroll from "../../components/payroll/StepComputePayroll";
 import StepReviewSave from "../../components/payroll/StepReviewSave";
 import { useEmployeesByCycle, useImportBranches } from "../../hooks/usePreparePayroll";
 import { useDebounce } from "../../utils/useDebounce";
+import { useQueryClient } from "@tanstack/react-query";
 
 type PayrollStep = 1 | 2 | 3;
 
@@ -26,6 +27,7 @@ export default function PreparePayroll() {
   const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
   const { mutate, isPending} = useImportBranches();
+  const queryClient = useQueryClient();
 
   const { data: employee } = useEmployeesByCycle({
     cycle: branchCycle,
@@ -46,7 +48,7 @@ export default function PreparePayroll() {
         });
       };
 
-  const { data, isLoading, isFetching } = useFetchApiAttendance(
+  const { data, isLoading, isFetching,isSuccess  } = useFetchApiAttendance(
     range
       ? {
           startDate: range.startDate,
@@ -67,10 +69,18 @@ export default function PreparePayroll() {
     if (!isFetching && showProcessing) {
       const timer = setTimeout(() => {
         setShowProcessing(false);
+        
+        // Invalidate the computed payroll query after data is saved
+        if (isSuccess) {
+          console.log('✅ Attendance saved, invalidating computed payroll');
+          queryClient.invalidateQueries({ 
+            queryKey: ["employees-computed"] 
+          });
+        }
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isFetching, showProcessing]);
+  }, [isFetching, showProcessing, isSuccess, queryClient]);
 
   const steps: Step[] = [
     {
