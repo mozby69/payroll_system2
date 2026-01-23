@@ -26,7 +26,7 @@ export const computeAbsent = (absentCount:number | null,basicSalary: number | nu
     
     const dailyRate = computeDailyRate(basicSalary);
     const result = absentCount * dailyRate;
-    return Number(result.toFixed(2));
+    return (result);
 }
 
 export const computeLate = (lateCount:number | null, basicSalary:number | null):number => {

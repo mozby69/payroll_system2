@@ -65,8 +65,8 @@ model Employee {
   employeepayroll Employee_payroll[] @relation()
   pagibig_list PagIbig_List[] @relation()
   archive_employee_payroll EmployeePayrollArchive[] @relation()
-  employee_loan employee_loan[] @relation()
   loan_details loan_details[] @relation()
+  loan_ledger loan_ledger[] @relation()
   @@map("employee")
 }
 
@@ -207,20 +207,7 @@ model EmployeePayrollArchive {
 }
 
 
-model employee_loan {
-  id Int @id @default(autoincrement())
-  amount Decimal? @db.Decimal(10,2) 
-  loan_type String? @db.VarChar(20)
-  loan_term Int? 
-  date_start DateTime? @db.Date
-  date_end DateTime? @db.Date
-  created_at DateTime?
 
-  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
-  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
-
-  @@map("employee_loan")
-}
 
 
 model company_details{
@@ -241,12 +228,31 @@ model loan_details{
   term_value        Int?
   term_unit         String?  @db.VarChar(10) 
   start_date DateTime? @db.Date
+  end_date DateTime? @db.Date
   deduct_allowance Boolean?
   per_payroll_deduct Decimal? @db.Decimal(10,2)
   created_at DateTime? @default(now()) 
+  status String? @db.VarChar(50)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   @@map("loan_details")
 }
+
+model loan_ledger{
+  loan_ledger_id Int @id @default(autoincrement())
+  payment_date DateTime? @db.Date
+  payment_amount Decimal? @db.Decimal(10,2)
+  balance Decimal? @db.Decimal(10,2)
+  date_paid String? @db.VarChar(50)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("loan_ledger")
+}
+
+
+
+

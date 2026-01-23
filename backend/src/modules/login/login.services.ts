@@ -32,7 +32,7 @@
 import { LoginDTO } from "./login.types";
 import { prisma } from "../../config/prismaClient";
 import bcrypt from "bcryptjs";
-import { signToken } from "../../utils/jwt";
+import { signToken } from "../utils/jwt";
 
 export async function loginUser(params: LoginDTO) {
   const { username, password } = params;
