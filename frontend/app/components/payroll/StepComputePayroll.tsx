@@ -34,42 +34,46 @@ interface Props {
           range,
         });
 
-        const tableData: ComputedProps[] = employee_payroll?.data ?? [];
+      const tableData: ComputedProps[] = employee_payroll?.data ?? [];
 
-    const columns: Column<ComputedProps>[] = [
-    
-      {
-        header:"PayCode",
-        accessor: (row) => row.PayCode,
-      },
-      {
-        header:"EMPCODE",
-        accessor: (row) => row.EmpCodeId,
-      },
-      {
-        header:"LATE",
-        accessor: (row) => row.late_count,
-      },
-      {
-        header:"ABSENCE",
-        accessor: (row) => row.absence_count,
-      },
-      {
-        header:"OVERTIME",
-        accessor: (row) => row.overtime,
-      },
-      {
-        header:"GROSS PAY",
-        accessor: (row) => row.gross_pay,
-      }
+      const columns: Column<ComputedProps>[] = [
+        {
+          header: "Employee",
+          render: (row) =>
+            `${row.EmpCode.Firstname}, ${row.EmpCode.Lastname}`,
+        },
+        {
+          header:"PayCode",
+          accessor: (row) => row.PayCode,
+        },
+        {
+          header:"EMPCODE",
+          accessor: (row) => row.EmpCodeId,
+        },
+        {
+          header:"LATE",
+          accessor: (row) => row.late_count,
+        },
+        {
+          header:"ABSENCE",
+          accessor: (row) => row.absence_count,
+        },
+        {
+          header:"OVERTIME",
+          accessor: (row) => row.overtime,
+        },
+        {
+          header:"GROSS PAY",
+          accessor: (row) => row.gross_pay,
+        }
 
-    
-    ] 
+      
+      ] 
 
-    useEffect(() => {
-      setPage(1);
-    }, [range]);
-    
+      useEffect(() => {
+        setPage(1);
+      }, [range]);
+      
 
     
     

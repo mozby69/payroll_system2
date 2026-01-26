@@ -70,9 +70,7 @@ export default function PreparePayroll() {
       const timer = setTimeout(() => {
         setShowProcessing(false);
         
-        // Invalidate the computed payroll query after data is saved
         if (isSuccess) {
-          console.log('✅ Attendance saved, invalidating computed payroll');
           queryClient.invalidateQueries({ 
             queryKey: ["employees-computed"] 
           });

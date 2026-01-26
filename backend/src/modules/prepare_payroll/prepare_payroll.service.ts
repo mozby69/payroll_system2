@@ -313,14 +313,18 @@ export async function searchEmployees(keyword: string) {
 
 
 
-export async function ComputePayroll({page,limit,search}: {
-  page: number;
-  limit: number;
-  search?: string;
-}) {
+export async function ComputePayroll({page,limit,search}: {page: number; limit: number; search?: string}) {
   const where: Prisma.EmployeeSummaryWhereInput = {
     ...(search && {
-      OR: [{ EmpCodeId: { contains: search } }],
+      OR: [
+        { EmpCodeId: { contains: search } },
+        { EmpCode: { Firstname: { contains: search },
+        },
+        },
+        { EmpCode: { Lastname: { contains: search },
+          },
+        },
+      ],
     }),
   };
 
@@ -341,6 +345,8 @@ export async function ComputePayroll({page,limit,search}: {
         NightShiftOtAtt: true,
         EmpCode:{
           select:{
+            Firstname:true,
+            Lastname:true,
             employeepayroll:{
               orderBy:{payroll_id:"desc"},
               take:1,
@@ -350,6 +356,7 @@ export async function ComputePayroll({page,limit,search}: {
               }
             },
           },
+       
         }
       },
       orderBy: {

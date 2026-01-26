@@ -101,7 +101,7 @@ model EmployeeSummary{
   NightShiftOtAtt Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
+  status String? @db.VarChar(100)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
