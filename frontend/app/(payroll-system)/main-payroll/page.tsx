@@ -177,7 +177,7 @@ export default function PreparePayroll() {
             onSearchChange={setSearch}
             page={page}
             onPageChange={setPage}
-            onNext={() => setCurrentStep(2)}
+            onNext={() => goToStep2()}
           />
         </div>
 
@@ -185,6 +185,7 @@ export default function PreparePayroll() {
           <StepComputePayroll
           range={range}
           setRange={setDateRange}
+          cycle={branchCycle}
             onBack={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}
           />

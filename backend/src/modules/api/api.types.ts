@@ -16,4 +16,5 @@ export type EmployeeSummaryTypes = {
     OvertimeAtt: Prisma.InputJsonValue;
     NightShiftAtt: Prisma.InputJsonValue;
     NightShiftOtAtt: Prisma.InputJsonValue;
+    createdAt:string;
 } 

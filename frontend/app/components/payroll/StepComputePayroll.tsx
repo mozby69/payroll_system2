@@ -10,22 +10,27 @@ import { useComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
+import { useArchivePayroll } from "@/app/hooks/usePayrollArchive";
 
 interface Props {
   range: DateRange | null;
   setRange: (range: DateRange) => void;
+  cycle: string;
     onBack: () => void;
     onNext: () => void;
   }
 
   
   
-  export default function StepComputePayroll({ onBack, onNext,range,setRange }: Props) {
+  export default function StepComputePayroll({ onBack, onNext,range,setRange,cycle }: Props) {
       const PAGE_SIZE = 7;
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");
       const debouncedSearch = useDebounce(search, 400);
       const [showProcessing, setShowProcessing] = useState(false);
+      const archiveMutation = useArchivePayroll();
+      const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
+
 
       const { data: employee_payroll } = useComputedPayroll({
           page,
@@ -73,16 +78,62 @@ interface Props {
       useEffect(() => {
         setPage(1);
       }, [range]);
+
+
+
+      const handleContinue = () => {
+        if (!cycle) {
+          SweetAlert.warningAlert(
+            "Payroll Cycle Required",
+            "Please select a payroll cycle before continuing."
+          );
+          return;
+        }
+      
+        if (!range) {
+          SweetAlert.warningAlert(
+            "Payroll Period Required",
+            "Please select a payroll period."
+          );
+          return;
+        }
+      
+        SweetAlert.confirmationAlert(
+          "Confirm Payroll Save",
+          "Are you sure you want to save this payroll?",
+          () => {
+            archiveMutation.mutate(
+              {
+                cycle,
+                payrollPeriod: `${range.startDate} to ${range.endDate}`,
+              },
+              {
+                onSuccess: () => {
+                  SweetAlert.successAlert(
+                    "Payroll Archived",
+                    "Payroll has been successfully archived."
+                  );
+      
+                  onNext(); // move to Step 3
+                },
+                onError: () => {
+                  SweetAlert.errorAlert(
+                    "Archiving Failed",
+                    "Something went wrong while saving the payroll."
+                  );
+                },
+              }
+            );
+          }
+        );
+      };
+      
       
 
     
     
     return (
       <div className="space-y-4">
-
-  
-
-
         {showProcessing && (
               <ProcessingOverlay message="Fetching HR data and computing payroll…" />
             )}
@@ -141,8 +192,16 @@ interface Props {
 
   
         <div className="flex justify-between pt-4">
-          <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">Back</button>
-          <button onClick={onNext} className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">Continue</button>
+
+          <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">
+            Back
+          </button>
+
+          <button onClick={handleContinue} disabled={archiveMutation.isPending}
+            className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white disabled:opacity-50">
+            {archiveMutation.isPending ? "Archiving…" : "Continue"}
+          </button>
+
         </div>
 
 

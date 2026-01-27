@@ -47,7 +47,7 @@ export default function StepReviewSave({ onBack }: Props) {
 
 
       {/* ACTION BUTTONS */}
-      <div className="flex justify-between print:hidden">
+      <div className="flex justify-between print:hidden pt-10">
         <button
           onClick={onBack}
           className="rounded-lg border px-5 py-2 text-sm"
@@ -62,16 +62,15 @@ export default function StepReviewSave({ onBack }: Props) {
           >
             Print
           </button> */}
-    <button
-      onClick={handlePrint}
-      disabled={loading}
-      className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-    >
-      {loading ? "Generating PDF..." : "Print Payroll"}
-    </button>
+          <button
+            onClick={handlePrint}
+            disabled={loading}
+            className="rounded bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white disabled:opacity-50">
+            {loading ? "Generating PDF..." : "Print Payroll"}
+          </button>
 
 
-          <button className="rounded-lg bg-green-600 px-6 py-2 text-sm text-white">
+          <button className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white">
             Save Payroll
           </button>
         </div>

@@ -1,6 +1,7 @@
 import { prisma } from "../../config/prismaClient";
 import { hrApi } from "../../lib/hrApi";
 import { ApiParams } from "../../types/utilsTypes";
+import { nowPH } from "../../utils/timezone";
 import { EmployeeSummaryTypes } from "./api.types";
 import { generatePayCode } from "./api.utils";
 
@@ -67,6 +68,7 @@ export function transformAttendanceData(
         OvertimeAtt: emp.OvertimeAtt,
         NightShiftAtt: emp.NightShiftAtt,
         NightShiftOtAtt: emp.NightShiftOtAtt,
+        createdAt: nowPH(),
       })),
       skipDuplicates: true,
     });
