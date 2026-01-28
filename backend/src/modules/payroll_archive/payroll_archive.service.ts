@@ -25,10 +25,7 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {cycle: stri
     
     const employees = await prisma.employee.findMany({
       include: {
-        employeepayroll: {
-          orderBy: { payroll_id: "desc" },
-          take: 1,
-        },
+        employeepayroll: true,
         pagibig_list: { take: 1 },
         loan_details: true,
         employeesummary: {
@@ -73,7 +70,7 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {cycle: stri
       const archiveKey = `${summary.PayCode}-${emp.EmpCode}`;
       if (archivedSet.has(archiveKey)) continue;
       
-      const basicSalary = emp.employeepayroll[0]?.basic_salary?.toNumber() ?? 0;
+      const basicSalary = emp.employeepayroll?.basic_salary?.toNumber() ?? 0;
   
       const semiPay = computeSemiMonthlySalary(basicSalary);
   
@@ -149,7 +146,7 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {cycle: stri
             philhealth_employee_share: philRate / 2,
             philhealth_employer_share: philRate / 2,
   
-            ar_e: emp.employeepayroll[0]?.cash_assistance ?? 0,
+            ar_e: emp.employeepayroll?.cash_assistance ?? 0,
   
             fch_loan: loans.FCH,
             sss_loan: loans.SSS,
@@ -213,11 +210,9 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {cycle: stri
               Firstname:true,
               Lastname:true,
               employeepayroll:{
-                orderBy:{payroll_id:"desc"},
-                take:1,
                 select:{
-                  basic_salary:true,
-                },
+                  basic_salary: true,
+                }
               },
             },
             
@@ -229,7 +224,7 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {cycle: stri
 
 
       const normalized = employeeList.map((emp) => {
-        const basicSalary = Number(emp.EmpCode.employeepayroll[0]?.basic_salary ?? 0);
+        const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
         const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
 
 

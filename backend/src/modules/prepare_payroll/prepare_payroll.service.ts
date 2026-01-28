@@ -347,14 +347,15 @@ export async function ComputePayroll({page,limit,search}: {page: number; limit: 
         NightShiftOtAtt: true,
         EmpCode:{
           select:{
+            Firstname:true,
+            Lastname:true,
              employeepayroll: {
           select: {
-            basic_salary: true,
-            cash_assistance: true,
-            ecola: true
+              basic_salary: true,
+              cash_assistance: true,
+              ecola: true
           }
         }
-
           },
        
         }
