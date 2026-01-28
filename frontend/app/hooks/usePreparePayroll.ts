@@ -100,12 +100,7 @@ export function useEmployeeSearch(keyword: string) {
 
 
 
-export function useComputedPayroll(params: {
-  page: number;
-  limit: number;
-  search?: string;
-  range: DateRange | null;
-}) {
+export function useComputedPayroll(params: { page: number; limit: number; search?: string; range: DateRange | null }) {
   return useQuery<PaginatedResponse<ComputedProps>>({
     queryKey: [
       "employees-computed",

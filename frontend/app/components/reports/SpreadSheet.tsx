@@ -25,7 +25,7 @@ export default function SpreadSheet({ data }: Props) {
             <th className="py-2 align-middle">Overtime</th>
             <th className="py-2 align-middle">Late</th>
             <th className="py-2 align-middle">Absence</th>
-            <th className="py-2 align-middle">Total</th>
+            <th className="py-2 align-middle">Gross</th>
             <th className="py-2 align-middle">W/Tax</th>
             <th className="py-2 align-middle">SSS</th>
             <th className="py-2 align-middle">PhilHealth</th>

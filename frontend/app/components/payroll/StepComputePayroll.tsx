@@ -11,6 +11,7 @@ import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
 import {  useArchivePayroll } from "@/app/hooks/usePayrollArchive";
 import { AxiosError } from "axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 
 interface Props {
@@ -32,7 +33,9 @@ interface Props {
       const [showProcessing, setShowProcessing] = useState(false);
       const archiveMutation = useArchivePayroll();
       const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
+      const queryClient = useQueryClient();
 
+      
 
       const { data: employee_payroll } = useComputedPayroll({
           page,
@@ -139,10 +142,7 @@ interface Props {
         );
       };
       
-      
-
-    
-    
+ 
     return (
       <div className="space-y-4">
         {showProcessing && (
@@ -216,13 +216,24 @@ interface Props {
   
         <div className="flex justify-between pt-4">
 
-          <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">
+          <button onClick={onBack}
+           className="rounded-lg border px-5 py-2 text-sm">
             Back
           </button>
 
-          <button onClick={onNext} className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white disabled:opacity-50">
-          Continue
+          <button
+            onClick={async () => {
+              await queryClient.refetchQueries({
+                queryKey: ["payroll-display"],
+                exact: true,
+              });
+
+              onNext();
+            }}
+            className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">
+            Continue
           </button>
+
 
         </div>
 
