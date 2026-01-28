@@ -6,12 +6,12 @@ import { DateRange } from "../types/utilsTypes";
 
 
 
-export const fetchPayroll = async (page:number,limit:number, search?: string,payCode?:string):Promise<PaginatedResponse<PayrollSummary>> => {
-  const response = await api.get('/prepare-payroll/employee-summary',{
-    params:{page,limit,search,payCode},
-  });
-  return response.data;
-}
+// export const fetchPayroll = async (page:number,limit:number, search?: string,payCode?:string):Promise<PaginatedResponse<PayrollSummary>> => {
+//   const response = await api.get('/prepare-payroll/employee-summary',{
+//     params:{page,limit,search,payCode},
+//   });
+//   return response.data;
+// }
 
 
 
@@ -94,6 +94,10 @@ export interface ComputedProps{
   absence_count:number;
   overtime:number;
   gross_pay:number;
+  EmpCode:{
+    Firstname:string;
+    Lastname:string;
+  }
 }
 
 export const fetchComputedPayroll = async (params: {

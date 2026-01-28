@@ -1,18 +1,18 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addEmployeeLoan, ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, fetchPayroll, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { addEmployeeLoan, ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
 import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
 
 
 
-export function useFetchSummary (page:number,limit:number,search?:string,payCode?:string){
-  return useQuery<PaginatedResponse<PayrollSummary>>({
-    queryKey:["list_summary",page,limit,search,payCode],
-    queryFn:() => fetchPayroll(page,limit,search,payCode),
-  })
-};
+// export function useFetchSummary (page:number,limit:number,search?:string,payCode?:string){
+//   return useQuery<PaginatedResponse<PayrollSummary>>({
+//     queryKey:["list_summary",page,limit,search,payCode],
+//     queryFn:() => fetchPayroll(page,limit,search,payCode),
+//   })
+// };
 
 
 

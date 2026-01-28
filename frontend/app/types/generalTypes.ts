@@ -20,3 +20,13 @@ export interface EmployeeSummary {
     totalPages: number;
   }
   
+
+  export interface ApiErrorResponse {
+    status?: "DUPLICATE" | "ERROR";
+    message: string;
+  }
+  export interface ArchiveSuccessResponse {
+    status: "SUCCESS";
+    message: string;
+  }
+  

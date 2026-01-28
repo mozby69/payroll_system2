@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, generateNextPagibigId, toMonth } from "../../helper/prepare_payroll_helper";
-import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution } from "./prepare_payroll.computation";
+import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
 import { FetchEmployeesByCycleParams, loanProps, PaginationParams } from "./prepare_payroll.types";
 
 export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
@@ -32,6 +32,7 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
       start_range: true,
       end_range: true,
       employee_share: true,
+      employer_share:true,
     },
     orderBy: {
       start_range: "asc",
@@ -67,6 +68,7 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
         select:{
           pagibig_id:true,
           pagibig_employee_share:true,
+          pagibig_employer_share:true,
         }
       },
       employeepayroll: {
@@ -102,11 +104,12 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
   const cashAssitance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
   const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
   const rawPagibigShare = emp.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
-  const rawPagibigShareEmployer = emp.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
+  const rawPagibigShareEmployer = emp.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
   const pagibigId = emp.pagibig_list[0]?.pagibig_id ?? 'N/A';
 
   const semiPay = computeSemiMonthlySalary(basicSalary);
   const sssContrib = computeSSSContribution(basicSalary, sssTable);
+  const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable);
   const philhealthRate = computePhilRate(semiPay, phil_percentage);
   const pagibigShare = computePagibig(rawPagibigShare).toFixed(2);
 
@@ -136,6 +139,7 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
     ...emp,
     basic_salary: basicSalary,
     sss_contrib:sssContrib,
+    sss_contrib_empployer:sssContribEmployer,
     phil_rate:philhealthRate,
     pagibig_share:pagibigShare,
     pagibig_employee_share: rawPagibigShare,
@@ -158,6 +162,8 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
     },
   };
 }
+
+
 
 
 
@@ -309,14 +315,18 @@ export async function searchEmployees(keyword: string) {
 
 
 
-export async function ComputePayroll({page,limit,search}: {
-  page: number;
-  limit: number;
-  search?: string;
-}) {
+export async function ComputePayroll({page,limit,search}: {page: number; limit: number; search?: string}) {
   const where: Prisma.EmployeeSummaryWhereInput = {
     ...(search && {
-      OR: [{ EmpCodeId: { contains: search } }],
+      OR: [
+        { EmpCodeId: { contains: search } },
+        { EmpCode: { Firstname: { contains: search },
+        },
+        },
+        { EmpCode: { Lastname: { contains: search },
+          },
+        },
+      ],
     }),
   };
 
@@ -346,6 +356,7 @@ export async function ComputePayroll({page,limit,search}: {
         }
 
           },
+       
         }
       },
       orderBy: {
@@ -391,3 +402,5 @@ export async function ComputePayroll({page,limit,search}: {
   };
 }
   
+
+

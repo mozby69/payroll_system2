@@ -4,6 +4,7 @@ import { useState } from "react";
 import SpreadSheet from "../reports/SpreadSheet";
 import { printPayroll } from "@/app/utils/printPayrollUtils";
 import { dummySummary } from "@/app/types/dummyData";
+import { useDisplayPayroll } from "@/app/hooks/usePayrollArchive";
 
 interface Props {
   onBack: () => void;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function StepReviewSave({ onBack }: Props) {
   const [loading, setLoading] = useState(false);
+  const { data, isLoading } = useDisplayPayroll();
 
   const handlePrint = async () => {
     try {
@@ -28,7 +30,7 @@ export default function StepReviewSave({ onBack }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* NON-PRINT CONTENT */}
+
       <div className="print:hidden">
         <h2 className="text-lg font-semibold text-slate-800">
           Review & Save Payroll
@@ -41,41 +43,40 @@ export default function StepReviewSave({ onBack }: Props) {
 
       <div className="print-area">
         <div className="print-page min-w-56 overflow-x-auto">
-            <SpreadSheet />
+          {isLoading ? (
+            <div className="p-4 text-sm">Loading payroll...</div>
+          ) : (
+            <SpreadSheet data={data?.data ?? []} />
+          )}
         </div>
-   </div>
+      </div>
 
 
-      {/* ACTION BUTTONS */}
-      <div className="flex justify-between print:hidden">
+      <div className="flex justify-between print:hidden pt-10">
         <button
           onClick={onBack}
-          className="rounded-lg border px-5 py-2 text-sm"
-        >
+          className="rounded-lg border px-5 py-2 text-sm">
           Back
         </button>
 
         <div className="flex gap-2">
-          {/* <button
+
+          <button
             onClick={handlePrint}
-            className="rounded-lg bg-slate-800 px-6 py-2 text-sm text-white"
-          >
-            Print
-          </button> */}
-    <button
-      onClick={handlePrint}
-      disabled={loading}
-      className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-    >
-      {loading ? "Generating PDF..." : "Print Payroll"}
-    </button>
+            disabled={loading}
+            className="rounded bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white disabled:opacity-50">
+            {loading ? "Generating PDF..." : "Print Payroll"}
+          </button>
 
 
-          <button className="rounded-lg bg-green-600 px-6 py-2 text-sm text-white">
+          <button className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white">
             Save Payroll
           </button>
         </div>
       </div>
+
+
+
     </div>
   );
 }

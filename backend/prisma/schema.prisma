@@ -100,9 +100,9 @@ model EmployeeSummary{
   OvertimeAtt Json?
   NightShiftAtt Json?
   NightShiftOtAtt Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  createdAt DateTime?
+  updatedAt DateTime?
+  status String? @db.VarChar(100) @default("PENDING")
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -115,28 +115,22 @@ model EmployeeSummary{
 
 
 
-model PayslipArchive{
-  PayCycle String @db.VarChar(20)
-  PayDate String? @db.VarChar(20)
-  Total_GrossPay Decimal? @db.Decimal(10,2)
-  Total_Deduction  Decimal? @db.Decimal(10,2)
-  Total_NetPay Decimal? @db.Decimal(10,2)
-  Total_Contribution Decimal? @db.Decimal(10,2)
-  CurrentDate DateTime? @default(now())
-  Path String @db.VarChar(200)
-  Total_Late  Decimal? @db.Decimal(10,2)
-  Total_Absent  Decimal? @db.Decimal(10,2)
-  Total_OverTimePay Decimal? @db.Decimal(10,2) 
-  Total_SSSContribution Decimal? @db.Decimal(10,2)
-  Total_PagibigContribution  Decimal? @db.Decimal(10,2)
-  Total_FCHLoan Decimal? @db.Decimal(10,2) 
-  Total_PhilhealthContribution Decimal? @db.Decimal(10,2)
-  Total_SalaryLoan Decimal? @db.Decimal(10,2)
-  Total_CalamityLoan Decimal? @db.Decimal(10,2)
-  Total_HousingLoan Decimal? @db.Decimal(10,2)
+model totalPayroll{
+  id Int @id @default(autoincrement())
+  PayCycle String @db.VarChar(20) @map("paycycle")
+  cycle_category  String? @db.VarChar(100) @map("cycle_category")
+  payroll_period String? @db.VarChar(100) @map("payroll_period")
+  Total_GrossPay Decimal? @db.Decimal(10,2) @map("total_grosspay")
+  Total_NetPay Decimal? @db.Decimal(10,2) @map("total_netpay")
+  createdAt DateTime?  @map("created_at")
+  Total_Late  Decimal? @db.Decimal(10,2) @map("total_late")
+  Total_Absent  Decimal? @db.Decimal(10,2) @map("total_absent")
+  Total_OverTimePay Decimal? @db.Decimal(10,2) @map("total_overtime")
+  Total_SSSContribution Decimal? @db.Decimal(10,2) @map("total_sss_contribution")
+  Total_PagibigContribution  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution")
+  Total_PhilhealthContribution Decimal? @db.Decimal(10,2)  @map("total_philhealth")
 
-  @@id([PayCycle])
-  @@map("Payslip_Archive")
+  @@map("total_payroll")
 }
 
 model Employee_payroll{
@@ -191,18 +185,37 @@ model Payroll_Parameters{
 model EmployeePayrollArchive {
   id Int @id @default(autoincrement())
   PayCode String  @db.VarChar(20)
-  Late  Decimal? @db.Decimal(10,2)
-  Absent  Decimal? @db.Decimal(10,2)
-  Overtime  Decimal? @db.Decimal(10,2)
-  Grosspay  Decimal? @db.Decimal(10,2)
-  Netpay  Decimal? @db.Decimal(10,2)
-  Basic_salary  Decimal? @db.Decimal(10,2)
-  SSS_share  Decimal? @db.Decimal(10,2)
-  Pagibig_share Decimal? @db.Decimal(10,2)
-  Philhealth_share Decimal? @db.Decimal(10,2)
+  Late  Decimal? @db.Decimal(10,2) @map("late")
+  Absent  Decimal? @db.Decimal(10,2) @map("absent")
+  cycle_category  String? @db.VarChar(100) @map("cycle_category")
+  payroll_period String? @db.VarChar(100) @map("payroll_period")
+  selected_payroll_date String? @db.VarChar(100) @map("selected_payroll_date")
+  undertime Decimal? @db.Decimal(10,2)
+  Overtime  Decimal? @db.Decimal(10,2) @map("overtime")
+  Grosspay  Decimal? @db.Decimal(10,2) @map("grosspay")
+  w_tax Decimal? @db.Decimal(10,2)
+  Netpay  Decimal? @db.Decimal(10,2) @map("netpay")
+  Basic_salary  Decimal? @db.Decimal(10,2) @map("basic_salary")
+  SSS_employee_share  Decimal? @db.Decimal(10,2) @map("sss_employee_share")
+  SSS_employer_share  Decimal? @db.Decimal(10,2) @map("sss_employer_share")
+  Pagibig_employee_share Decimal? @db.Decimal(10,2) @map("pagibig_employee_share")
+  Pagibig_employer_share Decimal? @db.Decimal(10,2) @map("pagibig_employer_share")
+  philhealth_employee_share Decimal? @db.Decimal(10,2) @map("philhealth_employee_share")
+  philhealth_employer_share Decimal? @db.Decimal(10,2) @map("philhealth_employer_share")
+  ar_e Decimal? @db.Decimal(10,2)
+  fch_loan Decimal? @db.Decimal(10,2)
+  pagibig_loan Decimal? @db.Decimal(10,2)
+  sss_loan Decimal? @db.Decimal(10,2)
+  sss_calamity_loan Decimal? @db.Decimal(10,2)
+  status String? @db.VarChar(100) @default("PENDING")
+  created_at DateTime @default(now())
+
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+ @@unique([PayCode, EmpCodeId])
+
 
   @@map("employee_payroll_archive")
 }
@@ -330,5 +343,12 @@ model EmployeeBonus {
 
 
 
+model system_logs{
+  id Int @id @default(autoincrement())
+  current_date DateTime?
+  status String? @db.VarChar(100)
 
+
+  @@map("system_logs")
+}
 

@@ -91,6 +91,21 @@ export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[]
   return (match?.employee_share?.toNumber() ?? 0).toFixed(2);
 };
 
+export const computeSSSContributionEmployer = (monthlySalary: number, ranges: SSSRange[]): string => {
+  if (!monthlySalary || !ranges.length) return '0.00';
+
+  const match = ranges.find(r => {
+    if (!r.start_range || !r.end_range) return false;
+
+    const start = r.start_range.toNumber();
+    const end = r.end_range.toNumber();
+
+    return monthlySalary >= start && monthlySalary <= end;
+  });
+
+  return (match?.employer_share?.toNumber() ?? 0).toFixed(2);
+};
+
 
 
 
