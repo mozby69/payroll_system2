@@ -10,7 +10,9 @@ import { useComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
-import { useArchivePayroll } from "@/app/hooks/usePayrollArchive";
+import {  useArchivePayroll } from "@/app/hooks/usePayrollArchive";
+import { AxiosError } from "axios";
+
 
 interface Props {
   range: DateRange | null;
@@ -19,6 +21,7 @@ interface Props {
     onBack: () => void;
     onNext: () => void;
   }
+
 
   
   
@@ -108,22 +111,31 @@ interface Props {
                 payrollPeriod: `${range.startDate} to ${range.endDate}`,
               },
               {
-                onSuccess: () => {
-                  SweetAlert.successAlert(
-                    "Payroll Archived",
-                    "Payroll has been successfully archived."
-                  );
-      
-                  onNext(); // move to Step 3
-                },
-                onError: () => {
+                onError: (error) => {
+                  if (error.response?.status === 409) {
+                    SweetAlert.warningAlert(
+                      "Already Archived",
+                      error.response.data?.message ?? "Payroll already saved."
+                    );
+                    return;
+                  }
+            
                   SweetAlert.errorAlert(
                     "Archiving Failed",
                     "Something went wrong while saving the payroll."
                   );
                 },
+            
+                onSuccess: (data) => {
+                  SweetAlert.successAlert(
+                    "Payroll Archived",
+                    data.message
+                  );
+                  onNext();
+                },
               }
             );
+            
           }
         );
       };
@@ -144,24 +156,36 @@ interface Props {
 
      
         <div className="flex justify-between gap-x-8">
-        <DateRangePicker
-              value={
-                range
-                  ? [new Date(range.startDate), new Date(range.endDate)]
-                  : undefined
-              }
-              onChange={(newRange) => {
-                SweetAlert.confirmationAlert(
-                  "Confirm Payroll Period",
-                  `${newRange.startDate} → ${newRange.endDate}`,
-                  () => {
-                    setRange(newRange);
-                    setPage(1);
-                  
+
+        <div className="flex gap-x-4">
+
+      
+            <DateRangePicker
+                  value={
+                    range
+                      ? [new Date(range.startDate), new Date(range.endDate)]
+                      : undefined
                   }
-                );
-              }}
-            />
+                  onChange={(newRange) => {
+                    SweetAlert.confirmationAlert(
+                      "Confirm Payroll Period",
+                      `${newRange.startDate} → ${newRange.endDate}`,
+                      () => {
+                        setRange(newRange);
+                        setPage(1);
+                      
+                      }
+                    );
+                  }}
+                />
+
+          <div className="">
+            <button onClick={handleContinue} disabled={archiveMutation.isPending} className="bg-sky-600 hover:bg-sky-500 px-8 text-white py-2.5 rounded">
+            {archiveMutation.isPending ? "Archiving…" : "Save"}
+              </button>
+          </div>
+
+        </div>
 
 
               
@@ -197,9 +221,8 @@ interface Props {
             Back
           </button>
 
-          <button onClick={handleContinue} disabled={archiveMutation.isPending}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white disabled:opacity-50">
-            {archiveMutation.isPending ? "Archiving…" : "Continue"}
+          <button onClick={onNext} className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white disabled:opacity-50">
+          Continue
           </button>
 
         </div>

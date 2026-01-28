@@ -7,11 +7,8 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePh
 
 
 
-export async function archiveComputedPayroll({cycle,payrollPeriod}: {
-    cycle: string;
-    payrollPeriod: string;
-  }) {
-    // 1. Reference tables
+export async function archiveComputedPayroll({cycle,payrollPeriod}: {cycle: string; payrollPeriod: string}) {
+ 
     const sssTable = await prisma.sSS_Contributions.findMany({
       orderBy: { start_range: "asc" },
     });
@@ -25,7 +22,7 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {
         }
     );
   
-    // 2. Employees with relations
+    
     const employees = await prisma.employee.findMany({
       include: {
         employeepayroll: {
@@ -43,15 +40,40 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {
         },
       },
     });
+
+    const paycodes = employees
+    .map(e => e.employeesummary[0]?.PayCode)
+    .filter((p): p is string => Boolean(p));
+
+
+    const existingArchives = await prisma.employeePayrollArchive.findMany({
+      where: {
+        PayCode: { in: paycodes },
+      },
+      select: {
+        PayCode: true,
+        EmpCodeId: true,
+      },
+    });
+    
+
   
     const archiveOps: Prisma.PrismaPromise<any>[] = [];
   
     for (const emp of employees) {
       const summary = emp.employeesummary[0];
       if (!summary) continue;
-  
-      const basicSalary =
-        emp.employeepayroll[0]?.basic_salary?.toNumber() ?? 0;
+
+      const archivedSet = new Set(
+        existingArchives.map(r => `${r.PayCode}-${r.EmpCodeId}`)
+      );
+      
+
+      
+      const archiveKey = `${summary.PayCode}-${emp.EmpCode}`;
+      if (archivedSet.has(archiveKey)) continue;
+      
+      const basicSalary = emp.employeepayroll[0]?.basic_salary?.toNumber() ?? 0;
   
       const semiPay = computeSemiMonthlySalary(basicSalary);
   
@@ -97,7 +119,9 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {
       const gross = computeGrossPay(overtime,semiPay,late,absent);
   
       const net = gross - (sssEmployee + pagibigEmp + philRate + loans.FCH + loans.SSS + loans.PAGIBIG);
+
   
+
     
       archiveOps.push(
         prisma.employeePayrollArchive.create({
@@ -136,14 +160,20 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {
         })
       );
     }
+
   
-    // Optional safety guard
+  
     if (archiveOps.length === 0) {
-      return { message: "No payroll records archived" };
+      return {
+        archived: false,
+        reason: "DUPLICATE",
+      };
     }
-  
-    // 4. Transaction
-    return prisma.$transaction(archiveOps);
+    await prisma.$transaction(archiveOps);
+
+    return {
+      archived: true,
+    };
   }
   
 
@@ -158,3 +188,77 @@ export async function archiveComputedPayroll({cycle,payrollPeriod}: {
 
 
 
+  export async function displayCompletePayroll() {
+
+    try{
+      const employeeList = await prisma.employeeSummary.findMany({
+        where:{
+          status:"PENDING"
+        },
+        select:{
+          PayCode:true,
+          CycleCategory:true,
+          PayrollPeriod:true,
+          LateCount:true,
+          TotalAbsentHours:true,
+          TotalOvertime:true,
+          TotalUndertime:true,
+          RegularAtt:true,
+          OvertimeAtt:true,
+          NightShiftAtt:true,
+          NightShiftOtAtt:true,
+          EmpCodeId:true,
+          EmpCode:{
+            select:{
+              Firstname:true,
+              Lastname:true,
+              employeepayroll:{
+                orderBy:{payroll_id:"desc"},
+                take:1,
+                select:{
+                  basic_salary:true,
+                },
+              },
+            },
+            
+          },
+          
+          
+        },
+      });
+
+
+      const normalized = employeeList.map((emp) => {
+        const basicSalary = Number(emp.EmpCode.employeepayroll[0]?.basic_salary ?? 0);
+        const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+
+
+        const lateCount = computeLate(totalLateCount,basicSalary);
+        const semiMonthly =  computeSemiMonthlySalary(basicSalary);
+        const overTime = computeOvertime(basicSalary, {
+          regular: emp.RegularAtt,
+          overtime: emp.OvertimeAtt,
+          nightShift: emp.NightShiftAtt,
+          nightShiftOt: emp.NightShiftOtAtt,
+        });
+    
+        return {
+          ...emp,
+          semi_monthly:semiMonthly.toFixed(2),
+          overtime:overTime,
+          late_count:lateCount,
+        };
+
+
+      });
+
+      return normalized;
+    
+    }
+    catch(error){
+      console.error("error occurred",error);
+    }
+
+    
+
+  }

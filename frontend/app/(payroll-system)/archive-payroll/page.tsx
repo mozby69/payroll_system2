@@ -2,7 +2,7 @@
 //pay code , emp code, basic pay, late, absent, gross pay , overtime, monthly rate, action 
 import { useEffect, useMemo, useState } from "react";
 import Datatable from "../../components/Datatable";
-import { useFetchSummary } from "../../hooks/usePreparePayroll"; 
+// import { useFetchSummary } from "../../hooks/usePreparePayroll"; 
 import { PayrollSummary } from "../../types/preparePayroll";
 import { Column } from "../../types/preparePayroll";
 import { Pagination } from "../../components/Pagination";
@@ -19,7 +19,7 @@ export default function PreparePayroll() {
   const debouncedSearch = useDebounce(search, 400);
   const [payCode, setPayCode] = useState<string>("");
   const payCodeOptions = useMemo( () => generatePayCodeOptions(5), []);
-  const { data } = useFetchSummary(page, PAGE_SIZE, debouncedSearch || undefined, payCode || undefined);
+  // const { data } = useFetchSummary(page, PAGE_SIZE, debouncedSearch || undefined, payCode || undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<PayrollSummary | null>(null);
 
@@ -119,7 +119,7 @@ export default function PreparePayroll() {
 
       </div>
       
-      <Datatable
+      {/* <Datatable
         columns={columns}
         data={data?.data ?? []}
       />
@@ -139,7 +139,7 @@ export default function PreparePayroll() {
           <RequestModal size="xxxl" title={`PAYCYCLE : ${selectedRow.PayCode}`} onClose={closeModal}>
             <ViewEmployeePayroll employeeSummary={selectedRow}/>
           </RequestModal>
-        )}
+        )} */}
 
 
 

@@ -213,7 +213,7 @@ model EmployeePayrollArchive {
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
-  @@unique([cycle_category, payroll_period, EmpCodeId])
+ @@unique([PayCode, EmpCodeId])
 
 
   @@map("employee_payroll_archive")
