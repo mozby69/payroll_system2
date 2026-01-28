@@ -248,6 +248,7 @@ model loan_details{
   created_at DateTime? @default(now()) 
   status String? @db.VarChar(50)
 
+
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 

@@ -9,6 +9,7 @@ import authRoutes from "../modules/auth/auth.routes";
 import employeeRoutes from "../modules/emp/emp.routes";
 import bonusRoutes from "../modules/bonus/bonus.routes";
 import payrollArchiveRoutes from "../modules/payroll_archive/payroll_archive.routes";
+import filterRoutes from "../modules/filters/filter.routes";
 
 
 const router = Router();
@@ -27,6 +28,8 @@ router.use("/bonus", bonusRoutes);
 
 router.use("/list", employeeRoutes);
 router.use("/payroll-archive", payrollArchiveRoutes);
+
+router.use("/opt", filterRoutes);
 
 
 
