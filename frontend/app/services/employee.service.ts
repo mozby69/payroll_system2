@@ -1,12 +1,34 @@
 import api from "./axios"; 
-import { EmployeeResponse } from "../types/empTypes";
+import { EmployeeFilters, EmployeeProfile } from "../types/empTypes";
 
 export const fetchEmployees = async (
   page = 1,
-  limit = 10
-): Promise<EmployeeResponse> => {
+  limit = 10,
+  search = "",
+  filters: EmployeeFilters
+) => {
   const { data } = await api.get("/list/employee", {
-    params: { page, limit },
+    params: {
+      page,
+      limit,
+      search,
+      "department[]": filters.department,
+      "company[]": filters.company,
+      "status[]": filters.status,
+    },
+    paramsSerializer: {
+      indexes: false,
+    },
   });
+
+  return data;
+};
+
+
+
+export const fetchEmployeeProfile = async (
+  empCode: string
+): Promise<EmployeeProfile> => {
+  const { data } = await api.get(`/list/employee/${empCode}`);
   return data;
 };

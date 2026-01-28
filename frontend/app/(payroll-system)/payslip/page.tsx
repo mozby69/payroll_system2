@@ -1,16 +1,70 @@
 "use client"
 
-import { Printer, ViewIcon } from "lucide-react"
+import { Filter, Printer, PrinterIcon, ViewIcon, X } from "lucide-react"
 import { formatCurrency } from "../../utils/currencyConverter"
 
 import { useState } from "react"
 import { paySlipDummyData } from "@/app/types/dummyData"
+import FilterModal from "@/app/components/Filter"
+import ActiveFilters from "@/app/components/FilterObject"
+import GenButton from "@/app/components/Buttons"
+import { useRouter, useSearchParams } from "next/navigation"
 
   
   
   const PaySlip = () => {
+
+    // Filter 
+    const [open, setOpen]= useState(false);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    const filters = {
+        department: searchParams.getAll("department"),
+        company: searchParams.getAll("company"),
+        status: searchParams.getAll("status"),
+    };
+
+    const updateParams = (fn: (params: URLSearchParams) => void) => {
+        const params = new URLSearchParams(searchParams.toString());
+        fn(params);
+        router.replace(`?${params.toString()}`, { scroll: false });
+    };
+
+
+    const toggleFilter = (key: string, value: string) => {
+        updateParams((params) => {
+        const values = params.getAll(key);
+
+        params.delete(key);
+        if (!values.includes(value)) {
+            [...values, value].forEach((v) => params.append(key, v));
+        } else {
+            values.filter((v) => v !== value).forEach((v) => params.append(key, v));
+        }
+
+        params.set("page", "1");
+        });
+    };
+
+    const removeFilter = (key: string, value: string) => {
+        updateParams((params) => {
+        const values = params.getAll(key).filter((v) => v !== value);
+        params.delete(key);
+        values.forEach((v) => params.append(key, v));
+        });
+    };
+
+
+    const clearAll = () => {
+        updateParams((params) => {
+        ["department", "company", "status"].forEach((k) => params.delete(k));
+        params.set("page", "1");
+        });
+    };
+    // Filter 
+
       const [loading, setLoading] = useState(false);
-    
 
       const handlePrint = async () => {
         const printWindow = window.open("", "_blank"); 
@@ -51,77 +105,92 @@ import { paySlipDummyData } from "@/app/types/dummyData"
       
 
     return (
-      <div className="p-4 flex flex-col gap-4">
+      <div className="relative w-full min-h-screen flex flex-col gap-y-4 py-8 items-center  text-mainGray">
   
-        <h1 className="text-lg font-semibold">Generate Payslip</h1>
-  
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <select className="border rounded p-2">
-            <option>Select Payroll Period</option>
-          </select>
-          <select className="border rounded p-2">
-            <option>Select Company</option>
-          </select>
-          <select className="border rounded p-2">
-            <option>Select Branch</option>
-          </select>
-        </div>
-  
-        <div className="flex justify-between items-center">
-          <input
-            type="text"
-            placeholder="Search employee"
-            className="border rounded p-2 w-64"
+        <div className="w-[95%] flex flex-col gap-y-8">
+
+          <div className=" flex justify-between items-end flex-wrap gap-4">
+            <div>
+              <h1 className="font-bold text-2xl ">Payslip</h1>
+              <p className="text-sm text-mainLightGray">Complete list of Employees Payslip</p>
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+
+
+           
+
+              <input
+                placeholder="Search..."
+                className="px-4 py-2 rounded-md bg-mainNeutral w-full"
+              />
+
+            
+              <GenButton variant="primary" onClick={() => setOpen(true)}>
+                  <span className="flex items-center gap-2">
+                      <Filter size={16} />
+                      Filter
+                  </span>
+              </GenButton>
+
+              <GenButton variant="positive" onClick={handlePrint}> 
+                    <PrinterIcon size={16}  /> <span className="font-semibold">Print</span> 
+              </GenButton>
+            </div>
+          </div>
+
+          <ActiveFilters 
+              filters={filters}
+              onRemove={removeFilter}
+              onClearAll={clearAll}
           />
-          <button onClick={handlePrint} className="bg-blue-600 text-white px-4 py-2 rounded">
-            Print
-          </button>
-        </div>
-  
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border">
-  
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border p-2 text-left">Code</th>
-                <th className="border p-2 text-left">Name</th>
-                <th className="border p-2 text-right">Gross Pay</th>
-                <th className="border p-2 text-right">Total Deduction</th>
-                <th className="border p-2 text-right">Net Payable</th>
-                <th className="border p-2 text-center">Actions</th>
-              </tr>
-            </thead>
-  
-            <tbody>
-              {paySlipDummyData.map(row => (
-                <tr key={row.employeeCode}>
-                  <td className="border p-2">{row.employeeCode}</td>
-                  <td className="border p-2">{row.name}</td>
-                  <td className="border p-2 text-right">
-                    {formatCurrency(row.grossPay)}
-                  </td>
-                  <td className="border p-2 text-right">
-                    {formatCurrency(row.totalDeduction)}
-                  </td>
-                  <td className="border p-2 text-right font-semibold">
-                    {formatCurrency(row.netPayable)}
-                  </td>
-                  <td className="border p-2 text-center flex gap-2 justify-center">
-                    <button className="text-green-600 hover:underline" >
-                     <ViewIcon /> 
-                    </button>
-                    <button className="text-blue-600 hover:underline">
-                     <Printer />
-                    </button>
-                  </td>
+
+          
+          <div className="overflow-x-auto shadow-[0_8px_20px_rgba(0,0,0,0.25)]">
+            <table className="w-full border-separate border-spacing-0 rounded-t-xl overflow-hidden ">
+              <thead className=" bg-mainBg text-white">
+                <tr>
+                  <th className="p-4 text-left">Code</th>
+                  <th className="p-4 text-left">Name</th>
+                  <th className="p-4 text-left">Gross Pay</th>
+                  <th className="p-4 text-left">Total Deduction</th>
+                  <th className="p-4 text-left">Net Payable</th>
+                  <th className="p-4 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-  
-          </table>
+              </thead>
+              <tbody>
+                {paySlipDummyData.map(row => (
+                  <tr key={row.employeeCode} className="odd:bg-mainLight even:bg-mainNeutral">
+                    <td className="p-4">{row.employeeCode}</td>
+                    <td className="p-4">{row.name}</td>
+                    <td className="p-4 font-semibold">
+                      {formatCurrency(row.grossPay)}
+                    </td>
+                    <td className="p-4 font-semibold">
+                      {formatCurrency(row.totalDeduction)}
+                    </td>
+                    <td className="p-4 font-semibold">
+                      {formatCurrency(row.netPayable)}
+                    </td>
+                    <td className="p-4 text-center flex gap-2 justify-center">
+                      <button className="text-positive hover:underline" >
+                       <ViewIcon />
+                      </button>
+                      <button className="text-mainGray hover:underline">
+                       <Printer />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-  
+                   <FilterModal
+                          open={open}
+                          onClose={() => setOpen(false)}
+                          filters={filters}
+                          onToggle={toggleFilter}
+                        />
       </div>
     )
   }

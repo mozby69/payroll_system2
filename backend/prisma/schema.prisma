@@ -245,6 +245,7 @@ model loan_details{
   per_payroll_deduct Decimal? @db.Decimal(10,2)
   created_at DateTime? @default(now()) 
 
+
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 

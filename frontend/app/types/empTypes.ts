@@ -31,3 +31,73 @@ export interface EmployeeResponse {
     totalPages: number;
   };
 }
+
+
+export type EmployeeFilters = {
+  department: string[];
+  company: string[];
+  status: string[];
+};
+
+
+export type EmpDetails = {
+  Payrollid: number;
+  EmpTin?: string | null;
+  EmpSSSNo?: string | null;
+  EmpPhilhlthNo?: string | null;
+  EmpPagibigNo?: string | null;
+  EmpChildrenName?: string | null;
+  EmpChildrenBirthday?: string | null;
+  EmpChildrenBplace?: string | null;
+};
+
+export type EmployeeLoan = {
+  loan_id: number;
+  principal: number;
+  loan_type: string;
+  term_value: number;
+  term_unit: string;
+  start_date: string;
+  deduct_allowance: boolean;
+  per_payroll_deduct: number;
+};
+
+
+export type EmpPayrollInfo = {
+  BasicSalary:number,
+  CashAssistance: number,
+  Ecola: number, 
+  TotalSalary:number,
+}
+
+export type CompanyInfo = {
+  CompanyName?: string | null;
+  CompanyCycle?: string | null;
+};
+
+export type BranchInfo = {
+  branchCode: string;
+  Company?: string | null;
+  Location?: string | null;
+  CompanyCode?: {
+    CompanyCode?: string | null;
+    CompanyName?: string | null;
+  } | null;
+};
+
+
+export type EmployeeProfile = {
+  EmpCode: string;
+  Firstname?: string | null;
+  Middlename?: string | null;
+  Lastname?: string | null;
+  Position?: string | null;
+  Department?: string | null;
+  EmploymentStatus?: string | null;
+  Address?: string | null;
+
+  BranchCode?: BranchInfo | null;
+  employeepr: EmpDetails[];
+  employeepayroll: EmpPayrollInfo | null;
+  loan_details: EmployeeLoan[];
+};
