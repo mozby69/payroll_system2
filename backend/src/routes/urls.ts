@@ -7,6 +7,7 @@ import apiRoutes from '../modules/api/api.routes';
 import loginRoutes from "../modules/login/login.routes"
 import authRoutes from "../modules/auth/auth.routes";
 import employeeRoutes from "../modules/emp/emp.routes";
+import bonusRoutes from "../modules/bonus/bonus.routes";
 
 
 const router = Router();
@@ -19,6 +20,8 @@ router.use('/process', apiRoutes)
 
 router.use("/auth", loginRoutes);
 router.use("/auth", authRoutes); 
+
+router.use("/bonus", bonusRoutes);
 
 
 router.use("/list", employeeRoutes);

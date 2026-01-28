@@ -70,16 +70,12 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
         }
       },
       employeepayroll: {
-        orderBy: {
-          payroll_id: "desc",
-        },
-        take: 1,
-        select: {
-          basic_salary: true,
-          cash_assistance:true,
-        },
+          select: {
+            basic_salary: true,
+            cash_assistance: true,
+            ecola: true
+          }
       },
-  
       BranchCode: {
         select: {
           branchCode: true,
@@ -102,8 +98,8 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
 
   const normalized = data.map(emp => {
 
-  const basicSalary = emp.employeepayroll[0]?.basic_salary?.toNumber() ?? 0;
-  const cashAssitance = emp.employeepayroll[0]?.cash_assistance?.toNumber() ?? 0;
+  const basicSalary = emp.employeepayroll?.basic_salary?.toNumber() ?? 0;
+  const cashAssitance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
   const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
   const rawPagibigShare = emp.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
   const rawPagibigShareEmployer = emp.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
@@ -341,14 +337,14 @@ export async function ComputePayroll({page,limit,search}: {
         NightShiftOtAtt: true,
         EmpCode:{
           select:{
-            employeepayroll:{
-              orderBy:{payroll_id:"desc"},
-              take:1,
-              select:{
-                basic_salary:true,
-                
-              }
-            },
+             employeepayroll: {
+          select: {
+            basic_salary: true,
+            cash_assistance: true,
+            ecola: true
+          }
+        }
+
           },
         }
       },
@@ -359,7 +355,7 @@ export async function ComputePayroll({page,limit,search}: {
   ]);
 
   const normalized = data.map((emp) => {
-    const salaryDecimal = emp.EmpCode.employeepayroll[0]?.basic_salary;
+    const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;
     const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
     const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
     const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
