@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fetchEmployeesByPayrollCycle, saveEmployeeLoan, saveEmployeePayroll, searchEmployees } from "./prepare_payroll.service";
+import { ComputePayroll, fetchEmployeesByPayrollCycle, saveEmployeeLoan, saveEmployeePayroll, searchEmployees } from "./prepare_payroll.service";
 
 
 
@@ -70,32 +70,32 @@ export const saveEmployeePayrollController = async (req: Request,res: Response) 
 
 
 
-export const addEmployeeLoanController = async (req: Request,res: Response) => {
-  const {
-    empCode,
-    loan_type,
-    principal,
-    term_value,
-    term_unit,
-    start_date,
-  } = req.body;
+export const addEmployeeLoanController = async (req: Request, res: Response) => {
+  try {
+    const { empCode,loan_type,principal,term_value,term_unit,start_date } = req.body;
 
-  if (!empCode || !loan_type || !principal || !term_value || !term_unit) {
-    return res.status(400).json({ message: "Missing required fields" });
+    if (!empCode || !loan_type || !principal || !term_value || !term_unit || !start_date) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const loan = await saveEmployeeLoan({
+      empCode,
+      loan_type,
+      principal: Number(principal),
+      term_value: Number(term_value),
+      term_unit,
+      start_date: new Date(start_date),
+    });
+
+    return res.status(201).json(loan);
+  } catch (error: any) {
+    console.error("LOAN CREATE ERROR:", error);
+    return res.status(500).json({
+      message: error.message ?? "Loan creation failed",
+    });
   }
-
-  const loan = await saveEmployeeLoan({
-    empCode,
-    loan_type,
-    principal: Number(principal),
-    term_value: Number(term_value),
-    term_unit,
-    start_date: new Date(start_date),
-  });
-
-  res.json(loan);
-
 };
+
 
 
 
@@ -104,3 +104,24 @@ export const searchEmployeeController = async (req: Request, res: Response) => {
   const data = await searchEmployees(q);
   res.json(data);
 };
+
+
+
+
+
+export const getComputedPayrollController = async (req: Request,res: Response) => {
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+
+
+
+  const result = await ComputePayroll({
+    page,
+    limit,
+    search,
+  });
+
+  res.json(result);
+};
+

@@ -13,11 +13,15 @@ import { useLogin } from "../hooks/login";
 import { loginSchema, LoginSchema } from "../schema/login.schema";
 
 import { useRouter } from "next/navigation";
+import { LoginParams } from "../types/login";
+import { useAuth } from "../components/UserContext";
 
 
 
 export default function Login() {
     const router = useRouter();
+    const { mutateAsync } = useLogin();
+    const { setUser } = useAuth();
 
     const { mutate, isPending, error } = useLogin();
 
@@ -30,13 +34,12 @@ export default function Login() {
         }
     });
 
-    const onSubmit = (data: LoginSchema) => {
-        mutate(data, {
-            onSuccess: (res) =>{
-                router.push("/");
-            }
-        })
-    }
+
+    const onSubmit = async (data: LoginParams) => {
+    const res = await mutateAsync(data);
+    setUser(res.user);
+    router.replace("/");
+    };
 
     return (
         <FormProvider {...methods}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard ,Archive, Calculator, MenuIcon, ShieldCheck , Receipt, User, XIcon,HandCoins  } from "lucide-react";
+import { LayoutDashboard ,Archive, Calculator, MenuIcon, ShieldCheck , Receipt, User, XIcon,HandCoins, CircleDollarSign  } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,6 +15,7 @@ const MENU_SECTIONS = [
         { label: "Dashboard", path:"/", icon: LayoutDashboard},
         { label: "Run Payroll", path:"/main-payroll", icon: Calculator },
         { label: "Payroll Archive", path:"/archive-payroll", icon: Archive },
+        { label: "Bonus Manager", path:"/bonus-manager", icon: CircleDollarSign },
     ],
   },
   {

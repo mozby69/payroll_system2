@@ -62,11 +62,12 @@ model Employee {
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()
-  employeepayroll Employee_payroll[] @relation()
+ employeepayroll Employee_payroll?
   pagibig_list PagIbig_List[] @relation()
   archive_employee_payroll EmployeePayrollArchive[] @relation()
-  employee_loan employee_loan[] @relation()
   loan_details loan_details[] @relation()
+  loan_ledger loan_ledger[] @relation()
+  employee_bonues EmployeeBonus[] @relation()
   @@map("employee")
 }
 
@@ -99,9 +100,9 @@ model EmployeeSummary{
   OvertimeAtt Json?
   NightShiftAtt Json?
   NightShiftOtAtt Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  createdAt DateTime?
+  updatedAt DateTime?
+  status String? @db.VarChar(100) @default("PENDING")
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -114,37 +115,31 @@ model EmployeeSummary{
 
 
 
-model PayslipArchive{
-  PayCycle String @db.VarChar(20)
-  PayDate String? @db.VarChar(20)
-  Total_GrossPay Decimal? @db.Decimal(10,2)
-  Total_Deduction  Decimal? @db.Decimal(10,2)
-  Total_NetPay Decimal? @db.Decimal(10,2)
-  Total_Contribution Decimal? @db.Decimal(10,2)
-  CurrentDate DateTime? @default(now())
-  Path String @db.VarChar(200)
-  Total_Late  Decimal? @db.Decimal(10,2)
-  Total_Absent  Decimal? @db.Decimal(10,2)
-  Total_OverTimePay Decimal? @db.Decimal(10,2) 
-  Total_SSSContribution Decimal? @db.Decimal(10,2)
-  Total_PagibigContribution  Decimal? @db.Decimal(10,2)
-  Total_FCHLoan Decimal? @db.Decimal(10,2) 
-  Total_PhilhealthContribution Decimal? @db.Decimal(10,2)
-  Total_SalaryLoan Decimal? @db.Decimal(10,2)
-  Total_CalamityLoan Decimal? @db.Decimal(10,2)
-  Total_HousingLoan Decimal? @db.Decimal(10,2)
+model totalPayroll{
+  id Int @id @default(autoincrement())
+  PayCycle String @db.VarChar(20) @map("paycycle")
+  cycle_category  String? @db.VarChar(100) @map("cycle_category")
+  payroll_period String? @db.VarChar(100) @map("payroll_period")
+  Total_GrossPay Decimal? @db.Decimal(10,2) @map("total_grosspay")
+  Total_NetPay Decimal? @db.Decimal(10,2) @map("total_netpay")
+  createdAt DateTime?  @map("created_at")
+  Total_Late  Decimal? @db.Decimal(10,2) @map("total_late")
+  Total_Absent  Decimal? @db.Decimal(10,2) @map("total_absent")
+  Total_OverTimePay Decimal? @db.Decimal(10,2) @map("total_overtime")
+  Total_SSSContribution Decimal? @db.Decimal(10,2) @map("total_sss_contribution")
+  Total_PagibigContribution  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution")
+  Total_PhilhealthContribution Decimal? @db.Decimal(10,2)  @map("total_philhealth")
 
-  @@id([PayCycle])
-  @@map("Payslip_Archive")
+  @@map("total_payroll")
 }
 
 model Employee_payroll{
   payroll_id Int @id @default(autoincrement())
-  basic_salary Decimal? @db.Decimal(10,2) 
+  basic_salary Decimal @db.Decimal(10,2) 
   cash_assistance Decimal? @db.Decimal(10,2)
   ecola Decimal? @default(500) @db.Decimal(10,2)
 
-  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCodeId String @unique @db.VarChar(20)
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   @@map("employee_payroll")
@@ -190,37 +185,43 @@ model Payroll_Parameters{
 model EmployeePayrollArchive {
   id Int @id @default(autoincrement())
   PayCode String  @db.VarChar(20)
-  Late  Decimal? @db.Decimal(10,2)
-  Absent  Decimal? @db.Decimal(10,2)
-  Overtime  Decimal? @db.Decimal(10,2)
-  Grosspay  Decimal? @db.Decimal(10,2)
-  Netpay  Decimal? @db.Decimal(10,2)
-  Basic_salary  Decimal? @db.Decimal(10,2)
-  SSS_share  Decimal? @db.Decimal(10,2)
-  Pagibig_share Decimal? @db.Decimal(10,2)
-  Philhealth_share Decimal? @db.Decimal(10,2)
+  Late  Decimal? @db.Decimal(10,2) @map("late")
+  Absent  Decimal? @db.Decimal(10,2) @map("absent")
+  cycle_category  String? @db.VarChar(100) @map("cycle_category")
+  payroll_period String? @db.VarChar(100) @map("payroll_period")
+  selected_payroll_date String? @db.VarChar(100) @map("selected_payroll_date")
+  undertime Decimal? @db.Decimal(10,2)
+  Overtime  Decimal? @db.Decimal(10,2) @map("overtime")
+  Grosspay  Decimal? @db.Decimal(10,2) @map("grosspay")
+  w_tax Decimal? @db.Decimal(10,2)
+  Netpay  Decimal? @db.Decimal(10,2) @map("netpay")
+  Basic_salary  Decimal? @db.Decimal(10,2) @map("basic_salary")
+  SSS_employee_share  Decimal? @db.Decimal(10,2) @map("sss_employee_share")
+  SSS_employer_share  Decimal? @db.Decimal(10,2) @map("sss_employer_share")
+  Pagibig_employee_share Decimal? @db.Decimal(10,2) @map("pagibig_employee_share")
+  Pagibig_employer_share Decimal? @db.Decimal(10,2) @map("pagibig_employer_share")
+  philhealth_employee_share Decimal? @db.Decimal(10,2) @map("philhealth_employee_share")
+  philhealth_employer_share Decimal? @db.Decimal(10,2) @map("philhealth_employer_share")
+  ar_e Decimal? @db.Decimal(10,2)
+  fch_loan Decimal? @db.Decimal(10,2)
+  pagibig_loan Decimal? @db.Decimal(10,2)
+  sss_loan Decimal? @db.Decimal(10,2)
+  sss_calamity_loan Decimal? @db.Decimal(10,2)
+  status String? @db.VarChar(100) @default("PENDING")
+  created_at DateTime @default(now())
+
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+ @@unique([PayCode, EmpCodeId])
+
 
   @@map("employee_payroll_archive")
 }
 
 
-model employee_loan {
-  id Int @id @default(autoincrement())
-  amount Decimal? @db.Decimal(10,2) 
-  loan_type String? @db.VarChar(20)
-  loan_term Int? 
-  date_start DateTime? @db.Date
-  date_end DateTime? @db.Date
-  created_at DateTime?
 
-  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
-  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
-
-  @@map("employee_loan")
-}
 
 
 model company_details{
@@ -241,12 +242,114 @@ model loan_details{
   term_value        Int?
   term_unit         String?  @db.VarChar(10) 
   start_date DateTime? @db.Date
+  end_date DateTime? @db.Date
   deduct_allowance Boolean?
   per_payroll_deduct Decimal? @db.Decimal(10,2)
   created_at DateTime? @default(now()) 
+  status String? @db.VarChar(50)
+
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   @@map("loan_details")
 }
+
+model loan_ledger{
+  loan_ledger_id Int @id @default(autoincrement())
+  payment_date DateTime? @db.Date
+  payment_amount Decimal? @db.Decimal(10,2)
+  balance Decimal? @db.Decimal(10,2)
+  date_paid String? @db.VarChar(50)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("loan_ledger")
+}
+
+// Bonus Schema 
+
+enum BonusType {
+  QUARTERLY
+  MIDYEAR
+  YEAR_END
+  SPECIAL
+}
+
+enum FormulaType {
+  BASIC_DIV_2
+  BASIC_DIV_1
+  CUSTOM
+}
+
+enum BonusStatus {
+  GENERATED
+  PAID
+}
+
+
+
+model BonusRule {
+  id               Int        @id @default(autoincrement())
+  code             String     
+  name             String
+  bonusType        BonusType
+  eligibleMonth    Int        // 1–12 (March = 3, June = 6)
+  minTenureMonths  Int
+  formulaType      FormulaType
+  taxable          Boolean    @default(false)
+
+  isActive         Boolean    @default(true)
+  version          Int         @default(1)
+  parentRuleId     Int?
+
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
+
+    parentRule      BonusRule? @relation("RuleVersions", fields: [parentRuleId], references: [id])
+    versions        BonusRule[] @relation("RuleVersions")
+    employeeBonuses  EmployeeBonus[] 
+
+    @@unique([code, version])
+}
+
+model EmployeeBonus {
+  id                Int          @id @default(autoincrement())
+
+  employeeCode        String
+  bonusRuleId       Int
+
+  amount            Decimal      @db.Decimal(12, 2)
+
+  generatedForMonth Int         
+  releasePeriod     String       
+
+  status            BonusStatus  @default(GENERATED)
+
+  generatedAt       DateTime     @default(now())
+  paidAt            DateTime?
+
+  employee          Employee?     @relation(fields: [employeeCode], references: [EmpCode])
+  bonusRule         BonusRule?    @relation(fields: [bonusRuleId], references: [id])
+
+  @@index([employeeCode])
+  @@index([bonusRuleId])
+  @@index([generatedForMonth, releasePeriod])
+}
+
+// End Bonus Schema 
+
+
+
+
+model system_logs{
+  id Int @id @default(autoincrement())
+  current_date DateTime?
+  status String? @db.VarChar(100)
+
+
+  @@map("system_logs")
+}
+

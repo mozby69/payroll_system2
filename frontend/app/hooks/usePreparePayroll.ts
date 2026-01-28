@@ -1,17 +1,18 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addEmployeeLoan, fetchEmployeesByCycle, fetchPayroll, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { addEmployeeLoan, ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
 import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
+import { DateRange } from "../types/utilsTypes";
 
 
 
 
-export function useFetchSummary (page:number,limit:number,search?:string,payCode?:string){
-  return useQuery<PaginatedResponse<PayrollSummary>>({
-    queryKey:["list_summary",page,limit,search,payCode],
-    queryFn:() => fetchPayroll(page,limit,search,payCode),
-  })
-};
+// export function useFetchSummary (page:number,limit:number,search?:string,payCode?:string){
+//   return useQuery<PaginatedResponse<PayrollSummary>>({
+//     queryKey:["list_summary",page,limit,search,payCode],
+//     queryFn:() => fetchPayroll(page,limit,search,payCode),
+//   })
+// };
 
 
 
@@ -75,8 +76,6 @@ export function useUpdateEmployeePayroll() {
 }
 
 
-
-
 export function useAddLoan() {
   const queryClient = useQueryClient();
 
@@ -88,10 +87,35 @@ export function useAddLoan() {
   });
 }
 
+
+
 export function useEmployeeSearch(keyword: string) {
   return useQuery({
     queryKey: ["employee-search", keyword],
     queryFn: () => searchEmployees(keyword).then(res => res.data),
     enabled: keyword.length >= 2,
+  });
+}
+
+
+
+
+export function useComputedPayroll(params: {
+  page: number;
+  limit: number;
+  search?: string;
+  range: DateRange | null;
+}) {
+  return useQuery<PaginatedResponse<ComputedProps>>({
+    queryKey: [
+      "employees-computed",
+      params.page,
+      params.limit,
+      params.search ?? "",
+      params.range?.startDate ?? "",
+      params.range?.endDate ?? "",
+    ],
+    queryFn: () =>
+      fetchComputedPayroll(params),
   });
 }

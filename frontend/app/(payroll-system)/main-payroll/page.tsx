@@ -14,6 +14,7 @@ import StepComputePayroll from "../../components/payroll/StepComputePayroll";
 import StepReviewSave from "../../components/payroll/StepReviewSave";
 import { useEmployeesByCycle, useImportBranches } from "../../hooks/usePreparePayroll";
 import { useDebounce } from "../../utils/useDebounce";
+import { useQueryClient } from "@tanstack/react-query";
 
 type PayrollStep = 1 | 2 | 3;
 
@@ -26,6 +27,7 @@ export default function PreparePayroll() {
   const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
   const { mutate, isPending} = useImportBranches();
+  const queryClient = useQueryClient();
 
   const { data: employee } = useEmployeesByCycle({
     cycle: branchCycle,
@@ -46,7 +48,7 @@ export default function PreparePayroll() {
         });
       };
 
-  const { data, isLoading, isFetching } = useFetchApiAttendance(
+  const { data, isLoading, isFetching,isSuccess  } = useFetchApiAttendance(
     range
       ? {
           startDate: range.startDate,
@@ -67,10 +69,16 @@ export default function PreparePayroll() {
     if (!isFetching && showProcessing) {
       const timer = setTimeout(() => {
         setShowProcessing(false);
+        
+        if (isSuccess) {
+          queryClient.invalidateQueries({ 
+            queryKey: ["employees-computed"] 
+          });
+        }
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isFetching, showProcessing]);
+  }, [isFetching, showProcessing, isSuccess, queryClient]);
 
   const steps: Step[] = [
     {
@@ -91,6 +99,19 @@ export default function PreparePayroll() {
       status: currentStep === 3 ? "current" : "pending",
     },
   ];
+
+  const goToStep2 = () => {
+    if (!branchCycle) {
+      SweetAlert.warningAlert(
+        "Payroll Cycle Required",
+        "Please select a payroll cycle before proceeding."
+      );
+      return;
+    }
+  
+    setCurrentStep(2);
+  };
+  
 
   return (
     <div className="relative min-h-screen bg-slate-100 px-6 py-8">
@@ -126,20 +147,9 @@ export default function PreparePayroll() {
             </div>
   
           
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Payroll Period
-              </label>
-              <DateRangePicker
-                onChange={(range) => {
-                  SweetAlert.confirmationAlert(
-                    "Confirm Payroll Period",
-                    `${range.startDate} → ${range.endDate}`,
-                    () => setDateRange(range)
-                  );
-                }}
-              />
-            </div>
+         
+
+
           </div>
   
       
@@ -167,12 +177,15 @@ export default function PreparePayroll() {
             onSearchChange={setSearch}
             page={page}
             onPageChange={setPage}
-            onNext={() => setCurrentStep(2)}
+            onNext={() => goToStep2()}
           />
         </div>
 
         <div className={currentStep === 2 ? "block" : "hidden"}>
           <StepComputePayroll
+          range={range}
+          setRange={setDateRange}
+          cycle={branchCycle}
             onBack={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}
           />

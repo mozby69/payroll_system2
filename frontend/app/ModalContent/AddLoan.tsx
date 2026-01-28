@@ -26,19 +26,29 @@ export const AddLoanModal = ({ onClose }: { onClose: () => void }) => {
 
   const handleSave = async () => {
     if (!selectedEmp || !principal || !startDate) return;
-
-    await addLoan.mutateAsync({
-      empCode: selectedEmp.EmpCode,
-      loan_type: loanType,
-      principal: Number(principal),
-      term_value: termValue,
-      term_unit: termUnit,
-      start_date: startDate,
-    });
-
-    SweetAlert.successAlert("Loan added");
-    onClose();
+  
+    try {
+      const result = await addLoan.mutateAsync({
+        empCode: selectedEmp.EmpCode,
+        loan_type: loanType,
+        principal: Number(principal),
+        term_value: termValue,
+        term_unit: termUnit,
+        start_date: startDate,
+      });
+  
+      if (!result?.loan_id) {
+        throw new Error("Loan not saved");
+      }
+      
+      SweetAlert.successAlert("Loan added");
+      onClose();
+    } catch {
+      SweetAlert.errorAlert("Failed to add loan");
+    }
   };
+  
+
 
   return (
     <div className="p-6 space-y-6">
@@ -134,7 +144,7 @@ export const AddLoanModal = ({ onClose }: { onClose: () => void }) => {
             Start Date
           </label>
           <input 
-            type="date" 
+            type="month" 
             value={startDate} 
             onChange={e => setStartDate(e.target.value)}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"

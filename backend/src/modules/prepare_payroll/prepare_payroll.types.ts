@@ -12,6 +12,7 @@ export type SSSRange = {
     start_range: Decimal | null;
     end_range: Decimal | null;
     employee_share: Decimal | null;
+    employer_share: Decimal | null;
   };
   
 

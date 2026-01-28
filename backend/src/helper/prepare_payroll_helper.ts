@@ -21,3 +21,25 @@ export async function generateNextPagibigId(
 
   return `PG${Number(match[1]) + 1}`;
 }
+
+
+
+
+export function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  const day = result.getDate();
+
+  result.setMonth(result.getMonth() + months);
+
+  if (result.getDate() !== day) {
+    result.setDate(0);
+  }
+
+  return result;
+}
+
+
+
+export function toMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
