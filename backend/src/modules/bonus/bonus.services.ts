@@ -89,67 +89,70 @@ export async function generateBonusForAllEmployees({
   releasePeriod: string
   asOfDate: Date
 }) {
-  const rule = await prisma.bonusRule.findUnique({
-    where: { 
-      id: bonusRuleId 
+  return prisma.$transaction(async tx =>{
+    const rule = await tx.bonusRule.findUnique({
+      where: { 
+        id: bonusRuleId 
+      }
+    })
+  
+    if (!rule) {
+      throw new Error("Bonus rule not found")
+    }
+  
+    const employees = await tx.employee.findMany({
+      where: {
+        EmployeeStatus: "Active"
+      },
+      include: {
+          employeepayroll: true
+        }
+    })
+  
+    for (const emp of employees) {
+      if (!emp.EmployementDate) continue
+       const tenure = getTenureInMonths(emp.EmployementDate, asOfDate)
+  
+      if (tenure < rule.minTenureMonths) continue
+  
+      console.log(emp.Firstname ," ",  tenure, " amount: ", emp.EmployeeStatus);
+  
+      const payroll = emp.employeepayroll
+  
+      if (!payroll || !payroll.basic_salary) continue
+      
+      const basicSalary = Number(payroll.basic_salary)
+      
+      const amount = calculateBonusAmount(
+        rule.formulaType,
+        basicSalary
+      )
+  
+      if (amount <= 0) continue
+      // prevent duplicate generation
+      const exists = await prisma.employeeBonus.findFirst({   
+        where: {
+          employeeCode: emp.EmpCode,
+          bonusRuleId: rule.id,
+          releasePeriod
+        }
+      })
+  
+      if (exists) continue
+  
+      await prisma.employeeBonus.create({
+        data: {
+          employeeCode: emp.EmpCode,
+          bonusRuleId: rule.id,
+          amount,
+          generatedForMonth: rule.eligibleMonth,
+          releasePeriod,
+          status: "GENERATED"
+        }
+      })
     }
   })
-
-  if (!rule) {
-    throw new Error("Bonus rule not found")
-  }
-
-  const employees = await prisma.employee.findMany({
-    where: {
-      EmployeeStatus: "Active"
-    },
-    include: {
-        employeepayroll: true
-      }
-  })
-
-  for (const emp of employees) {
-    if (!emp.EmployementDate) continue
-     const tenure = getTenureInMonths(emp.EmployementDate, asOfDate)
-
-    if (tenure < rule.minTenureMonths) continue
-
-    console.log(emp.Firstname ," ",  tenure, " amount: ", emp.EmployeeStatus);
-
-    const payroll = emp.employeepayroll
-
-    if (!payroll || !payroll.basic_salary) continue
-    
-    const basicSalary = Number(payroll.basic_salary)
-    
-    const amount = calculateBonusAmount(
-      rule.formulaType,
-      basicSalary
-    )
-
-    if (amount <= 0) continue
-    // prevent duplicate generation
-    const exists = await prisma.employeeBonus.findFirst({   
-      where: {
-        employeeCode: emp.EmpCode,
-        bonusRuleId: rule.id,
-        releasePeriod
-      }
-    })
-
-    if (exists) continue
-
-    await prisma.employeeBonus.create({
-      data: {
-        employeeCode: emp.EmpCode,
-        bonusRuleId: rule.id,
-        amount,
-        generatedForMonth: rule.eligibleMonth,
-        releasePeriod,
-        status: "GENERATED"
-      }
-    })
-  }
+ 
 }
 
 export async function getEmployeeBonusService() {

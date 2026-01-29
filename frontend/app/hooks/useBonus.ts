@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BonusRule, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
-import { createBonusrules, generateBonus, getAllBonusRules, getEmployeeBonus, updateBonusRuleServices } from "../services/bonus.services";
+import { createBonusrules, deleteBonusRuleServices, generateBonus, getAllBonusRules, getEmployeeBonus, updateBonusRuleServices } from "../services/bonus.services";
 import { EmployeeBonus } from "../types/bonusType";
 
 export function useGetAllBonusRules(){
@@ -17,7 +17,6 @@ export function useCreateBonusRules(){
     return useMutation({
             mutationFn: (payload: CreateBonusRuleForm) =>
                 createBonusrules(payload),
-
                 onSuccess: () =>{
                     queryClient.invalidateQueries({
                         queryKey: ["bonus-rules"]
@@ -36,6 +35,19 @@ export function useUpdateBonusRules(){
     return useMutation({
         mutationFn: ({id, payload}: UpdateBonusRuleArgs) =>
             updateBonusRuleServices(id, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["bonus-rules"]
+            })
+        }
+    })
+}
+
+export function useDeleteBonusRules(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn:(id: number)=>
+            deleteBonusRuleServices(id),
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["bonus-rules"]

@@ -20,6 +20,12 @@ export async function updateBonusRuleServices(
     const res = await api.put(`/bonus/bonus-rules/${id}` , payload)
     return res.data
 }
+
+
+export async function deleteBonusRuleServices(id: number) {
+    const res = await api.delete(`/bonus/bonus-rules/${id}`)
+    return res.data
+}
   
 
 

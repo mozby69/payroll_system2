@@ -60,7 +60,9 @@ export type BonusRuleList =
 
 
   export const GenerateBonusSchema = z.object({
-    bonusRuleId: z.number().int().min(1),
+    bonusRuleId: z.number().int().min(1, "Bonus rule is required"),
+
+    company: z.string().min(1, "Company is required"),
 
     // YYYY-MM
     releasePeriod: z
@@ -71,7 +73,14 @@ export type BonusRuleList =
     asOfDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format").min(1),
+
+    // YYYY-MM-DD
+    generateDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Generate date is required").min(1),
      })
+
+  
 
      export type GenerateBonusInput =
         z.infer<typeof GenerateBonusSchema>
