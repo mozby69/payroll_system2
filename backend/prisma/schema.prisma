@@ -349,7 +349,19 @@ model system_logs{
   current_date DateTime?
   status String? @db.VarChar(100)
 
-
   @@map("system_logs")
 }
 
+
+
+model tax_table{
+  id Int @id @default(autoincrement())
+  start_range Int?
+  end_range Int?
+  annual_base_tax_bracket Decimal? @db.Decimal(10,2)
+  rate_per_bracket Decimal? @db.Decimal(10,2)
+  annual_base_tax_per_year Decimal? @db.Decimal(10,2)
+
+
+  @@map("tax_tables")
+}

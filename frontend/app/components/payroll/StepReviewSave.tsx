@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import SpreadSheet from "../reports/SpreadSheet";
+import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
 import { printPayroll } from "@/app/utils/printPayrollUtils";
 import { dummySummary } from "@/app/types/dummyData";
-import { useDisplayPayroll } from "@/app/hooks/usePayrollArchive";
+import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
 import { useQueryClient } from "@tanstack/react-query";
+import SweetAlert from "../Swal";
 
 interface Props {
   onBack: () => void;
@@ -14,6 +15,17 @@ interface Props {
 export default function StepReviewSave({ onBack }: Props) {
   const [loading, setLoading] = useState(false);
   const { data, isLoading } = useDisplayPayroll();
+  const savePayroll = useSavePayroll();
+
+  const handleSave = () => {
+    SweetAlert.confirmationAlert(
+      "Confirm Save Payroll",
+      "Are you sure you want to save this payroll?",
+      () => {
+        savePayroll.mutate();
+      }
+    );
+  };
 
   
 
@@ -31,6 +43,31 @@ export default function StepReviewSave({ onBack }: Props) {
     }
   };
 
+  const rows: SpreadsheetRow[] = (data?.data ?? []).map((emp) => ({
+    name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
+    basicPay: emp.semi_monthly,
+    overtime: emp.overtime,
+    late: emp.late_count,
+    absence: emp.absence,
+    gross: emp.gross_pay,
+    wtax: emp.wtax,
+    sss: emp.sss_contrib_employee,
+    philhealth: emp.philhealth_contrib,
+    pagibig: emp.pagibig_contrib_employee,
+    arE: 0,
+    fch: 0,
+    salaryLoan: 0,
+    calamityLoan: 0,
+    pagibigSalaryLoan: 0,
+    netPayable: emp.net_pay,
+    sssEmployer: emp.sss_contrib_employer,
+    philEmployer: emp.philhealth_contrib,
+    pagibigEmployer: emp.pagibig_contrib_employer,
+
+  }));
+
+  
+
   return (
     <div className="space-y-4">
 
@@ -44,12 +81,23 @@ export default function StepReviewSave({ onBack }: Props) {
         </div>
       </div>
 
+      <div className="flex justify-end px-4">
+      <button
+        onClick={handleSave}
+        disabled={savePayroll.isPending}
+        className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white disabled:opacity-50"
+      >
+        {savePayroll.isPending ? "Saving..." : "Save Payroll"}
+      </button>
+
+      </div>
+
       <div className="print-area">
         <div className="print-page min-w-56 overflow-x-auto">
           {isLoading ? (
             <div className="p-4 text-sm">Loading payroll...</div>
           ) : (
-            <SpreadSheet data={data?.data ?? []} />
+            <SpreadSheet data={rows} />
           )}
         </div>
       </div>
@@ -72,9 +120,6 @@ export default function StepReviewSave({ onBack }: Props) {
           </button>
 
 
-          <button className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white">
-            Save Payroll
-          </button>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { prisma } from "../../config/prismaClient";
 import { Prisma } from "@prisma/client";
-import { SSSRange } from "./prepare_payroll.types";
+import { SSSRange, TaxField } from "./prepare_payroll.types";
 
 export const computeSemiMonthlySalary = (basicSalary?: number | null): number => {
     if (!basicSalary) 
@@ -53,31 +53,77 @@ export const computeGrossPay = (overtime:number | null,basicPay:number | null,la
 
 
 
-export const computePhilRate = (basicPay: number | null,philPercentage: number | null): number => {
-  if (basicPay  == null || philPercentage == null) 
-    return 0;
+export const computePhilRate = (basicPay: number | null,philPercentage: number | null,payCode?: string | null): number => {
 
-  const result = basicPay * Number(philPercentage);
+  if (basicPay == null || philPercentage == null) return 0;
+
+  if (payCode) {
+    const parts = payCode.split("-");
+    if (parts.length < 4) return 0;
+
+    const startDay = Number(parts[1]);
+    if (startDay !== 1) return 0;
+  }
+
+  const result = basicPay * philPercentage;
   return Number(result.toFixed(2));
 };
 
 
 
-export const computePagibig = (pagibigContrib:number | null):number => {
-  if(pagibigContrib == null){
-    return 0
+export const computePagibig = (pagibigContrib:number | null, payCode?: string | null):number => {
+  if(pagibigContrib == null) return 0
+  
+  if (payCode) {
+    const parts = payCode.split("-");
+    if (parts.length < 4) return 0;
+    const startDay = Number(parts[1]);
+    if (startDay !== 16) return 0;
   }
-  else{
 
     return Number(pagibigContrib.toFixed(2));
-  }
+  
 
 };
 
 
 
-export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[]): string => {
+export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[]): number => {
+  if (!taxFields.length) return 0;
+
+  const monthlyTaxable = monthlySalary - (completeContrib);
+  if (monthlyTaxable <= 0) return 0;
+  const annualTaxable = monthlyTaxable * 12;
+
+  const bracket = taxFields.find((r) => {
+    if (r.start_range === null || r.end_range === null) return false;
+    return (
+      annualTaxable > r.start_range && annualTaxable <= r.end_range
+    );
+  });
+  
+  if (!bracket) return 0;
+  const baseTax = bracket.annual_base_tax_per_year?.toNumber() ?? 0;
+  const excessOver = bracket.annual_base_tax_bracket?.toNumber() ?? 0;
+  const rate = bracket.rate_per_bracket?.toNumber() ?? 0;
+
+  const annualTax = baseTax + (annualTaxable - excessOver) * rate;
+  return Number((annualTax / 12).toFixed(2));
+};
+
+
+
+export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[], payCode?: string | null): string => {
   if (!monthlySalary || !ranges.length) return '0.00';
+
+  if (payCode) {
+    const parts = payCode.split("-");
+    if (parts.length < 4) return '0.00';
+    const startDay = Number(parts[1]);
+    if (startDay !== 1) return '0.00';
+  }
+
+  
 
   const match = ranges.find(r => {
     if (!r.start_range || !r.end_range) return false;
@@ -89,10 +135,20 @@ export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[]
   });
 
   return (match?.employee_share?.toNumber() ?? 0).toFixed(2);
+
+
 };
 
-export const computeSSSContributionEmployer = (monthlySalary: number, ranges: SSSRange[]): string => {
+export const computeSSSContributionEmployer = (monthlySalary: number, ranges: SSSRange[], payCode?: string | null): string => {
   if (!monthlySalary || !ranges.length) return '0.00';
+
+  if (payCode) {
+    const parts = payCode.split("-");
+    if (parts.length < 4) return '0.00';
+    const startDay = Number(parts[1]);
+    if (startDay !== 1) return '0.00';
+  }
+
 
   const match = ranges.find(r => {
     if (!r.start_range || !r.end_range) return false;
@@ -223,3 +279,4 @@ const computeSource = (source: Record<string, string>,multipliers: Record<string
     
   };
   
+

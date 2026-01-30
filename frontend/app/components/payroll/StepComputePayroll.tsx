@@ -9,7 +9,6 @@ import { useComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
-import {  useArchivePayroll } from "@/app/hooks/usePayrollArchive";
 import { AxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -31,7 +30,7 @@ interface Props {
       const [search, setSearch] = useState("");
       const debouncedSearch = useDebounce(search, 400);
       const [showProcessing, setShowProcessing] = useState(false);
-      const archiveMutation = useArchivePayroll();
+
       const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
       const queryClient = useQueryClient();
 
@@ -86,61 +85,7 @@ interface Props {
 
 
 
-      const handleContinue = () => {
-        if (!cycle) {
-          SweetAlert.warningAlert(
-            "Payroll Cycle Required",
-            "Please select a payroll cycle before continuing."
-          );
-          return;
-        }
-      
-        if (!range) {
-          SweetAlert.warningAlert(
-            "Payroll Period Required",
-            "Please select a payroll period."
-          );
-          return;
-        }
-      
-        SweetAlert.confirmationAlert(
-          "Confirm Payroll Save",
-          "Are you sure you want to save this payroll?",
-          () => {
-            archiveMutation.mutate(
-              {
-                cycle,
-                payrollPeriod: `${range.startDate} to ${range.endDate}`,
-              },
-              {
-                onError: (error) => {
-                  if (error.response?.status === 409) {
-                    SweetAlert.warningAlert(
-                      "Already Archived",
-                      error.response.data?.message ?? "Payroll already saved."
-                    );
-                    return;
-                  }
-            
-                  SweetAlert.errorAlert(
-                    "Archiving Failed",
-                    "Something went wrong while saving the payroll."
-                  );
-                },
-            
-                onSuccess: (data) => {
-                  SweetAlert.successAlert(
-                    "Payroll Archived",
-                    data.message
-                  );
-                  onNext();
-                },
-              }
-            );
-            
-          }
-        );
-      };
+    
       
  
     return (
@@ -156,7 +101,7 @@ interface Props {
      
         <div className="flex justify-between gap-x-8">
 
-        <div className="flex gap-x-4">
+     
 
       
             <DateRangePicker
@@ -178,13 +123,9 @@ interface Props {
                   }}
                 />
 
-          <div className="">
-            <button onClick={handleContinue} disabled={archiveMutation.isPending} className="bg-sky-600 hover:bg-sky-500 px-8 text-white py-2.5 rounded">
-            {archiveMutation.isPending ? "Archiving…" : "Save"}
-              </button>
-          </div>
+        
 
-        </div>
+    
 
 
               

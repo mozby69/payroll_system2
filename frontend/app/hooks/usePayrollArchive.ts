@@ -1,7 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
 import { AxiosError } from "axios";
 import { ApiErrorResponse, ArchiveSuccessResponse } from "../types/generalTypes";
+import SweetAlert from "../components/Swal";
 
 export interface PayrollEmployee {
   PayCode: string;
@@ -23,6 +24,15 @@ export interface PayrollEmployee {
   semi_monthly:number;
   overtime:number;
   late_count:number;
+  absence:number;
+  gross_pay:number;
+  sss_contrib_employee:number;
+  sss_contrib_employer:number;
+  pagibig_contrib_employee:number;
+  pagibig_contrib_employer:number,
+  philhealth_contrib:number;
+  net_pay:number;
+  wtax:number;
 }
 
 export interface PayrollResponse {
@@ -33,15 +43,6 @@ export interface PayrollResponse {
 
 
 
-export function useArchivePayroll() {
-  return useMutation<ArchiveSuccessResponse,AxiosError<ApiErrorResponse>,     
-    { cycle: string; payrollPeriod: string }>({
-    mutationFn: async (payload) => {
-      const res = await api.post("/payroll-archive/archive-payroll",payload);
-      return res.data;
-    },
-  });
-}
 
 
 export function useDisplayPayroll() {
@@ -50,6 +51,30 @@ export function useDisplayPayroll() {
     queryFn: async () => {
       const res = await api.get("/payroll-archive/display-all");
       return res.data;
+    },
+  });
+}
+
+
+
+export function useSavePayroll(onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post("/payroll-archive/payroll-save");
+      return res.data;
+    },
+    onSuccess: () => {
+     
+      SweetAlert.successAlert("Saved successfully");
+      queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+      });
+      onSuccess?.();
+    },
+    onError: () => {
+      SweetAlert.errorAlert("Failed to save payroll");
     },
   });
 }
