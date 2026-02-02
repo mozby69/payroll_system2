@@ -88,8 +88,15 @@ export const computePagibig = (pagibigContrib:number | null, payCode?: string | 
 
 
 
-export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[]): number => {
+export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[], payCode?: string | null): number => {
   if (!taxFields.length) return 0;
+
+  if (payCode) {
+    const parts = payCode.split("-");
+    if (parts.length < 4) return 0;
+    const startDay = Number(parts[1]);
+    if (startDay !== 16) return 0;
+  }
 
   const monthlyTaxable = monthlySalary - (completeContrib);
   if (monthlyTaxable <= 0) return 0;

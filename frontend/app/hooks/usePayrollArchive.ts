@@ -3,42 +3,9 @@ import api from "../services/axios";
 import { AxiosError } from "axios";
 import { ApiErrorResponse, ArchiveSuccessResponse } from "../types/generalTypes";
 import SweetAlert from "../components/Swal";
+import { PayrollEmployee, PayrollResponse } from "../types/preparePayroll";
 
-export interface PayrollEmployee {
-  PayCode: string;
-  CycleCategory: string;
-  PayrollPeriod: string;
-  LateCount: number;
-  TotalAbsentHours: string;
-  TotalOvertime: string;
-  TotalUndertime: number;
-  RegularAtt: Record<string, string>;
-  OvertimeAtt: Record<string, string>;
-  NightShiftAtt: Record<string, string>;
-  NightShiftOtAtt: Record<string, string>;
-  EmpCodeId: string;
-  EmpCode: {
-    Firstname: string;
-    Lastname: string;
-  };
-  semi_monthly:number;
-  overtime:number;
-  late_count:number;
-  absence:number;
-  gross_pay:number;
-  sss_contrib_employee:number;
-  sss_contrib_employer:number;
-  pagibig_contrib_employee:number;
-  pagibig_contrib_employer:number,
-  philhealth_contrib:number;
-  net_pay:number;
-  wtax:number;
-}
 
-export interface PayrollResponse {
-  status: "SUCCESS";
-  data: PayrollEmployee[];
-}
 
 
 
@@ -50,6 +17,18 @@ export function useDisplayPayroll() {
     queryKey: ["payroll-display"],
     queryFn: async () => {
       const res = await api.get("/payroll-archive/display-all");
+      return res.data;
+    },
+  });
+}
+
+
+
+export function useDisplayForApprovalPayroll() {
+  return useQuery<PayrollResponse>({
+    queryKey: ["payroll-display-for-approval"],
+    queryFn: async () => {
+      const res = await api.get("/payroll-archive/for-approval");
       return res.data;
     },
   });
@@ -70,7 +49,9 @@ export function useSavePayroll(onSuccess?: () => void) {
       SweetAlert.successAlert("Saved successfully");
       queryClient.invalidateQueries({
         queryKey: ["payroll-display"],
+        exact:true,
       });
+      queryClient.invalidateQueries({ queryKey: ["employees-computed"] });
       onSuccess?.();
     },
     onError: () => {
@@ -78,3 +59,34 @@ export function useSavePayroll(onSuccess?: () => void) {
     },
   });
 }
+
+
+
+
+
+
+export function useSaveFinalPayroll(onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post("/payroll-archive/archived-final-payroll");
+      return res.data;
+    },
+    onSuccess: () => {
+     
+      SweetAlert.successAlert("Saved successfully");
+      queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+        exact:true,
+      });
+      queryClient.invalidateQueries({ queryKey: ["employees-computed"] });
+      onSuccess?.();
+    },
+    onError: () => {
+      SweetAlert.errorAlert("Failed to save payroll");
+    },
+  });
+}
+
+

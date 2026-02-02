@@ -126,9 +126,13 @@ model totalPayroll{
   Total_Late  Decimal? @db.Decimal(10,2) @map("total_late")
   Total_Absent  Decimal? @db.Decimal(10,2) @map("total_absent")
   Total_OverTimePay Decimal? @db.Decimal(10,2) @map("total_overtime")
-  Total_SSSContribution Decimal? @db.Decimal(10,2) @map("total_sss_contribution")
-  Total_PagibigContribution  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution")
-  Total_PhilhealthContribution Decimal? @db.Decimal(10,2)  @map("total_philhealth")
+  Total_SSSContributionEmployee Decimal? @db.Decimal(10,2) @map("total_sss_contribution_employee")
+  Total_SSSContributionEmployer Decimal? @db.Decimal(10,2) @map("total_sss_contribution_employer")
+  Total_PagibigContributionEmployee  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution_employee")
+  Total_PagibigContributionEmployer  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution_employer")
+  Total_PhilhealthContributionEmployee Decimal? @db.Decimal(10,2)  @map("total_philhealth_employee")
+  Total_PhilhealthContributionEmployer Decimal? @db.Decimal(10,2)  @map("total_philhealth_employer")
+  total_wtax Decimal? @db.Decimal(10,2) @map("total_wtax")
 
   @@map("total_payroll")
 }

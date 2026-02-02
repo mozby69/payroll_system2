@@ -114,3 +114,42 @@ export interface EmployeeSummaryTypes {
   pagEmpShare: number;
   
 }
+
+
+export interface PayrollResponse {
+  status: "SUCCESS";
+  data: PayrollEmployee[];
+}
+
+
+
+export interface PayrollEmployee {
+  PayCode: string;
+  CycleCategory: string;
+  PayrollPeriod: string;
+  LateCount: number;
+  TotalAbsentHours: string;
+  TotalOvertime: string;
+  TotalUndertime: number;
+  RegularAtt: Record<string, string>;
+  OvertimeAtt: Record<string, string>;
+  NightShiftAtt: Record<string, string>;
+  NightShiftOtAtt: Record<string, string>;
+  EmpCodeId: string;
+  EmpCode: {
+    Firstname: string;
+    Lastname: string;
+  };
+  semi_monthly:number;
+  overtime:number;
+  late_count:number;
+  absence:number;
+  gross_pay:number;
+  sss_contrib_employee:number;
+  sss_contrib_employer:number;
+  pagibig_contrib_employee:number;
+  pagibig_contrib_employer:number,
+  philhealth_contrib:number;
+  net_pay:number;
+  wtax:number;
+}

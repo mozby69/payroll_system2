@@ -30,3 +30,10 @@ export interface EmployeeSummary {
     message: string;
   }
   
+
+ export type AuthUser = {
+    id: number;
+    username: string;
+    role: string;
+  };
+  

@@ -350,10 +350,14 @@ export async function ComputePayroll({page,limit,search}: {page: number; limit: 
   prisma.employeeSummary.count({
       where: {
         ...where,
+        status: {
+          in: ["PENDING"],
+        },
         EmpCode:{
           EmployeeStatus: {
             notIn: ["Resigned","Inactive","Terminate"],
           },
+          
         }
       },
     }),
@@ -361,6 +365,9 @@ export async function ComputePayroll({page,limit,search}: {page: number; limit: 
     prisma.employeeSummary.findMany({
       where:{
         ...where, 
+        status: {
+          in: ["PENDING"],
+        },
         EmpCode:{
           EmployeeStatus:{
             notIn: ["Resigned","Inactive","Terminate"],
