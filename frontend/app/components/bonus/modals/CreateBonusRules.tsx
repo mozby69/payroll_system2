@@ -14,6 +14,7 @@ import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { delay } from "@/app/helper/delay"
 import { useCreateBonusRules, useUpdateBonusRules } from "@/app/hooks/useBonus"
 import { InputField, SelectField } from "../../FormInputs"
+import toast from "react-hot-toast"
 
 type BonusRuleModalProps = {
   mode: "create" | "edit"
@@ -80,7 +81,11 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
             },
             {
               onSuccess: async () => {
+             
                 await delay(800)
+                toast.success("Bonus rule updated successfully", {
+                  position: "top-center",
+                });
                 setShowProcessing(false)
                 onClose()
               },
@@ -95,6 +100,10 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           createBonusRuleMutation.mutate(result.data, {
             onSuccess: async () => {
               await delay(800)
+              toast.success("Bonus rule added successfully", {
+                position: "top-center",
+              });
+              
               setShowProcessing(false)
               onClose()
             },

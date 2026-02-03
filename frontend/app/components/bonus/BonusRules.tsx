@@ -6,6 +6,7 @@ import RequestModal from "../Modal"
 import CreateBonusRulesModal from "./modals/CreateBonusRules"
 import { BonusRule } from "@/app/schema/bonus.schema"
 import BonusRuleCompanyModal from "./modals/BonusRuleCompanyModal"
+import toast from "react-hot-toast"
 
 export default function BonusRulesPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
@@ -34,7 +35,9 @@ export default function BonusRulesPage() {
   const handleDelete = (rules : BonusRule) => {
       deleteMutation.mutate(rules.id , {
         onSuccess:  (data)=>{
-          console.log(data.message)
+          toast.success(data.message, {
+            position: "top-center",
+          });
         }
       })
   }

@@ -3,6 +3,7 @@ import { BonusCompanyRule } from "@/app/types/bonusType";
 import { useState } from "react";
 import RequestModal from "../../Modal";
 import CreateCompanyRulesModal from "./CreateCompanyBonus";
+import toast from "react-hot-toast";
 
 type BonusRuleCompanyModalProps = {
   initialData?: { id?: number; name?: string }
@@ -22,7 +23,9 @@ export default function BonusRuleCompanyModal({
   const handleDelete = (row: BonusCompanyRule) => {
     deleteMutation.mutate(row.id, {
       onSuccess: (data) => {
-        console.log(data.message)
+        toast.success(data.message, {
+          position: "top-center",
+        });
       }
     })
   }
