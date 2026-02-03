@@ -25,7 +25,16 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
     }),
   };
 
-  const total = await prisma.employee.count({ where });
+ // const total = await prisma.employee.count({ where });
+ const total = await prisma.employee.count({
+  where: {
+    ...where,
+    EmployeeStatus: {
+      notIn: ["Resigned","Inactive","Terminate"],
+    },
+  },
+});
+
 
   const sssTable = await prisma.sSS_Contributions.findMany({
     select: {
@@ -43,7 +52,12 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
   
 
   const data = await prisma.employee.findMany({
-    where,
+    where:{
+      ...where, 
+      EmployeeStatus:{
+        notIn: ["Resigned","Inactive","Terminate"],
+      },
+    },
     skip: (page - 1) * limit,
     take: limit,
     select: {
@@ -91,6 +105,7 @@ cycle: "10-25-Cycle" | "15-30-Cycle";
         },
       },
     },
+    
     orderBy: {
       EmpCode: "asc",
     },
@@ -331,9 +346,34 @@ export async function ComputePayroll({page,limit,search}: {page: number; limit: 
   };
 
   const [total, data] = await Promise.all([
-    prisma.employeeSummary.count({ where }),
+    //prisma.employeeSummary.count({ where }),
+  prisma.employeeSummary.count({
+      where: {
+        ...where,
+        status: {
+          in: ["PENDING"],
+        },
+        EmpCode:{
+          EmployeeStatus: {
+            notIn: ["Resigned","Inactive","Terminate"],
+          },
+          
+        }
+      },
+    }),
+    
     prisma.employeeSummary.findMany({
-      where,
+      where:{
+        ...where, 
+        status: {
+          in: ["PENDING"],
+        },
+        EmpCode:{
+          EmployeeStatus:{
+            notIn: ["Resigned","Inactive","Terminate"],
+          },
+        }
+      },
       skip: (page - 1) * limit,
       take: limit,
       select:{

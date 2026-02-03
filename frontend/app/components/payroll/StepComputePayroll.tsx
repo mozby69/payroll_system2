@@ -9,8 +9,9 @@ import { useComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
-import {  useArchivePayroll } from "@/app/hooks/usePayrollArchive";
 import { AxiosError } from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePayrollRealtime } from "@/app/hooks/useRealtime";
 
 
 interface Props {
@@ -25,14 +26,17 @@ interface Props {
   
   
   export default function StepComputePayroll({ onBack, onNext,range,setRange,cycle }: Props) {
+     usePayrollRealtime();
       const PAGE_SIZE = 7;
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");
       const debouncedSearch = useDebounce(search, 400);
       const [showProcessing, setShowProcessing] = useState(false);
-      const archiveMutation = useArchivePayroll();
-      const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
 
+      const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
+      const queryClient = useQueryClient();
+
+      
 
       const { data: employee_payroll } = useComputedPayroll({
           page,
@@ -83,66 +87,9 @@ interface Props {
 
 
 
-      const handleContinue = () => {
-        if (!cycle) {
-          SweetAlert.warningAlert(
-            "Payroll Cycle Required",
-            "Please select a payroll cycle before continuing."
-          );
-          return;
-        }
-      
-        if (!range) {
-          SweetAlert.warningAlert(
-            "Payroll Period Required",
-            "Please select a payroll period."
-          );
-          return;
-        }
-      
-        SweetAlert.confirmationAlert(
-          "Confirm Payroll Save",
-          "Are you sure you want to save this payroll?",
-          () => {
-            archiveMutation.mutate(
-              {
-                cycle,
-                payrollPeriod: `${range.startDate} to ${range.endDate}`,
-              },
-              {
-                onError: (error) => {
-                  if (error.response?.status === 409) {
-                    SweetAlert.warningAlert(
-                      "Already Archived",
-                      error.response.data?.message ?? "Payroll already saved."
-                    );
-                    return;
-                  }
-            
-                  SweetAlert.errorAlert(
-                    "Archiving Failed",
-                    "Something went wrong while saving the payroll."
-                  );
-                },
-            
-                onSuccess: (data) => {
-                  SweetAlert.successAlert(
-                    "Payroll Archived",
-                    data.message
-                  );
-                  onNext();
-                },
-              }
-            );
-            
-          }
-        );
-      };
-      
-      
-
     
-    
+      
+ 
     return (
       <div className="space-y-4">
         {showProcessing && (
@@ -156,7 +103,7 @@ interface Props {
      
         <div className="flex justify-between gap-x-8">
 
-        <div className="flex gap-x-4">
+     
 
       
             <DateRangePicker
@@ -178,13 +125,9 @@ interface Props {
                   }}
                 />
 
-          <div className="">
-            <button onClick={handleContinue} disabled={archiveMutation.isPending} className="bg-sky-600 hover:bg-sky-500 px-8 text-white py-2.5 rounded">
-            {archiveMutation.isPending ? "Archiving…" : "Save"}
-              </button>
-          </div>
+        
 
-        </div>
+    
 
 
               
@@ -216,13 +159,24 @@ interface Props {
   
         <div className="flex justify-between pt-4">
 
-          <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">
+          <button onClick={onBack}
+           className="rounded-lg border px-5 py-2 text-sm">
             Back
           </button>
 
-          <button onClick={onNext} className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white disabled:opacity-50">
-          Continue
+          <button
+            onClick={async () => {
+              await queryClient.refetchQueries({
+                queryKey: ["payroll-display"],
+                exact: true,
+              });
+
+              onNext();
+            }}
+            className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">
+            Continue
           </button>
+
 
         </div>
 

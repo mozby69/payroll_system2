@@ -55,7 +55,7 @@ export default function DateRangePicker({
 
 
   return (
-    <div ref={containerRef} className={`relative w-8/12 ${className}`}>
+    <div ref={containerRef} className={`relative w-4/12 ${className}`}>
       {/* Input */}
       <input
         readOnly

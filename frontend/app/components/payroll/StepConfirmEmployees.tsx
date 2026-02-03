@@ -122,6 +122,10 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     await queryClient.invalidateQueries({
       queryKey: ["employees"],
     });
+
+    await queryClient.invalidateQueries({
+      queryKey: ["employees-computed"],
+    });
   };
 
   const handleSavePayroll = async (payload: PayrollSavePayload) => {
