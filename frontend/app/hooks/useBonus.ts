@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BonusRule, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
-import { createBonusrules, deleteBonusRuleServices, generateBonus, getAllBonusRules, getEmployeeBonus, updateBonusRuleServices } from "../services/bonus.services";
-import { EmployeeBonus } from "../types/bonusType";
+import { BonusRule, CreateBonusRuleCompanyForm, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
+import { createBonusCompanyRulesServices, createBonusrules, deleteBonusCompanyBonusServices, deleteBonusRuleServices, generateBonus, getAllBonusRules, getBonusCompanyRulesServices, getEmployeeBonus, updateBonusRuleServices } from "../services/bonus.services";
+import { BonusCompanyRule, EmployeeBonus } from "../types/bonusType";
 
 export function useGetAllBonusRules(){
     return useQuery<BonusRule[]>({
@@ -78,5 +78,47 @@ export function useGenerateBonus(){
                 })
             }
 
+    })
+}
+
+
+export function useGetBonusCompanyRules(
+    bonusRuleId: number | null
+  ) {
+    return useQuery<BonusCompanyRule[]>({
+      queryKey: ["bonus-company-rules", bonusRuleId],
+      queryFn: () => {
+        if (!bonusRuleId) return Promise.resolve([])
+        return getBonusCompanyRulesServices(bonusRuleId)
+      },
+      enabled: !!bonusRuleId
+    })
+  }
+  
+
+  export function useDeleteBonusCompanyRUles(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn:(id: number)=>
+            deleteBonusCompanyBonusServices(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["bonus-company-rules"]
+            })
+        }
+    })
+}
+
+
+export function useCreateBonusCompanyRules(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload: CreateBonusRuleCompanyForm) =>
+            createBonusCompanyRulesServices(payload),
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["bonus-company-rules"]
+                })
+            }
     })
 }

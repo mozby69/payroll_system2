@@ -86,3 +86,15 @@ export type BonusRuleList =
         z.infer<typeof GenerateBonusSchema>
 
 
+        
+  export const createBonusRuleCompanySchema = z.object({
+    bonusRuleId: z.number().int().min(1),
+    companyCode: z.string().min(1)
+
+  })
+
+
+  export type CreateBonusRuleCompanyForm = z.infer<typeof createBonusRuleCompanySchema>
+
+
+

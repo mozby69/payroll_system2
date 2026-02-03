@@ -11,6 +11,8 @@ import {
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { delay } from "@/app/helper/delay"
 import { useGetCompanyDetails } from "@/app/hooks/useGeneral"
+import { BonusErrorResponse, InvalidEmployees } from "@/app/types/bonusType"
+import axios from "axios"
 
 
 function getReleasePeriodFromEligibleMonth(
@@ -51,11 +53,13 @@ type CreateModalProps = {
 export default function CreateBonusModal({ onClose }: CreateModalProps) {
   const [showProcessing, setShowProcessing] = useState(false)
   const [lockDates, setLockDates] = useState(false)
+  const [invalidDataEmployees, setInvalidEmployees] = useState<InvalidEmployees[]>([])
+
 
   const { data: bonusRules } = useGetAllBonusRules()
   const {data: companyDetails} = useGetCompanyDetails();
   const generateBonusMutation = useGenerateBonus()
-
+  
   const [form, setForm] = useState<GenerateBonusInput>({
     bonusRuleId: 0,
     company: "",
@@ -137,10 +141,22 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
         setShowProcessing(false)
         onClose()
       },
-      onError: async () => {
-        await delay(800)
-        setShowProcessing(false)
+      onError: (error) => {
+        if (!axios.isAxiosError<BonusErrorResponse>(error)) return
+        const data = error.response?.data
+        if (!data) return
+        if (data.code === "INVALID_BONUS_AMOUNT") {
+          setInvalidEmployees(data.invalidEmployees)
+          console.log("Invalud: ", data.invalidEmployees)
+
+        }
+
+        setTimeout(() => {
+          setShowProcessing(false)
+        }, 800)
       }
+      
+      
     })
   }
 

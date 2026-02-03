@@ -231,6 +231,8 @@ model company_details{
 
     branch_code Branch[] @relation
 
+    companyRules BonusRuleCompany[] @relation
+
     @@map("companydetails")
 }
 
@@ -315,6 +317,7 @@ model BonusRule {
   versions        BonusRule[] @relation("RuleVersions")
   employeeBonuses  EmployeeBonus[] 
   bonusSummaries   BonusSummary[]
+  companyRule      BonusRuleCompany[]
 
 
     @@unique([code, version])
@@ -364,6 +367,18 @@ model BonusSummary {
 
   bonusRule        BonusRule @relation(fields: [bonusRuleId], references: [id])
   employeeBonuses  EmployeeBonus[]
+}
+
+
+model BonusRuleCompany {
+  id                Int     @id @default(autoincrement())
+  bonusRuleId       Int
+  companyCode     String
+
+  bonusRule     BonusRule  @relation(fields: [bonusRuleId], references: [id])
+  companyDetails  company_details @relation(fields: [companyCode], references: [CompanyCode])  
+
+  @@unique([bonusRuleId, companyCode])
 }
 
 // End Bonus Schema 

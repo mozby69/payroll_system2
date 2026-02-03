@@ -34,3 +34,15 @@ export const updateBonusRuleSchema = z.object({
   }) 
   
   export type UpdateBonusRuleInput = z.infer<typeof updateBonusRuleSchema>
+
+
+
+  export const createBonusRuleCompanySchema = z.object({
+    bonusRuleId: z.number().int().min(1),
+    companyCode: z.string().min(1)
+
+  })
+
+
+  export type CreateBonusRuleCompanyInput = z.infer<typeof createBonusRuleCompanySchema>
+

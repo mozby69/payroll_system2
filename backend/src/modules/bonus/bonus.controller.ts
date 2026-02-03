@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
-import { createBonusRuleService, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getEmployeeBonusService, updateBonusRuleService } from "./bonus.services"
-import { createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
+import { createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getEmployeeBonusService, updateBonusRuleService } from "./bonus.services"
+import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
+import { json } from "zod";
 
 
 
@@ -94,6 +95,94 @@ export async function updateBonusRuleController(
     
   }
 
+  // Company Rules 
+
+  export async function createBonusRuleCompanyController(
+    req: Request,
+    res: Response
+  ) {
+    try{
+      const data = createBonusRuleCompanySchema.parse(req.body)
+      await createBonusRuleCompanyServices(data)
+      res.status(200).json({message: "Company bonus rule successfully added"})
+    } catch(error: any){
+      if(error.message === "BONUS_RULE_NOT_FOUND"){
+        return res.status(409).json({
+          message: "Invalid bonus rule ID"
+        })
+      }
+      if(error.message === "COMPANY_NOT_FOUND"){
+        return res.status(409).json({
+          message: "Invalid company code"
+        })
+      }
+
+      if(error.message === "RULES_DUPLICATION"){
+        return res.status(409).json({
+          message: "Bonus rules already added to this company"
+        })
+      }
+      return res.status(500).json({
+        message: "Failed to add bonus rule"
+      })
+    }
+  }
+
+
+ export async function getBonusRuleCompanyController(
+  req: Request,
+  res: Response
+ ) {
+  try{
+    const bonusRuleId = Number(req.params.bonusRuleId)
+    if(Number.isNaN(bonusRuleId)){
+      return res.status(400).json({
+        message: "Invalid bonus rule ID"
+      })
+    }
+    const bonusRules = await getBonusCompanyRuleServices(bonusRuleId)
+    return res.status(200).json(bonusRules)
+}catch(error: any){
+    if(error.message === "BONUS_RULE_NOT_FOUND"){
+      return res.status(409).json({
+        message: "Invalid bonus rule ID"
+      })
+    }
+      return res.status(500).json({
+          message: "Failed to fetch compnay bonus rules"
+      })
+}
+
+}
+
+  export async function deleteBonusCompanyRuleController(
+    req: Request,
+    res: Response
+  ) {
+      try{
+            const id = Number(req.params.id)
+            if(Number.isNaN(id)){
+              return res.status(400).json({
+                message: "Invalid bonus rule ID"
+              })
+            }
+            await deleteBonusRuleCompanyServices(id)
+            return res.status(200).json({
+              message: "Bonus rules successfully deleted"
+            })
+      }catch(error: any){
+        if(error.message === "BONUS_RULE_NOT_FOUND"){
+          return res.status(409).json({
+            message: "Invalid bonus rule ID"
+          })
+        }
+        return res.status(500).json({
+          message: "Failed to delete bonus rule"
+        })
+      }
+  }
+  
+
 //Gerate Bonus Controller
 
   export async function generateBonusController(
@@ -101,7 +190,7 @@ export async function updateBonusRuleController(
     res: Response
   ) {
     try {
-      const { bonusRuleId, releasePeriod, asOfDate } = req.body
+      const { bonusRuleId, releasePeriod, asOfDate, company, generateDate } = req.body
       // 1. Basic validation (controller-level only)
       if (!bonusRuleId || !releasePeriod || !asOfDate) {
         return res.status(400).json({
@@ -109,21 +198,28 @@ export async function updateBonusRuleController(
         })
       }
       // 2. Call service
-      await generateBonusForAllEmployees({
+     const bonus = await generateBonusForAllEmployees({
         bonusRuleId: Number(bonusRuleId),
         releasePeriod,
-        asOfDate: new Date(asOfDate)
+        company,
+        asOfDate: new Date(asOfDate),
+        generateDate: new Date(generateDate)
       })
   
       // 3. Response
       return res.status(200).json({
-        message: "Bonuses generated successfully"
+        message: "Bonuses generated successfully 1",
+        data: bonus
       })
-    } catch (error: any) {
-      console.error(error)
-      return res.status(500).json({
-        message: error.message ?? "Internal server error"
-      })
+    } catch (err: any) {
+      try {
+        const parsed = JSON.parse(err.message)
+        if (parsed.code === "INVALID_BONUS_AMOUNT") {
+          return res.status(400).json(parsed)
+        }
+      } catch {}
+    
+      throw err
     }
   }
   

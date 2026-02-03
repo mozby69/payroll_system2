@@ -5,12 +5,15 @@ import { useDeleteBonusRules, useGetAllBonusRules } from "@/app/hooks/useBonus"
 import RequestModal from "../Modal"
 import CreateBonusRulesModal from "./modals/CreateBonusRules"
 import { BonusRule } from "@/app/schema/bonus.schema"
+import BonusRuleCompanyModal from "./modals/BonusRuleCompanyModal"
 
 export default function BonusRulesPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
+  const [companyModal, setCompanyModal] = useState(false)
   const { data: bonusRules, isLoading, error } = useGetAllBonusRules()
   const deleteMutation = useDeleteBonusRules()
   const [selectedRule, setSelectedRule] = useState<BonusRule | null> (null)
+
 
   if (isLoading) {
     return (
@@ -111,6 +114,15 @@ export default function BonusRulesPage() {
                     Edit
                   </button>
                   <button 
+                      onClick={()=>{
+                        setSelectedRule(rule)
+                        setCompanyModal(true)
+                      }}
+                   className="text-sm ml-2 text-green-600 hover:underline"
+                  >
+                    Company
+                  </button>
+                  <button 
                       onClick={
                        ()=> handleDelete(rule)
                       }
@@ -144,6 +156,20 @@ export default function BonusRulesPage() {
             }}
           />
         </RequestModal>
+      )}
+
+      {companyModal && (
+        <RequestModal 
+          title="Configure Company Bonus Rules" 
+          size="md"
+          nested = {true}
+          onClose={() => {
+            setCompanyModal(false)
+            setSelectedRule(null)
+          }}>
+             <BonusRuleCompanyModal  initialData={selectedRule ?? undefined} />
+          </RequestModal>
+
       )}
 
     </div>
