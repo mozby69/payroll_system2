@@ -4,7 +4,7 @@ import { AxiosError } from "axios";
 import { ApiErrorResponse, ArchiveSuccessResponse } from "../types/generalTypes";
 import SweetAlert from "../components/Swal";
 import { PayrollEmployee, PayrollResponse } from "../types/preparePayroll";
-
+import { useRouter } from "next/navigation";
 
 
 
@@ -31,9 +31,9 @@ export function useDisplayForApprovalPayroll() {
       const res = await api.get("/payroll-archive/for-approval");
       return res.data;
     },
+    refetchOnMount: "always",
   });
 }
-
 
 
 export function useSavePayroll(onSuccess?: () => void) {
@@ -44,16 +44,24 @@ export function useSavePayroll(onSuccess?: () => void) {
       const res = await api.post("/payroll-archive/payroll-save");
       return res.data;
     },
-    onSuccess: () => {
-     
+    onSuccess: async () => {
       SweetAlert.successAlert("Saved successfully");
-      queryClient.invalidateQueries({
-        queryKey: ["payroll-display"],
-        exact:true,
+    
+      await queryClient.refetchQueries({
+        queryKey: ["payroll-display-for-approval"],
       });
-      queryClient.invalidateQueries({ queryKey: ["employees-computed"] });
+    
+      await queryClient.refetchQueries({
+        queryKey: ["payroll-display"],
+      });
+    
+      await queryClient.refetchQueries({
+        queryKey: ["employees-computed"],
+      });
+    
       onSuccess?.();
     },
+    
     onError: () => {
       SweetAlert.errorAlert("Failed to save payroll");
     },
@@ -74,12 +82,8 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
       return res.data;
     },
     onSuccess: () => {
-     
       SweetAlert.successAlert("Saved successfully");
-      queryClient.invalidateQueries({
-        queryKey: ["payroll-display"],
-        exact:true,
-      });
+      queryClient.invalidateQueries({queryKey: ["payroll-display"], exact:true});
       queryClient.invalidateQueries({ queryKey: ["employees-computed"] });
       onSuccess?.();
     },
@@ -90,3 +94,38 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
 }
 
 
+
+
+export function useReCheckPayroll(onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post("/payroll-archive/recheck-payroll");
+      return res.data;
+    },
+    onSuccess: async () => {
+      SweetAlert.successAlert("Recheck successful");
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display-for-approval"],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+      });
+      
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "employees-computed",
+      });
+    
+
+      onSuccess?.();
+    },
+    onError: () => {
+      SweetAlert.errorAlert("Failed to recheck payroll");
+    },
+  });
+}

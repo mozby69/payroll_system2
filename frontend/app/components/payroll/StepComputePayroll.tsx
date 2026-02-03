@@ -11,6 +11,7 @@ import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
 import { AxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePayrollRealtime } from "@/app/hooks/useRealtime";
 
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
   
   
   export default function StepComputePayroll({ onBack, onNext,range,setRange,cycle }: Props) {
+     usePayrollRealtime();
       const PAGE_SIZE = 7;
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");

@@ -1,15 +1,18 @@
 "use client";
 import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadSheet";
 import SweetAlert from "@/app/components/Swal";
-import {  useDisplayForApprovalPayroll, useDisplayPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
+import {  useDisplayForApprovalPayroll, useDisplayPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
+import { usePayrollRealtime } from "@/app/hooks/useRealtime";
 
 
 
 
 
 export default function FinancialPage(){
+      usePayrollRealtime();
       const { data, isLoading } = useDisplayForApprovalPayroll();
       const savePayroll = useSaveFinalPayroll();
+      const recheckPayroll = useReCheckPayroll();
 
      const rows: SpreadsheetRow[] = (data?.data ?? []).map((emp) => ({
         name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
@@ -44,6 +47,19 @@ export default function FinancialPage(){
           }
         );
       };
+
+      
+
+      const handleRecheck = () => {
+        SweetAlert.confirmationAlert(
+          "Confirm Save Payroll",
+          "Are you sure you want to this recheck payroll?",
+          () => {
+            recheckPayroll.mutate();
+          }
+        );
+      };
+    
     
       
 
@@ -52,7 +68,11 @@ export default function FinancialPage(){
         <div className="p-4">
             
             <div className="flex justify-end px-4 gap-x-4">
-            <button className="bg-red-700 hover:bg-red-400 px-4 py-2 rounded-lg text-white">Recheck</button>
+            <button onClick={handleRecheck}
+                    disabled={recheckPayroll.isPending}
+                    className="rounded-lg bg-red-600 hover:bg-red-500 px-6 py-2 text-sm text-white disabled:opacity-50">
+                    {recheckPayroll.isPending ? "Saving..." : "Recheck Payroll"}
+            </button>
             <button onClick={handleSave}
                     disabled={savePayroll.isPending}
                     className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white disabled:opacity-50">

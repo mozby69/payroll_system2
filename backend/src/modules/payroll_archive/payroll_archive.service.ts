@@ -3,6 +3,7 @@ import { prisma } from "../../config/prismaClient";
 import { toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
 import { nowPH } from "../../utils/timezone";
+import { io } from "../../server";
 
 
 
@@ -162,50 +163,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
   export async function saveComputedPayroll() {
-    // const computed = await displayCompletePayroll();
-  
-    // if (!computed || computed.length === 0) return 0;
-  
-    // const payload = computed.map((emp) => ({
-    //   PayCode: emp.PayCode,
-    //   Late: emp.late_count,
-    //   Absent: emp.absence,
-    //   cycle_category: emp.CycleCategory,
-    //   payroll_period: emp.PayrollPeriod,
-    //   Overtime: emp.overtime,
-    //   Grosspay: emp.gross_pay,
-    //   w_tax: emp.wtax,
-    //   Netpay: Number(emp.net_pay),
-    //   Basic_salary: Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0),
-  
-    //   SSS_employee_share: emp.sss_contrib_employee,
-    //   SSS_employer_share: emp.sss_contrib_employer,
-  
-    //   Pagibig_employee_share: emp.pagibig_contrib_employee,
-    //   Pagibig_employer_share: emp.pagibig_contrib_employer,
-  
-    //   philhealth_employee_share: emp.philhealth_contrib,
-    //   philhealth_employer_share: emp.philhealth_contrib,
-  
-    //   EmpCodeId: emp.EmpCodeId,
-    // }));
-  
-    // await prisma.employeePayrollArchive.createMany({
-    //   data: payload,
-    //   skipDuplicates: true, 
-    // });
-
- 
-
-
-    
-  
-    const data = await prisma.employeeSummary.updateMany({
+   
+    const result = await prisma.employeeSummary.updateMany({
       where: { status: "PENDING" },
       data: { status: "FOR_APPROVAL" },
     });
   
-    return data;
+    io.emit("payroll:updated");
+    return result;
   }
   
 
@@ -291,6 +256,20 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
+
+
+  export async function reCheckPayroll() {
+   
+    const data = await prisma.employeeSummary.updateMany({
+      where: { status: "FOR_APPROVAL" },
+      data: { status: "PENDING" },
+    });
+
+    io.emit("payroll:updated");
+  
+    return data;
+  }
+  
 
 
   

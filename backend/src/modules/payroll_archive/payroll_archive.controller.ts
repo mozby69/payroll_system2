@@ -1,4 +1,4 @@
-import {  displayCompletePayroll, saveComputedFinalPayroll, saveComputedPayroll } from "./payroll_archive.service";
+import {  displayCompletePayroll, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll } from "./payroll_archive.service";
 import { Request,Response } from "express";
 
 
@@ -54,5 +54,17 @@ export const displayForApprovalController = async (req: Request, res: Response) 
   }
   catch(error){
     res.status(500).json({message:`SERVER ERROR: ${error}`})
+  }
+}
+
+
+
+export async function reCheckPayrollController(req: Request, res: Response) {
+  try {
+    const result = await reCheckPayroll();
+    return res.json({ success: true, res: result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to save payroll" });
   }
 }
