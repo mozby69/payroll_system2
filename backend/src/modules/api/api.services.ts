@@ -48,29 +48,50 @@ export function transformAttendanceData(
 
 
 
-  export async function saveEmployeeAttendance(
+export async function saveEmployeeAttendance(
     employees: EmployeeSummaryTypes[]
   ) {
     if (!employees.length) return;
   
-    await prisma.employeeSummary.createMany({
-      data: employees.map(emp => ({
-        EmpCodeId: emp.EmpCode_id,  
-        PayCode: emp.PayCode,
-        CycleCategory: emp.CycleCategory,
-        PayrollPeriod: emp.PayrollPeriod,
-        LateCount: emp.LateCount,
-        TotalAbsentHours: emp.TotalAbsentHours,
-        TotalUndertime: emp.TotalUndertime,
-        TotalOvertime: emp.TotalOvertime,
-        
-        RegularAtt: emp.RegularAtt,
-        OvertimeAtt: emp.OvertimeAtt,
-        NightShiftAtt: emp.NightShiftAtt,
-        NightShiftOtAtt: emp.NightShiftOtAtt,
-        createdAt: nowPH(),
-      })),
-      skipDuplicates: true,
+
+    await prisma.$transaction(async (tx) => {
+
+      const hasForApproval = await tx.employeeSummary.count({
+        where: {
+          status: "FOR_APPROVAL",
+        },
+      });
+  
+      if (hasForApproval > 0) {
+        throw new Error(
+          "There is an existing approval payroll"
+        );
+      }
+
+      await tx.employeeSummary.deleteMany({
+        where: {
+          status: "PENDING",
+        },
+      });
+  
+      await tx.employeeSummary.createMany({
+        data: employees.map((emp) => ({
+          EmpCodeId: emp.EmpCode_id,
+          PayCode: emp.PayCode,
+          CycleCategory: emp.CycleCategory,
+          PayrollPeriod: emp.PayrollPeriod,
+          LateCount: emp.LateCount,
+          TotalAbsentHours: emp.TotalAbsentHours,
+          TotalUndertime: emp.TotalUndertime,
+          TotalOvertime: emp.TotalOvertime,
+          RegularAtt: emp.RegularAtt,
+          OvertimeAtt: emp.OvertimeAtt,
+          NightShiftAtt: emp.NightShiftAtt,
+          NightShiftOtAtt: emp.NightShiftOtAtt,
+          createdAt: nowPH(),
+        })),
+        skipDuplicates: true,
+      });
     });
   }
   

@@ -81,10 +81,21 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
       const res = await api.post("/payroll-archive/archived-final-payroll");
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       SweetAlert.successAlert("Saved successfully");
-      queryClient.invalidateQueries({queryKey: ["payroll-display"], exact:true});
-      queryClient.invalidateQueries({ queryKey: ["employees-computed"] });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display-for-approval"],
+      });
+      
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["employees-computed"],
+      });
+
+      
       onSuccess?.();
     },
     onError: () => {

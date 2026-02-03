@@ -41,9 +41,15 @@ export const getAttendance = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error("HR API ERROR:", error.response?.data || error.message);
-    res.status(500).json({
+
+    if (error.message?.includes("already submitted for approval")) {
+      return res.status(409).json({
+        message: error.message,
+      });
+    }
+   return res.status(500).json({
       message: "Failed to fetch attendance from HR system",
-      error: error.response?.data || error.message,
+      // error: error.response?.data || error.message,
     });
   }
 };

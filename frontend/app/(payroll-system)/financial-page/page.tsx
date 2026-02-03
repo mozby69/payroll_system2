@@ -52,7 +52,7 @@ export default function FinancialPage(){
 
       const handleRecheck = () => {
         SweetAlert.confirmationAlert(
-          "Confirm Save Payroll",
+          "Confirm Reopen Payroll",
           "Are you sure you want to this recheck payroll?",
           () => {
             recheckPayroll.mutate();
@@ -70,8 +70,8 @@ export default function FinancialPage(){
             <div className="flex justify-end px-4 gap-x-4">
             <button onClick={handleRecheck}
                     disabled={recheckPayroll.isPending}
-                    className="rounded-lg bg-red-600 hover:bg-red-500 px-6 py-2 text-sm text-white disabled:opacity-50">
-                    {recheckPayroll.isPending ? "Saving..." : "Recheck Payroll"}
+                    className="rounded-lg bg-yellow-600 hover:bg-yellow-500 px-6 py-2 text-sm text-white disabled:opacity-50">
+                    {recheckPayroll.isPending ? "Saving..." : "Reopen Payroll"}
             </button>
             <button onClick={handleSave}
                     disabled={savePayroll.isPending}

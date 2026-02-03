@@ -56,6 +56,7 @@ export type Column<T> = {
   export type PaginatedResponse<T> = {
     data: T[];
     meta: {
+      cycle: string;
       total: number;
       page: number;
       limit: number;

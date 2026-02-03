@@ -34,6 +34,13 @@ const MENU_SECTIONS = [
         { label: "Employees Loan", path:"", icon: HandCoins },
     ],
   },
+  {
+    title: "Benefits",
+    items: [
+     
+        { label: "Employees Allowance", path:"", icon: HandCoins },
+    ],
+  },
 ];
 
 const menuItemClass =

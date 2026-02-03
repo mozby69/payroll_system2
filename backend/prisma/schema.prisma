@@ -107,9 +107,9 @@ model EmployeeSummary{
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
-  @@id([PayCode, EmpCodeId])
+  @@id([PayCode, EmpCodeId,PayrollPeriod])
   @@map("employee_summary")
-  @@index([PayCode, EmpCodeId])
+  @@index([PayCode, EmpCodeId,PayrollPeriod])
 
 }
 

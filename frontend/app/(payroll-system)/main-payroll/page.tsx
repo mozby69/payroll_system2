@@ -15,6 +15,7 @@ import StepReviewSave from "../../components/payroll/StepReviewSave";
 import { useEmployeesByCycle, useImportBranches } from "../../hooks/usePreparePayroll";
 import { useDebounce } from "../../utils/useDebounce";
 import { useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
 type PayrollStep = 1 | 2 | 3;
 
@@ -48,7 +49,7 @@ export default function PreparePayroll() {
         });
       };
 
-  const { data, isLoading, isFetching,isSuccess  } = useFetchApiAttendance(
+  const { data, isLoading, isFetching,isSuccess,error  } = useFetchApiAttendance(
     range
       ? {
           startDate: range.startDate,
@@ -58,12 +59,33 @@ export default function PreparePayroll() {
       : null
   );
 
+  useEffect(() => {
+    if (!error) return;
+  
+    const axiosError = error as AxiosError<{ message?: string }>;
+  
+    const message =
+      axiosError.response?.data?.message ??
+      "Payroll cannot be recomputed because it is already for approval.";
+  
+    SweetAlert.warningAlert(
+      "There is a pending payroll",
+      message
+    );
+  
+    setDateRange(null);
+    setShowProcessing(false);
+  }, [error]);
+  
+  
 
   useEffect(() => {
     if (isFetching && range) {
       setShowProcessing(true);
     }
   }, [isFetching, range]);
+
+  
   
   useEffect(() => {
     if (!isFetching && showProcessing) {
