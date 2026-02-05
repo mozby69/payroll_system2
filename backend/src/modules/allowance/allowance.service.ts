@@ -238,11 +238,16 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
 
-
 export async function fetchArchiveAllowance() {
-
-      const archiveList = await prisma.archive_allowance.findMany({
-        
-      })
-
+    const months = await prisma.archive_allowance.groupBy({
+      by: ["selectedMonth"],
+      orderBy: {
+        selectedMonth: "desc",
+      },
+    });
+  
+    return months.map((m) => ({
+      selectedMonth: m.selectedMonth,
+    }));
   }
+  

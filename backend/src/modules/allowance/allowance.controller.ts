@@ -1,4 +1,4 @@
-import {  computeAllowanceForMonth, fetchAllowanceWithAbsent, saveAllowanceArchive } from "./allowance.service";
+import {  computeAllowanceForMonth, fetchAllowanceWithAbsent, fetchArchiveAllowance, saveAllowanceArchive } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -85,3 +85,17 @@ export const fetchAllowanceSummaryController = async (req: Request, res: Respons
 
   res.json(summary);
 };
+
+
+
+export const fetchArchiveAllowanceController = async (req: Request, res: Response) => {
+  try{
+  
+    const data = await fetchArchiveAllowance();
+
+    return res.status(200).json(data);
+  }
+  catch(error){
+    res.status(500).json({message:`SERVER ERROR: ${error}`})
+  }
+}
