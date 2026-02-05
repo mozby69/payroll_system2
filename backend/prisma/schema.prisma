@@ -234,39 +234,50 @@ model company_details{
 
     branch_code Branch[] @relation
 
+    companyRules BonusRuleCompany[] @relation
+
     @@map("companydetails")
 }
 
 
-model loan_details{
-  loan_id Int @id @default(autoincrement())
-  principal Decimal? @db.Decimal(10,2)
-  loan_type String? @db.VarChar(100)
-  term_value        Int?
-  term_unit         String?  @db.VarChar(10) 
-  start_date DateTime? @db.Date
-  end_date DateTime? @db.Date
-  deduct_allowance Boolean?
-  per_payroll_deduct Decimal? @db.Decimal(10,2)
-  created_at DateTime? @default(now()) 
-  status String? @db.VarChar(50)
-
-
+model loan_details {
+  loan_id              Int      @id @default(autoincrement())
+  principal            Decimal  @db.Decimal(10,2)
+  loan_type            String   @db.VarChar(100)
+  term_value           Int
+  term_unit            String   @db.VarChar(10) 
+  start_date           DateTime @db.Date
+  deduct_allowance     Boolean  @default(true)
+  per_payroll_deduct   Decimal  @db.Decimal(10,2)
+  status               String   @db.VarChar(50) 
+  created_at           DateTime @default(now())
+  cycle_category       String? @db.VarChar(20)
+  extended_term        Decimal @db.Decimal(10,1) @default(0)
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  ledger loan_ledger[]
 
   @@map("loan_details")
 }
 
-model loan_ledger{
-  loan_ledger_id Int @id @default(autoincrement())
-  payment_date DateTime? @db.Date
-  payment_amount Decimal? @db.Decimal(10,2)
-  balance Decimal? @db.Decimal(10,2)
-  date_paid String? @db.VarChar(50)
+model loan_ledger {
+  loan_ledger_id   Int      @id @default(autoincrement())
+  loan_id Int
+  transaction_date DateTime @db.Date
+  transaction_type String   @db.VarChar(50) 
+  debit_amount     Decimal  @db.Decimal(10,2) @default(0)
+  credit_amount    Decimal  @db.Decimal(10,2) @default(0)
+  remarks          String?  @db.VarChar(255)
+  payment_status String? @db.VarChar(50)
+  payroll_cycle        String? @db.VarChar(10)
+  created_at       DateTime @default(now())
+
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  loan loan_details @relation(fields: [loan_id], references: [loan_id], onDelete: Cascade)
 
   @@map("loan_ledger")
 }
@@ -288,8 +299,13 @@ enum FormulaType {
 
 enum BonusStatus {
   GENERATED
-  PAID
+  PENDING
+  RELEASED 
+  CANCELLED
+  RESET
 }
+
+
 
 
 
@@ -311,9 +327,12 @@ model BonusRule {
   updatedAt        DateTime   @updatedAt
   deletedAt        DateTime?
 
-    parentRule      BonusRule? @relation("RuleVersions", fields: [parentRuleId], references: [id])
-    versions        BonusRule[] @relation("RuleVersions")
-    employeeBonuses  EmployeeBonus[] 
+  parentRule      BonusRule? @relation("RuleVersions", fields: [parentRuleId], references: [id])
+  versions        BonusRule[] @relation("RuleVersions")
+  employeeBonuses  EmployeeBonus[] 
+  bonusSummaries   BonusSummary[]
+  companyRule      BonusRuleCompany[]
+
 
     @@unique([code, version])
 }
@@ -323,6 +342,7 @@ model EmployeeBonus {
 
   employeeCode        String
   bonusRuleId       Int
+  bonusSummaryId    Int
 
   amount            Decimal      @db.Decimal(12, 2)
 
@@ -333,13 +353,49 @@ model EmployeeBonus {
 
   generatedAt       DateTime     @default(now())
   paidAt            DateTime?
+  resetAt     DateTime?
 
   employee          Employee?     @relation(fields: [employeeCode], references: [EmpCode])
   bonusRule         BonusRule?    @relation(fields: [bonusRuleId], references: [id])
 
+  summary           BonusSummary @relation(fields: [bonusSummaryId], references: [id])
+
   @@index([employeeCode])
   @@index([bonusRuleId])
-  @@index([generatedForMonth, releasePeriod])
+  @@index([bonusSummaryId])
+  @@index([generatedForMonth, releasePeriod, bonusSummaryId])
+}
+
+model BonusSummary {
+  id              Int    @id @default(autoincrement())
+  bonusRuleId     Int
+  releasePeriod   String 
+  company         String
+  asOfDate        DateTime
+  generateDate    DateTime
+  totalEmployees  Int?
+  totalAmount     Decimal? @db.Decimal(14,2)
+
+  status          BonusStatus @default(GENERATED)
+  releaseDate     DateTime?
+  resetAt     DateTime?
+
+  createdAt        DateTime   @default(now())
+
+  bonusRule        BonusRule @relation(fields: [bonusRuleId], references: [id])
+  employeeBonuses  EmployeeBonus[]
+}
+
+
+model BonusRuleCompany {
+  id                Int     @id @default(autoincrement())
+  bonusRuleId       Int
+  companyCode     String
+
+  bonusRule     BonusRule  @relation(fields: [bonusRuleId], references: [id])
+  companyDetails  company_details @relation(fields: [companyCode], references: [CompanyCode])  
+
+  @@unique([bonusRuleId, companyCode])
 }
 
 // End Bonus Schema 

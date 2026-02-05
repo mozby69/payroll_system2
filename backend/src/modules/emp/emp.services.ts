@@ -35,7 +35,7 @@ const buildWhere = (filters: EmployeeFilterParams) => {
     };
   }
 
-  // console.log("PRISMA WHERE:", JSON.stringify(where, null, 2));
+
   return where;
 };
 
@@ -142,7 +142,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
 
   if (!employee) return null;
 
-  const payroll = employee.employeepayroll[0] ?? null;
+  const payroll = employee.employeepayroll ?? null;
 
   const basicSalary = Number(payroll?.basic_salary ?? 0);
   const cashAssistance = Number(payroll?.cash_assistance ?? 0);

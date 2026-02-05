@@ -33,11 +33,11 @@ export interface EmployeeResponse {
 }
 
 
-export type EmployeeFilters = {
-  department: string[];
-  company: string[];
-  status: string[];
-};
+import { FilterKey } from "./FilterTypes";
+
+export type EmployeeFilters = Partial<
+  Record<FilterKey, string[]>
+>;
 
 
 export type EmpDetails = {

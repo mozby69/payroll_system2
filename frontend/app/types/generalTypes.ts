@@ -29,6 +29,13 @@ export interface EmployeeSummary {
     status: "SUCCESS";
     message: string;
   }
+
+
+  export interface CompanyDetailsType {
+    CompanyCode: string;
+    CompanyCycle: string;
+    CompanyName: string;
+  }
   
 
  export type AuthUser = {

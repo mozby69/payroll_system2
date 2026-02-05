@@ -1,4 +1,5 @@
-import { bonusRuleListSchema, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
+import { bonusRuleListSchema, CreateBonusRuleCompanyForm, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
+import { BonusCompanyRule } from "../types/bonusType";
 import api from "./axios";
 
 
@@ -20,6 +21,12 @@ export async function updateBonusRuleServices(
     const res = await api.put(`/bonus/bonus-rules/${id}` , payload)
     return res.data
 }
+
+
+export async function deleteBonusRuleServices(id: number) {
+    const res = await api.delete(`/bonus/bonus-rules/${id}`)
+    return res.data
+}
   
 
 
@@ -36,3 +43,34 @@ export async function updateBonusRuleServices(
         const res = await api.get("/bonus/employee-bonus/")
         return res.data
     }
+
+
+    export async function createBonusCompanyRulesServices(payload: CreateBonusRuleCompanyForm) {
+            return api.post("/bonus/company-rules", payload)
+    }
+
+    export async function deleteBonusCompanyBonusServices(id: number) {
+        const res = await api.delete(`/bonus/company-rules/${id}`)
+        return res.data
+    }
+
+    export async function getBonusCompanyRulesServices(
+        bonusRuleId: number
+      ): Promise<BonusCompanyRule[]> {
+        const res = await api.get(
+          `/bonus/company-rules/${bonusRuleId}`
+        )
+        return res.data
+      }
+
+
+      export async function resetBonusService() {
+            const res = await api.post("/bonus/reset-bonus")
+            return res.data        
+      }
+
+      export async function submitBonusService() {
+        const res = await api.post("/bonus/submit-bonus")
+        return res.data
+      }
+      

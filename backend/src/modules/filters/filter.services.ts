@@ -35,6 +35,13 @@ export const getFilterOptions = async () =>{
         },
     });
 
+    const loanStatus = await prisma.loan_details.findMany({
+        select:{
+            status:true
+        },
+        distinct:["status"],
+
+    })
     return{
         company: companies.map((c)=>({
             value: c.CompanyCode,
@@ -47,6 +54,10 @@ export const getFilterOptions = async () =>{
         status: statuses.map((e)=>({
             value: e.EmploymentStatus!,
             label: e.EmploymentStatus!
+        })),
+        loanStatus: loanStatus.map((e)=>({
+            value: e.status!,
+            label: e.status!
         })),
     }
 

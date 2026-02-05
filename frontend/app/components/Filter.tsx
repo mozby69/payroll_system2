@@ -6,8 +6,9 @@ import {useEmployeeFilters} from "../hooks/Filters"
 type Props = {
   open: boolean;
   onClose: () => void;
-  filters: Record<string,string[]>;
-  onToggle: (key:string,value:string) => void;
+  filters: Record<string, string[]>;
+  onToggle: (key: string, value: string) => void;
+  filterKeys: readonly string[];
 };
 
 
@@ -16,6 +17,7 @@ export default function FilterModal({
   onClose,
   filters,
   onToggle,
+  filterKeys,
 }: Props) {
   const { data, isLoading } = useEmployeeFilters();
   if (!open) return null;
@@ -30,12 +32,14 @@ export default function FilterModal({
         </div>
 
 
-        {Object.entries(data!).map(([key, values]) => (
-          <div key={key} className="mb-6">
-            <h3 className="font-semibold capitalize mb-2">{key}</h3>
+        {Object.entries(data ?? {})
+          .filter(([key]) => filterKeys.includes(key))
+          .map(([key, values]) => (
+            <div key={key} className="mb-6">
+              <h3 className="font-semibold capitalize mb-2">{key}</h3>
 
-            <div className="flex flex-wrap gap-2">
-              {values.map(({ value, label }) => {
+              <div className="flex flex-wrap gap-2">
+                {values.map(({ value, label }) => {
                   const selectedValues = filters[key] ?? [];
                   const isActive = selectedValues.includes(value);
 
@@ -43,29 +47,28 @@ export default function FilterModal({
                     <button
                       key={value}
                       onClick={() => onToggle(key, value)}
-                      className={`px-3 py-1 rounded-2xl border text-sm transition hover:scale-[1.05] cursor-pointer
-                        ${
-                          isActive
-                            ? "bg-mainhighlight text-white"
-                            : "bg-white text-mainhighlight"
+                      className={`px-3 py-1 rounded-2xl border text-sm transition hover:scale-[1.05]
+                        ${isActive
+                          ? "bg-mainhighlight text-white"
+                          : "bg-white text-mainhighlight"
                         }`}
                     >
                       {label}
                     </button>
                   );
                 })}
-
+              </div>
             </div>
-          </div>
         ))}
 
 
-        <button
+
+        {/* <button
           onClick={onClose}
           className="w-full bg-mainhighlight text-white py-2 rounded-md mt-6"
         >
           Done Filter
-        </button>
+        </button> */}
       </div>
     </div>
   );

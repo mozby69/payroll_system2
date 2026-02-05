@@ -1,3 +1,5 @@
+import { CompanyDetailsType } from "./generalTypes"
+
 export type BonusType =
   | "QUARTERLY"
   | "MIDYEAR"
@@ -28,5 +30,27 @@ export type BonusRuleInfo = {
     employee: EmployeeInfo
     tenureMonths: number
   }
+
+export type InvalidEmployees = {
+  empCode: string
+  name: string
+  basicSalary: number
+  amount: number
+}
+
+ export type BonusErrorResponse = {
+    code: string
+    invalidEmployees: InvalidEmployees[]
+    message: string
+  }
+
+  export type BonusCompanyRule = {
+    id: number,
+    bonusRuleId: number,
+    companyCode: string
+    companyDetails: CompanyDetailsType
+  }
+  
+
   
   

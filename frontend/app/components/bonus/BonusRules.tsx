@@ -1,15 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { useGetAllBonusRules } from "@/app/hooks/useBonus"
+import { useDeleteBonusRules, useGetAllBonusRules } from "@/app/hooks/useBonus"
 import RequestModal from "../Modal"
 import CreateBonusRulesModal from "./modals/CreateBonusRules"
 import { BonusRule } from "@/app/schema/bonus.schema"
+import BonusRuleCompanyModal from "./modals/BonusRuleCompanyModal"
+import toast from "react-hot-toast"
 
 export default function BonusRulesPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
+  const [companyModal, setCompanyModal] = useState(false)
   const { data: bonusRules, isLoading, error } = useGetAllBonusRules()
+  const deleteMutation = useDeleteBonusRules()
   const [selectedRule, setSelectedRule] = useState<BonusRule | null> (null)
+
 
   if (isLoading) {
     return (
@@ -25,6 +30,16 @@ export default function BonusRulesPage() {
         Failed to load bonus rules
       </div>
     )
+  }
+
+  const handleDelete = (rules : BonusRule) => {
+      deleteMutation.mutate(rules.id , {
+        onSuccess:  (data)=>{
+          toast.success(data.message, {
+            position: "top-center",
+          });
+        }
+      })
   }
 
   return (
@@ -101,6 +116,23 @@ export default function BonusRulesPage() {
                   >
                     Edit
                   </button>
+                  <button 
+                      onClick={()=>{
+                        setSelectedRule(rule)
+                        setCompanyModal(true)
+                      }}
+                   className="text-sm ml-2 text-green-600 hover:underline"
+                  >
+                    Company
+                  </button>
+                  <button 
+                      onClick={
+                       ()=> handleDelete(rule)
+                      }
+                   className="text-sm ml-2 text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
@@ -127,6 +159,20 @@ export default function BonusRulesPage() {
             }}
           />
         </RequestModal>
+      )}
+
+      {companyModal && (
+        <RequestModal 
+          title="Configure Company Bonus Rules" 
+          size="md"
+          nested = {true}
+          onClose={() => {
+            setCompanyModal(false)
+            setSelectedRule(null)
+          }}>
+             <BonusRuleCompanyModal  initialData={selectedRule ?? undefined} />
+          </RequestModal>
+
       )}
 
     </div>

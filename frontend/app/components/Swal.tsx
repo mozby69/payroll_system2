@@ -24,8 +24,8 @@ const SweetAlert = {
       title,
       text,
       icon: "success",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#3085d6",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
     });
   },
 
@@ -34,8 +34,8 @@ const SweetAlert = {
       title,
       text,
       icon: "success",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#3085d6",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
     }).then((result) => {
         if (result.isConfirmed && typeof runFuction === "function" || result.isDismissed) {
             runFuction();
@@ -50,9 +50,9 @@ const SweetAlert = {
       text,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "OK",
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
+      cancelButtonColor: "#464646",
     });
   },
 
@@ -61,8 +61,8 @@ const SweetAlert = {
       title,
       text,
       icon: "error",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#d33",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
     });
   },
 
@@ -78,14 +78,48 @@ const SweetAlert = {
       text,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes",
-      cancelButtonText: "No",
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonText: "Confirm",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#6CCC84",
+      cancelButtonColor: "#464646",
     }).then((result) => {
       if (result.isConfirmed && typeof onConfirm === "function") {
         onConfirm();
         
+      }
+    });
+  },
+
+    remarksConfirmationAlert: (
+    title: string = "Are you sure?",
+    text: string = "",
+    placeholder: string = "Enter remarks",
+    onConfirm: (remarks: string) => void
+  ) => {
+    return Swal.fire({
+      title,
+      text,
+      icon: "warning",
+      input: "textarea",
+      inputPlaceholder: placeholder,
+      inputAttributes: {
+        rows: "4",
+      },
+      showCancelButton: true,
+      confirmButtonText: "Confirm",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#6CCC84",
+      cancelButtonColor: "#464646",
+      preConfirm: (value) => {
+        if (!value || !value.trim()) {
+          Swal.showValidationMessage("Remarks are required");
+          return false;
+        }
+        return value;
+      },
+    }).then((result) => {
+      if (result.isConfirmed && typeof onConfirm === "function") {
+        onConfirm(result.value);
       }
     });
   },

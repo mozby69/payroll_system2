@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BonusRule, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
-import { createBonusrules, generateBonus, getAllBonusRules, getEmployeeBonus, updateBonusRuleServices } from "../services/bonus.services";
-import { EmployeeBonus } from "../types/bonusType";
+import { BonusRule, CreateBonusRuleCompanyForm, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
+import { createBonusCompanyRulesServices, createBonusrules, deleteBonusCompanyBonusServices, deleteBonusRuleServices, generateBonus, getAllBonusRules, getBonusCompanyRulesServices, getEmployeeBonus, resetBonusService, submitBonusService, updateBonusRuleServices } from "../services/bonus.services";
+import { BonusCompanyRule, EmployeeBonus } from "../types/bonusType";
 
 export function useGetAllBonusRules(){
     return useQuery<BonusRule[]>({
@@ -17,7 +17,6 @@ export function useCreateBonusRules(){
     return useMutation({
             mutationFn: (payload: CreateBonusRuleForm) =>
                 createBonusrules(payload),
-
                 onSuccess: () =>{
                     queryClient.invalidateQueries({
                         queryKey: ["bonus-rules"]
@@ -36,6 +35,19 @@ export function useUpdateBonusRules(){
     return useMutation({
         mutationFn: ({id, payload}: UpdateBonusRuleArgs) =>
             updateBonusRuleServices(id, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["bonus-rules"]
+            })
+        }
+    })
+}
+
+export function useDeleteBonusRules(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn:(id: number)=>
+            deleteBonusRuleServices(id),
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["bonus-rules"]
@@ -66,5 +78,70 @@ export function useGenerateBonus(){
                 })
             }
 
+    })
+}
+
+
+export function useGetBonusCompanyRules(
+    bonusRuleId: number | null
+  ) {
+    return useQuery<BonusCompanyRule[]>({
+      queryKey: ["bonus-company-rules", bonusRuleId],
+      queryFn: () => {
+        if (!bonusRuleId) return Promise.resolve([])
+        return getBonusCompanyRulesServices(bonusRuleId)
+      },
+      enabled: !!bonusRuleId
+    })
+  }
+  
+
+  export function useDeleteBonusCompanyRUles(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn:(id: number)=>
+            deleteBonusCompanyBonusServices(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["bonus-company-rules"]
+            })
+        }
+    })
+}
+
+
+export function useCreateBonusCompanyRules(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload: CreateBonusRuleCompanyForm) =>
+            createBonusCompanyRulesServices(payload),
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["bonus-company-rules"]
+                })
+            }
+    })
+}
+
+
+export function useResetBonus(){
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: resetBonusService,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bonus-summary"] })
+            queryClient.invalidateQueries({ queryKey: ["employee-bonus"] })
+        }
+    })
+}
+
+export function useSubmitBonus(){
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: submitBonusService,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bonus-summary"] })
+            queryClient.invalidateQueries({ queryKey: ["employee-bonus"] })
+        }
     })
 }

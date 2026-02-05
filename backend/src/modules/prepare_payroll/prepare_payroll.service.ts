@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, generateNextPagibigId, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
-import { FetchEmployeesByCycleParams, loanProps, PaginationParams } from "./prepare_payroll.types";
+import { FetchEmployeesByCycleParams, PaginationParams } from "./prepare_payroll.types";
 
 export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   cycle: "10-25-Cycle" | "15-30-Cycle";
@@ -73,7 +73,7 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
           loan_type:true,
           per_payroll_deduct:true,
           start_date:true,
-          end_date:true,
+          // end_date:true,
          }
       },
       
@@ -134,20 +134,20 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
     PAGIBIG_LOAN: 0,
   };
   
-  const currentMonth = toMonth(new Date());
+  // const currentMonth = toMonth(new Date());
   
-  emp.loan_details.forEach(loan => {
-    if (!loan.loan_type || !loan.per_payroll_deduct) return;
-    if (!loan.start_date || !loan.end_date) return;
+  // emp.loan_details.forEach(loan => {
+  //   if (!loan.loan_type || !loan.per_payroll_deduct) return;
+  //   if (!loan.start_date || !loan.end_date) return;
   
-    const startMonth = toMonth(new Date(loan.start_date));
-    const endMonth = toMonth(new Date(loan.end_date));
-    const isActive = currentMonth >= startMonth && currentMonth <= endMonth;
+  //   const startMonth = toMonth(new Date(loan.start_date));
+  //   const endMonth = toMonth(new Date(loan.end_date));
+  //   const isActive = currentMonth >= startMonth && currentMonth <= endMonth;
   
-    if (isActive) {
-      loanMap[loan.loan_type as keyof typeof loanMap] = loan.per_payroll_deduct.toNumber();
-    }
-  });
+  //   if (isActive) {
+  //     loanMap[loan.loan_type as keyof typeof loanMap] = loan.per_payroll_deduct.toNumber();
+  //   }
+  // });
 
 
   return {
@@ -255,45 +255,6 @@ export async function saveEmployeePayroll({empCode,basic_salary,cash_assistance,
     }
   });
 }
-
-
-
-
-
-
-export async function saveEmployeeLoan(data: loanProps) {
-  const totalTerms = data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
-
-  if (totalTerms <= 0) {
-    throw new Error("Invalid loan terms");
-  }
-
-  const perPayroll = Math.floor((data.principal / totalTerms / 2) * 100) / 100;
-  const startDate = new Date(data.start_date);
-  const endDate = addMonths(startDate, totalTerms - 1);
-
-  const loan = await prisma.loan_details.create({
-    data: {
-      EmpCodeId: data.empCode,
-      loan_type: data.loan_type,
-      principal: data.principal,
-      term_value: data.term_value,
-      term_unit: data.term_unit,
-      start_date: startDate,
-      end_date: endDate,
-      deduct_allowance: false,
-      per_payroll_deduct: perPayroll,
-      status: "Active",
-    },
-  });
-
-  if (!loan?.loan_id) {
-    throw new Error("Loan not persisted");
-  }
-
-  return loan;
-}
-
 
 
 
