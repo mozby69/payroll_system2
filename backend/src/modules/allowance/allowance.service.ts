@@ -150,28 +150,18 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       },
     });
   
-    return employees.map((emp) => {
-      const totalAbsentHours = emp.employeesummary.reduce(
-        (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
-        0
-      );
-  
-      const cashAssistance =
-        emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
-  
-      const ecola =
-        emp.employeepayroll?.ecola?.toNumber() ?? 0;
-  
+    //return employees.map((emp) => {
+      const rows = employees.map((emp) => {
+
+      const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
+      const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
+      const ecola = emp.employeepayroll?.ecola?.toNumber() ?? 0;
       const cashDailyRate = cashAssistance / daysInPrevMonth;
       const ecolaDailyRate = ecola / daysInPrevMonth;
-  
-      const totalCashAllowance =
-        cashAssistance - cashDailyRate * totalAbsentHours;
-  
-      const totalEcola =
-        ecola - ecolaDailyRate * totalAbsentHours;
-  
+      const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
+      const totalEcola = ecola - (ecolaDailyRate * totalAbsentHours);
       const total = totalCashAllowance + totalEcola;
+      const totalDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
   
       return {
         EmpCode: emp.EmpCode,
@@ -181,37 +171,54 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         absent: totalAbsentHours,
         total,
         selectedMonth,
+        totalDeduction
       };
     });
+
+    const summary = rows.reduce(
+      (acc, row) => {
+        acc.cash_allowance += row.cash_allowance;
+        acc.ecola += row.ecola;
+        acc.total += row.total;
+        acc.totalDeduction += row.totalDeduction;
+        return acc;
+      },
+      {
+        cash_allowance: 0,
+        ecola: 0,
+        total: 0,
+        totalDeduction: 0,
+      }
+    );
+  
+    return {
+      rows,
+      summary,
+    };
   }
   
-
-
-
-
-
-export async function saveAllowanceArchive(selectedMonth: string) {
-    
-    const existing = await prisma.archive_allowance.findFirst({
-        where: { selectedMonth },
-      });
-    
-      if (existing) {
-        throw new Error("ALLOWANCE_ALREADY_SAVED");
-      }
-    const computed = await computeAllowanceForMonth(selectedMonth);
   
-    if (!computed.length) return;
+
+
+
+
+
+  export async function saveAllowanceArchive(selectedMonth: string) {
+    const existing = await prisma.archive_allowance.findFirst({
+      where: { selectedMonth },
+    });
+  
+    if (existing) {
+      throw new Error("ALLOWANCE_ALREADY_SAVED");
+    }
+  
+    const { rows } = await computeAllowanceForMonth(selectedMonth);
+  
+    if (!rows.length) return;
   
     await prisma.$transaction(async (tx) => {
-      await tx.archive_allowance.deleteMany({
-        where: {
-          selectedMonth,
-        },
-      });
-  
       await tx.archive_allowance.createMany({
-        data: computed.map((emp) => ({
+        data: rows.map((emp) => ({
           EmpCode: emp.EmpCode,
           name: emp.name,
           cash_allowance: emp.cash_allowance,
@@ -219,9 +226,21 @@ export async function saveAllowanceArchive(selectedMonth: string) {
           absent: emp.absent,
           total: emp.total,
           selectedMonth: emp.selectedMonth,
+          totalDeduction: emp.totalDeduction,
           createdAt: nowPH(),
         })),
       });
     });
   }
   
+
+
+
+
+
+
+  export async function fetchArchiveAllowance() {
+
+      
+
+  }

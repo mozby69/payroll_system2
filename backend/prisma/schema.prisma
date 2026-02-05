@@ -380,6 +380,7 @@ model archive_allowance{
   total Decimal? @db.Decimal(10,2)
   createdAt DateTime?  @map("created_at")
   selectedMonth String? @db.VarChar(100) @map("selected_month")
+  totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
 
   @@map("archive_allowance")
 }

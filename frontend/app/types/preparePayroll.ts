@@ -4,6 +4,7 @@ export type Column<T> = {
     header: string;
     accessor?: (row: T) => string | number;
     render?: (row: T) => React.ReactNode;
+    footer?: React.ReactNode | (() => React.ReactNode);
   };
  
 

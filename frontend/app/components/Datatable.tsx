@@ -3,9 +3,15 @@ import { Column } from "../types/preparePayroll";
 interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
+  showFooter?: boolean;
 }
 
-export default function Datatable<T>({ columns, data }: DataTableProps<T>) {
+export default function Datatable<T>({
+  columns,
+  data,
+  showFooter = false,
+}: DataTableProps<T>) {
+  const hasFooter = showFooter && columns.some(col => col.footer);
 
   return (
     <div className="w-full overflow-x-auto">
@@ -13,8 +19,10 @@ export default function Datatable<T>({ columns, data }: DataTableProps<T>) {
         <thead>
           <tr className="bg-linear-to-r from-blue-950 to-blue-900 text-white">
             {columns.map((col, index) => (
-              <th key={index}
-                className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider border-b border-blue-600">
+              <th
+                key={index}
+                className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider border-b border-blue-600"
+              >
                 {col.header}
               </th>
             ))}
@@ -26,18 +34,23 @@ export default function Datatable<T>({ columns, data }: DataTableProps<T>) {
             <tr>
               <td
                 colSpan={columns.length}
-                className="py-6 text-center text-slate-500">
+                className="py-6 text-center text-slate-500"
+              >
                 No data available
               </td>
             </tr>
           ) : (
-            data.map((row, rowIndex) => ( 
-              <tr key={rowIndex}
-                className="hover:bg-slate-50 transition-colors duration-150 border border-blue-100">
+            data.map((row, rowIndex) => (
+              <tr
+                key={rowIndex}
+                className="hover:bg-slate-50 transition-colors duration-150 border border-blue-100"
+              >
                 {columns.map((col, colIndex) => (
-                  <td key={colIndex}
-                    className="px-6 py-4 text-sm text-slate-700 whitespace-nowrap">
-                   {col.render ? col.render(row) : col.accessor?.(row)}
+                  <td
+                    key={colIndex}
+                    className="px-6 py-4 text-sm text-slate-700 whitespace-nowrap"
+                  >
+                    {col.render ? col.render(row) : col.accessor?.(row)}
                   </td>
                 ))}
               </tr>
@@ -45,6 +58,22 @@ export default function Datatable<T>({ columns, data }: DataTableProps<T>) {
           )}
         </tbody>
 
+        {hasFooter && (
+          <tfoot>
+            <tr className="border-t border-slate-300 font-semibold text-slate-800">
+              {columns.map((col, index) => (
+                <td
+                  key={index}
+                 className="px-6 py-3 whitespace-nowrap"
+                >
+                  {typeof col.footer === "function"
+                    ? col.footer()
+                    : col.footer ?? null}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );

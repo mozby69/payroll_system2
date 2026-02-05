@@ -1,4 +1,4 @@
-import {  fetchAllowanceWithAbsent, saveAllowanceArchive } from "./allowance.service";
+import {  computeAllowanceForMonth, fetchAllowanceWithAbsent, saveAllowanceArchive } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -70,4 +70,18 @@ export const saveAllowanceController = async (req: Request, res: Response) => {
       message: "Failed to save allowance",
     });
   }
+};
+
+
+
+export const fetchAllowanceSummaryController = async (req: Request, res: Response) => {
+  const selectedMonth = req.query.month as string;
+
+  if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+    return res.status(400).json({ message: "Invalid month" });
+  }
+
+  const { summary } = await computeAllowanceForMonth(selectedMonth);
+
+  res.json(summary);
 };

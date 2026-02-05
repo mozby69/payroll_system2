@@ -33,10 +33,8 @@ export function useFetchAllowance(params: {
   }
   
 
-  export function useSaveAllowance(
-    selectedMonth: string,
-    onSuccess?: () => void
-  ) {
+  export function useSaveAllowance(selectedMonth: string, onSuccess?: () => void) {
+    const queryClient = useQueryClient();
     return useMutation({
       mutationFn: async () => {
         if (!selectedMonth) {
@@ -52,6 +50,13 @@ export function useFetchAllowance(params: {
   
       onSuccess: () => {
         SweetAlert.successAlert("Allowance saved successfully");
+        queryClient.invalidateQueries({
+          queryKey: ["allowance-list"],
+        });
+  
+        queryClient.invalidateQueries({
+          queryKey: ["allowance-summary", selectedMonth],
+        });
         onSuccess?.();
       },
   
@@ -71,6 +76,29 @@ export function useFetchAllowance(params: {
           message ?? "Failed to save allowance"
         );
       },
+    });
+  }
+
+
+
+
+
+
+  export function useAllowanceSummary(month?: string) {
+    return useQuery<{
+      cash_allowance: number;
+      ecola: number;
+      total: number;
+      totalDeduction: number;
+    }>({
+      queryKey: ["allowance-summary", month],
+      queryFn: async () => {
+        const res = await api.get("/allowance/summary", {
+          params: { month },
+        });
+        return res.data;
+      },
+      enabled: !!month,
     });
   }
   
