@@ -94,7 +94,7 @@ export default function AllowancePage(){
                       ? "border-b-2 border-blue-600 text-blue-700"
                       : "text-slate-500 hover:text-slate-700"
                   }`}>
-                Current Allowance
+                Employee Allowance
               </button>
 
               <button onClick={() => setActiveTab("archive")}
