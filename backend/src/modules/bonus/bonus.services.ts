@@ -1,6 +1,8 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
 import { calculateBonusAmount, getTenureInMonths } from "./bonus.utils"
+import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 
 //Bonus Rules
 export async function createBonusRuleService(data: CreateBonusRuleInput) {
@@ -34,7 +36,16 @@ export async function updateBonusRuleService(
         where: {id: rule.id},
         data: {isActive: false}
       })
-      return newRule
+
+      await prisma.bonusRuleCompany.updateMany({
+        where: {bonusRuleId: rule.id},
+        data: {
+          bonusRuleId: newRule.id
+        }
+      }
+    )     
+    
+    return newRule
   }
   return prisma.bonusRule.update({
     where: { id },
@@ -151,28 +162,83 @@ export async function generateBonusForAllEmployees({
   bonusRuleId,
   releasePeriod,
   company,
+  companyCode, 
   asOfDate,
   generateDate
 }: {
   bonusRuleId: number
   releasePeriod: string
+  companyCode?: string
   company: string
   asOfDate: Date
   generateDate: Date
 }) {
   return prisma.$transaction(async tx => {
     const rule = await tx.bonusRule.findUnique({
-      where: { id: bonusRuleId }
+      where: { id: bonusRuleId },
+      include: {
+        companyRule: true
+      }
     })
 
     if (!rule) {
       throw new Error("Bonus rule not found")
     }
 
+    const pendingChecker = await tx.employeeBonus.findMany({
+        where: {
+          status: "GENERATED"
+        }
+    })
+
+    const blockingSummary = await tx.bonusSummary.findFirst({
+      where: {
+        bonusRuleId,
+        releasePeriod,
+        status: {
+          in: ["GENERATED", "PENDING", "RELEASED"]
+        }
+      }
+    })
+
+
+    if(pendingChecker.length > 0 || blockingSummary){
+      throw {
+        code: "PENDING_BONUS",
+        status: 409,
+        message: "A bonus generation is already pending. Please complete or cancel the existing process before generating a new bonus."
+      }
+      
+    }
+
+    const companies = await tx.bonusRuleCompany.findMany({
+      where: {
+        bonusRuleId,
+        ...(companyCode ? { companyCode } : {})
+      }
+    })
+
+    if (companies.length === 0) {
+      throw new Error("NO_COMPANY_ASSIGNED")
+    }
+
+    const companyCodes = companies.map(c => c.companyCode)
+
+ 
     const employees = await tx.employee.findMany({
-      where: { EmployeeStatus: "Active" },
+      where: {
+        EmployeeStatus: "Active",
+         BranchCode: {
+          CompanyCode: {
+            CompanyCode: {
+              in: companyCodes
+            }
+          }
+         }
+      },
       include: { employeepayroll: true }
     })
+
 
     const invalidEmployees: Array<{
       empCode: string
@@ -181,13 +247,11 @@ export async function generateBonusForAllEmployees({
       amount: number
     }> = []
 
-    // 🔹 FIRST PASS — VALIDATION ONLY
     for (const emp of employees) {
       if (!emp.EmployementDate) continue
 
       const tenure = getTenureInMonths(emp.EmployementDate, asOfDate)
       if (tenure < rule.minTenureMonths) continue
-      console.log("tenure: ", tenure);
       const payroll = emp.employeepayroll
       if (!payroll || !payroll.basic_salary){
         invalidEmployees.push({
@@ -209,17 +273,18 @@ export async function generateBonusForAllEmployees({
         })
       }
     }
-    // ❌ STOP EVERYTHING if invalid data exists
-    if (invalidEmployees.length > 0) {
-      throw new Error(
-        JSON.stringify({
-          code: "INVALID_BONUS_AMOUNT",
-          invalidEmployees
-        })
-      )
-    }
 
-    // 🔹 SECOND PASS — GENERATION (SAFE)
+
+    // if (invalidEmployees.length > 0) {
+    //   throw new Error(
+    //     JSON.stringify({
+    //       code: "INVALID_BONUS_AMOUNT",
+    //       invalidEmployees
+    //     })
+    //   )
+    // }
+
+ 
     const bonusSummary = await tx.bonusSummary.create({
       data: {
         bonusRuleId,
@@ -235,44 +300,66 @@ export async function generateBonusForAllEmployees({
     let totalEmployees = 0
     let totalAmount = 0
 
+
+    const existingBonuses = await tx.employeeBonus.findMany({
+      where: {
+        bonusRuleId: rule.id,
+        releasePeriod,
+        bonusSummaryId: bonusSummary.id
+      },
+      select: {
+        employeeCode: true
+      }
+    }) 
+    
+
+    const existingEmployeeCodes = new Set(
+      existingBonuses.map(b => b.employeeCode)
+    )
+
+    const rows: Prisma.EmployeeBonusCreateManyInput[] = []
+    
+
     for (const emp of employees) {
       if (!emp.EmployementDate) continue
-
+    
       const tenure = getTenureInMonths(emp.EmployementDate, asOfDate)
       if (tenure < rule.minTenureMonths) continue
-
+    
       const payroll = emp.employeepayroll
-      if (!payroll || !payroll.basic_salary) continue
-
-      const basicSalary = Number(payroll.basic_salary)
-      const amount = calculateBonusAmount(rule.formulaType, basicSalary)
-
-      const exists = await tx.employeeBonus.findFirst({
-        where: {
-          employeeCode: emp.EmpCode,
-          bonusRuleId: rule.id,
-          releasePeriod
-        }
+      if (!payroll?.basic_salary) continue
+    
+      if (existingEmployeeCodes.has(emp.EmpCode)) continue
+    
+      const amount = calculateBonusAmount(
+        rule.formulaType,
+        Number(payroll.basic_salary)
+      )
+    
+      if (amount <= 0) continue
+    
+      rows.push({
+        employeeCode: emp.EmpCode,
+        bonusRuleId: rule.id,
+        amount,
+        bonusSummaryId: bonusSummary.id,
+        generatedForMonth: rule.eligibleMonth,
+        releasePeriod,
+        status: "GENERATED"
       })
-
-      if (exists) continue
-
-      await tx.employeeBonus.create({
-        data: {
-          employeeCode: emp.EmpCode,
-          bonusRuleId: rule.id,
-          amount,
-          bonusSummaryId: bonusSummary.id,
-          generatedForMonth: rule.eligibleMonth,
-          releasePeriod,
-          status: "GENERATED"
-        }
-      })
-
+    
       totalEmployees++
       totalAmount += amount
     }
 
+    if (rows.length > 0) {
+      await tx.employeeBonus.createMany({
+        data: rows,
+        skipDuplicates: true
+      })
+    }
+    
+ 
     await tx.bonusSummary.update({
       where: { id: bonusSummary.id },
       data: {
@@ -287,10 +374,14 @@ export async function generateBonusForAllEmployees({
 
 export async function getEmployeeBonusService() {
   const rows = await prisma.employeeBonus.findMany({
+    where: {
+      status: "GENERATED"
+    },
     select: {
       employeeCode: true,
       amount: true,
       bonusRuleId: true,
+      releasePeriod: true,
 
       bonusRule: {
         select: {
@@ -312,14 +403,114 @@ export async function getEmployeeBonusService() {
     }
   })
 
+
+  
   return rows.map(row => ({
     ...row,
     tenureMonths: row.employee?.EmployementDate
-      ? getTenureInMonths(row.employee.EmployementDate, new Date())
+      ? getTenureInMonths(row.employee.EmployementDate, getLastDayOfMonthFromPeriod(row.releasePeriod))
       : 0
   }))
 }
 
+
+
+
+export async function resetBonusService() {
+  return prisma.$transaction(async tx => {
+
+    const summaries = await tx.bonusSummary.findMany({
+      where: {
+        status: "GENERATED"
+      },
+      select: {
+        id: true
+      }
+    })
+
+    if (summaries.length === 0) {
+      return {
+        success: false,
+        message: "No generated bonus to reset"
+      }
+    }
+
+    const summaryIds = summaries.map(s => s.id)
+
+    await tx.employeeBonus.updateMany({
+      where: {
+        bonusSummaryId: { in: summaryIds },
+        status: "GENERATED"
+      },
+      data: {
+        status: "RESET",
+        resetAt: new Date()
+      }
+    })
+
+    await tx.bonusSummary.updateMany({
+      where: {
+        id: { in: summaryIds }
+      },
+      data: {
+        status: "RESET",
+        resetAt: new Date()
+      }
+    })
+
+    return {
+      success: true,
+      message: "Bonus successfully reset",
+      affectedSummaries: summaryIds.length
+    }
+  })
+}
+
+export async function submitBonusSerive(){
+    return prisma.$transaction(async tx => {
+
+      const summaries = await tx.bonusSummary.findMany({
+        where: {
+          status: "GENERATED"
+        },
+        select: {
+          id: true
+        }
+      })
+  
+      if (summaries.length === 0) {
+        return {
+          success: false,
+          message: "No generated bonus to submit"
+        }
+      }
+      
+     const summaryIds = summaries.map(s => s.id)
+      await tx.bonusSummary.updateMany({
+        where: {
+          id: {in: summaryIds}
+        },
+        data: {
+            status: "PENDING",
+            createdAt: new Date()
+        }
+      })
+
+     const update = await tx.employeeBonus.updateMany({
+        where: {
+          bonusSummaryId: {in: summaryIds}
+        },
+        data:{
+          status: "PENDING",
+          generatedAt: new Date()
+        }
+      })
+      return {
+        updated: update.count,
+        summaryIds 
+      }
+    })
+}
 
 
 

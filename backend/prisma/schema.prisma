@@ -291,8 +291,10 @@ enum FormulaType {
 
 enum BonusStatus {
   GENERATED
+  PENDING
   RELEASED 
   CANCELLED
+  RESET
 }
 
 
@@ -343,6 +345,7 @@ model EmployeeBonus {
 
   generatedAt       DateTime     @default(now())
   paidAt            DateTime?
+  resetAt     DateTime?
 
   employee          Employee?     @relation(fields: [employeeCode], references: [EmpCode])
   bonusRule         BonusRule?    @relation(fields: [bonusRuleId], references: [id])
@@ -351,7 +354,8 @@ model EmployeeBonus {
 
   @@index([employeeCode])
   @@index([bonusRuleId])
-  @@index([generatedForMonth, releasePeriod])
+  @@index([bonusSummaryId])
+  @@index([generatedForMonth, releasePeriod, bonusSummaryId])
 }
 
 model BonusSummary {
@@ -366,6 +370,7 @@ model BonusSummary {
 
   status          BonusStatus @default(GENERATED)
   releaseDate     DateTime?
+  resetAt     DateTime?
 
   createdAt        DateTime   @default(now())
 

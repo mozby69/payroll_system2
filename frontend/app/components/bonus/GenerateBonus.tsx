@@ -1,12 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { useGetEmployeeBonus } from "@/app/hooks/useBonus"
+import { useGetEmployeeBonus, useResetBonus, useSubmitBonus } from "@/app/hooks/useBonus"
 import RequestModal from "../Modal"
 import CreateBonusModal from "./modals/CreateBonus"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
+
+  const resetBonusMutation = useResetBonus()
+  const submitBonusMutation = useSubmitBonus()
+
 
   const {
     data: employeeBonuses,
@@ -43,7 +47,20 @@ export default function GenerateBonusPage() {
             View and generate employee bonus payouts
           </p>
         </div>
-
+        <button
+          onClick={() => submitBonusMutation.mutate()}
+          className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium
+                     hover:bg-blue-700"
+        >
+          Submit
+        </button>
+    <button
+          onClick={() => resetBonusMutation.mutate()}
+          className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium
+                     hover:bg-blue-700"
+        >
+          Reset
+        </button>
         <button
           onClick={() => setIsOpenAddModal(true)}
           className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium

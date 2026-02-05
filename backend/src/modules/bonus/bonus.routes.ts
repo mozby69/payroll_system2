@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getEmployeeBonusController, updateBonusRuleController } from "./bonus.controller";
+import { creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getEmployeeBonusController, resetBonusController, submitBonusController, updateBonusRuleController } from "./bonus.controller";
 
 
 const router = Router();
@@ -19,6 +19,8 @@ router.get("/company-rules/:bonusRuleId", getBonusRuleCompanyController)
 // Generate Bonus
 router.post("/generate-bonus", generateBonusController)
 router.get("/employee-bonus", getEmployeeBonusController)
+router.post("/reset-bonus", resetBonusController)
+router.post("/submit-bonus", submitBonusController)
 
 
 export default router;

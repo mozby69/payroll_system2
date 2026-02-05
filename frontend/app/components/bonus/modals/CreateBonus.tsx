@@ -13,6 +13,7 @@ import { delay } from "@/app/helper/delay"
 import { useGetCompanyDetails } from "@/app/hooks/useGeneral"
 import { BonusErrorResponse, InvalidEmployees } from "@/app/types/bonusType"
 import axios from "axios"
+import SweetAlert from "../../Swal"
 
 
 function getReleasePeriodFromEligibleMonth(
@@ -147,8 +148,12 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
         if (!data) return
         if (data.code === "INVALID_BONUS_AMOUNT") {
           setInvalidEmployees(data.invalidEmployees)
-          console.log("Invalud: ", data.invalidEmployees)
-
+        }
+        if(data.code === "PENDING_BONUS"){
+          SweetAlert.errorAlert(
+            "Bonus Generation Blocked",
+            data.message,
+          )
         }
 
         setTimeout(() => {

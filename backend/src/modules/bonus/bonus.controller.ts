@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getEmployeeBonusService, updateBonusRuleService } from "./bonus.services"
+import { createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getEmployeeBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
 import { json } from "zod";
 
@@ -191,13 +191,14 @@ export async function updateBonusRuleController(
   ) {
     try {
       const { bonusRuleId, releasePeriod, asOfDate, company, generateDate } = req.body
-      // 1. Basic validation (controller-level only)
+
       if (!bonusRuleId || !releasePeriod || !asOfDate) {
         return res.status(400).json({
           message: "Missing required fields"
         })
       }
-      // 2. Call service
+ 
+
      const bonus = await generateBonusForAllEmployees({
         bonusRuleId: Number(bonusRuleId),
         releasePeriod,
@@ -206,21 +207,25 @@ export async function updateBonusRuleController(
         generateDate: new Date(generateDate)
       })
   
-      // 3. Response
       return res.status(200).json({
         message: "Bonuses generated successfully 1",
         data: bonus
       })
     } catch (err: any) {
-      try {
-        const parsed = JSON.parse(err.message)
-        if (parsed.code === "INVALID_BONUS_AMOUNT") {
-          return res.status(400).json(parsed)
-        }
-      } catch {}
+      switch (err?.code) {
+        case "INVALID_BONUS_AMOUNT":
+          return res.status(400).json(err)
     
-      throw err
+        case "PENDING_BONUS":
+          return res.status(409).json(err)
+    
+        default:
+          return res.status(500).json({
+            message: "Internal server error"
+          })
+      }
     }
+    
   }
   
 
@@ -239,6 +244,37 @@ export async function updateBonusRuleController(
         })
       }
   }
+
+// bonus.controller.ts
+export async function resetBonusController(
+  req: Request,
+   res: Response) {
+  try {
+    const result = await resetBonusService()
+    return res.status(200).json(result)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({
+      message: "Failed to reset bonus"
+    })
+  }
+}
+
+
+export async function submitBonusController(
+  req: Request,
+   res: Response) {
+  try {
+    const result = await submitBonusSerive()
+    return res.status(200).json(result)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({
+      message: "Failed to submit bonus"
+    })
+  }
+}
+
 
 
 

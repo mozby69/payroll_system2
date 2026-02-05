@@ -62,4 +62,15 @@ export async function deleteBonusRuleServices(id: number) {
         )
         return res.data
       }
+
+
+      export async function resetBonusService() {
+            const res = await api.post("/bonus/reset-bonus")
+            return res.data        
+      }
+
+      export async function submitBonusService() {
+        const res = await api.post("/bonus/submit-bonus")
+        return res.data
+      }
       

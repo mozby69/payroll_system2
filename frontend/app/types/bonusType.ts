@@ -41,6 +41,7 @@ export type InvalidEmployees = {
  export type BonusErrorResponse = {
     code: string
     invalidEmployees: InvalidEmployees[]
+    message: string
   }
 
   export type BonusCompanyRule = {
