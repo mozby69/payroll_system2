@@ -11,6 +11,7 @@ import bonusRoutes from "../modules/bonus/bonus.routes";
 import payrollArchiveRoutes from "../modules/payroll_archive/payroll_archive.routes";
 import filterRoutes from "../modules/filters/filter.routes";
 import generalRoutes from "../modules/general/general.routes";
+import allowanceRoutes from "../modules/allowance/allowance.routes";
 
 
 const router = Router();
@@ -33,6 +34,7 @@ router.use("/payroll-archive", payrollArchiveRoutes);
 router.use("/opt", filterRoutes);
 
 router.use("/general", generalRoutes)
+router.use("/allowance",allowanceRoutes);
 
 
 

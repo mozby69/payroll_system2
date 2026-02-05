@@ -36,9 +36,10 @@ interface Props {
       const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
       const queryClient = useQueryClient();
 
-      
+     
 
       const { data: employee_payroll } = useComputedPayroll({
+          cycle,
           page,
           limit: 6,
           search: debouncedSearch,

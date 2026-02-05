@@ -5,25 +5,25 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePa
 import { FetchEmployeesByCycleParams, loanProps, PaginationParams } from "./prepare_payroll.types";
 
 export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
-cycle: "10-25-Cycle" | "15-30-Cycle";
-  page: number;
-  limit: number;
-  search?: string;
-}) {
-  const where = {
-    BranchCode: {
-      CompanyCode: {
-        CompanyCycle: cycle,
+  cycle: "10-25-Cycle" | "15-30-Cycle";
+    page: number;
+    limit: number;
+    search?: string;
+  }) {
+    const where = {
+      BranchCode: {
+        CompanyCode: {
+          CompanyCycle: cycle,
+        },
       },
-    },
-    ...(search && {
-      OR: [
-        { EmpCode: { contains: search } },
-        { Firstname: { contains: search } },
-        { Lastname: { contains: search } },
-      ],
-    }),
-  };
+      ...(search && {
+        OR: [
+          { EmpCode: { contains: search } },
+          { Firstname: { contains: search } },
+          { Lastname: { contains: search } },
+        ],
+      }),
+    };
 
  // const total = await prisma.employee.count({ where });
  const total = await prisma.employee.count({
@@ -330,8 +330,9 @@ export async function searchEmployees(keyword: string) {
 
 
 
-export async function ComputePayroll({page,limit,search}: {page: number; limit: number; search?: string}) {
+export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
   const where: Prisma.EmployeeSummaryWhereInput = {
+    CycleCategory: cycle,
     ...(search && {
       OR: [
         { EmpCodeId: { contains: search } },

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard ,Archive, Calculator, MenuIcon, ShieldCheck , Receipt, User, XIcon,HandCoins, CircleDollarSign,BookMarked  } from "lucide-react";
+import { LayoutDashboard ,Archive, Calculator, MenuIcon, ShieldCheck , Receipt, User, XIcon,HandCoins, CircleDollarSign,BookMarked,PhilippinePeso  } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +32,13 @@ const MENU_SECTIONS = [
     items: [
         { label: "Statutory Deductions", path:"", icon: ShieldCheck },
         { label: "Employees Loan", path:"", icon: HandCoins },
+    ],
+  },
+  {
+    title: "Benefits",
+    items: [
+     
+        { label: "Employees Allowance", path:"/allowance", icon: PhilippinePeso },
     ],
   },
 ];

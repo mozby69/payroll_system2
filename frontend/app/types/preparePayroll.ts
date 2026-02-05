@@ -4,6 +4,7 @@ export type Column<T> = {
     header: string;
     accessor?: (row: T) => string | number;
     render?: (row: T) => React.ReactNode;
+    footer?: React.ReactNode | (() => React.ReactNode);
   };
  
 
@@ -56,6 +57,7 @@ export type Column<T> = {
   export type PaginatedResponse<T> = {
     data: T[];
     meta: {
+      cycle: string;
       total: number;
       page: number;
       limit: number;

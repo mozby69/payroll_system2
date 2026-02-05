@@ -101,6 +101,7 @@ export interface ComputedProps{
 }
 
 export const fetchComputedPayroll = async (params: {
+  cycle: string;
   page: number;
   limit: number;
   search?: string;
