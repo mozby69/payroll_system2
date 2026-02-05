@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import clsx from "clsx";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "danger" |"positive";
+type ButtonVariant = "primary" | "secondary" | "outline" | "danger" |"positive" | "edit" | "main";
 
 type Props = {
     children: ReactNode;
@@ -33,12 +33,14 @@ export default function GenButton({
                 "px-4 py-2 rounded-md text-sm font-medium transition-all duration-150",
                 "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer inline-flex items-center gap-2",
                 {
-                primary: "bg-mainhighlight text-mainLight hover:bg-[#ff4920]",
-                positive: "bg-positive text-mainLight hover:bg-[#44a75c]",
-                secondary: "bg-mainGray text-mainLight hover:bg-gray-300 hover:text-mainGray",
+                primary: "border-2 border-mainhighlight bg-mainhighlight text-mainLight hover:bg-[#ff4920]",
+                edit: "border-2 border-decision bg-decision text-mainLight hover:bg-[#faa81c]",
+                positive: "border-2 border-positive bg-positive text-mainLight hover:bg-[#44a75c] ",
+                secondary: "border-2 border-mainGray bg-mainGray text-mainLight hover:bg-mainLightGray hover:text-mainGray ",
                 outline:
                     "border-2 border-mainDark text-mainDark hover:bg-mainDark hover:text-mainLight",
-                danger: "bg-negative text-mainLight hover:bg-red-700",
+                danger: "border-2 border-negative bg-negative text-mainLight hover:bg-red-700",
+                main: "border-2 border-mainDark bg-mainBg text-mainLight hover:bg-[#071658] hover:text-mainLight",
                 }[variant],
                 className
             )}

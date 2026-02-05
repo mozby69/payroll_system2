@@ -1,0 +1,125 @@
+import { useQueryClient, useMutation, useQuery,keepPreviousData} from "@tanstack/react-query";
+import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchEmpLoanById,fetchLoanDetails, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
+import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload } from "../types/loanTypes";
+
+
+export function useAddLoan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addEmployeeLoan,
+    onSuccess: (_, loan_id) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ["addloan"] });
+
+      queryClient.invalidateQueries({
+        queryKey: ["emp-loan", loan_id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loan-details", loan_id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loans"],
+      });
+    },
+  });
+}
+
+ 
+export const useLoans = (
+  page: number,
+  limit = 3,
+  search = "",
+  filters: LoanFilters,
+  enabled = true
+) => {
+  return useQuery<LoanResponse, Error>({
+    queryKey: ["loans", page, limit, search, filters],
+    queryFn: () => fetchAllLoans(page, limit, search, filters),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+};
+
+
+
+export const useLoanDetails = (loan_id: number, enabled: boolean) => {
+  return useQuery({
+    queryKey: ["loan-details", loan_id],
+    queryFn: () => fetchLoanDetails(loan_id),
+    enabled,
+  });
+};
+
+
+export const useEmpLoanById = (
+  loan_id: number,
+  enabled = true
+) => {
+  return useQuery<EmpLoanResponse>({
+    queryKey: ["emp-loan", loan_id],
+    queryFn: () => fetchEmpLoanById(loan_id),
+    enabled,
+  });
+};
+
+export const useUpdateLoan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({loan_id,payload,}:UpdateLoanVariables) => 
+      updateEmployeeLoan(loan_id, payload),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["emp-loan", variables.loan_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["loan-details", variables.loan_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["loans"],
+      });
+    },
+  });
+};
+
+export const useClosedLoan = () =>{
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ loan_id, payload }: CloseLoanVariables) =>
+      closedEmployeeLoan(loan_id, payload),
+
+    onSuccess: (_, variables) =>{
+     queryClient.invalidateQueries({
+        queryKey: ["emp-loan", variables.loan_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["loan-details", variables.loan_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["loans"],
+      });
+    },
+  });
+};
+
+
+
+export const usePayEmployeeLoan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ loan_id, actionType }: PayLoanPayload) =>
+      payEmployeeLoan(loan_id, actionType),
+
+    onSuccess: (_, { loan_id }) => {
+      queryClient.invalidateQueries({ queryKey: ["emp-loan", loan_id] });
+      queryClient.invalidateQueries({ queryKey: ["loan-details", loan_id] });
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+  });
+};

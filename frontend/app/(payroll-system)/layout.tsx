@@ -36,10 +36,10 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
         />
       </aside>
 
-      <main className="flex-1 overflow-y-auto h-screen relative isolate">
+      <main className="flex-1 overflow-y-auto h-screen relative">
 
 
-        <div className="sticky top-0 z-50 text-md flex items-center justify-end bg-mainNeutral px-8 py-2 shadow-[0px_0px_6px_4px_rgba(0,0,0,0.1)] min-h-14">
+        <div className="sticky top-0 z-10 text-md flex items-center justify-end bg-mainNeutral px-8 py-2 shadow-[0px_0px_6px_4px_rgba(0,0,0,0.1)] min-h-14">
             <div onClick={() => setOpenMenu(prev => !prev)} className="inline-flex gap-x-2 cursor-pointer hover:scale-[1.03] transition duration-75">
               <User2 className="w-4"/>
               <h1>{user.username}</h1>
@@ -61,11 +61,6 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
                         await logout();
 
-                        await SweetAlert.successAlert(
-                          "Signed out",
-                          "You have been logged out successfully"
-                        );
-
                         window.location.href = "/login";
                       }
                     );
@@ -79,7 +74,7 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
             
         </div>
 
-        <div className="flex flex-col bg-white w-full min-h-screen relative z-0">
+        <div className="flex flex-col bg-white w-full min-h-screen relative">
           {children}
         </div>
 

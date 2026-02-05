@@ -7,7 +7,8 @@ import { useEmployees } from "../../hooks/employees";
 import FilterModal from "../../components/Filter";
 import ActiveFilters from "@/app/components/FilterObject";
 import GenButton from "@/app/components/Buttons";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+
 
 export default function EmployeeList() {
     
@@ -19,12 +20,17 @@ export default function EmployeeList() {
     const page = Number(searchParams.get("page") ?? 1);
     const limit = 10;
 
+    const FILTER_KEYS = ["department", "company", "status"] as const;
 
-    const filters = {
-        department: searchParams.getAll("department"),
-        company: searchParams.getAll("company"),
-        status: searchParams.getAll("status"),
-    };
+    type FilterKey = (typeof FILTER_KEYS)[number];
+
+    const filters = FILTER_KEYS.reduce<Record<FilterKey, string[]>>(
+      (acc, key) => {
+        acc[key] = searchParams.getAll(key);
+        return acc;
+      },
+      {} as Record<FilterKey, string[]>
+    );
 
 
     const { data, isLoading, isError } = useEmployees(
@@ -219,6 +225,7 @@ export default function EmployeeList() {
         onClose={() => setOpen(false)}
         filters={filters}
         onToggle={toggleFilter}
+        filterKeys={FILTER_KEYS}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useAddLoan, useEmployeeSearch } from "../hooks/usePreparePayroll";
+import {useEmployeeSearch } from "../hooks/usePreparePayroll";
 import SweetAlert from "../components/Swal";
+import { useAddLoan } from "../hooks/useLoans";
 
 
 
@@ -23,6 +24,7 @@ export const AddLoanModal = ({ onClose }: { onClose: () => void }) => {
   const [termValue, setTermValue] = useState(1);
   const [termUnit, setTermUnit] = useState<"MONTHS" | "YEARS">("MONTHS");
   const [startDate, setStartDate] = useState("");
+  const [deductAllowance, setDeductAllowance] = useState(false);
 
   const handleSave = async () => {
     if (!selectedEmp || !principal || !startDate) return;
@@ -35,6 +37,7 @@ export const AddLoanModal = ({ onClose }: { onClose: () => void }) => {
         term_value: termValue,
         term_unit: termUnit,
         start_date: startDate,
+        deduct_allowance: deductAllowance,
       });
   
       if (!result?.loan_id) {

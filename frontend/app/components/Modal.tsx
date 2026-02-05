@@ -34,9 +34,9 @@ export default function RequestModal({size,nested = false,onClose,title,children
   
 
   return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center ${nested ? "bg-[#2a272785]" : "bg-[#11060685]"}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center ${nested ? "bg-[#2a272785]" : "bg-[#11060685]"}` }>
 
-      <div className={`bg-white rounded-xl shadow-lg  relative ${sizeMap[size]} max-h-160`}>
+      <div className={`bg-white rounded-xl shadow-lg  relative ${sizeMap[size]}`}>
 
         { (onClose || title) && (
         <div className="flex justify-between items-center px-6 py-3 border-b border-gray-200 ">
