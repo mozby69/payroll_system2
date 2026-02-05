@@ -29,7 +29,7 @@ const MENU_SECTIONS = [
     title: "Deductions",
     items: [
         { label: "Statutory Deductions", path:"", icon: ShieldCheck },
-        { label: "Employees Loan", path:"", icon: HandCoins },
+        { label: "Employees Loan", path:"/employee-loan", icon: HandCoins },
     ],
   },
 ];

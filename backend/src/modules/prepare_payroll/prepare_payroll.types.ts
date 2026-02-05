@@ -21,13 +21,3 @@ export type SSSRange = {
   }
   
 
-  export interface loanProps{
-    empCode: string;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
-    principal: number;
-    term_value: number;
-    term_unit: "MONTHS" | "YEARS";
-    start_date: Date;
-  }
-  
-  
