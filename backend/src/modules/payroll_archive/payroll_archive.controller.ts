@@ -7,10 +7,7 @@ import { Request,Response } from "express";
 
 export const displayCompletePayrollController = async (req: Request, res: Response) => {
   try{
-  
-
     const data = await displayCompletePayroll(['PENDING']);
-
     return res.status(200).json({ status: "SUCCESS",data });
   }
   catch(error){

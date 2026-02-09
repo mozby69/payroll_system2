@@ -24,3 +24,33 @@ export interface AllowanceProps {
   
 
 
+export interface AllowanceSummary{
+  allowance_name:string;
+  total_cash_allowance:string;
+  total_ecola:string,
+  grand_total:string;
+  totalDeduction:string;
+  selectedMonth:string;
+}
+
+export interface AllowanceSummaryResponse{
+  data: AllowanceSummary[];
+    meta: AllowanceMeta;
+}
+
+
+export interface ArchiveAllowance {
+  EmpCode: string;
+  name: string;
+  cash_allowance: number | null;
+  ecola: number | null;
+  totalDeduction: number | null;
+  total: number | null;
+  createdAt: string;
+}
+
+
+
+export interface ArchiveAllowanceResponse {
+  data: ArchiveAllowance[];
+}

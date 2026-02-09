@@ -154,6 +154,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
+  
+
 
 
 
@@ -194,7 +196,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       Grosspay: emp.gross_pay,
       w_tax: emp.wtax,
       Netpay: Number(emp.net_pay),
-      Basic_salary: Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0),
+      Basic_salary: Number(emp.semi_monthly),
   
       SSS_employee_share: emp.sss_contrib_employee,
       SSS_employer_share: emp.sss_contrib_employer,
@@ -236,6 +238,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Total_PhilhealthContributionEmployee: payload.reduce((sum, emp) => sum + Number(emp.philhealth_employee_share ?? 0),0),
           Total_PhilhealthContributionEmployer: payload.reduce((sum, emp) => sum + Number(emp.philhealth_employee_share ?? 0),0),
           total_wtax: payload.reduce((sum, emp) => sum + Number(emp.w_tax ?? 0),0),
+          total_basic_salary: payload.reduce((sum, emp) => sum + Number(emp.Basic_salary ?? 0),0),
           createdAt:nowPH(),
         },
     });

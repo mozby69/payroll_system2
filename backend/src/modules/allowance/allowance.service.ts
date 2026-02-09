@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { allowanceprops } from "./allowance.types";
-import {  getDaysInMonth, getPreviousMonth } from "./allowance.helper";
+import { allowanceprops, SummaryAllowanceProps } from "./allowance.types";
+import {  formatAllowanceMonth, getDaysInMonth, getPreviousMonth } from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 
 
@@ -204,19 +204,37 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
   export async function saveAllowanceArchive(selectedMonth: string) {
-    const existing = await prisma.archive_allowance.findFirst({
-      where: { selectedMonth },
-    });
+    // 1️⃣ Check if month already saved (SUMMARY table)
+    const existingSummary =
+      await prisma.archive_allowance_summary.findUnique({
+        where: { selectedMonth },
+      });
   
-    if (existing) {
+    if (existingSummary) {
       throw new Error("ALLOWANCE_ALREADY_SAVED");
     }
   
-    const { rows } = await computeAllowanceForMonth(selectedMonth);
+    // 2️⃣ Compute allowance
+    const { rows, summary } = await computeAllowanceForMonth(selectedMonth);
   
     if (!rows.length) return;
   
+    // 3️⃣ Transaction
     await prisma.$transaction(async (tx) => {
+      // A. Save SUMMARY first
+      await tx.archive_allowance_summary.create({
+        data: {
+          allowance_name: formatAllowanceMonth(selectedMonth),
+          selectedMonth,
+          total_cash_allowance: summary.cash_allowance,
+          total_ecola: summary.ecola,
+          grand_total: summary.total,
+          totalDeduction: summary.totalDeduction,
+          createdAt: nowPH(),
+        },
+      });
+  
+      // B. Save DETAIL rows
       await tx.archive_allowance.createMany({
         data: rows.map((emp) => ({
           EmpCode: emp.EmpCode,
@@ -225,29 +243,84 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           ecola: emp.ecola,
           absent: emp.absent,
           total: emp.total,
-          selectedMonth: emp.selectedMonth,
           totalDeduction: emp.totalDeduction,
+          selectedMonth, // FK
           createdAt: nowPH(),
         })),
       });
     });
   }
+
+
+
+
+
+
+
+
+export async function displayAllowanceList({page,limit,search}: SummaryAllowanceProps) {
+
+  const allowanceWhere: Prisma.archive_allowance_summaryWhereInput = {
   
+    ...(search && {
+      OR: [
+        { allowance_name: { contains: search } }
+      ],
+    }),
+  };
 
 
-
-
-
-export async function fetchArchiveAllowance() {
-    const months = await prisma.archive_allowance.groupBy({
-      by: ["selectedMonth"],
-      orderBy: {
-        selectedMonth: "desc",
+  const allowance_list = await prisma.archive_allowance_summary.findMany({
+    where: allowanceWhere,
+    skip: (page - 1) * limit,
+    take: limit,
+      select:{
+        allowance_name:true,
+        total_cash_allowance:true,
+        total_ecola:true,
+        grand_total:true,
+        totalDeduction:true,
+        selectedMonth:true,
       },
-    });
-  
-    return months.map((m) => ({
-      selectedMonth: m.selectedMonth,
-    }));
+      orderBy:{
+        id:'desc',
+      },
+  })
+    
+  const total = await prisma.archive_allowance_summary.count({ where: allowanceWhere });
+
+  return {
+    data:allowance_list,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
   }
   
+}
+
+
+
+
+export async function getArchiveAllowanceByMonth(selectedMonth: string) {
+  return prisma.archive_allowance.findMany({
+    where: {
+      selectedMonth,
+    },
+    select: {
+      EmpCode: true,
+      name: true,
+      cash_allowance: true,
+      ecola: true,
+      absent: true,
+      total: true,
+      totalDeduction: true,
+      createdAt: true,
+    },
+    orderBy: {
+      EmpCode: 'asc',
+    },
+  });
+}
