@@ -161,7 +161,6 @@ export async function getBonusCompanyRuleServices(bonusRuleId: number) {
 export async function generateBonusForAllEmployees({
   bonusRuleId,
   releasePeriod,
-  company,
   companyCode, 
   asOfDate,
   generateDate
@@ -169,7 +168,6 @@ export async function generateBonusForAllEmployees({
   bonusRuleId: number
   releasePeriod: string
   companyCode?: string
-  company: string
   asOfDate: Date
   generateDate: Date
 }) {
@@ -289,7 +287,6 @@ export async function generateBonusForAllEmployees({
       data: {
         bonusRuleId,
         releasePeriod,
-        company,
         asOfDate,
         generateDate,
         totalAmount: 0,
@@ -335,6 +332,9 @@ export async function generateBonusForAllEmployees({
         rule.formulaType,
         Number(payroll.basic_salary)
       )
+
+
+
     
       if (amount <= 0) continue
     
@@ -508,6 +508,29 @@ export async function submitBonusSerive(){
       return {
         updated: update.count,
         summaryIds 
+      }
+    })
+}
+
+export async function getBonusSummaryService() {
+    return await prisma.bonusSummary.findMany({
+      where: {
+        status: {
+          notIn: ["RESET", "GENERATED"]
+        }
+      },
+      include:{
+        bonusRule: {
+          select: {
+            code: true,
+            name: true,
+            companyRule: {
+              select: {
+                companyCode: true
+              }
+            }
+          }
+        }
       }
     })
 }

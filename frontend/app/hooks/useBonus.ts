@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BonusRule, CreateBonusRuleCompanyForm, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
-import { createBonusCompanyRulesServices, createBonusrules, deleteBonusCompanyBonusServices, deleteBonusRuleServices, generateBonus, getAllBonusRules, getBonusCompanyRulesServices, getEmployeeBonus, resetBonusService, submitBonusService, updateBonusRuleServices } from "../services/bonus.services";
-import { BonusCompanyRule, EmployeeBonus } from "../types/bonusType";
+import { createBonusCompanyRulesServices, createBonusrules, deleteBonusCompanyBonusServices, deleteBonusRuleServices, generateBonus, getAllBonusRules, getBonusCompanyRulesServices, getBonusSummaryService, getEmployeeBonus, resetBonusService, submitBonusService, updateBonusRuleServices } from "../services/bonus.services";
+import { BonusCompanyRule, BonusSummaryType, EmployeeBonus } from "../types/bonusType";
 
 export function useGetAllBonusRules(){
     return useQuery<BonusRule[]>({
@@ -143,5 +143,14 @@ export function useSubmitBonus(){
             queryClient.invalidateQueries({ queryKey: ["bonus-summary"] })
             queryClient.invalidateQueries({ queryKey: ["employee-bonus"] })
         }
+    })
+}
+
+
+export function useGetBonusSummary(){
+    return useQuery<BonusSummaryType[]>({
+        queryKey: ["bonus-summary"],
+        queryFn: getBonusSummaryService,
+        staleTime: 1000 * 60 * 5
     })
 }

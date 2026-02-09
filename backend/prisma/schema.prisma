@@ -15,7 +15,22 @@ model User{
   password String 
   role     String? @default("user") 
 
+  isActive  Boolean   @default(true)
+
+  createdAt   DateTime    @default(now())
+  updateAt    DateTime    @updatedAt
+  
+
   @@map("user")
+}
+
+
+model Role {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  description  String?
+
+
 }
 
 
@@ -370,7 +385,6 @@ model BonusSummary {
   id              Int    @id @default(autoincrement())
   bonusRuleId     Int
   releasePeriod   String 
-  company         String
   asOfDate        DateTime
   generateDate    DateTime
   totalEmployees  Int?

@@ -63,7 +63,7 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
   
   const [form, setForm] = useState<GenerateBonusInput>({
     bonusRuleId: 0,
-    company: "",
+
     releasePeriod: "",
     asOfDate: "",
     generateDate: ""
@@ -142,7 +142,7 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
         setShowProcessing(false)
         onClose()
       },
-      onError: (error) => {
+      onError: async (error) => {
         if (!axios.isAxiosError<BonusErrorResponse>(error)) return
         const data = error.response?.data
         if (!data) return
@@ -150,17 +150,14 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
           setInvalidEmployees(data.invalidEmployees)
         }
         if(data.code === "PENDING_BONUS"){
+          await delay(800)
+          setShowProcessing(false)
           SweetAlert.errorAlert(
             "Bonus Generation Blocked",
             data.message,
           )
         }
-
-        setTimeout(() => {
-          setShowProcessing(false)
-        }, 800)
       }
-      
       
     })
   }
@@ -180,7 +177,7 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
           </p>
         </div>
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> 
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"> 
          {/* Generate Date */}
         <div  >
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -199,45 +196,9 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
             />
             {errors?.generateDate?._errors?.[0] && ( <p className="mt-1 text-xs text-red-600"> {errors.generateDate._errors[0]} </p> )}
           </div>
-          {/* Company */}
-          <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    Company
-  </label>
-
-  <select
-    name="company"
-    value={form.company}
-    onChange={handleChange}
-    className={`w-full rounded-md border px-3 py-2 text-sm
-      ${errors?.company
-        ? "border-red-500 focus:ring-red-400"
-        : "border-gray-300 focus:ring-blue-500"
-      } focus:outline-none focus:ring-2`}
-  >
-    <option value="">Select Company</option>
-
-    {companyDetails?.map(company => (
-      <option
-        key={company.CompanyCode}
-        value={company.CompanyCode}
-      >
-       {company.CompanyCode} - {company.CompanyName}
-      </option>
-    ))}
-  </select>
-
-  {errors?.company?._errors?.[0] && (
-    <p className="mt-1 text-xs text-red-600">
-      {errors.company._errors[0]}
-    </p>
-  )}
-</div>
-
     
-    </div>
-            {/* BONUS RULE */}
-            <div >
+ {/* BONUS RULE */}
+ <div  className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Bonus Rule
           </label>
@@ -261,6 +222,9 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
           {errors?.bonusRuleId?._errors?.[0] && ( <p className="mt-1 text-xs text-red-600"> {errors.bonusRuleId._errors[0]} </p> )}
         </div> 
 
+    
+    </div>
+           
         {/* PERIODS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
     

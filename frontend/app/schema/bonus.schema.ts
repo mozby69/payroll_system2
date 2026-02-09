@@ -62,7 +62,7 @@ export type BonusRuleList =
   export const GenerateBonusSchema = z.object({
     bonusRuleId: z.number().int().min(1, "Bonus rule is required"),
 
-    company: z.string().min(1, "Company is required"),
+
 
     // YYYY-MM
     releasePeriod: z

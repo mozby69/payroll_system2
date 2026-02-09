@@ -73,4 +73,10 @@ export async function deleteBonusRuleServices(id: number) {
         const res = await api.post("/bonus/submit-bonus")
         return res.data
       }
+
+
+      export async function getBonusSummaryService() {
+            const res = await api.get("/bonus/get-summary")
+            return res.data
+      }
       

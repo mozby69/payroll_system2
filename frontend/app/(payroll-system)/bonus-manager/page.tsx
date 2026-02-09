@@ -1,4 +1,5 @@
 "use client"
+import BonusArchivePage from "@/app/components/bonus/BonusArchive"
 import BonusRulesPage from "@/app/components/bonus/BonusRules"
 import GenerateBonusPage from "@/app/components/bonus/GenerateBonus"
 import { TabButton } from "@/app/components/TabButton"
@@ -56,9 +57,7 @@ export default function BonusManager() {
       <div className="flex-1 overflow-auto p-6">
         {activeTab === "GENERATE" && <GenerateBonusPage />}
         {activeTab === "ARCHIVE" && (
-          <div className="text-gray-500 text-sm">
-            Archive coming soon…
-          </div>
+            <BonusArchivePage />
         )}
         {activeTab === "RULES" && <BonusRulesPage />}
       </div>

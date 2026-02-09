@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getEmployeeBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
+import { createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
 import { json } from "zod";
 
@@ -190,7 +190,7 @@ export async function updateBonusRuleController(
     res: Response
   ) {
     try {
-      const { bonusRuleId, releasePeriod, asOfDate, company, generateDate } = req.body
+      const { bonusRuleId, releasePeriod, asOfDate, generateDate } = req.body
 
       if (!bonusRuleId || !releasePeriod || !asOfDate) {
         return res.status(400).json({
@@ -202,7 +202,6 @@ export async function updateBonusRuleController(
      const bonus = await generateBonusForAllEmployees({
         bonusRuleId: Number(bonusRuleId),
         releasePeriod,
-        company,
         asOfDate: new Date(asOfDate),
         generateDate: new Date(generateDate)
       })
@@ -273,6 +272,22 @@ export async function submitBonusController(
       message: "Failed to submit bonus"
     })
   }
+}
+
+export async function getBonusSummaryController(
+    req: Request,
+    res: Response
+) {
+  try{
+    const result = await getBonusSummaryService()
+    return res.status(200).json(result)
+    } catch (err) {
+    console.error(err)
+    return res.status(500).json({
+      message: "Failed to fetch bonus summary"
+    })
+  }
+  
 }
 
 

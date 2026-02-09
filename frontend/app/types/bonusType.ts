@@ -45,10 +45,31 @@ export type InvalidEmployees = {
   }
 
   export type BonusCompanyRule = {
-    id: number,
-    bonusRuleId: number,
+    id: number
+    bonusRuleId: number
     companyCode: string
     companyDetails: CompanyDetailsType
+  }
+
+  export type BonusSummaryType = {
+      id: number
+      bonusRuleId: number
+      releasePeriod: string
+      asOfDate: string
+      generateDate: string
+      totalEmployees: number
+      totalAmount: number
+      status: string
+      releaseDate: string
+      resetAt: string
+      createdAt: string
+      bonusRule: {
+        code: string
+        name: string
+        companyRule: {
+          companyCode: string
+        }[]
+      }
   }
   
 
