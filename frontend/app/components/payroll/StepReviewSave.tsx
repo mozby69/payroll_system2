@@ -7,7 +7,6 @@ import { dummySummary } from "@/app/types/dummyData";
 import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
 import { useQueryClient } from "@tanstack/react-query";
 import SweetAlert from "../Swal";
-import { usePayrollRealtime } from "@/app/hooks/useRealtime";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
 
 
@@ -19,7 +18,6 @@ interface Props {
 }
 
 export default function StepReviewSave({ onBack }: Props) {
-  usePayrollRealtime();
   const [loading, setLoading] = useState(false);
   const { data, isLoading } = useDisplayPayroll();
   const savePayroll = useSavePayroll();

@@ -102,6 +102,7 @@ model EmployeeSummary{
   createdAt DateTime?
   updatedAt DateTime?
   status String? @db.VarChar(100) @default("PENDING")
+  selected_payroll_date Json? @map("selected_payroll_date")
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -133,6 +134,7 @@ model totalPayroll{
   Total_PhilhealthContributionEmployer Decimal? @db.Decimal(10,2)  @map("total_philhealth_employer")
   total_wtax Decimal? @db.Decimal(10,2) @map("total_wtax")
   total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
+  selected_payroll_date Json? @map("selected_payroll_date")
 
   @@map("total_payroll")
 }

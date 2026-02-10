@@ -4,6 +4,8 @@ import { toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
+import { PayrollDateRange } from "../api/api.types";
+import { isPayrollDateRange } from "./payroll_archive.helper";
 
 
 
@@ -58,6 +60,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           NightShiftAtt:true,
           NightShiftOtAtt:true,
           EmpCodeId:true,
+          selected_payroll_date:true,
           EmpCode:{
             select:{
               Firstname:true,
@@ -171,11 +174,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       data: { status: "FOR_APPROVAL" },
     });
   
-    io.emit("payroll:updated");
+    io.emit("payroll:changed");
     return result;
   }
   
-
 
 
 
@@ -206,8 +208,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
   
       philhealth_employee_share: emp.philhealth_contrib,
       philhealth_employer_share: emp.philhealth_contrib,
-  
+
       EmpCodeId: emp.EmpCodeId,
+     
     }));
   
     await prisma.employeePayrollArchive.createMany({
@@ -219,6 +222,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     const payCycle = payload[0].PayCode;
     const cycleCategory = payload[0].cycle_category;
     const payrollPeriod = payload[0].payroll_period;
+    const rawSelectedPayrollDate = computed[0]?.selected_payroll_date;
+
+    if (!rawSelectedPayrollDate || !isPayrollDateRange(rawSelectedPayrollDate)) {
+      throw new Error("Invalid selected_payroll_date");
+    }
+
 
 
     await prisma.totalPayroll.create({
@@ -226,6 +235,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           PayCycle:payCycle,
           cycle_category:cycleCategory,
           payroll_period:payrollPeriod,
+          selected_payroll_date: {
+            start_date: rawSelectedPayrollDate.start_date,
+            end_date: rawSelectedPayrollDate.end_date,
+          },
           Total_GrossPay: payload.reduce((sum, emp) => sum + Number(emp.Grosspay ?? 0),0),
           Total_NetPay: payload.reduce((sum, emp) => sum + Number(emp.Netpay ?? 0),0),
           Total_Late: payload.reduce((sum, emp) => sum + Number(emp.Late ?? 0),0),
@@ -250,6 +263,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       where: { status: "FOR_APPROVAL" },
       data: { status: "DONE" },
     });
+
+    io.emit("payroll:calendarUpdate");
   
     return payload.length;
   }
@@ -268,7 +283,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       data: { status: "PENDING" },
     });
 
-    io.emit("payroll:updated");
+    io.emit("payroll:changed");
   
     return data;
   }

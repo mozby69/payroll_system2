@@ -4,7 +4,7 @@ import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadShee
 import SweetAlert from "@/app/components/Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useDisplayPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
-import { usePayrollRealtime } from "@/app/hooks/useRealtime";
+
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import { useState } from "react";
 
@@ -13,7 +13,7 @@ import { useState } from "react";
 
 
 export default function FinancialPage(){
-      usePayrollRealtime();
+
       const { data, isLoading } = useDisplayForApprovalPayroll();
       const isEmpty = !data || !data.data || data.data.length === 0;
       const savePayroll = useSaveFinalPayroll();
