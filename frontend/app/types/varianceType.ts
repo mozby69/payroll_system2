@@ -1,5 +1,15 @@
 
 
+export interface Variance {
+    basic: number;
+    sssEmployee: number;
+    sssEmployer: number;
+    phil: number;
+    pagibigEmployee: number;
+    pagibigEmployer: number;
+  }
+
+  
 
 export interface PreviousPeriod {
     cycle_category: string;
@@ -25,10 +35,22 @@ export interface PreviousPeriod {
     total_pagibig_employee: number;
     total_pagibig_employer: number;
     previous: PreviousPeriod[];
+    variance: Variance;
   }
   
-  export interface VarianceResponse {
-    success: boolean;
-    current_period: CurrentPeriod;
+
+  export interface VarianceRow {
+    PayCycle: string;
+    basic: number;
+    sssEmployee: number;
+    sssEmployer: number;
+    phil: number;
   }
-  
+
+
+export interface VarianceResponse {
+  success: boolean;
+  current_period: {
+    rows: VarianceRow[];
+  };
+}

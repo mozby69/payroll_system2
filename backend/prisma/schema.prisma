@@ -136,6 +136,8 @@ model totalPayroll{
   total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
   selected_payroll_date Json? @map("selected_payroll_date")
 
+ employee_archives EmployeePayrollArchive[]
+
   @@map("total_payroll")
 }
 
@@ -216,6 +218,8 @@ model EmployeePayrollArchive {
   status String? @db.VarChar(100) @default("PENDING")
   created_at DateTime @default(now())
 
+  totalPayrollId Int @map("total_payroll_id")
+  totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])

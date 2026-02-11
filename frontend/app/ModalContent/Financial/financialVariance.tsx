@@ -1,126 +1,91 @@
 import { useDisplayVariance } from "@/app/hooks/useVariance";
 
 
-
 export default function FinancialVarianceModal() {
     const { data, isLoading } = useDisplayVariance();
   
-    if (isLoading || !data?.current_period) {
-      return <div className="p-4 text-sm text-gray-500">Loading...</div>;
-    }
+    if (isLoading || !data?.current_period?.rows) {
+        return <div className="p-4 text-sm text-gray-500">Loading...</div>;
+      }
+      
   
-    const current = data.current_period;
-    const previous = current.previous;
+      const rows = data.current_period.rows;
+
   
-    const formatCurrency = (value: number) =>
-      value.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+    const currencyFormatter = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   
-    const parseNumber = (value: string) => Number(value ?? 0);
+    const formatCurrency = (value?: number | null): string => {
+      return currencyFormatter.format(Number(value ?? 0));
+    };
   
-    const variance = {
-      basic:
-        current.total_semi_monthly -
-        previous.reduce(
-          (sum, p) => sum + parseNumber(p.total_basic_salary),
-          0
-        ),
-      sssEmployee:
-        current.total_sss_employee -
-        previous.reduce(
-          (sum, p) => sum + parseNumber(p.Total_SSSContributionEmployee),
-          0
-        ),
-      sssEmployer:
-        current.total_sss_employer -
-        previous.reduce(
-          (sum, p) => sum + parseNumber(p.Total_SSSContributionEmployer),
-          0
-        ),
-      phil:
-        current.total_phil -
-        previous.reduce(
-          (sum, p) => sum + parseNumber(p.Total_PhilhealthContributionEmployee),
-          0
-        ),
+    const formatSigned = (value?: number | null) => {
+      const numeric = Number(value ?? 0);
+      const formatted = formatCurrency(Math.abs(numeric));
+      return numeric < 0 ? `(${formatted})` : formatted;
     };
   
     return (
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">
-          FOR THE PERIOD: {current.paycode}
+          FOR THE PERIOD: {rows[rows.length - 2]?.PayCycle ?? ""}
         </h2>
   
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-100 border">
-              <th className="border p-2 text-left">PayCycle</th>
-              <th className="border p-2 text-right">Basic</th>
-              <th className="border p-2 text-right">SSS Employee</th>
-              <th className="border p-2 text-right">SSS Employer</th>
-              <th className="border p-2 text-right">PhilHealth</th>
+            <tr className="bg-gray-100 border border-slate-100">
+              <th className="border border-slate-300 p-2 text-left">PayCycle</th>
+              <th className="border border-slate-300 p-2 text-right">Basic</th>
+              <th className="border border-slate-300 p-2 text-right">SSS Employee</th>
+              <th className="border border-slate-300 p-2 text-right">SSS Employer</th>
+              <th className="border border-slate-300 p-2 text-right">PhilHealth</th>
             </tr>
           </thead>
+  
           <tbody>
-            {previous.map((p) => (
-              <tr key={p.PayCycle} className="border">
-                <td className="border p-2">{p.PayCycle}</td>
-                <td className="border p-2 text-right">
-                  {formatCurrency(parseNumber(p.total_basic_salary))}
-                </td>
-                <td className="border p-2 text-right">
-                  {formatCurrency(
-                    parseNumber(p.Total_SSSContributionEmployee)
-                  )}
-                </td>
-                <td className="border p-2 text-right">
-                  {formatCurrency(
-                    parseNumber(p.Total_SSSContributionEmployer)
-                  )}
-                </td>
-                <td className="border p-2 text-right">
-                  {formatCurrency(
-                    parseNumber(p.Total_PhilhealthContributionEmployee)
-                  )}
-                </td>
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const isVariance = row.PayCycle === "VARIANCE";
+              const isCurrent =
+                row.PayCycle !== "VARIANCE" &&
+                row === rows[rows.length - 2];
   
-            {/* Current Period */}
-            <tr className="border bg-blue-50 font-medium">
-              <td className="border p-2">{current.paycode}</td>
-              <td className="border p-2 text-right">
-                {formatCurrency(current.total_semi_monthly)}
-              </td>
-              <td className="border p-2 text-right">
-                {formatCurrency(current.total_sss_employee)}
-              </td>
-              <td className="border p-2 text-right">
-                {formatCurrency(current.total_sss_employer)}
-              </td>
-              <td className="border p-2 text-right">
-                {formatCurrency(current.total_phil)}
-              </td>
-            </tr>
-  
-            {/* Variance Row */}
-            <tr className="border-t-2 border-black font-bold bg-gray-100">
-              <td className="border p-2">VARIANCE</td>
-              <td className="border p-2 text-right">
-                {formatCurrency(variance.basic)}
-              </td>
-              <td className="border p-2 text-right">
-                {formatCurrency(variance.sssEmployee)}
-              </td>
-              <td className="border p-2 text-right">
-                {formatCurrency(variance.sssEmployer)}
-              </td>
-              <td className="border p-2 text-right">
-                {formatCurrency(variance.phil)}
-              </td>
-            </tr>
+              return (
+                <tr
+                  key={row.PayCycle}
+                  className={`border border-slate-300 ${
+                    isVariance
+                      ? "border-t-2 border-slate-300 font-bold bg-gray-100"
+                      : isCurrent
+                      ? "bg-blue-50 font-medium"
+                      : ""
+                  }`}
+                >
+                  <td className="border border-slate-300 p-2">{row.PayCycle}</td>
+                  <td className="border border-slate-300 p-2 text-right">
+                    {isVariance
+                      ? formatSigned(row.basic)
+                      : formatCurrency(row.basic)}
+                  </td>
+                  <td className="border border-slate-300 p-2 text-right">
+                    {isVariance
+                      ? formatSigned(row.sssEmployee)
+                      : formatCurrency(row.sssEmployee)}
+                  </td>
+                  <td className="border border-slate-300 p-2 text-right">
+                    {isVariance
+                      ? formatSigned(row.sssEmployer)
+                      : formatCurrency(row.sssEmployer)}
+                  </td>
+                  <td className="border border-slate-300 p-2 text-right">
+                    {isVariance
+                      ? formatSigned(row.phil)
+                      : formatCurrency(row.phil)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
