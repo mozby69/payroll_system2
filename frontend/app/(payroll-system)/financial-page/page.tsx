@@ -3,7 +3,7 @@ import RequestModal from "@/app/components/Modal";
 import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadSheet";
 import SweetAlert from "@/app/components/Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
-import {  useDisplayForApprovalPayroll, useDisplayPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
+import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import { useState } from "react";
@@ -19,6 +19,9 @@ export default function FinancialPage(){
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
       const [isModalOpen, setIsModalOpen] = useState(false);
+
+      const payCode = data?.data?.[0]?.PayCode ?? "-";
+
 
      const rows: SpreadsheetRow[] = (data?.data ?? []).map((emp) => ({
         name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
@@ -134,7 +137,10 @@ export default function FinancialPage(){
               </div>
             </div>
         
-          
+                <div className="mt-8 px-4 text-slate-700">
+                  <span className="font-semibold">Payroll Period:</span> {payCode}
+                </div>
+
               <SpreadSheet data={rows} totals={totals}/>
 
 
