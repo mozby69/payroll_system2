@@ -5,6 +5,8 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePa
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { any } from "zod";
+import { PayrollDateRange } from "../api/api.types";
+import { isPayrollDateRange } from "./payroll_archive.helper";
 
 
 
@@ -59,6 +61,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           NightShiftAtt:true,
           NightShiftOtAtt:true,
           EmpCodeId:true,
+          selected_payroll_date:true,
           EmpCode:{
             select:{
               Firstname:true,
@@ -155,6 +158,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
+  
+
 
 
 
@@ -170,7 +175,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       data: { status: "FOR_APPROVAL" },
     });
   
-    io.emit("payroll:updated");
+    io.emit("payroll:changed");
     return result;
   }
   
@@ -179,80 +184,127 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
-
   export async function saveComputedFinalPayroll() {
-    const computed = await displayCompletePayroll(['FOR_APPROVAL']);
+    const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
   
     if (!computed || computed.length === 0) return 0;
   
-    const payload = computed.map((emp) => ({
-      PayCode: emp.PayCode,
-      Late: emp.late_count,
-      Absent: emp.absence,
-      cycle_category: emp.CycleCategory,
-      payroll_period: emp.PayrollPeriod,
-      Overtime: emp.overtime,
-      Grosspay: emp.gross_pay,
-      w_tax: emp.wtax,
-      Netpay: Number(emp.net_pay),
-      Basic_salary: Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0),
+    const payCycle = computed[0].PayCode;
+    const cycleCategory = computed[0].CycleCategory;
+    const payrollPeriod = computed[0].PayrollPeriod;
+    const rawSelectedPayrollDate = computed[0]?.selected_payroll_date;
   
-      SSS_employee_share: emp.sss_contrib_employee,
-      SSS_employer_share: emp.sss_contrib_employer,
+    if (!rawSelectedPayrollDate || !isPayrollDateRange(rawSelectedPayrollDate)) {
+      throw new Error("Invalid selected_payroll_date");
+    }
   
-      Pagibig_employee_share: emp.pagibig_contrib_employee,
-      Pagibig_employer_share: emp.pagibig_contrib_employer,
+    // ================= AGGREGATE TOTALS =================
+    const totals = computed.reduce(
+      (acc, emp) => {
+        acc.gross += Number(emp.gross_pay ?? 0);
+        acc.net += Number(emp.net_pay ?? 0);
+        acc.late += Number(emp.late_count ?? 0);
+        acc.absent += Number(emp.absence ?? 0);
+        acc.overtime += Number(emp.overtime ?? 0);
+        acc.sssEmployee += Number(emp.sss_contrib_employee ?? 0);
+        acc.sssEmployer += Number(emp.sss_contrib_employer ?? 0);
+        acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
+        acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
+        acc.philEmployee += Number(emp.philhealth_contrib ?? 0);
+        acc.wtax += Number(emp.wtax ?? 0);
+        acc.basic += Number(emp.semi_monthly ?? 0);
+        return acc;
+      },
+      {
+        gross: 0,
+        net: 0,
+        late: 0,
+        absent: 0,
+        overtime: 0,
+        sssEmployee: 0,
+        sssEmployer: 0,
+        pagibigEmployee: 0,
+        pagibigEmployer: 0,
+        philEmployee: 0,
+        wtax: 0,
+        basic: 0,
+      }
+    );
   
-      philhealth_employee_share: emp.philhealth_contrib,
-      philhealth_employer_share: emp.philhealth_contrib,
-  
-      EmpCodeId: emp.EmpCodeId,
-    }));
-  
-    await prisma.employeePayrollArchive.createMany({
-      data: payload,
-      skipDuplicates: true, 
-    });
-
-
-    const payCycle = payload[0].PayCode;
-    const cycleCategory = payload[0].cycle_category;
-    const payrollPeriod = payload[0].payroll_period;
-
-
-    await prisma.totalPayroll.create({
-        data:{
-          PayCycle:payCycle,
-          cycle_category:cycleCategory,
-          payroll_period:payrollPeriod,
-          Total_GrossPay: payload.reduce((sum, emp) => sum + Number(emp.Grosspay ?? 0),0),
-          Total_NetPay: payload.reduce((sum, emp) => sum + Number(emp.Netpay ?? 0),0),
-          Total_Late: payload.reduce((sum, emp) => sum + Number(emp.Late ?? 0),0),
-          Total_Absent: payload.reduce((sum, emp) => sum + Number(emp.Absent ?? 0),0),
-          Total_OverTimePay: payload.reduce((sum, emp) => sum + Number(emp.Overtime ?? 0),0),
-          Total_SSSContributionEmployee: payload.reduce((sum, emp) => sum + Number(emp.SSS_employee_share ?? 0),0),
-          Total_SSSContributionEmployer: payload.reduce((sum, emp) => sum + Number(emp.SSS_employer_share ?? 0),0),
-          Total_PagibigContributionEmployee: payload.reduce((sum, emp) => sum + Number(emp.Pagibig_employee_share ?? 0),0),
-          Total_PagibigContributionEmployer: payload.reduce((sum, emp) => sum + Number(emp.Pagibig_employer_share ?? 0),0),
-          Total_PhilhealthContributionEmployee: payload.reduce((sum, emp) => sum + Number(emp.philhealth_employee_share ?? 0),0),
-          Total_PhilhealthContributionEmployer: payload.reduce((sum, emp) => sum + Number(emp.philhealth_employee_share ?? 0),0),
-          total_wtax: payload.reduce((sum, emp) => sum + Number(emp.w_tax ?? 0),0),
-          createdAt:nowPH(),
+    return await prisma.$transaction(async (tx) => {
+      // ================= 1️⃣ CREATE TOTAL PAYROLL =================
+      const total = await tx.totalPayroll.create({
+        data: {
+          PayCycle: payCycle,
+          cycle_category: cycleCategory,
+          payroll_period: payrollPeriod,
+          selected_payroll_date: {
+            start_date: rawSelectedPayrollDate.start_date,
+            end_date: rawSelectedPayrollDate.end_date,
+          },
+          Total_GrossPay: totals.gross,
+          Total_NetPay: totals.net,
+          Total_Late: totals.late,
+          Total_Absent: totals.absent,
+          Total_OverTimePay: totals.overtime,
+          Total_SSSContributionEmployee: totals.sssEmployee,
+          Total_SSSContributionEmployer: totals.sssEmployer,
+          Total_PagibigContributionEmployee: totals.pagibigEmployee,
+          Total_PagibigContributionEmployer: totals.pagibigEmployer,
+          Total_PhilhealthContributionEmployee: totals.philEmployee,
+          Total_PhilhealthContributionEmployer: totals.philEmployee, // if same logic
+          total_wtax: totals.wtax,
+          total_basic_salary: totals.basic,
+          createdAt: nowPH(),
         },
-    });
-      
-    
-
+      });
   
-   await prisma.employeeSummary.updateMany({
-      where: { status: "FOR_APPROVAL" },
-      data: { status: "DONE" },
-    });
+      // ================= 2️⃣ INSERT EMPLOYEE ARCHIVES =================
+      const archivePayload = computed.map((emp) => ({
+        PayCode: emp.PayCode,
+        Late: emp.late_count,
+        Absent: emp.absence,
+        cycle_category: emp.CycleCategory,
+        payroll_period: emp.PayrollPeriod,
+        Overtime: emp.overtime,
+        Grosspay: emp.gross_pay,
+        w_tax: emp.wtax,
+        Netpay: Number(emp.net_pay),
+        Basic_salary: Number(emp.semi_monthly),
   
-    return payload.length;
+        SSS_employee_share: emp.sss_contrib_employee,
+        SSS_employer_share: emp.sss_contrib_employer,
+  
+        Pagibig_employee_share: emp.pagibig_contrib_employee,
+        Pagibig_employer_share: emp.pagibig_contrib_employer,
+  
+        philhealth_employee_share: emp.philhealth_contrib,
+        philhealth_employer_share: emp.philhealth_contrib,
+  
+        EmpCodeId: emp.EmpCodeId,
+  
+        // ✅ FOREIGN KEY LINK
+        totalPayrollId: total.id,
+      }));
+  
+      await tx.employeePayrollArchive.createMany({
+        data: archivePayload,
+        skipDuplicates: true,
+      });
+  
+      // ================= 3️⃣ UPDATE SUMMARY =================
+      await tx.employeeSummary.updateMany({
+        where: { status: "FOR_APPROVAL" },
+        data: { status: "DONE" },
+      });
+  
+      return archivePayload.length;
+    }).then((count) => {
+      io.emit("payroll:calendarUpdate");
+      return count;
+    });
   }
   
-
 
 
 
@@ -266,7 +318,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       data: { status: "PENDING" },
     });
 
-    io.emit("payroll:updated");
+    io.emit("payroll:changed");
   
     return data;
   }

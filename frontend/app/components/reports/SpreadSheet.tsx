@@ -1,4 +1,3 @@
-import { PayrollEmployee } from "@/app/hooks/usePayrollArchive";
 import { dummySummary } from "@/app/types/dummyData";
 
 
@@ -26,9 +25,24 @@ export interface SpreadsheetRow {
 
 interface Props {
   data: SpreadsheetRow[];
+  totals: {
+    basicPay: number;
+    overtime: number;
+    late: number;
+    absence: number;
+    gross: number;
+    wtax: number;
+    sss: number;
+    philhealth: number;
+    pagibig: number;
+    netPayable: number;
+    sssEmployer: number;
+    philEmployer: number;
+    pagibigEmployer: number;
+  };
 }
 
-export default function SpreadSheet({ data }: Props) {
+export default function SpreadSheet({ data,totals }: Props) {
   return (
     <div className="print-area w-full p-4">
       <table className="w-full border-collapse text-[9pt] table-auto">
@@ -115,6 +129,32 @@ export default function SpreadSheet({ data }: Props) {
             ))
           )}
         </tbody>
+
+        <tfoot>
+        <tr className="border-t-2 border-black font-bold bg-gray-100">
+          <td colSpan={2} className="py-2 text-center">
+            GRAND TOTAL
+          </td>
+
+          <td className="text-center">{totals.basicPay.toFixed(2)}</td>
+          <td className="text-center">{totals.overtime.toFixed(2)}</td>
+          <td className="text-center">{totals.late.toFixed(2)}</td>
+          <td className="text-center">{totals.absence.toFixed(2)}</td>
+          <td className="text-center">{totals.gross.toFixed(2)}</td>
+          <td className="text-center">{totals.wtax.toFixed(2)}</td>
+          <td className="text-center">{totals.sss.toFixed(2)}</td>
+          <td className="text-center">{totals.philhealth.toFixed(2)}</td>
+          <td className="text-center">{totals.pagibig.toFixed(2)}</td>
+          <td colSpan={5}></td>
+          <td className="text-center bg-blue-200">
+            {totals.netPayable.toFixed(2)}
+          </td>
+          <td className="text-center">{totals.sssEmployer.toFixed(2)}</td>
+          <td className="text-center">{totals.philEmployer.toFixed(2)}</td>
+          <td className="text-center">{totals.pagibigEmployer.toFixed(2)}</td>
+        </tr>
+      </tfoot>
+
 
       </table>
     </div>

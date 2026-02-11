@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { AuthProvider } from "./components/UserContext";
 import { useState } from 'react'
+import { PayrollRealtimeProvider } from './hooks/useRealtime';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -19,7 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      
+        <PayrollRealtimeProvider />
       <AuthProvider>{children}</AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

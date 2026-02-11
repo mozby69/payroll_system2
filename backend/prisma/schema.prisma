@@ -149,6 +149,7 @@ model EmployeeSummary{
   createdAt DateTime?
   updatedAt DateTime?
   status String? @db.VarChar(100) @default("PENDING")
+  selected_payroll_date Json? @map("selected_payroll_date")
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -179,6 +180,10 @@ model totalPayroll{
   Total_PhilhealthContributionEmployee Decimal? @db.Decimal(10,2)  @map("total_philhealth_employee")
   Total_PhilhealthContributionEmployer Decimal? @db.Decimal(10,2)  @map("total_philhealth_employer")
   total_wtax Decimal? @db.Decimal(10,2) @map("total_wtax")
+  total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
+  selected_payroll_date Json? @map("selected_payroll_date")
+
+ employee_archives EmployeePayrollArchive[]
 
   @@map("total_payroll")
 }
@@ -260,6 +265,8 @@ model EmployeePayrollArchive {
   status String? @db.VarChar(100) @default("PENDING")
   created_at DateTime @default(now())
 
+  totalPayrollId Int @map("total_payroll_id")
+  totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -472,19 +479,41 @@ model tax_table{
 }
 
 
-model archive_allowance{
+model archive_allowance {
   id Int @id @default(autoincrement())
-  EmpCode String? @db.VarChar(20) @map("EmpCodeId")
-  name String? @db.VarChar(200) @map("name")
+
+  EmpCode String @db.VarChar(20) @map("EmpCodeId")
+  name String @db.VarChar(200)
+
   cash_allowance Decimal? @db.Decimal(10,2)
   ecola Decimal? @db.Decimal(10,2)
   absent Decimal? @db.Decimal(10,2)
   total Decimal? @db.Decimal(10,2)
-  createdAt DateTime?  @map("created_at")
-  selectedMonth String? @db.VarChar(100) @map("selected_month")
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
+  createdAt DateTime @map("created_at")
 
+  selectedMonth String @db.VarChar(100) @map("selected_month")
+
+  summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
+
+  @@unique([EmpCode, selectedMonth])
   @@map("archive_allowance")
 }
 
 
+
+model archive_allowance_summary {
+  id Int @id @default(autoincrement())
+  allowance_name String @db.VarChar(100) @map("allowance_name")
+  selectedMonth String @db.VarChar(200) @map("selected_month")
+  total_cash_allowance Decimal? @db.Decimal(10,2)
+  total_ecola Decimal? @db.Decimal(10,2)
+  grand_total Decimal? @db.Decimal(10,2)
+  totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
+  createdAt DateTime @map("created_at")
+
+  allowances archive_allowance[]
+
+  @@unique([selectedMonth])
+  @@map("archive_allowance_summary")
+}

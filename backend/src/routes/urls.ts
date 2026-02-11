@@ -13,7 +13,7 @@ import payrollArchiveRoutes from "../modules/payroll_archive/payroll_archive.rou
 import filterRoutes from "../modules/filters/filter.routes";
 import generalRoutes from "../modules/general/general.routes";
 import allowanceRoutes from "../modules/allowance/allowance.routes";
-
+import varianceRoutes from '../modules/variance/variance.routes';
 
 const router = Router();
 
@@ -43,7 +43,7 @@ router.use("/get-emp-loan", addLoanRoutes);
 router.use("/update",addLoanRoutes);
 router.use("/closed", addLoanRoutes);
 router.use("/early", addLoanRoutes);
-
+router.use("/variance",varianceRoutes);
 
 
 

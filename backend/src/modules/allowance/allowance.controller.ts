@@ -1,4 +1,4 @@
-import {  computeAllowanceForMonth, fetchAllowanceWithAbsent, saveAllowanceArchive } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByMonth, saveAllowanceArchive } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -57,8 +57,7 @@ export const saveAllowanceController = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: "Allowance saved successfully",
     });
-  } 
-  catch (error: any) {
+  } catch (error: any) {
     if (error.message === "ALLOWANCE_ALREADY_SAVED") {
       return res.status(409).json({
         message: "Allowance for this month has already been saved.",
@@ -74,7 +73,8 @@ export const saveAllowanceController = async (req: Request, res: Response) => {
 
 
 
-export const fetchAllowanceSummaryController = async (req: Request, res: Response) => {
+
+export const fetchAllowanceSummary2Controller = async (req: Request, res: Response) => {
   const selectedMonth = req.query.month as string;
 
   if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
@@ -85,3 +85,38 @@ export const fetchAllowanceSummaryController = async (req: Request, res: Respons
 
   res.json(summary);
 };
+
+
+
+export const fetchAllowanceSummaryController = async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+
+    const result = await displayAllowanceList({ page,limit,search});
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("FETCH ALLOWANCE ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch allowance data",
+    });
+  }
+};
+
+
+
+
+export async function fetchArchiveAllowanceByMonthController(req: Request, res: Response) {
+  const { selectedMonth } = req.params;
+
+  if (!selectedMonth) {
+    return res.status(400).json({ message: 'selectedMonth is required' });
+  }
+
+  const data = await getArchiveAllowanceByMonth(selectedMonth);
+
+  return res.json({ data });
+}

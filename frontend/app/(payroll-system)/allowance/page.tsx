@@ -60,19 +60,19 @@ export default function AllowancePage(){
             {
               header: "Cash Allowance",
               render: (row) => `${row.cash_assistance}`,
-              footer: `₱ ${summary?.cash_allowance.toFixed(2) ?? "0.00"}`,
+              footer: `₱ ${(summary?.cash_allowance ?? 0).toFixed(2) ?? "0.00"}`,
             },
             {
               header: "Ecola",
               render: (row) => `${row.ecola}`,
-              footer: `₱ ${summary?.ecola.toFixed(2) ?? "0.00"}`,
+              footer: `₱ ${(summary?.ecola ?? 0).toFixed(2) ?? "0.00"}`,
             },
             {
               header: "TOTAL",
               accessor: (row) => row.total ?? '0',
               footer: (
                 <span className="text-lg font-bold">
-                  ₱ {summary?.total.toFixed(2) ?? "0.00"}
+                  ₱ {(summary?.total ?? 0).toFixed(2) ?? "0.00"}
                 </span>
               ),
             },
@@ -159,7 +159,6 @@ export default function AllowancePage(){
 
         {activeTab === "archive" && (
           <AllowanceArchiveTab/>
-
         )}
                   
            </div>

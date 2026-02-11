@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceProps } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceProps, AllowanceSummary, AllowanceSummaryResponse, ArchiveAllowance, ArchiveAllowanceResponse } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
@@ -93,7 +93,7 @@ export function useFetchAllowance(params: {
     }>({
       queryKey: ["allowance-summary", month],
       queryFn: async () => {
-        const res = await api.get("/allowance/summary", {
+        const res = await api.get("/allowance/grand-total", {
           params: { month },
         });
         return res.data;
@@ -102,3 +102,46 @@ export function useFetchAllowance(params: {
     });
   }
   
+
+
+
+
+
+
+
+  
+export function useFetchAllowanceSummary(params: {page: number; limit: number; search?: string}) {
+  return useQuery<AllowanceSummaryResponse>({
+    queryKey: [
+      "allowance-list",
+      params.page,
+      params.limit,
+      params.search ?? "",
+
+    ],
+    queryFn: async () => {
+      const res = await api.get("/allowance/summary", {params});
+      return res.data;
+    },
+  });
+}
+
+
+
+export function useFetchArchiveAllowanceModal(selectedMonth: string | null) {
+  return useQuery<ArchiveAllowanceResponse>({
+    queryKey: ['archive-allowance', selectedMonth],
+    queryFn: async () => {
+      if (!selectedMonth) {
+        throw new Error('selectedMonth is required');
+      }
+
+      const response = await api.get<ArchiveAllowanceResponse>(
+        `/allowance/archive-allowance/${selectedMonth}`
+      );
+
+      return response.data;
+    },
+    enabled: Boolean(selectedMonth),
+  });
+}

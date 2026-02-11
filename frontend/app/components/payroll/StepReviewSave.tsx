@@ -7,14 +7,17 @@ import { dummySummary } from "@/app/types/dummyData";
 import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
 import { useQueryClient } from "@tanstack/react-query";
 import SweetAlert from "../Swal";
-import { usePayrollRealtime } from "@/app/hooks/useRealtime";
+import { toNumber } from "@/app/helper/SpreadsheetHelper";
+
+
+
+
 
 interface Props {
   onBack: () => void;
 }
 
 export default function StepReviewSave({ onBack }: Props) {
-  usePayrollRealtime();
   const [loading, setLoading] = useState(false);
   const { data, isLoading } = useDisplayPayroll();
   const savePayroll = useSavePayroll();
@@ -70,6 +73,41 @@ export default function StepReviewSave({ onBack }: Props) {
 
   
 
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.basicPay += toNumber(row.basicPay);
+      acc.overtime += toNumber(row.overtime);
+      acc.late += toNumber(row.late);
+      acc.absence += toNumber(row.absence);
+      acc.gross += toNumber(row.gross);
+      acc.wtax += toNumber(row.wtax);
+      acc.sss += toNumber(row.sss);
+      acc.philhealth += toNumber(row.philhealth);
+      acc.pagibig += toNumber(row.pagibig);
+      acc.netPayable += toNumber(row.netPayable);
+      acc.sssEmployer += toNumber(row.sssEmployer);
+      acc.philEmployer += toNumber(row.philEmployer);
+      acc.pagibigEmployer += toNumber(row.pagibigEmployer);
+      return acc;
+    },
+    {
+      basicPay: 0,
+      overtime: 0,
+      late: 0,
+      absence: 0,
+      gross: 0,
+      wtax: 0,
+      sss: 0,
+      philhealth: 0,
+      pagibig: 0,
+      netPayable: 0,
+      sssEmployer: 0,
+      philEmployer: 0,
+      pagibigEmployer: 0,
+    }
+  );
+  
+
   return (
     <div className="space-y-4">
 
@@ -99,7 +137,7 @@ export default function StepReviewSave({ onBack }: Props) {
           {isLoading ? (
             <div className="p-4 text-sm">Loading payroll...</div>
           ) : (
-            <SpreadSheet data={rows} />
+            <SpreadSheet data={rows} totals={totals}/>
           )}
         </div>
       </div>

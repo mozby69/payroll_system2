@@ -10,3 +10,16 @@ export function getPreviousMonth(year: number, month: number) {
 export function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
+
+
+export function formatAllowanceMonth(selectedMonth: string): string {
+  const [year, month] = selectedMonth.split("-").map(Number);
+
+  const date = new Date(year, month - 1, 1);
+
+  const monthName = date.toLocaleString("en-US", {
+    month: "long",
+  });
+
+  return `${monthName} ${year}`;
+}

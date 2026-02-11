@@ -1,9 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { hrApi } from "../../lib/hrApi";
 import { ApiParams } from "../../types/utilsTypes";
 import { nowPH } from "../../utils/timezone";
 import { EmployeeSummaryTypes } from "./api.types";
 import { generatePayCode } from "./api.utils";
+import { io } from "../../server";
 
 export async function fetchHrAttendance(params: ApiParams){
     const {startDate, endDate, branchCycle} = params;
@@ -43,6 +45,10 @@ export function transformAttendanceData(
       OvertimeAtt: emp.OvertimeAtt ?? {},
       NightShiftAtt: emp.NightShiftAtt ?? {},
       NightShiftOtAtt: emp.NightShiftOtAtt ?? {},
+      selected_payroll_date: {
+        start_date: params.startDate,
+        end_date: params.endDate,
+      },
     }));
   }
 
@@ -88,10 +94,39 @@ export async function saveEmployeeAttendance(
           OvertimeAtt: emp.OvertimeAtt,
           NightShiftAtt: emp.NightShiftAtt,
           NightShiftOtAtt: emp.NightShiftOtAtt,
+          selected_payroll_date:emp.selected_payroll_date,
           createdAt: nowPH(),
         })),
         skipDuplicates: true,
       });
     });
+  }
+  
+
+
+
+
+
+
+  export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
+    const records = await prisma.totalPayroll.findMany({
+      where: {
+        cycle_category: cycleCategory,
+        selected_payroll_date: {
+          not: Prisma.JsonNull,
+        },
+      },
+      select: {
+        selected_payroll_date: true,
+      },
+    });
+  
+    return records.map((r) => r.selected_payroll_date).filter(
+        (r): r is { start_date: string; end_date: string } =>
+          typeof r === "object" &&
+          r !== null &&
+          "start_date" in r &&
+          "end_date" in r
+      );
   }
   

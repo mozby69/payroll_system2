@@ -11,7 +11,8 @@ import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
 import { AxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePayrollRealtime } from "@/app/hooks/useRealtime";
+import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
+import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 
 
 interface Props {
@@ -26,7 +27,6 @@ interface Props {
   
   
   export default function StepComputePayroll({ onBack, onNext,range,setRange,cycle }: Props) {
-     usePayrollRealtime();
       const PAGE_SIZE = 7;
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");
@@ -35,8 +35,10 @@ interface Props {
 
       const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
       const queryClient = useQueryClient();
+      const { data: disabledRanges = [] } = useDisabledPayrollDates(cycle);
 
      
+      const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
 
       const { data: employee_payroll } = useComputedPayroll({
           cycle,
@@ -87,6 +89,7 @@ interface Props {
       }, [range]);
 
 
+    
 
     
       
@@ -104,15 +107,13 @@ interface Props {
      
         <div className="flex justify-between gap-x-8">
 
-     
-
-      
             <DateRangePicker
                   value={
                     range
                       ? [new Date(range.startDate), new Date(range.endDate)]
                       : undefined
                   }
+                  disabledRanges={flatpickrDisabled}
                   onChange={(newRange) => {
                     SweetAlert.confirmationAlert(
                       "Confirm Payroll Period",
@@ -126,64 +127,55 @@ interface Props {
                   }}
                 />
 
+                    
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />   
+
+
+
+              </div>
+
+
+                    
+            <Datatable columns={columns} data={tableData} />
+            
+                <Pagination
+                      page={page}
+                      totalPages={employee_payroll?.meta.totalPages ?? 1}
+                      totalItems={employee_payroll?.meta.total ?? 0}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setPage}
+                    />
+
+
         
+              <div className="flex justify-between pt-4">
 
-    
+                <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">
+                  Back
+                </button>
 
+                <button onClick={async () => {
+                    await queryClient.refetchQueries({
+                      queryKey: ["payroll-display"],
+                      exact: true,
+                    });
+                    onNext();
+                  }}
+                  className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">
+                  Continue
+                </button>
 
-              
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-        />   
-
-
-
-        </div>
-
-
-              
-       <Datatable columns={columns} data={tableData} />
-       
-           <Pagination
-                 page={page}
-                 totalPages={employee_payroll?.meta.totalPages ?? 1}
-                 totalItems={employee_payroll?.meta.total ?? 0}
-                 pageSize={PAGE_SIZE}
-                 onPageChange={setPage}
-               />
-
-
-  
-        <div className="flex justify-between pt-4">
-
-          <button onClick={onBack}
-           className="rounded-lg border px-5 py-2 text-sm">
-            Back
-          </button>
-
-          <button
-            onClick={async () => {
-              await queryClient.refetchQueries({
-                queryKey: ["payroll-display"],
-                exact: true,
-              });
-
-              onNext();
-            }}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">
-            Continue
-          </button>
-
-
-        </div>
+              </div>
 
 
 
-      </div>
+            </div>
     );
   }
   

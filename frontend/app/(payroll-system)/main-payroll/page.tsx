@@ -42,6 +42,7 @@ export default function PreparePayroll() {
         SweetAlert.loadingAlert("Importing data");
         mutate(undefined, {
           onSuccess: () => {
+            setDateRange(null); 
             setBranchCycle(cycle);
             setPage(1);
             SweetAlert.successAlert("Import successful");

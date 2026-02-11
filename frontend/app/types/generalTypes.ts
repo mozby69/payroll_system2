@@ -44,3 +44,9 @@ export interface EmployeeSummary {
     role: string;
   };
   
+
+
+  export type PayrollDateRange = {
+    start_date: string;
+    end_date: string;
+  };

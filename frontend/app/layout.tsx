@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./provider";
 import { Toaster } from "react-hot-toast";
+import '@/public/styles/flatPicker.css';
 
 
 export const metadata: Metadata = {
