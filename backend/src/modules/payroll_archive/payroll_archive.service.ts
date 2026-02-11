@@ -4,6 +4,7 @@ import { toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
+import { any } from "zod";
 
 
 
@@ -326,4 +327,102 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
   //     throw error;
   //   }
   // }
+
+
+  type GetTotalPayrollParams = {
+    page?: number
+    pageSize?: number
+    search?: string
+    payCycle?: string
+  }
+  
+  export async function getTotalPayrollService({
+    page = 1,
+    pageSize = 10,
+    search,
+    payCycle,
+  }: GetTotalPayrollParams) {
+    const skip = (page - 1) * pageSize
+  
+    const where: any = {}
+  
+    // Search (partial match)
+    if (search) {
+      where.PayCycle = {
+        contains: search
+      }
+    }
+  
+    // Exact filter
+    if (payCycle) {
+      where.PayCycle = payCycle
+    }
+  
+    const [data, total] = await Promise.all([
+      prisma.totalPayroll.findMany({
+        where,
+        orderBy: {
+          PayCycle: "asc",
+        },
+        skip,
+        take: pageSize,
+      }),
+      prisma.totalPayroll.count({ where }),
+    ])
+  
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    }
+  }
+
+  type GetEmployeeArchivedParams = {
+    page?: number
+    pageSize?: number
+    search?: string
+  }
+
+  export async function getEmployeeArchivedService({
+    page = 1,
+    pageSize = 10,
+    search,
+  } : GetEmployeeArchivedParams) {
+      const skip = (page - 1) * pageSize
+
+      const where:  any = {}
+
+      if(search){
+        where.EmpCodeId = {
+            contain: search
+        }
+      }
+
+      const [data, total] = await Promise.all([
+        prisma.employeePayrollArchive.findMany({
+          where,
+          skip,
+          take: pageSize
+        }),
+        prisma.employeePayrollArchive.count({
+          where
+        })
+      ])
+      
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          pageSize,
+          totalPage: Math.ceil(total / pageSize)
+        }
+      }
+
+  }
   

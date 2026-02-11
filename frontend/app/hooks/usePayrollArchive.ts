@@ -5,6 +5,7 @@ import { ApiErrorResponse, ArchiveSuccessResponse } from "../types/generalTypes"
 import SweetAlert from "../components/Swal";
 import { PayrollEmployee, PayrollResponse } from "../types/preparePayroll";
 import { useRouter } from "next/navigation";
+import { getTotalPayrollRequest } from "../services/archive.services";
 
 
 
@@ -139,4 +140,23 @@ export function useReCheckPayroll(onSuccess?: () => void) {
       SweetAlert.errorAlert("Failed to recheck payroll");
     },
   });
+}
+
+export function useTotalPayroll(
+  page: number,
+  pageSize: number,
+  search?: string,
+  payCycle?: string
+) {
+  return useQuery({
+    queryKey: ["totalPayroll", page, pageSize, search, payCycle],
+    queryFn: () =>
+      getTotalPayrollRequest({
+        page,
+        pageSize,
+        search,
+        payCycle,
+      }),
+    placeholderData: (previousData) => previousData,
+  })
 }

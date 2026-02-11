@@ -1,33 +1,58 @@
-import jwt from "jsonwebtoken";
-import { Request, Response, NextFunction } from "express";
-import dotenv from 'dotenv';
+import jwt from "jsonwebtoken"
+import { Request, Response, NextFunction } from "express"
+import dotenv from "dotenv"
 
-dotenv.config();
+dotenv.config()
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET!
 if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is not defined. Did you forget to load .env?');
+  throw new Error("JWT_SECRET is not defined")
 }
 
+export interface AuthPayload {
+  id: number
+  username: string
+}
 
-export const authenticateToken = (req: Request,res: Response,next: NextFunction): void => {
-  const token = req.cookies.token;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthPayload
+    }
+  }
+}
+
+export function authenticateToken(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const token = req.cookies?.token
 
   if (!token) {
-    res.status(401).json({ error: "Access denied, no token provided" });
-    console.error("Access denied, no token provided");
-    return; 
+    return res.status(401).json({
+      message: "Unauthorized: No token provided"
+    })
   }
 
-
-  
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    (req as any).user = decoded;
-    next();
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthPayload
+
+    if (!decoded.id) {
+      return res.status(401).json({
+        message: "Invalid token payload"
+      })
+    }
+
+    req.user = {
+      id: decoded.id,
+      username: decoded.username
+    }
+
+    next()
   } catch (error) {
-    console.error('JWT verification failed:', error);
-    res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({
+      message: "Unauthorized: Invalid token"
+    })
   }
-  
-};
+}

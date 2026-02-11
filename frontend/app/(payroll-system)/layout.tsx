@@ -5,7 +5,9 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../components/UserContext";
 import { redirect } from "next/navigation";
 import SweetAlert from "../components/Swal";
-import { LogOut, Settings, User2 } from "lucide-react";
+import { LogOut, Settings, User, User2 } from "lucide-react";
+import RequestModal from "../components/Modal";
+import AccountConfigurationModal from "../components/users/modal/AccountConfigurationModal";
 
 
 
@@ -13,6 +15,8 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
   const [OpenSidebar, setOpenSideBar] = useState(true);
   const [openMenu, setOpenMenu] = useState(false);
   const { user, loading, logout } = useAuth();
+
+  const [userModal, setUserModal] = useState(false)
 
   if (loading) return null;
   if (!user) redirect("/login");
@@ -51,6 +55,13 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
                   <Settings/>
                   Settings
                 </li>
+                <li
+                 className="inline-flex gap-4 items-end justify-center w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                  onClick={()=>setUserModal(true)}
+                 >
+                  <User/>
+                  Users
+                </li>
                 <li 
                   onClick={() => {
                     SweetAlert.confirmationAlert(
@@ -81,8 +92,12 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
         
 
       </main>
-
-     
+      {userModal && (
+          <RequestModal title=" Account Configuration" size="xl" onClose={()=>setUserModal(false)}>
+              <AccountConfigurationModal onClose={()=>setUserModal(false)} />
+        </RequestModal>
+      )}
+        
 
     </div>
   );
