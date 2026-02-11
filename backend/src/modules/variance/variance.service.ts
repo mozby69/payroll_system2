@@ -3,6 +3,37 @@ import { displayCompletePayroll } from "../payroll_archive/payroll_archive.servi
 import { parsePayCycleToDate } from "./variance.helper";
 
 
+export async  function fetchEmployeeVariance (){
+  const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
+  if (!computed || computed.length === 0) return 0;
+  
+
+  const archivePayload = computed.map((emp) => ({
+    PayCode: emp.PayCode,
+    cycle_category: emp.CycleCategory,
+    payroll_period: emp.PayrollPeriod,
+    w_tax: emp.wtax,
+    Basic_salary: Number(emp.semi_monthly),
+
+    SSS_employee_share: emp.sss_contrib_employee,
+    SSS_employer_share: emp.sss_contrib_employer,
+
+    Pagibig_employee_share: emp.pagibig_contrib_employee,
+    Pagibig_employer_share: emp.pagibig_contrib_employer,
+
+    philhealth_employee_share: emp.philhealth_contrib,
+    philhealth_employer_share: emp.philhealth_contrib,
+
+    EmpCodeId: emp.EmpCodeId,
+
+
+  }));
+
+  return archivePayload;
+}
+
+
+
 
 
 export async function fetchVariance() {
@@ -12,41 +43,23 @@ export async function fetchVariance() {
     return { rows: [] };
   }
 
-  const { PayCode, CycleCategory } = computed[0];
+  const { PayCode, CycleCategory, TotalUndertime,EmpCodeId } = computed[0];
   const currentDate = parsePayCycleToDate(PayCode);
 
   // ================= CURRENT TOTALS =================
-  const totalSemiMonthly = computed.reduce(
-    (sum, emp) => sum + Number(emp.semi_monthly ?? 0),
-    0
-  );
+  const totalSemiMonthly = computed.reduce((sum, emp) => sum + Number(emp.semi_monthly ?? 0), 0);
 
-  const totalSSSEmployee = computed.reduce(
-    (sum, emp) => sum + Number(emp.sss_contrib_employee ?? 0),
-    0
-  );
+  const totalSSSEmployee = computed.reduce((sum, emp) => sum + Number(emp.sss_contrib_employee ?? 0),0);
 
-  const totalSSSEmployer = computed.reduce(
-    (sum, emp) => sum + Number(emp.sss_contrib_employer ?? 0),
-    0
-  );
+  const totalSSSEmployer = computed.reduce((sum, emp) => sum + Number(emp.sss_contrib_employer ?? 0),0);
 
-  const totalPhilhealth = computed.reduce(
-    (sum, emp) => sum + Number(emp.philhealth_contrib ?? 0),
-    0
-  );
+  const totalPhilhealth = computed.reduce((sum, emp) => sum + Number(emp.philhealth_contrib ?? 0),0);
 
-  const totalPagibigEmployee = computed.reduce(
-    (sum, emp) => sum + Number(emp.pagibig_contrib_employee ?? 0),
-    0
-  );
+  const totalPagibigEmployee = computed.reduce((sum, emp) => sum + Number(emp.pagibig_contrib_employee ?? 0),0);
 
-  const totalPagibigEmployer = computed.reduce(
-    (sum, emp) => sum + Number(emp.pagibig_contrib_employer ?? 0),
-    0
-  );
+  const totalPagibigEmployer = computed.reduce((sum, emp) => sum + Number(emp.pagibig_contrib_employer ?? 0),0);
 
-  // ================= FETCH HISTORY =================
+  // ================= FETCH total payroll =================
   const payrollTotals = await prisma.totalPayroll.findMany({
     where: { cycle_category: CycleCategory },
     select: {
@@ -85,7 +98,7 @@ export async function fetchVariance() {
   // ================= STRUCTURED RESPONSE =================
   return {
     rows: [
-      // OLDER PREVIOUS (Basic forced 0)
+      // OLDER PREVIOUS 
       olderPrevious && {
         PayCycle: olderPrevious.PayCycle,
         basic: 0,
@@ -118,6 +131,7 @@ export async function fetchVariance() {
         sssEmployer: variance.sssEmployer,
         phil: variance.phil,
       },
+    
     ].filter(Boolean),
   };
 }

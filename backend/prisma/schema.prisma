@@ -67,6 +67,7 @@ model Employee {
   loan_details loan_details[] @relation()
   loan_ledger loan_ledger[] @relation()
   employee_bonues EmployeeBonus[] @relation()
+  employee_salary_history EmployeeSalaryHistory[] @relation()
   @@map("employee")
 }
 
@@ -471,3 +472,23 @@ model archive_allowance_summary {
   @@unique([selectedMonth])
   @@map("archive_allowance_summary")
 }
+
+
+
+model EmployeeSalaryHistory {
+  id            Int      @id @default(autoincrement())
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  old_salary    Decimal  @db.Decimal(10,2)
+  new_salary    Decimal  @db.Decimal(10,2)
+  remarks       String   @db.VarChar(255)
+  changed_by    String
+  createdAt DateTime @map("created_at")
+
+  employee      Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("employee_salary_history")
+}
+
+
+  // EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  // EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
