@@ -36,7 +36,7 @@ import {
           label: "Bonus Manager",
           path: "/bonus-manager",
           icon: CircleDollarSign,
-          permission: "BONUS_RELEASE" // 🔑 ONLY ADMIN / HR
+          permission: "BONUS_VIEW" 
         },
         {
           label: "Payroll List",

@@ -3,6 +3,7 @@
 import { useGetPermissions, useGetRoles, useUpdateRolePermissions } from "@/app/hooks/login"
 import { Role } from "@/app/types/login"
 import { useState } from "react"
+import toast from "react-hot-toast"
 
 export default function RoleConfigurationModal() {
   const { data: roles, isLoading } = useGetRoles()
@@ -33,11 +34,17 @@ export default function RoleConfigurationModal() {
 
   function handleSave() {
     if (!selectedRole) return
-
     updatePermissions.mutate({
       roleId: selectedRole.id,
       permissionIds: selectedPermissionIds
-    })
+    },{
+      onSuccess: () => {
+        toast.success("Permissions updated successfully.", {
+          position: "top-center",
+        });
+      }
+    }
+  )
   }
 
   if (isLoading) {

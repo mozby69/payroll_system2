@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createUserService, getPermissionServices, getRoleServices, getUsersService, loginService, updateRolePermissionsService, updateUserService } from "../services/login";
 import { LoginParams, Permission, Role, User } from "../types/login";
 import { RegisterSchema, UpdateUserSchema } from "../schema/login.schema";
+import { useAuth } from "../components/UserContext";
 
 
 export const useLogin = () => {
@@ -67,7 +68,7 @@ export const useUpdateUser = () => {
 
 export const useUpdateRolePermissions = () => {
   const qc = useQueryClient()
-
+  const { refreshUser } = useAuth()
   return useMutation({
     mutationFn: ({
       roleId,
@@ -77,8 +78,9 @@ export const useUpdateRolePermissions = () => {
       permissionIds: number[]
     }) =>
       updateRolePermissionsService(roleId, permissionIds),
-    onSuccess: () => {
+    onSuccess: async () => {
       qc.invalidateQueries({ queryKey: ["roles"] })
+      await refreshUser()
     }
   })
 }

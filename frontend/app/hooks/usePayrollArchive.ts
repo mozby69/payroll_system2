@@ -5,7 +5,8 @@ import { ApiErrorResponse, ArchiveSuccessResponse } from "../types/generalTypes"
 import SweetAlert from "../components/Swal";
 import { PayrollEmployee, PayrollResponse } from "../types/preparePayroll";
 import { useRouter } from "next/navigation";
-import { getTotalPayrollRequest } from "../services/archive.services";
+import { getEmployeeArchivedService, getTotalPayrollRequest } from "../services/archive.services";
+import { GetEmployeeArchivedParams } from "../types/totalPayroll";
 
 
 
@@ -162,4 +163,22 @@ export function useTotalPayroll(
       }),
     placeholderData: (previousData) => previousData,
   })
+}
+
+
+export function useGetEmployeeArchived(
+ params: GetEmployeeArchivedParams
+){
+    return useQuery({
+      queryKey: ["employee-archived", params.page, params.pageSize, params.search, params.totalPayrollId],
+      queryFn: () =>
+        getEmployeeArchivedService({
+          page: params.page,
+          pageSize: params.pageSize,
+          search: params.search,
+          totalPayrollId: params.totalPayrollId,
+        }),
+      placeholderData: (previousData) => previousData,
+      enabled: !!params.totalPayrollId,
+    })
 }

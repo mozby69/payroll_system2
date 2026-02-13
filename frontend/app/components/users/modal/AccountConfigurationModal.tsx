@@ -153,7 +153,7 @@ export default function AccountConfigurationModal({ onClose}: Props) {
 
       {openRoleModal && (
         <RequestModal 
-          size="md" 
+          size="xl" 
           title="User Roles Configuration"
           onClose={()=>setOpenRoleModal(false)}>
             <RoleConfigurationModal />

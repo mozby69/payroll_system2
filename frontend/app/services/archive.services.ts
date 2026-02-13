@@ -1,5 +1,5 @@
 import { PaginatedResponse } from "../types/preparePayroll"
-import { TotalPayroll } from "../types/totalPayroll"
+import { EmployeeArchivedType, GetEmployeeArchivedParams, TotalPayroll } from "../types/totalPayroll"
 import api from "./axios"
 
 type Params = {
@@ -18,3 +18,14 @@ export async function getTotalPayrollRequest(
 
   return response.data
 }
+
+
+
+    export async function getEmployeeArchivedService(
+      params: GetEmployeeArchivedParams
+    ): Promise<PaginatedResponse<EmployeeArchivedType>>{
+      const response = await api.get("/payroll-archive/employee-archived", {
+         params
+      })
+      return response.data
+    } 

@@ -437,26 +437,62 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     page?: number
     pageSize?: number
     search?: string
+    totalPayrollId: number
   }
 
   export async function getEmployeeArchivedService({
     page = 1,
     pageSize = 10,
     search,
+    totalPayrollId
   } : GetEmployeeArchivedParams) {
       const skip = (page - 1) * pageSize
-
-      const where:  any = {}
-
-      if(search){
-        where.EmpCodeId = {
-            contain: search
-        }
+      const where: any = {
+        totalPayrollId, 
       }
 
+      if (search && search.trim() !== "") {
+        where.OR = [
+          {
+            EmpCodeId: {
+              contains: search,
+            },
+          },
+          {
+            EmpCode: {
+              Firstname: {
+                contains: search,
+              },
+            },
+          },
+          {
+            EmpCode: {
+              Lastname: {
+                contains: search,
+              },
+            },
+          },
+        ]
+      }
+      
       const [data, total] = await Promise.all([
         prisma.employeePayrollArchive.findMany({
           where,
+          include: {
+            EmpCode:{
+              select: {
+                Firstname: true,
+                Middlename: true,
+                Lastname: true,
+                BranchCodeId: true 
+              }
+            }
+          },
+          orderBy: {
+            EmpCode: {
+              Lastname: "asc"
+            }
+          },
           skip,
           take: pageSize
         }),
@@ -465,7 +501,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         })
       ])
       
-
       return {
         data,
         meta: {

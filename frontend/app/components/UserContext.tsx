@@ -16,6 +16,7 @@ type AuthContextType = {
   setUser: (user: User | null) => void
   logout: () => Promise<void>
   hasRole: (role: string) => boolean
+  refreshUser: () => Promise<void>
   hasPermission: (permission: string) => boolean
 }
 
@@ -39,6 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = "/login"
   }
 
+  const refreshUser = async () => {
+    try {
+      const res = await api.get("/auth/me")
+      setUser(res.data)
+    } catch {
+      setUser(null)
+    }
+  }
+  
+
   const hasRole = (role: string) =>
     user?.roles?.includes(role) ?? false
 
@@ -53,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser,
         logout,
         hasRole,
+        refreshUser,
         hasPermission
       }}
     >

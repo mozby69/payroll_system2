@@ -2,11 +2,17 @@ import { prisma } from "../config/prismaClient"
 
 async function main() {
   const permissions = [
+    { code: "BONUS_VIEW", name: "Access Bonus" },
     { code: "BONUS_GENERATE", name: "Generate Bonus" },
     { code: "BONUS_APPROVE", name: "Approve Bonus" },
     { code: "BONUS_RELEASE", name: "Release Bonus" },
-    { code: "BONUS_RESET", name: "Reset Bonus" },
-    { code: "USER_MANAGE", name: "Manage Users" }
+    { code: "BONUS_ARCHIVE", name: "Archive Bonus" },
+    { code: "BONUS_ARCHIVE_VIEW", name: "View Archived Bonuses" },
+    { code: "BONUS_RULES_MANAGE", name: "Configure Bonus Rules" },
+
+
+    { code: "USER_MANAGE", name: "Manage Users" },
+    { code: "ADMIN_MANAGE", name: "Manage Admin" }
   ]
 
   for (const p of permissions) {

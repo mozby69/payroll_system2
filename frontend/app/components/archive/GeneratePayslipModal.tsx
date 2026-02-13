@@ -1,78 +1,39 @@
 "use client"
 
 import { useState } from "react"
-import { Filter, Printer, PrinterIcon, Eye } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
-
-import { formatCurrency } from "../../utils/currencyConverter"
-import { paySlipDummyData } from "@/app/types/dummyData"
-
-import FilterModal from "@/app/components/Filter"
-import ActiveFilters from "@/app/components/FilterObject"
+import { Column } from "@/app/types/preparePayroll"
+import { useGetEmployeeArchived } from "@/app/hooks/usePayrollArchive"
+import { useDebounce } from "@/app/utils/useDebounce"
+import Datatable from "@/app/components/Datatable"
+import { Pagination } from "@/app/components/Pagination"
+import { Eye, Printer } from "lucide-react"
+import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
+import { EmployeeArchivedType } from "@/app/types/totalPayroll"
+import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
 
-const GeneratePayslipModal = () => {
-  const [open, setOpen] = useState(false)
+type PayslipProps = {
+  totalPayrollId: number
+}
+export default function GeneratePayslipModal({
+  totalPayrollId,
+}: PayslipProps) {
+
+  const PAGE_SIZE = 10
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
-
-  const searchParams = useSearchParams()
-  const router = useRouter()
-
-  // ---------------- FILTER LOGIC ----------------
-
-  const filters = {
-    department: searchParams.getAll("department"),
-    company: searchParams.getAll("company"),
-    status: searchParams.getAll("status"),
-  }
-
-  const updateParams = (fn: (params: URLSearchParams) => void) => {
-    const params = new URLSearchParams(searchParams.toString())
-    fn(params)
-    router.replace(`?${params.toString()}`, { scroll: false })
-  }
-
-  const toggleFilter = (key: string, value: string) => {
-    updateParams((params) => {
-      const values = params.getAll(key)
-      params.delete(key)
-
-      if (!values.includes(value)) {
-        [...values, value].forEach((v) => params.append(key, v))
-      } else {
-        values
-          .filter((v) => v !== value)
-          .forEach((v) => params.append(key, v))
-      }
-
-      params.set("page", "1")
-    })
-  }
-
-  const removeFilter = (key: string, value: string) => {
-    updateParams((params) => {
-      const values = params.getAll(key).filter((v) => v !== value)
-      params.delete(key)
-      values.forEach((v) => params.append(key, v))
-    })
-  }
-
-  const clearAll = () => {
-    updateParams((params) => {
-      ["department", "company", "status"].forEach((k) =>
-        params.delete(k)
-      )
-      params.set("page", "1")
-    })
-  }
-
-  // ---------------- PRINT LOGIC ----------------
-
+  const debouncedSearch = useDebounce(search, 400)
+  const { data, isFetching } = useGetEmployeeArchived({
+    page,
+    pageSize: PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    totalPayrollId,
+  })
   const handlePrint = async () => {
-    const printWindow = window.open("", "_blank")
+    if (!data?.data || data.data.length === 0) return
     try {
       setLoading(true)
-
       const res = await fetch("/api/print/payroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,140 +41,175 @@ const GeneratePayslipModal = () => {
           type: "payslip",
           paper: "A4",
           orientation: "portrait",
-          data: paySlipDummyData,
+          data: data.data,
         }),
       })
-
       if (!res.ok) throw new Error("Print failed")
-
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-
-      printWindow!.location.href = url
-
-      printWindow!.onbeforeunload = () => {
+      setLoading(false)
+      const printWindow = window.open(url, "_blank")
+      if (!printWindow) {
+        alert("Popup blocked. Please allow popups.")
         URL.revokeObjectURL(url)
+        return
       }
     } catch (err) {
       console.error(err)
-      printWindow?.close()
       alert("Failed to print payroll")
-    } finally {
+      setLoading(false)
+    }
+  }
+  
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    setPage(1)
+  }
+
+  const handlePrintSingle = async (row: EmployeeArchivedType) => {
+    if (!row) return
+    try {
+      setLoading(true)
+      const res = await fetch("/api/print/payroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "payslip",
+          paper: "A4",
+          orientation: "portrait",
+          data: [row],
+        }),
+      })
+      if (!res.ok) throw new Error("Print failed")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setLoading(false)
+      const printWindow = window.open(url, "_blank")
+      if (!printWindow) {
+        alert("Popup blocked. Please allow popups.")
+        URL.revokeObjectURL(url)
+        return
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to print payroll")
       setLoading(false)
     }
   }
 
-  // ---------------- UI ----------------
+  const handleView = (row: EmployeeArchivedType) => {
+    console.log("View payslip:", row.id)
+  }
+
+  const columns: Column<EmployeeArchivedType>[] = [
+    {
+      header: "Code",
+      accessor: (row) => row.EmpCodeId,
+    },
+    {
+      header: "Name",
+      accessor: (row) =>
+        ` ${row.EmpCode.Lastname}, ${row.EmpCode.Firstname}`,
+    },
+    {
+      header: "Gross Pay",
+      accessor: (row) =>
+        formatCurrency(Number(row.Grosspay)),
+    },
+    {
+      header: "Total Deduction",
+      accessor: (row) =>
+        formatCurrency(
+          Number(row.w_tax) +
+          Number(row.sss_loan) +
+          Number(row.pagibig_loan) +
+          Number(row.sss_calamity_loan)
+        ),
+    },
+    {
+      header: "Net Pay",
+      accessor: (row) =>
+        formatCurrency(Number(row.Netpay)),
+    },
+    {
+      header: "Actions",
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleView(row)}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition"
+          >
+            <Eye size={16} />
+          </button>
+
+          <button
+            onClick={() => handlePrintSingle(row)}
+            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-md transition"
+          >
+            <Printer size={16} />
+          </button>
+        </div>
+      ),
+    },
+  ]
+  
 
   return (
-    <div className="w-full flex flex-col gap-6 text-slate-700">
-
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-
+ 
+    <div className="flex flex-col gap-6">
+   {loading && (
+      <ProcessingOverlay
+      title="Generating Payslips"
+      message="Please wait while we prepare the employee payslip document."
+    />
+    
+    )}
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">
+          <h2 className="text-lg font-semibold text-slate-800">
             Generate Payslip
-          </h1>
+          </h2>
           <p className="text-sm text-slate-500">
-            Complete list of employees payslip
+            Employee archived payroll list
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-
+        <div className="flex gap-2">
           <input
-            placeholder="Search..."
+            placeholder="Search employee..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="px-3 py-2 text-sm rounded-md border border-slate-300 
                        bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-
-          <GenButton variant="primary" onClick={() => setOpen(true)}>
-            <span className="flex items-center gap-1">
-              <Filter size={15} />
-              Filter
-            </span>
-          </GenButton>
 
           <GenButton
             variant="positive"
             onClick={handlePrint}
           >
-            <PrinterIcon size={15} />
-            <span>{loading ? "Printing..." : "Print"}</span>
+            Print All
           </GenButton>
         </div>
       </div>
 
-      {/* ACTIVE FILTERS */}
-      <ActiveFilters
-        filters={filters}
-        onRemove={removeFilter}
-        onClearAll={clearAll}
+      {/* Table */}
+      <Datatable
+        columns={columns}
+        data={data?.data ?? []}
+        loading={isFetching}
       />
 
-      {/* TABLE */}
-      <div className="overflow-hidden border border-slate-200 rounded-lg shadow-sm">
-        <table className="w-full text-sm">
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        totalPages={data?.meta.totalPages ?? 0}
+        totalItems={data?.meta.total ?? 0}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
-          <thead className="bg-slate-800 text-white">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Code</th>
-              <th className="px-4 py-3 text-left font-medium">Name</th>
-              <th className="px-4 py-3 text-left font-medium">Gross Pay</th>
-              <th className="px-4 py-3 text-left font-medium">Total Deduction</th>
-              <th className="px-4 py-3 text-left font-medium">Net Payable</th>
-              <th className="px-4 py-3 text-center font-medium">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-slate-200">
-            {paySlipDummyData.map((row) => (
-              <tr
-                key={row.employeeCode}
-                className="hover:bg-slate-50 transition"
-              >
-                <td className="px-4 py-3">
-                  {row.employeeCode}
-                </td>
-                <td className="px-4 py-3">
-                  {row.name}
-                </td>
-                <td className="px-4 py-3 font-medium">
-                  {formatCurrency(row.grossPay)}
-                </td>
-                <td className="px-4 py-3 font-medium">
-                  {formatCurrency(row.totalDeduction)}
-                </td>
-                <td className="px-4 py-3 font-semibold text-emerald-600">
-                  {formatCurrency(row.netPayable)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition">
-                      <Eye size={16} />
-                    </button>
-                    <button className="p-2 text-slate-600 hover:bg-slate-100 rounded-md transition">
-                      <Printer size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-
-        </table>
-      </div>
-
-      {/* FILTER MODAL */}
-      {/* <FilterModal
-        open={open}
-        onClose={() => setOpen(false)}
-        filters={filters}
-        onToggle={toggleFilter}
-      /> */}
     </div>
   )
 }
-
-export default GeneratePayslipModal

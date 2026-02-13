@@ -101,11 +101,13 @@ export async function getEmployeeArchivedController(
       const page = Number(req.query.page) || 1
       const pageSize = Number(req.query.pageSize) || 10
       const search = req.query.search as string | undefined
+      const totalPayrollId = Number(req.query.totalPayrollId) || 0
 
       const archived = await getEmployeeArchivedService({
         page,
         pageSize,
-        search
+        search,
+        totalPayrollId
       })
 
       return res.status(200).json(archived)

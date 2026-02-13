@@ -3,6 +3,7 @@ import BonusArchivePage from "@/app/components/bonus/BonusArchive"
 import BonusRulesPage from "@/app/components/bonus/BonusRules"
 import GenerateBonusPage from "@/app/components/bonus/GenerateBonus"
 import { TabButton } from "@/app/components/TabButton"
+import { useAuth } from "@/app/components/UserContext"
 import { useState } from "react"
 
 
@@ -10,6 +11,8 @@ type BonusTab = "GENERATE" | "ARCHIVE" | "RULES"
 
 export default function BonusManager() {
     const [activeTab, setActiveTab] = useState<BonusTab>("GENERATE")
+    const {hasPermission} = useAuth()
+
   return (
     <div className="min-h-screen bg-gray-50 px-8 py-10">
 
@@ -32,24 +35,27 @@ export default function BonusManager() {
       {/* Tabs */}
       <div className="border-b px-6 py-4">
         <div className="flex gap-8">
-
-          <TabButton
+      {hasPermission("BONUS_GENERATE") && (
+        <TabButton
             label="Generate"
             active={activeTab === "GENERATE"}
             onClick={() => setActiveTab("GENERATE")}
           />
+      )}
+          
 
           <TabButton
             label="Archive"
             active={activeTab === "ARCHIVE"}
             onClick={() => setActiveTab("ARCHIVE")}
           />
-
+     {hasPermission("ADMIN_MANAGE") && (
           <TabButton
             label="Configure Bonus Rules"
             active={activeTab === "RULES"}
             onClick={() => setActiveTab("RULES")}
           />
+        )}
         </div>
       </div>
 

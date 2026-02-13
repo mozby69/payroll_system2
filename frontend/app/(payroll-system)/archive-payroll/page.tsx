@@ -19,6 +19,7 @@ export default function ArchivePayroll() {
   const [search, setSearch] = useState("")
   const [payCycle, setPayCycle] = useState("")
   const [payslipModal, setPayslipModal] = useState(false)
+  const [totalPayrollId, setTotalPayrollId] = useState(0)
 
   const debouncedSearch = useDebounce(search, 400)
 
@@ -46,7 +47,7 @@ export default function ArchivePayroll() {
   }
 
   const handleGeneratePayslip = (data: TotalPayroll) => {
-     console.log("id: ", data)
+    setTotalPayrollId(data.id)
     setPayslipModal(true)
 }
 
@@ -151,8 +152,14 @@ export default function ArchivePayroll() {
       />
 
 {payslipModal && (
-        <RequestModal size="xxl" title="Generate Payslip" onClose={()=>setPayslipModal(false)}>
-             <GeneratePayslipModal />
+        <RequestModal 
+          size="xxl" 
+          title="Generate Payslip"
+          onClose={()=>{
+            setPayslipModal(false); 
+            setTotalPayrollId(0)}
+          }>
+             <GeneratePayslipModal totalPayrollId={totalPayrollId} />
         </RequestModal>
       )
 
