@@ -22,6 +22,8 @@ export default function StepReviewSave({ onBack }: Props) {
   const { data, isLoading } = useDisplayPayroll();
   const savePayroll = useSavePayroll();
 
+  const payCode = data?.data?.[0]?.PayCode ?? "-";
+
   const handleSave = () => {
     SweetAlert.confirmationAlert(
       "Confirm Save Payroll",
@@ -121,15 +123,21 @@ export default function StepReviewSave({ onBack }: Props) {
         </div>
       </div>
 
-      <div className="flex justify-end px-4">
-      <button
-        onClick={handleSave}
-        disabled={savePayroll.isPending}
-        className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white disabled:opacity-50"
-      >
-        {savePayroll.isPending ? "Saving..." : "Save Payroll"}
-      </button>
+      <div className="flex justify-between px-4 pt-4">
 
+      <button
+          onClick={handleSave}
+          disabled={savePayroll.isPending}
+          className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white disabled:opacity-50">
+          {savePayroll.isPending ? "Saving..." : "Save Payroll"}
+        </button>
+
+
+        <div className=" grid place-items-center">
+          <h2 className="text-gray-700"><span className="font-semibold">For Payroll Period:</span> {payCode}</h2>
+        </div>
+
+      
       </div>
 
       <div className="print-area">

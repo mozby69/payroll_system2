@@ -10,6 +10,32 @@ import { isPayrollDateRange } from "./payroll_archive.helper";
 
 
 
+export async function employeeProbationary(){
+
+  try{
+    const computed = await displayCompletePayroll(["PENDING"]);
+    if (!computed || computed.length === 0) return 0;
+    const payCycle = computed[0].PayCode;
+
+    const data1 = await prisma.employee.findMany({
+      where:{
+        EmploymentStatus:"Probationary",
+        EmployeeStatus:"Active"
+      }
+    })
+
+    return {data1,payCycle};
+    
+  }
+
+
+  catch(error){
+    console.log('error occured',error);
+  }
+
+}
+
+
 export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL")[]) {
   
     try{
@@ -311,7 +337,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
-  export async function reCheckPayroll() {
+  export async function reCheckPayroll(){
    
     const data = await prisma.employeeSummary.updateMany({
       where: { status: "FOR_APPROVAL" },
@@ -321,7 +347,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     io.emit("payroll:changed");
   
     return data;
-  }
+}
   
 
 
