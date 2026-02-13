@@ -5,6 +5,7 @@ import { AddPagibigModal } from "./AddPagibigModal";
 import RequestModal from "../components/Modal";
 import { AddBasicSalaryModal } from "./AddBasicSalary";
 import SweetAlert from "../components/Swal";
+import { useEmpLoansByCycle } from "../hooks/useLoans";
 
 
 export type PayrollSavePayload = {
@@ -26,6 +27,8 @@ interface ViewEmployeePayrollProps {
 
 
 export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employeeSummary,onFinalSave,onQuickSave,onClose}) => {
+
+
   const [basicSalary, setBasicSalary] = useState<number>(employeeSummary.basic_salary ?? 0);
   const [pagibigEmployeeShare, setPagibigEmployeeShare] = useState<number>(employeeSummary.pagibig_employee_share ?? 0);
   const [pagibigEmployerShare, setPagibigEmployerShare] = useState<number>(employeeSummary.pagibig_employer_share ?? 0);
@@ -40,14 +43,77 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
   const [showAddBasicSalary, setShowAddBasicSalary] = useState(false);
   const [fchLoan, setFchLoan] = useState(employeeSummary.fch_loan ?? 0);
   const [sssLoan, setSssLoan] = useState(employeeSummary.sss_loan ?? 0);
+  const [rfcLoan, setRfcLoan] = useState(employeeSummary.rfc_loan ?? 0)
   const [pagibigLoan, setPagibigLoan] = useState(employeeSummary.pagibig_loan ?? 0);
 
 
+
+
+
+  // loans display use effect and query here ↓
+  
+  const { data, isLoading } = useEmpLoansByCycle({
+    empCode: employeeSummary.EmpCode,
+    payPeriod: employeeSummary.month_pay,
+    payCycle: employeeSummary.next_payroll,
+  });
+
   useEffect(() => {
-    setFchLoan(employeeSummary.fch_loan ?? 0);
-    setSssLoan(employeeSummary.sss_loan ?? 0);
-    setPagibigLoan(employeeSummary.pagibig_loan ?? 0);
-  }, [employeeSummary]);
+    if (!data) return;
+
+    if (data.FCH_LOAN) {
+      setFchLoan(
+        data.FCH_LOAN.hasLedgerForCurrentCycle
+          ? 0
+          : data.FCH_LOAN.per_payroll_deduct
+      );
+    } else {
+      setFchLoan(0);
+    }
+    if (data.RFC_LOAN) {
+      setRfcLoan(
+        data.RFC_LOAN.hasLedgerForCurrentCycle
+          ? 0
+          : data.RFC_LOAN.per_payroll_deduct
+      );
+    } else {
+      setRfcLoan(0);
+    }
+
+    if (data.SSS_LOAN) {
+      setSssLoan(
+        data.SSS_LOAN.hasLedgerForCurrentCycle
+          ? 0
+          : data.SSS_LOAN.per_payroll_deduct
+      );
+    } else {
+      setSssLoan(0);
+    }
+
+    if (data.PAGIBIG_LOAN) {
+      setPagibigLoan(
+        data.PAGIBIG_LOAN.hasLedgerForCurrentCycle
+          ? 0
+          : data.PAGIBIG_LOAN.per_payroll_deduct
+      );
+    } else {
+      setPagibigLoan(0);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (isLoading) {
+      setFchLoan(0);
+      setSssLoan(0);
+      setPagibigLoan(0);
+      setRfcLoan(0);
+    }
+  }, [isLoading]);
+
+
+  // loans display use effect and query here ↑
+
+
   
 
   const onAddBasicSalary = () => {
@@ -69,7 +135,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
   }, [employeeSummary]);
   
 
-
+  
   return (
     <div className="bg-white rounded-lg pb-4 space-y-4 px-2 py-4">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4">
@@ -177,7 +243,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
         </div>
 
         <div className="grid gap-y-1">
-          <label className="font-bold">PhilHealth</label>
+          <label className="font-bold"></label>
           <input
             type="text"
             value={philHealth}
@@ -185,6 +251,8 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
             className="border py-2 px-2 rounded-lg bg-gray-100"
           />
         </div>
+
+        {/* Loan Code ↓ */}
 
         <div className="grid gap-y-1">
           <label className="font-bold">FCH LOAN</label>
@@ -207,6 +275,16 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
         </div>
 
         <div className="grid gap-y-1">
+          <label className="font-bold">RFC LOAN</label>
+          <input
+            type="number"
+            value={rfcLoan}
+            readOnly
+            className="border py-2 px-2 rounded-lg bg-gray-100"
+          />
+        </div>
+
+        <div className="grid gap-y-1">
           <label className="font-bold">PAG-IBIG LOAN</label>
           <input
             type="number"
@@ -216,6 +294,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
           />
         </div>
 
+        {/* Loan Code ↑ */}
 
       </div>
 

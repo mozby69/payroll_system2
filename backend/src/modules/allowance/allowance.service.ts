@@ -5,7 +5,6 @@ import {  formatAllowanceMonth, getDaysInMonth, getPreviousMonth } from "./allow
 import { nowPH } from "../../utils/timezone";
 
 
-
 export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}: allowanceprops) {
     const [year, month] = selectedMonth.split("-").map(Number);
     const prev = getPreviousMonth(year, month);
@@ -60,29 +59,120 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
     const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
 
     const normalized = employees.map((emp) => {
-        const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
-        const cashAssistance = emp.employeepayroll?.cash_assistance ? emp.employeepayroll.cash_assistance.toNumber() : 0;
-        const ecola = emp.employeepayroll?.ecola ? emp.employeepayroll.ecola.toNumber() : 0;
-        const cashAssitanceDailyRate = cashAssistance / daysInPrevMonth;
-        const ecoalDailyRate = ecola / daysInPrevMonth;
-        const totalCashAssistance = cashAssistance - (cashAssitanceDailyRate * totalAbsentHours);
-        const totalEcola = ecola - (ecoalDailyRate * totalAbsentHours);
-        const totalCash = Number(totalCashAssistance + totalEcola).toFixed(2);
-        const x =  (cashAssitanceDailyRate * totalAbsentHours);
-        const y = (ecoalDailyRate * totalAbsentHours);
-        return {
-          EmpCode: emp.EmpCode,
-          Firstname: emp.Firstname,
-          Lastname: emp.Lastname,
-          cash_assistance: emp.employeepayroll?.cash_assistance ?? 0,
-          ecola: emp.employeepayroll?.ecola ?? 0,
-          totalAbsentHours,
-          total:totalCash,
-          daysInPrevMonth,
-        };
+      const totalAbsentHours = emp.employeesummary.reduce(
+        (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
+        0
+      );
+
+      const cashAssistance =
+        emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
+
+      const ecola =
+        emp.employeepayroll?.ecola?.toNumber() ?? 0;
+
+      const cashDailyRate = cashAssistance / daysInPrevMonth;
+      const ecolaDailyRate = ecola / daysInPrevMonth;
+
+      const absentDeduction =
+        (cashDailyRate * totalAbsentHours) +
+        (ecolaDailyRate * totalAbsentHours);
+
+      const total = cashAssistance + ecola - absentDeduction;
+
+      return {
+        EmpCode: emp.EmpCode,
+        Firstname: emp.Firstname,
+        Lastname: emp.Lastname,
+        cash_assistance: cashAssistance,   
+        ecola: ecola,                      
+        totalAbsentHours,
+        total: total,                     
+        totalDeduction: absentDeduction,   
+      };
+    });
+
+
+  // loan code ↓
+
+    if (normalized.length > 0) {
+
+      const empCodes = normalized.map(e => e.EmpCode);
+
+      const loans = await prisma.loan_details.findMany({
+        where: {
+          EmpCodeId: { in: empCodes },
+          status: "ACTIVE",
+          loan_type:  {
+              in: ["FCH_LOAN", "RFC_LOAN"],
+            },
+          deduct_allowance: true,
+        },
+        select: {
+          loan_id: true,
+          EmpCodeId: true,
+          per_payroll_deduct: true,
+          cycle_category: true,
+        },
       });
-      
+
+      const loanIds = loans.map(l => l.loan_id);
+
+      const ledgers = await prisma.loan_ledger.findMany({
+        where: { loan_id: { in: loanIds } },
+        orderBy: { transaction_date: "desc" },
+      });
+
+      const latestLedger = new Map<number, any>();
+      for (const l of ledgers) {
+        if (!latestLedger.has(l.loan_id)) {
+          latestLedger.set(l.loan_id, l);
+        }
+      }
+
+      for (let i = 0; i < normalized.length; i++) {
+        const row = normalized[i];
+
+        const empLoan = loans.find(
+          l => l.EmpCodeId === row.EmpCode
+        );
+
+        if (!empLoan) continue;
+
+        const ledger = latestLedger.get(empLoan.loan_id);
+
+        let alreadyDeducted = false;
+        let expectedPayrollCycle = "30";
+
+        if (empLoan.cycle_category === "10-25-Cycle") {
+          expectedPayrollCycle = "30";
+        }
+
+        if (ledger) {
+          const d = ledger.transaction_date;
+
+          alreadyDeducted =
+            d.getFullYear() === year &&
+            d.getMonth() + 1 === month &&
+            String(ledger.payroll_cycle) === expectedPayrollCycle;
+        }
+
+        if (!alreadyDeducted) {
+
+          const loanAmount = Number(empLoan.per_payroll_deduct);
+
+          normalized[i] = {
+            ...row,
+            total: row.total - loanAmount,
+            totalDeduction: row.totalDeduction + loanAmount,
+          };
+
+        }
+      }
+    }
+
+  // loan code ↑ 
   
+
     const total = await prisma.employee.count({ where: employeeWhere });
   
     return {
@@ -108,11 +198,14 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
 
 
 
+
+
   
 export async function computeAllowanceForMonth(selectedMonth: string) {
     const [year, month] = selectedMonth.split("-").map(Number);
     const prev = getPreviousMonth(year, month);
-  
+
+
     const monthName = new Date(prev.year, prev.month - 1).toLocaleString("en-US", {
       month: "long",
     });
@@ -151,7 +244,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     });
   
     //return employees.map((emp) => {
-      const rows = employees.map((emp) => {
+    const rows = employees.map((emp) => {
 
       const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
       const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
@@ -162,7 +255,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       const totalEcola = ecola - (ecolaDailyRate * totalAbsentHours);
       const total = totalCashAllowance + totalEcola;
       const totalDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
-  
+      // loan code ↓
+      const fch_rfc_deducted = 0;
+      // loan code ↑
       return {
         EmpCode: emp.EmpCode,
         name: `${emp.Firstname ?? ""} ${emp.Lastname ?? ""}`.trim(),
@@ -171,9 +266,111 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         absent: totalAbsentHours,
         total,
         selectedMonth,
-        totalDeduction
+        totalDeduction,
+        // loan code ↓
+        fch_rfc_deducted
+        // loan code ↑
       };
     });
+
+    // loan Code ↓
+
+      if (rows.length > 0) {
+        const empCodes = rows.map((e) => e.EmpCode);
+
+        const loans = await prisma.loan_details.findMany({
+          where: {
+            EmpCodeId: { in: empCodes },
+            status: "ACTIVE",
+            loan_type:  {
+              in: ["FCH_LOAN", "RFC_LOAN"],
+            },
+            deduct_allowance: true,
+          },
+          select: {
+            loan_id: true,
+            EmpCodeId: true,
+            loan_type: true,
+            per_payroll_deduct: true,
+            cycle_category:true,
+          },
+        });
+
+        const loanIds = loans.map((l) => l.loan_id);
+
+        const ledgers = await prisma.loan_ledger.findMany({
+          where: { loan_id: { in: loanIds } },
+          orderBy: { transaction_date: "desc" },
+        });
+
+
+        const latestLedger = new Map<number, any>();
+        for (const l of ledgers) {
+          if (!latestLedger.has(l.loan_id)) {
+            latestLedger.set(l.loan_id, l);
+          }
+        }
+
+        const loanByEmp: Record<string, any> = {};
+
+        for (const loan of loans) {
+          const ledger = latestLedger.get(loan.loan_id);
+
+          let alreadyDeducted = false;
+
+          if (ledger) {
+            const d = ledger.transaction_date;
+            let expectedPayrollCycle = "30";
+
+            if (loan.cycle_category === "10-25-Cycle") {
+              expectedPayrollCycle = "30";
+            }
+
+            
+            alreadyDeducted =
+              d.getFullYear() === year &&
+              d.getMonth() + 1 === month &&
+              String(ledger.payroll_cycle) === expectedPayrollCycle;
+
+          } 
+
+          if (!loanByEmp[loan.EmpCodeId]) {
+              loanByEmp[loan.EmpCodeId] = {};
+            }
+
+          loanByEmp[loan.EmpCodeId][loan.loan_type] = {
+              loan_id: loan.loan_id,
+              amount: Number(loan.per_payroll_deduct),
+              alreadyDeducted,
+            };
+        }
+
+        const loanDeduct = (loan?: {
+          amount: number;
+          alreadyDeducted: boolean;
+        }) => (loan && !loan.alreadyDeducted ? loan.amount : 0);
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const empLoans = loanByEmp[row.EmpCode] ?? {};
+
+        
+          const fch = loanDeduct(empLoans["FCH_LOAN"]);
+          const rfc = loanDeduct(empLoans["RFC_LOAN"]);
+          const totalLoanDeduction = fch + rfc;
+          
+          rows[i] = {
+            ...row,
+          
+            totalDeduction: totalLoanDeduction + row.totalDeduction,
+            total: row.total - row.totalDeduction - totalLoanDeduction,
+            fch_rfc_deducted: totalLoanDeduction,
+          };
+        }
+      }
+
+    // loan Code ↑ 
+    
 
     const summary = rows.reduce(
       (acc, row) => {
@@ -247,8 +444,50 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           selectedMonth, // FK
           createdAt: nowPH(),
         })),
+        
       });
+ for (const emp of rows) {
+
+          if (!emp.fch_rfc_deducted || emp.fch_rfc_deducted <= 0) continue;
+
+          const loan = await tx.loan_details.findFirst({
+            where: {
+              EmpCodeId: emp.EmpCode,
+              status: "ACTIVE",
+              loan_type:  {
+                  in: ["FCH_LOAN", "RFC_LOAN"],
+              },
+              deduct_allowance: true,
+            },
+            select: {
+              loan_id: true,
+            },
+          });
+
+          if (!loan) continue;
+
+          await tx.loan_ledger.create({
+            data: {
+              loan_id: loan.loan_id,
+              EmpCodeId: emp.EmpCode,
+              transaction_date: new Date(),
+              payroll_cycle: "30",
+              transaction_type: "PAYROLL_DEDUCT",
+              debit_amount: 0,
+              credit_amount: emp.fch_rfc_deducted,
+              remarks: "Allowance Deduction - Loan",
+              payment_status: "PAID",
+            },
+          });
+      }
+
     });
+    
+
+
+
+
+
   }
 
 

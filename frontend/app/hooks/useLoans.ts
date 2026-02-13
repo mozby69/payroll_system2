@@ -1,6 +1,7 @@
 import { useQueryClient, useMutation, useQuery,keepPreviousData} from "@tanstack/react-query";
-import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchEmpLoanById,fetchLoanDetails, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
-import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload } from "../types/loanTypes";
+import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
+import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules } from "../types/loanTypes";
+
 
 
 export function useAddLoan() {
@@ -24,6 +25,7 @@ export function useAddLoan() {
         queryKey: ["loans"],
       });
     },
+  
   });
 }
 
@@ -121,5 +123,25 @@ export const usePayEmployeeLoan = () => {
       queryClient.invalidateQueries({ queryKey: ["loan-details", loan_id] });
       queryClient.invalidateQueries({ queryKey: ["loans"] });
     },
+  });
+};
+
+
+
+export const useEmpLoansByCycle = (
+  payload: FetchEmpLoansPayload,
+  enabled = true
+) => {
+  return useQuery<EmpLoansByCycleResponse>({
+    queryKey: ["emp-loans-by-cycle", payload],
+    queryFn: () => fetchLoansByEmpCode(payload),
+    enabled,
+  });
+};
+
+export const useBonusRules = () => {
+  return useQuery<BonusRules[]>({
+    queryKey: ["bonus-rules"],
+    queryFn: fetchBonusRules,
   });
 };

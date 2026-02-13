@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prismaClient";
-import {  CYCLE_RULES, CycleCategory, DEFAULT_CYCLE_CATEGORY, LOAN_ACTION_TYPES, LoanActionType, loanProps, PayrollCycle, updateLoanProps } from "../loans/loan.types";
+import {  CYCLE_RULES, CycleCategory, DEFAULT_CYCLE_CATEGORY, LOAN_ACTION_TYPES, LoanActionType, loanProps, LoanResult, PayCyclePeriod, PayrollCycle, updateLoanProps } from "../loans/loan.types";
 
 export async function saveEmployeeLoan(data: loanProps){
 
@@ -20,6 +20,44 @@ export async function saveEmployeeLoan(data: loanProps){
 
   return await prisma.$transaction(async (tx) =>{
 
+      const existingLoan = await tx.loan_details.findFirst({
+        where:{
+          EmpCodeId:data.empCode,
+          status:"ACTIVE",
+          loan_type: data.loan_type
+        },
+        select: {
+          loan_id: true,
+          EmpCodeId: true,
+          principal: true,
+          term_value: true,
+          term_unit: true,
+          start_date: true,
+          deduct_allowance: true,
+        },
+    });
+
+    if (existingLoan) {
+      throw new Error("You have Existing Active Loan");
+    }
+
+      const existingEmp = await tx.employee.findUnique({
+        where:{
+          EmpCode:data.empCode
+        },
+        select:{
+          BranchCode:{
+            select:{
+              CompanyCode:{
+                select:{
+                  CompanyCycle: true
+                }
+              }
+            }
+          }
+        }
+      })
+
       const loan = await tx.loan_details.create({
         data: {
           EmpCodeId: data.empCode,
@@ -30,7 +68,10 @@ export async function saveEmployeeLoan(data: loanProps){
           start_date: startDate,
           deduct_allowance: data.deduct_allowance,
           per_payroll_deduct: perPayroll,
+          cycle_category:existingEmp?.BranchCode?.CompanyCode?.CompanyCycle,
+          others_types: data.others_type,
           status: "ACTIVE",
+
         },
       });
 
@@ -740,3 +781,92 @@ export const insertLoanPayment = async (loan_id: number,
 
   });
 };
+
+
+export const fetchLoanByEmpCode = async (payCyclePeriod: PayCyclePeriod): Promise<LoanResult> => {
+  const [payrollYear, payrollMonth] = payCyclePeriod.payPeriod
+    .split("-")
+    .map(Number);
+
+  const monthCycle = payCyclePeriod.payCycle.split("-")[0];
+
+  return prisma.$transaction(async (tx) => {
+    const activeLoans = await tx.loan_details.findMany({
+      where: {
+        EmpCodeId: payCyclePeriod.EmpCode,
+        status: "ACTIVE",
+        loan_type: {
+          in: ["PAGIBIG_LOAN", "SSS_LOAN", "FCH_LOAN", "RFC_LOAN"],
+        },
+      },
+      select: {
+        loan_id: true,
+        loan_type: true,
+        principal: true,
+        term_value: true,
+        term_unit: true,
+        start_date: true,
+        per_payroll_deduct:true,
+        deduct_allowance: true,
+      },
+    });
+
+
+    const result: LoanResult = {
+      FCH_LOAN: null,
+      SSS_LOAN: null,
+      PAGIBIG_LOAN: null,
+      RFC_LOAN: null,
+    };
+
+    for (const loan of activeLoans) {
+      const latestLedger = await tx.loan_ledger.findFirst({
+        where: {
+          loan_id: loan.loan_id,
+        },
+        orderBy: {
+          transaction_date: "desc",
+        },
+      });
+
+      let hasLedgerForCurrentCycle = false;
+
+      if (latestLedger) {
+        const ledgerDate = latestLedger.transaction_date;
+        const ledgerYear = ledgerDate.getFullYear();
+        const ledgerMonth = ledgerDate.getMonth() + 1;
+
+        hasLedgerForCurrentCycle =
+          ledgerYear === payrollYear &&
+          ledgerMonth === payrollMonth &&
+          latestLedger.payroll_cycle === monthCycle;
+      }
+
+      result[loan.loan_type as keyof LoanResult] = {
+        ...loan,
+        latestLedger,
+        hasLedgerForCurrentCycle,
+      };
+    }
+
+    return result;
+  });
+};
+
+
+export const fetchBonusRule = async () =>{
+    return prisma.bonusRule.findMany({
+      where: {
+        isActive: true,
+        deletedAt: null,
+      },
+      select:{
+        code:true,
+        name:true,
+      },
+      orderBy:{
+        code:"asc"
+      }
+
+    })
+}

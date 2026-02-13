@@ -1,4 +1,6 @@
 import { prisma } from "../../config/prismaClient";
+import { computePhilRate, computeSSSContribution, computeSSSContributionEmployer } from "../prepare_payroll/prepare_payroll.computation";
+import { UpdateTypesByEmpCode } from "./emp.types";
 
 type EmployeeFilterParams = {
   search?: string;
@@ -78,6 +80,20 @@ export const countEmployees = async (filters: EmployeeFilterParams) => {
 };
 
 export const getEmployeeByEmpCode = async (empCode: string) => {
+  
+  const sssTable = await prisma.sSS_Contributions.findMany({
+    select: {
+      start_range: true,
+      end_range: true,
+      employee_share: true,
+      employer_share:true,
+    },
+    orderBy: {
+      start_range: "asc",
+    },
+  });
+
+
   const employee = await prisma.employee.findUnique({
     where: { EmpCode: empCode },
     select: {
@@ -150,6 +166,9 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
 
   const totalSalary = basicSalary + cashAssistance + ecola;
 
+  
+  const ssscontrib = computeSSSContribution(basicSalary,sssTable);
+
   return {
     ...employee,
 
@@ -159,7 +178,28 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           CashAssistance: cashAssistance,
           Ecola: ecola,
           TotalSalary: totalSalary,
+          ssscontrib: ssscontrib,
+          
         }
       : null,
   };
+};
+
+
+export const updateEmployeePayroll = async (empCode: string, payLoad:UpdateTypesByEmpCode) =>{
+    return prisma.employee.update({
+      where:{
+        EmpCode:empCode
+      },
+      data:{
+        employeepayroll:{
+            update:{
+              basic_salary:payLoad.basicSalary,
+              cash_assistance:payLoad.cashAssistance,
+              ecola:payLoad.ecola
+          }
+        }
+      }
+
+    });
 };

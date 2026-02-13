@@ -35,7 +35,10 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
   const [isModalOpen2, setIsModalOpen2] = useState(false);
   const [selectedRow, setSelectedRow] = useState<EmployeeRow | null>(null);
   const updatePayrollMutation = useUpdateEmployeePayroll();
+  
   const [rows, setRows] = useState<EmployeeRow[]>(data);
+
+  
 
   const openModal2 = () => {;
     setIsModalOpen2(true);
@@ -185,6 +188,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
      {isModalOpen && selectedRow && (
       <RequestModal size="xxxl" title={`Employee:${selectedRow.Firstname}, ${selectedRow.Lastname}`} onClose={closeModal}>
         <ViewEmployeePayroll
+          key={selectedRow.EmpCode}
           employeeSummary={selectedRow}
           onFinalSave={handleSavePayroll}
           onQuickSave={savePayrollSilently}

@@ -1,4 +1,3 @@
-import { dummySummary } from "@/app/types/dummyData";
 
 
 export interface SpreadsheetRow {
@@ -14,6 +13,7 @@ export interface SpreadsheetRow {
   pagibig: number | string;
   arE: number | string;
   fch: number | string;
+  rfc: number | string;
   salaryLoan: number | string;
   calamityLoan: number | string;
   pagibigSalaryLoan: number | string;
@@ -48,7 +48,7 @@ export default function SpreadSheet({ data,totals }: Props) {
       <table className="w-full border-collapse text-[9pt] table-auto">
         <thead>
           <tr className="border border-gray-300">
-            <th colSpan={13}></th>
+            <th colSpan={14}></th>
             <th
               colSpan={2}
               className="text-center py-2 border border-gray-300 align-middle bg-gray-50"
@@ -77,6 +77,7 @@ export default function SpreadSheet({ data,totals }: Props) {
             <th className="border border-slate-300">PhilHealth</th>
             <th className="border border-slate-300">Pag-ibig</th>
             <th className="border border-slate-300">AR/E</th>
+            <th className="border border-slate-300">RFC</th>
             <th className="border border-slate-300">FCH</th>
             <th className="border border-gray-300">Salary</th>
             <th className="border border-gray-300">Calamity</th>
@@ -113,6 +114,7 @@ export default function SpreadSheet({ data,totals }: Props) {
                 <td className="py-2 text-center">{row.philhealth}</td>
                 <td className="py-2 text-center">{row.pagibig}</td>
                 <td className="py-2 text-center">{row.arE}</td>
+                <td className="py-2 text-center">{row.rfc}</td>
                 <td className="py-2 text-center">{row.fch}</td>
                 <td className="py-2 text-center">{row.salaryLoan}</td>
                 <td className="py-2 text-center">{row.calamityLoan}</td>

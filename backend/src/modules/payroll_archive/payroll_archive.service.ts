@@ -1,13 +1,10 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
-import { any } from "zod";
 import { PayrollDateRange } from "../api/api.types";
 import { isPayrollDateRange } from "./payroll_archive.helper";
-
+import { convertPayrollLabelToPeriod } from "./payroll_archive.types";
 
 
 export async function employeeProbationary(){
@@ -117,6 +114,120 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       });
 
 
+
+// loans fetch and query here ↓
+
+    const empCodes = employeeList.map(e => e.EmpCodeId);
+    const payrollPeriod = employeeList[0].PayCode;
+    const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod)
+    const payCycle = employeeList[0].PayrollPeriod;
+
+    const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
+    const payrollCycle = payCycle.split("-")[0];
+
+    console.log("=== PAYROLL CONTEXT ===");
+    console.log(empCodes)
+    console.log({
+      payrollPeriod,
+      payYear,
+      payMonth,
+      payrollCycle,
+    });
+
+
+    const loans = await prisma.loan_details.findMany({
+      where: {
+        EmpCodeId: { in: empCodes },
+        status: "ACTIVE",
+        loan_type: {
+          in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN"],
+        },
+      },
+      select: {
+        loan_id: true,
+        EmpCodeId: true,
+        loan_type: true,
+        per_payroll_deduct: true,
+      },
+    });
+
+    console.log("=== ACTIVE LOANS ===");
+    console.table(
+      loans.map(l => ({
+        loan_id: l.loan_id,
+        emp: l.EmpCodeId,
+        type: l.loan_type,
+        amount: Number(l.per_payroll_deduct),
+      }))
+    );
+
+
+    const loanIds = loans.map(l => l.loan_id);
+
+    const ledgers = await prisma.loan_ledger.findMany({
+      where: { loan_id: { in: loanIds } },
+      orderBy: { transaction_date: "desc" },
+    });
+
+    const latestLedger = new Map<number, any>();
+    for (const l of ledgers) {
+      if (!latestLedger.has(l.loan_id)) {
+        latestLedger.set(l.loan_id, l);
+      }
+    }
+
+    console.log("=== LATEST LEDGER PER LOAN ===");
+    for (const [loanId, ledger] of latestLedger.entries()) {
+      console.log({
+        loan_id: loanId,
+        transaction_date: ledger.transaction_date,
+        payroll_cycle: ledger.payroll_cycle,
+      });
+    }
+
+
+    const loanByEmp: Record<string, any> = {};
+
+    for (const loan of loans) {
+      const ledger = latestLedger.get(loan.loan_id);
+
+      let alreadyDeducted = false;
+      if (ledger) {
+        const d = ledger.transaction_date;
+        alreadyDeducted =
+          d.getFullYear() === payYear &&
+          d.getMonth() + 1 === payMonth &&
+          ledger.payroll_cycle === payrollCycle;
+      }
+      
+      console.log("=== LOAN CHECK ===");
+      console.log({
+        loan_id: loan.loan_id,
+        emp: loan.EmpCodeId,
+        type: loan.loan_type,
+        amount: Number(loan.per_payroll_deduct),
+        ledger_date: ledger?.transaction_date,
+        ledger_cycle: ledger?.payroll_cycle,
+        alreadyDeducted,
+      });
+      if (!loanByEmp[loan.EmpCodeId]) {
+        loanByEmp[loan.EmpCodeId] = {};
+      }
+
+      loanByEmp[loan.EmpCodeId][loan.loan_type] = {
+        amount: Number(loan.per_payroll_deduct),
+        alreadyDeducted,
+      };
+
+      
+    }
+
+    const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>
+      loan && !loan.alreadyDeducted ? loan.amount : 0;
+
+// loans fetch and query here ↑
+
+
       const normalized = employeeList.map((emp) => {
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
         const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
@@ -138,6 +249,18 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
                                   computePhilRate(semiMonthly, phil_percentage) +
                                   computePagibig(rawPagibigEmployee);
 
+        // Loan Code ↓
+
+        const loans = loanByEmp[emp.EmpCodeId] ?? {};
+        const fch_loan = loanDeduct(loans.FCH_LOAN);
+        const sss_loan = loanDeduct(loans.SSS_LOAN);
+        const pagibig_loan = loanDeduct(loans.PAGIBIG_LOAN);
+        const rfc_loan = loanDeduct(loans.RFC_LOAN);
+        // Loan Code ↑
+
+        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan;
+
+
         const overTime = computeOvertime(basicSalary, {
           regular: emp.RegularAtt,
           overtime: emp.OvertimeAtt,
@@ -146,7 +269,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         });
     
         const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,absent);
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRate);
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRate +totalLoanDeduction);
         const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,Paycodes);
    
         return {
@@ -156,6 +279,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           late_count:lateCount,
           absence:absent,
           gross_pay:grossPay,
+
+          // Loan Code ↓
+          fch_loan,
+          sss_loan,
+          pagibig_loan,
+          rfc_loan,
+          // Loan Code ↑
+
           sss_contrib_employee:sssContribEmployee,
           sss_contrib_employer:sssContribEmployer,
           philhealth_contrib:philhealthRate,
@@ -211,18 +342,88 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
   export async function saveComputedFinalPayroll() {
-    const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
+    
+  
+    return await prisma.$transaction(async (tx) => {
+      const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
+
   
     if (!computed || computed.length === 0) return 0;
-  
-    const payCycle = computed[0].PayCode;
+    
+    const empCodes = computed.map(e => e.EmpCodeId);
+    const payrollPeriod = computed[0].PayCode;
+    const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod)
+    const payCycle = computed[0].PayrollPeriod;
+
+    const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
+    const payrollCycle = payCycle.split("-")[0];
+
     const cycleCategory = computed[0].CycleCategory;
-    const payrollPeriod = computed[0].PayrollPeriod;
     const rawSelectedPayrollDate = computed[0]?.selected_payroll_date;
-  
+    
+    const loans = await tx.loan_details.findMany({
+      where: {
+        EmpCodeId: { in: empCodes },
+        status: "ACTIVE",
+        loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN"] },
+      },
+      select: {
+        loan_id: true,
+        EmpCodeId: true,
+        loan_type: true,
+        per_payroll_deduct: true,
+      },
+    });
+
+    const loanIds = loans.map((l) => l.loan_id);
+
+    const ledgers = await tx.loan_ledger.findMany({
+      where: { loan_id: { in: loanIds } },
+      orderBy: { transaction_date: "desc" },
+    });
+
+    const latestLedger = new Map<number, any>();
+    for (const l of ledgers) {
+      if (!latestLedger.has(l.loan_id)) {
+        latestLedger.set(l.loan_id, l);
+      }
+    }
+
+    const loanByEmp: Record<string, any> = {};
+
+    for (const loan of loans) {
+      const ledger = latestLedger.get(loan.loan_id);
+
+      let alreadyDeducted = false;
+      if (ledger) {
+        const d = ledger.transaction_date;
+        alreadyDeducted =
+          d.getFullYear() === payYear &&
+          d.getMonth() + 1 === payMonth &&
+          ledger.payroll_cycle === payrollCycle;
+      }
+
+      if (!loanByEmp[loan.EmpCodeId]) {
+        loanByEmp[loan.EmpCodeId] = {};
+      }
+
+      loanByEmp[loan.EmpCodeId][loan.loan_type] = {
+        loan_id: loan.loan_id,
+        amount: Number(loan.per_payroll_deduct),
+        alreadyDeducted,
+      };
+    }
+
+    const loanDeduct = (loan?: {
+      amount: number;
+      alreadyDeducted: boolean;
+    }) => (loan && !loan.alreadyDeducted ? loan.amount : 0);
+
     if (!rawSelectedPayrollDate || !isPayrollDateRange(rawSelectedPayrollDate)) {
       throw new Error("Invalid selected_payroll_date");
     }
+
+    
   
     // ================= AGGREGATE TOTALS =================
     const totals = computed.reduce(
@@ -256,14 +457,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         basic: 0,
       }
     );
-  
-    return await prisma.$transaction(async (tx) => {
       // ================= 1️⃣ CREATE TOTAL PAYROLL =================
       const total = await tx.totalPayroll.create({
         data: {
-          PayCycle: payCycle,
+          PayCycle: payrollPeriod,
           cycle_category: cycleCategory,
-          payroll_period: payrollPeriod,
+          payroll_period: payCycle,
           selected_payroll_date: {
             start_date: rawSelectedPayrollDate.start_date,
             end_date: rawSelectedPayrollDate.end_date,
@@ -286,37 +485,80 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       });
   
       // ================= 2️⃣ INSERT EMPLOYEE ARCHIVES =================
-      const archivePayload = computed.map((emp) => ({
-        PayCode: emp.PayCode,
-        Late: emp.late_count,
-        Absent: emp.absence,
-        cycle_category: emp.CycleCategory,
-        payroll_period: emp.PayrollPeriod,
-        Overtime: emp.overtime,
-        Grosspay: emp.gross_pay,
-        w_tax: emp.wtax,
-        Netpay: Number(emp.net_pay),
-        Basic_salary: Number(emp.semi_monthly),
-  
-        SSS_employee_share: emp.sss_contrib_employee,
-        SSS_employer_share: emp.sss_contrib_employer,
-  
-        Pagibig_employee_share: emp.pagibig_contrib_employee,
-        Pagibig_employer_share: emp.pagibig_contrib_employer,
-  
-        philhealth_employee_share: emp.philhealth_contrib,
-        philhealth_employer_share: emp.philhealth_contrib,
-  
-        EmpCodeId: emp.EmpCodeId,
-  
-        // ✅ FOREIGN KEY LINK
-        totalPayrollId: total.id,
-      }));
+      
+      const archivePayload = computed.map((emp) => {
+        const empLoans = loanByEmp[emp.EmpCodeId] ?? {};
+      
+        return {
+          PayCode: emp.PayCode,
+          Late: emp.late_count,
+          Absent: emp.absence,
+          cycle_category: emp.CycleCategory,
+          payroll_period: emp.PayrollPeriod,
+          Overtime: emp.overtime,
+          Grosspay: emp.gross_pay,
+          w_tax: emp.wtax,
+          Netpay: Number(emp.net_pay),
+          Basic_salary: Number(emp.semi_monthly),
+      
+          SSS_employee_share: emp.sss_contrib_employee,
+          SSS_employer_share: emp.sss_contrib_employer,
+      
+          Pagibig_employee_share: emp.pagibig_contrib_employee,
+          Pagibig_employer_share: emp.pagibig_contrib_employer,
+      
+          philhealth_employee_share: emp.philhealth_contrib,
+          philhealth_employer_share: emp.philhealth_contrib,
+      
+          // Loan Code ↓
+          fch_loan: loanDeduct(empLoans.FCH_LOAN),
+          sss_loan: loanDeduct(empLoans.SSS_LOAN),
+          pagibig_loan: loanDeduct(empLoans.PAGIBIG_LOAN),
+          rfc_loan: loanDeduct(empLoans.RFC_LOAN),
+          // Loan Code ↑
+      
+          EmpCodeId: emp.EmpCodeId,
+          totalPayrollId: total.id,
+        };
+      });
+      
+
+
   
       await tx.employeePayrollArchive.createMany({
         data: archivePayload,
         skipDuplicates: true,
       });
+
+            // Loan Code ↓
+
+            const transaction_date = nowPH();
+
+            for (const emp of computed) {
+              const empLoans = loanByEmp[emp.EmpCodeId];
+              if (!empLoans) continue;
+      
+              for (const loanType of Object.keys(empLoans)) {
+                const loan = empLoans[loanType];
+                if (loan.alreadyDeducted) continue;
+      
+                await tx.loan_ledger.create({
+                  data: {
+                    loan_id: loan.loan_id,
+                    EmpCodeId: emp.EmpCodeId,
+                    transaction_date,
+                    payroll_cycle: payrollCycle,
+                    transaction_type: "PAYROLL_DEDUCT",
+                    debit_amount: 0,
+                    credit_amount: loan.amount,
+                    remarks: "Loan Credited to Payroll",
+                    payment_status: "PAID",
+                  },
+                });
+              }
+            }
+            
+          // Loan Code ↑ 
   
       // ================= 3️⃣ UPDATE SUMMARY =================
       await tx.employeeSummary.updateMany({
