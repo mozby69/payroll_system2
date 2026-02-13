@@ -2,35 +2,143 @@ import { prisma } from "../../config/prismaClient";
 import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
 import { parsePayCycleToDate } from "./variance.helper";
 
-
-export async  function fetchEmployeeVariance (){
+export async function fetchEmployeeVariance() {
   const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
-  if (!computed || computed.length === 0) return 0;
-  
+  if (!computed || computed.length === 0) return [];
 
-  const archivePayload = computed.map((emp) => ({
-    PayCode: emp.PayCode,
-    cycle_category: emp.CycleCategory,
-    payroll_period: emp.PayrollPeriod,
-    w_tax: emp.wtax,
-    Basic_salary: Number(emp.semi_monthly),
+  const currentPayCode = computed[0].PayCode;
+  const cycleCategory = computed[0].CycleCategory;
+  const currentPayrollPeriod = computed[0].PayrollPeriod;
+  const currentDate = parsePayCycleToDate(currentPayCode);
 
-    SSS_employee_share: emp.sss_contrib_employee,
-    SSS_employer_share: emp.sss_contrib_employer,
+  /* ---------------------------------------------------------
+     1️⃣ Get All Previous Payrolls (Same Cycle Category)
+  ---------------------------------------------------------- */
 
-    Pagibig_employee_share: emp.pagibig_contrib_employee,
-    Pagibig_employer_share: emp.pagibig_contrib_employer,
+  const payrollTotals = await prisma.totalPayroll.findMany({
+    where: {
+      cycle_category: cycleCategory,
+    },
+    select: {
+      PayCycle: true,
+      payroll_period: true,
+    },
+  });
 
-    philhealth_employee_share: emp.philhealth_contrib,
-    philhealth_employer_share: emp.philhealth_contrib,
+  const previousPayrolls = payrollTotals
+    .map(p => ({
+      paycode: p.PayCycle,
+      payroll_period: p.payroll_period,
+      parsedDate: parsePayCycleToDate(p.PayCycle),
+    }))
+    .filter(p => p.parsedDate.getTime() < currentDate.getTime())
+    .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime());
 
-    EmpCodeId: emp.EmpCodeId,
+  if (previousPayrolls.length === 0) return [];
 
+  /* ---------------------------------------------------------
+     2️⃣ Determine Two References
+  ---------------------------------------------------------- */
 
-  }));
+  // Immediate previous (for Basic comparison)
+  const immediatePrevious = previousPayrolls[0];
 
-  return archivePayload;
+  // Same payroll_period previous (for SSS / Phil comparison)
+  const samePeriodPrevious = previousPayrolls.find(
+    p => p.payroll_period === currentPayrollPeriod
+  );
+
+  /* ---------------------------------------------------------
+     3️⃣ Fetch Archive Records for Both References
+  ---------------------------------------------------------- */
+
+  const [immediateEmployees, samePeriodEmployees] = await Promise.all([
+    immediatePrevious
+      ? prisma.employeePayrollArchive.findMany({
+          where: { PayCode: immediatePrevious.paycode },
+        })
+      : Promise.resolve([]),
+
+    samePeriodPrevious
+      ? prisma.employeePayrollArchive.findMany({
+          where: { PayCode: samePeriodPrevious.paycode },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  /* ---------------------------------------------------------
+     4️⃣ Build Lookup Maps
+  ---------------------------------------------------------- */
+
+  const immediateMap = new Map(
+    immediateEmployees.map(emp => [emp.EmpCodeId, emp])
+  );
+
+  const samePeriodMap = new Map(
+    samePeriodEmployees.map(emp => [emp.EmpCodeId, emp])
+  );
+
+  /* ---------------------------------------------------------
+     5️⃣ Compare Per Employee
+  ---------------------------------------------------------- */
+
+  const employeeVariance = computed.map(emp => {
+      const prevImmediate = immediateMap.get(emp.EmpCodeId);
+      const prevSamePeriod = samePeriodMap.get(emp.EmpCodeId);
+
+      // 🔹 Basic → compare to immediate previous
+      const prevBasic = Number(prevImmediate?.Basic_salary ?? 0);
+      const currBasic = Number(emp.semi_monthly ?? 0);
+      const basicDiff = currBasic - prevBasic;
+
+      // 🔹 SSS / Phil → compare to same payroll_period
+      const prevSSSEmp = Number(prevSamePeriod?.SSS_employee_share ?? 0);
+      const currSSSEmp = Number(emp.sss_contrib_employee ?? 0);
+      const sssEmpDiff = currSSSEmp - prevSSSEmp;
+
+      const prevSSSEr = Number(prevSamePeriod?.SSS_employer_share ?? 0);
+      const currSSSEr = Number(emp.sss_contrib_employer ?? 0);
+      const sssErDiff = currSSSEr - prevSSSEr;
+
+      const prevPhilEmp = Number(prevSamePeriod?.philhealth_employee_share ?? 0);
+      const currPhilEmp = Number(emp.philhealth_contrib ?? 0);
+      const philEmpDiff = currPhilEmp - prevPhilEmp;
+
+      const prevPhilEr = Number(prevSamePeriod?.philhealth_employer_share ?? 0);
+      const currPhilEr = Number(emp.philhealth_contrib ?? 0);
+      const philErDiff = currPhilEr - prevPhilEr;
+
+      const hasVariance =
+        basicDiff !== 0 ||
+        sssEmpDiff !== 0 ||
+        sssErDiff !== 0 ||
+        philEmpDiff !== 0 ||
+        philErDiff !== 0;
+
+      if (!hasVariance) return null;
+
+      return {
+        EmpCodeId: emp.EmpCodeId,
+        PayCode: currentPayCode,
+        name: `${emp.EmpCode.Firstname} ${emp.EmpCode.Lastname}`,
+        variance: {
+          basic: basicDiff,
+          sssEmployee: sssEmpDiff,
+          sssEmployer: sssErDiff,
+          philEmployee: philEmpDiff,
+          philEmployer: philErDiff,
+        },
+      };
+    }).filter(Boolean);
+
+  return employeeVariance;
 }
+
+
+
+
+
+
 
 
 

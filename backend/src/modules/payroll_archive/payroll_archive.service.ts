@@ -9,6 +9,32 @@ import { isPayrollDateRange } from "./payroll_archive.helper";
 
 
 
+export async function employeeProbationary(){
+
+  try{
+    const computed = await displayCompletePayroll(["PENDING"]);
+    if (!computed || computed.length === 0) return 0;
+    const payCycle = computed[0].PayCode;
+
+    const data1 = await prisma.employee.findMany({
+      where:{
+        EmploymentStatus:"Probationary",
+        EmployeeStatus:"Active"
+      }
+    })
+
+    return {data1,payCycle};
+    
+  }
+
+
+  catch(error){
+    console.log('error occured',error);
+  }
+
+}
+
+
 export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL")[]) {
   
     try{
@@ -310,7 +336,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
-  export async function reCheckPayroll() {
+  export async function reCheckPayroll(){
    
     const data = await prisma.employeeSummary.updateMany({
       where: { status: "FOR_APPROVAL" },
@@ -320,62 +346,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     io.emit("payroll:changed");
   
     return data;
-  }
+}
   
 
 
-  
-  // export async function displayArchivedData() {
-  //   try {
-  //     const employeeList = await prisma.employeePayrollArchive.findMany({
-  //       where: {
-  //         status: "PENDING",
-  //       },
-  //       include: {
-  //         EmpCode: {
-  //           select: {
-  //             Firstname: true,
-  //             Lastname: true,
-  //           },
-  //         },
-  //       },
-  //       orderBy: {
-  //         EmpCodeId: "asc",
-  //       },
-  //     });
-
-  //     const normalized = employeeList.map((emp) => {
-
-  //       return {
-     
-  //         EmpCode:{
-  //           Firstname:emp.EmpCode.Firstname,
-  //           Lastname:emp.EmpCode.Lastname,
-  //         },
-  //         semi_monthly:emp.Basic_salary,
-  //         overtime:emp.Overtime,
-  //         late_count:emp.Late,
-  //         absence:emp.Absent,
-  //         gross_pay:emp.Grosspay,
-  //         wtax:emp.w_tax,
-  //         sss_contrib_employee:emp.SSS_employee_share,
-  //         philhealth_contrib:emp.philhealth_employee_share,
-  //         pagibig_contrib_employee:emp.Pagibig_employee_share,
-  //         net_pay:emp.Netpay,
-  //         sss_contrib_employer:emp.SSS_employer_share,
-  //         pagibig_contrib_employer:emp.Pagibig_employer_share,
-  //       };
-
-
-  //     });
-
-  //     return normalized;
-
-  //   } 
-
-  //   catch (error) {
-  //     console.error("error occurred", error);
-  //     throw error;
-  //   }
-  // }
-  
