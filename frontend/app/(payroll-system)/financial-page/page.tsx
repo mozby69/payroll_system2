@@ -27,10 +27,15 @@ export default function FinancialPage(){
         philhealth: emp.philhealth_contrib,
         pagibig: emp.pagibig_contrib_employee,
         arE: 0,
-        fch: 0,
-        salaryLoan: 0,
+
+        // Loan Code ↓
+        rfc: emp.rfc_loan,
+        fch: emp.fch_loan,
+        salaryLoan: emp.sss_loan,
+        pagibigSalaryLoan: emp.pagibig_loan,
+        // Loan Code ↑
+        
         calamityLoan: 0,
-        pagibigSalaryLoan: 0,
         netPayable: emp.net_pay,
         sssEmployer: emp.sss_contrib_employer,
         philEmployer: emp.philhealth_contrib,

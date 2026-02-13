@@ -101,3 +101,11 @@ export type EmployeeProfile = {
   employeepayroll: EmpPayrollInfo | null;
   loan_details: EmployeeLoan[];
 };
+
+
+export type UpdateEmployeePayrollPayload = {
+  empCode: string;
+  basicSalary: number;
+  cashAssistance: number;
+  ecola: number;
+};

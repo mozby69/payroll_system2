@@ -1,7 +1,9 @@
 "use client";
 
 import GenButton from "@/app/components/Buttons";
+import SweetAlert from "@/app/components/Swal";
 import { useEmployeeProfile } from "@/app/hooks/employees";
+import { useUpdateEmployeePayroll } from "@/app/hooks/employees";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,10 +26,31 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
   const searchParams = useSearchParams();
 
   const { data, isLoading, isError } = useEmployeeProfile(empCode);
-
+  
+  const updatePayroll = useUpdateEmployeePayroll();
 
   const [active, setActive] = useState<TabKey>("personal");
   const [loanPage, setLoanPage] = useState(1);
+
+  const [formValues, setFormValues] = useState({
+    basicSalary: "",
+    cashAssistance: "",
+    ecola: "",
+  });
+
+  const [originalValues, setOriginalValues] = useState({
+    basicSalary: "",
+    cashAssistance: "",
+    ecola: "",
+  });
+  const isDirty =
+  formValues.basicSalary !== originalValues.basicSalary ||
+  formValues.cashAssistance !== originalValues.cashAssistance ||
+  formValues.ecola !== originalValues.ecola;
+
+  const details = data?.employeepr?.[0] ?? null;
+  const payInfo = data?.employeepayroll;
+  const loans = data?.loan_details ?? [];
 
 
   useEffect(() => {
@@ -61,15 +84,26 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
     }
   }, [empCode, isError, router]);
 
+
+  useEffect(() => {
+    if (!payInfo) return;
+
+    const initial = {
+      basicSalary: String(payInfo.BasicSalary ?? ""),
+      cashAssistance: String(payInfo.CashAssistance ?? ""),
+      ecola: String(payInfo.Ecola ?? ""),
+    };
+
+    setFormValues(initial);
+    setOriginalValues(initial);
+  }, [payInfo]);
+
   if (isLoading) {
     return <div className="p-6">Loading employee profile…</div>;
   }
 
   if (!data) return null;
 
-  const details = data.employeepr?.[0] ?? null;
-  const payInfo = data.employeepayroll;
-  const loans = data.loan_details ?? [];
 
   const LOANS_PER_PAGE = 3;
   const totalLoanPage = Math.max(1, Math.ceil(loans.length / LOANS_PER_PAGE));
@@ -81,7 +115,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
 
   const companyCode = data.BranchCode?.CompanyCode?.CompanyCode;
 
-  const handleTabChange = (tab: TabKey) => {
+  const changeTab = (tab: TabKey) => {
     setActive(tab);
 
     const params = new URLSearchParams(searchParams.toString());
@@ -96,19 +130,79 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
   };
 
 
+  const handleTabChange = async (tab: TabKey) => {
+
+    if (isDirty) {
+      const result = await SweetAlert.warningAlert(
+        "Unsaved Changes",
+        "You have unsaved changes. Do you want to save before leaving?"
+      );
+
+      if (result.isConfirmed) {
+        await handleSave();
+        changeTab(tab);
+      }
+
+      return;
+    }
+
+    changeTab(tab);
+  };
+
+
+  const handleBack = async () => {
+
+    if (isDirty) {
+      const result = await SweetAlert.warningAlert(
+        "Unsaved Changes",
+        "You have unsaved changes. Do you want to save before leaving?"
+      );
+
+      if (result.isConfirmed) {
+        await handleSave();
+        router.back();
+      }
+
+      return;
+    }
+
+    router.back();
+  };
+
+
+
+  const handleSave = async () => {
+    try {
+      await updatePayroll.mutateAsync({
+        empCode,
+        basicSalary: Number(formValues.basicSalary),
+        cashAssistance: Number(formValues.cashAssistance),
+        ecola: Number(formValues.ecola),
+      });
+
+      setOriginalValues(formValues);
+
+    } catch (error) {
+      console.error("Failed to update payroll", error);
+    }
+  };
+
+
+
   return (
     <div className="w-[90%] flex flex-col gap-y-6">
 
       <div className="flex justify-between items-end">
         <h1 className="text-2xl font-bold">Employee Details</h1>
 
-        <GenButton
-          variant="secondary"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft size={16} />
-          Go back to Employee List
-        </GenButton>
+      <GenButton
+        variant="secondary"
+        onClick={handleBack}
+      >
+        <ArrowLeft size={16} />
+        Go back to Employee List
+      </GenButton>
+
       </div>
 
       <ul className="flex gap-x-4 bg-mainBg py-3 px-4 rounded-lg text-mainLight mt-2">
@@ -290,31 +384,74 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                         <h1 className="font-bold text-lg">CTC Breakup Information</h1>
                     </div>
 
-                    <div className="grid grid-cols-4">
+                    <div className="grid grid-cols-4 gap-x-8 pr-8">
 
                       <div className="flex flex-col gap-y-1 col-span-2">
                         <span className="text-sm text-gray-500 ">Basic Salary</span>
-                        <p className="font-semibold">{payInfo?.BasicSalary || "None"}</p>
+                      
+                      <input
+                        type="number"
+                        value={formValues.basicSalary}
+                        onChange={(e) =>
+                          setFormValues(prev => ({
+                            ...prev,
+                            basicSalary: e.target.value
+                          }))
+                        }
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                      />
+
                       </div>
 
                       <div className="flex flex-col gap-y-1 col-span-2">
                         <span className="text-sm text-gray-500">Cash Assistance</span>
-                        <p className="font-semibold">{payInfo?.CashAssistance || "None"}</p>
+                        <input
+                          type="number"
+                          value={formValues.cashAssistance}
+                          onChange={(e) =>
+                            setFormValues(prev => ({
+                              ...prev,
+                              cashAssistance: e.target.value
+                            }))
+                          }
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                        />
+
                       </div>
 
                     </div>
 
-                    <div className="grid grid-cols-4">
+                    <div className="grid grid-cols-4 gap-x-8 pr-8">
 
                       <div className="flex flex-col gap-y-1 col-span-2">
                         <span className="text-sm text-gray-500">ECOLA</span>
-                        <p className="font-semibold">{payInfo?.Ecola || "None"}</p>
+                        <input
+                          type="number"
+                          value={formValues.ecola}
+                          onChange={(e) =>
+                            setFormValues(prev => ({
+                              ...prev,
+                              ecola: e.target.value
+                            }))
+                          }
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                        />
+
                       </div>
 
                       <div className="flex flex-col gap-y-1 col-span-2">
                         <span className="text-sm text-gray-500">E-share Deductions</span>
-                        <p className="font-semibold">{details?.EmpSSSNo?.trim() || "None"}</p>
+                 
+                        <input
+                          type="text"
+                          value={details?.EmpSSSNo?.trim() || "None"}
+                          readOnly
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                        />
                       </div>
+
+                     
+
 
                     </div>
 
@@ -331,38 +468,68 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                           <h1 className="font-bold text-lg">E-Share Deduction Breakup Information</h1>
                       </div>
 
-                      <div className="grid grid-cols-4">
+                      <div className="grid grid-cols-4 gap-x-8 pr-8">
 
                         <div className="flex flex-col gap-y-1 col-span-2">
                           <span className="text-sm text-gray-500">SSS Contribution</span>
-                          <p className="font-semibold">{payInfo?.BasicSalary || "None"}</p>
+                          <input
+                            type="text"
+                            value={payInfo?.Ecola || "None"}
+                            readOnly
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                          />
                         </div>
 
                         <div className="flex flex-col gap-y-1 col-span-2">
                           <span className="text-sm text-gray-500">Pag-ibig Contribution</span>
-                          <p className="font-semibold">{payInfo?.CashAssistance || "None"}</p>
+                          <input
+                            type="text"
+                            value={payInfo?.Ecola || "None"}
+                            readOnly
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                          />
                         </div>
 
                       </div>
 
-                      <div className="grid grid-cols-4">
+                      <div className="grid grid-cols-4 gap-x-8 pr-8">
 
                         <div className="flex flex-col gap-y-1 col-span-2">
                           <span className="text-sm text-gray-500">Phil-Health Contribution</span>
-                          <p className="font-semibold">{payInfo?.Ecola || "None"}</p>
+                          <input
+                            type="text"
+                            value={payInfo?.Ecola || "None"}
+                            readOnly
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                          />
                         </div>
 
                         <div className="flex flex-col gap-y-1 col-span-2">
                           <span className="text-sm text-gray-500">Witholding Tax</span>
-                          <p className="font-semibold">{details?.EmpSSSNo?.trim() || "None"}</p>
+                          <input
+                            type="text"
+                            value={payInfo?.Ecola || "None"}
+                            readOnly
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                          />
                         </div>
 
                       </div>
 
                   </div>
-
+                          
+                  <div className="flex justify-end mt-6 mx-8">
+                        <GenButton
+                          disabled={!isDirty}
+                          onClick={handleSave}
+                        >
+                          Save Changes
+                        </GenButton>
+                  </div>
+                  
                 </div>
 
+               
 
               </div>
 
@@ -447,7 +614,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
 
 
               </div>
-            )};
+            )}
               
 
 

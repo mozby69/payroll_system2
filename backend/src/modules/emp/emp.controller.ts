@@ -73,3 +73,29 @@ export const getEmployeeByEmpCode = async (
     res.status(500).json({ message: "Failed to fetch employee" });
   }
 };
+
+export const updateEmployeePayrollByEmpCode = async (req:Request, res:Response) =>{
+    try{
+        const {empCode} = req.params;
+        const {basicSalary,cashAssistance,ecola} = req.body;
+
+        if (!empCode){
+          return res.status(400).json({message: "Employee code is required" });
+        }
+
+        const updated = await employeeService.updateEmployeePayroll(
+          empCode,
+          {
+            basicSalary: Number(basicSalary),
+            cashAssistance: Number(cashAssistance),
+            ecola: Number(ecola),
+          }
+        );
+
+        return res.json(updated);
+
+    }catch(err){
+      console.error(err);
+      res.status(500).json({ message: "Failed to update payroll" });
+    }
+}

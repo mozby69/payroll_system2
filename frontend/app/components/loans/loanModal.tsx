@@ -88,6 +88,8 @@ export default function ModifyLoan({ loan_id, fullname }: LoanModal) {
               <option value="FCH_LOAN">FCH Loan</option>
               <option value="SSS_LOAN">SSS Loan</option>
               <option value="PAGIBIG_LOAN">Pag-IBIG Loan</option>
+              <option value="RFC_LOAN">RFC Housing Loan</option>
+              <option value="OTHERS">Others...</option>
             </select>
           </div>
           <div className="flex flex-col gap-2">
@@ -147,6 +149,7 @@ export default function ModifyLoan({ loan_id, fullname }: LoanModal) {
               <option value="YEARS">Years</option>
             </select>
           </div>
+
           <div className="inline-flex gap-2 w-full items-center col-span-1 md:col-span-2 lg:col-span-3">
               <input
                   type="checkbox"
@@ -158,6 +161,7 @@ export default function ModifyLoan({ loan_id, fullname }: LoanModal) {
                   Do you want to deduct in allowance?
               </label>
           </div>
+          
         </div>
 
         <div className="flex justify-end items-center pb-6">

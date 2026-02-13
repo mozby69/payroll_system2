@@ -1,7 +1,7 @@
 
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { fetchEmployees, fetchEmployeeProfile } from "../services/employee.service";
-import { EmployeeResponse ,EmployeeFilters } from "../types/empTypes";
+import { useQuery, keepPreviousData, useQueryClient, useMutation } from "@tanstack/react-query";
+import { fetchEmployees, fetchEmployeeProfile, updateEmployeePayroll } from "../services/employee.service";
+import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload } from "../types/empTypes";
 
 
 export const useEmployees = (
@@ -23,5 +23,20 @@ export const useEmployeeProfile = (empCode: string) => {
     queryKey: ["employee-profile", empCode],
     queryFn: () => fetchEmployeeProfile(empCode),
     enabled: !!empCode, 
+  });
+};
+
+export const useUpdateEmployeePayroll = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateEmployeePayrollPayload) =>
+      updateEmployeePayroll(payload),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["employee-profile", variables.empCode],
+      });
+    },
   });
 };

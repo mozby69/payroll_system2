@@ -4,18 +4,19 @@ import { FilterKey } from "./FilterTypes";
 
 export type AddLoanPayload = {
   empCode: string;
-  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
+  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS";
   principal: number;
   term_value: number;
   term_unit: "MONTHS" | "YEARS";
   start_date: string;
   deduct_allowance: boolean;
+  others_type:string;
 };
 
 export interface LoanList{
     loan_id: number;
     principal: number;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS";
     term_value: number;
     term_unit: "MONTHS" | "YEARS";
     start_date: string;
@@ -142,3 +143,38 @@ export type PayLoanPayload = {
   loan_id: number;
   actionType: LoanActionType;
 };
+
+
+export type FetchEmpLoansPayload = {
+  empCode: string;
+  payPeriod: string;       // "2026-02"
+  payCycle: string;        // "10-pay-cycle"
+
+};
+
+
+export type LoanWithCycleInfo = {
+  loan_id: number;
+  loan_type: LoanType;
+  principal: number;
+  term_value: number;
+  term_unit: TermUnit;
+  start_date: string;
+  per_payroll_deduct: number;
+  deduct_allowance: boolean;
+  latestLedger: LoanLedgerItem | null;
+  hasLedgerForCurrentCycle: boolean;
+};
+
+export type EmpLoansByCycleResponse = {
+  FCH_LOAN: LoanWithCycleInfo | null;
+  SSS_LOAN: LoanWithCycleInfo | null;
+  PAGIBIG_LOAN: LoanWithCycleInfo | null;
+  RFC_LOAN: LoanWithCycleInfo | null;
+};
+
+
+export type BonusRules = {
+  code: string;
+  name:string;
+}

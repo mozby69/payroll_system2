@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react";
-import { useAddLoan, useLoans} from "../../hooks/useLoans";
+import { useAddLoan, useBonusRules, useLoans} from "../../hooks/useLoans";
 import { useEmployeeSearch } from "../../hooks/usePreparePayroll"
 import SweetAlert from "../../components/Swal";
 import GenButton from "@/app/components/Buttons";
@@ -10,7 +10,7 @@ import { Filter } from "lucide-react";
 import ActiveFilters from "@/app/components/FilterObject";
 import FilterModal from "@/app/components/Filter";
 import LoanCard from "@/app/components/loans/loanCard";
-import RequestModal from "@/app/components/Modal";
+
 
 
 type TabKey = "apply" | "loan-list";
@@ -27,12 +27,13 @@ export default function EmployeeLoan(){
 
     // Apply Loan
     const [searchloan, setSearch] = useState("");
-    const [loanType, setLoanType] = useState<"FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN">("FCH_LOAN");
+    const [loanType, setLoanType] = useState<"FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "OTHERS">("FCH_LOAN");
     const [principal, setPrincipal] = useState<number | "">("");
     const [termValue, setTermValue] = useState(1);
     const [termUnit, setTermUnit] = useState<"MONTHS" | "YEARS">("MONTHS");
     const [startDate, setStartDate] = useState("");
     const [deductAllowance, setDeductAllowance] = useState(false);
+    const [selectedBonus, setSelectedBonus] = useState<string>("");
 
     const [selectedEmp, setSelectedEmp] = useState<{
         EmpCode: string;
@@ -41,6 +42,9 @@ export default function EmployeeLoan(){
     } | null>(null);
 
     const { data: employees } = useEmployeeSearch(searchloan);
+
+    const {data: bonusRules,isLoading: bonusLoading,isError: bonusError} = useBonusRules();
+
 
     // Applicants Loan
     const [activeTab, setActiveTab] = useState<TabKey>("apply");
@@ -108,6 +112,18 @@ export default function EmployeeLoan(){
         });
     };
 
+    const resetApplyForm = () => {
+        setSelectedEmp(null);
+        setSearch("");
+        setLoanType("FCH_LOAN");
+        setPrincipal("");
+        setTermValue(1);
+        setTermUnit("MONTHS");
+        setStartDate("");
+        setDeductAllowance(false);
+    };
+
+
     const handleSave = async () => {
         if (!selectedEmp || !principal || !startDate) return;
     
@@ -120,6 +136,7 @@ export default function EmployeeLoan(){
             term_unit: termUnit,
             start_date: startDate,
             deduct_allowance: deductAllowance,
+            others_type: selectedBonus
         });
     
         if (!result?.loan_id) {
@@ -127,8 +144,19 @@ export default function EmployeeLoan(){
         }
         
         SweetAlert.successAlert("Loan added");
-        } catch {
-        SweetAlert.errorAlert("Failed to add loan");
+        resetApplyForm();
+        } catch (error: any) {
+            const message =
+            error?.response?.data?.message || 
+            error?.message || 
+            "Failed to add loan";
+
+            SweetAlert.warningAlert(
+                "Active Loan",
+                message ?? "The System Don't Accept Duplicate Loans"
+            ).then(()=>{
+                resetApplyForm();
+            });
         }
     };
 
@@ -288,12 +316,16 @@ export default function EmployeeLoan(){
                             </label>
                             <select 
                                 value={loanType} 
-                                onChange={e => setLoanType(e.target.value as any)}
+                                onChange={e => {
+                                    setLoanType(e.target.value as any)
+                                }}
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                             >
                                 <option value="FCH_LOAN">FCH Loan</option>
                                 <option value="SSS_LOAN">SSS Loan</option>
                                 <option value="PAGIBIG_LOAN">Pag-IBIG Loan</option>
+                                <option value="RFC_LOAN">RFC Housing Loan</option>
+                                <option value="OTHERS">Others...</option>
                             </select>
                         </div>
 
@@ -349,17 +381,44 @@ export default function EmployeeLoan(){
                             </select>
                         </div>
 
-                        <div className="inline-flex gap-2 w-full items-center">
-                            <input
-                                type="checkbox"
-                                checked={deductAllowance}
-                                onChange={(e) => setDeductAllowance(e.target.checked)}
-                                className="h-4 w-4"
-                            />
+                              
+                        { loanType === "OTHERS" && (
+                            <div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
-                                Do you want to deduct in allowance?
+                                Type of Bonus
                             </label>
+
+                            <select
+                                value={selectedBonus}
+                                onChange={(e) => setSelectedBonus(e.target.value)}
+                                disabled={bonusLoading || bonusError}
+                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                            >
+                                <option value="">Select Bonus Type</option>
+
+                                {bonusRules?.map((rule) => (
+                                <option key={rule.code} value={rule.code}>
+                                    {rule.code} - {rule.name}
+                                </option>
+                                ))}
+                            </select>
                         </div>
+                        )}
+
+                        { ["FCH_LOAN", "RFC_LOAN"].includes(loanType) &&(
+                            <div className="inline-flex gap-2 w-full items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={deductAllowance}
+                                    onChange={(e) => setDeductAllowance(e.target.checked)}
+                                    className="h-4 w-4"
+                                />
+                                <label className="text-sm font-semibold">
+                                    Do you want to deduct in allowance?
+                                </label>
+                            </div>
+                        )}
+                        
 
                     </div>
 

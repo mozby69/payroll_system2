@@ -1,5 +1,15 @@
 import {Router} from "express"
-import { addEmployeeLoanController, getAllLoans, getLoanLedgerById, getEmpLoanById,updateEmployeeLoanController, closedEmployeeLoanController, payEmployeeLoanController} from "./loan.controller";
+import { addEmployeeLoanController, 
+    getAllLoans, 
+    getLoanLedgerById, 
+    getEmpLoanById,
+    updateEmployeeLoanController, 
+    closedEmployeeLoanController, 
+    payEmployeeLoanController,
+    getLoansByEmpCodeController,
+    getBonusRules
+    } from "./loan.controller";
+
 
 
 const router = Router();
@@ -17,5 +27,10 @@ router.patch("/emp/:loan_id", updateEmployeeLoanController);
 router.patch("/emp-loan/:loan_id", closedEmployeeLoanController);
 
 router.post("/loans/:loan_id/pay", payEmployeeLoanController);
+
+
+router.post("/by-empcode", getLoansByEmpCodeController);
+router.get("/bonus-rules", getBonusRules);
+
 
 export default router;

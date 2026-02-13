@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, generateNextPagibigId, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
-import { FetchEmployeesByCycleParams, PaginationParams } from "./prepare_payroll.types";
+import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
 
 export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   cycle: "10-25-Cycle" | "15-30-Cycle";
@@ -112,6 +112,36 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   });
 
 
+// Loan code ↓
+
+  const payrolls = await prisma.totalPayroll.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      payroll_period: true,
+      PayCycle: true,
+      cycle_category: true,
+      createdAt: true,
+    },
+  });
+
+  let prevPayrollPeriod: string;
+  let payCycleLabel: string;
+
+  if (!payrolls.length) {
+    prevPayrollPeriod = "25-pay-cycle";
+    payCycleLabel = getCurrentPayrollLabel();
+  } else {
+    const latestPayroll = payrolls[0];
+
+    prevPayrollPeriod = latestPayroll.payroll_period ?? "25-pay-cycle";
+    payCycleLabel = latestPayroll.PayCycle ?? getCurrentPayrollLabel();
+
+  }
+
+// Loan Code ↑
+
+
 
   const normalized = data.map(emp => {
 
@@ -128,12 +158,34 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   const philhealthRate = computePhilRate(semiPay, phil_percentage);
   const pagibigShare = computePagibig(rawPagibigShare).toFixed(2);
 
+
+// Loan Code ↓
+
   const loanMap = {
     FCH_LOAN: 0,
     SSS_LOAN: 0,
     PAGIBIG_LOAN: 0,
+    RFC_LOAN: 0,
   };
-  
+
+  const nextPayrollCycle =
+    PAYROLL_CYCLE_MAP[prevPayrollPeriod];
+
+  if (!nextPayrollCycle) {
+    throw new Error(`Invalid payroll period: ${prevPayrollPeriod}`);
+  }
+
+  // Convert label → YYYY-MM
+  const payPeriod =
+    convertPayrollLabelToPeriod(payCycleLabel);
+
+  console.log("convertPayrollLabelToPeriod input:", payCycleLabel);
+
+// Loan Code ↑
+
+
+
+    
   // const currentMonth = toMonth(new Date());
   
   // emp.loan_details.forEach(loan => {
@@ -164,6 +216,12 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
     fch_loan: loanMap.FCH_LOAN,
     sss_loan: loanMap.SSS_LOAN,
     pagibig_loan: loanMap.PAGIBIG_LOAN,
+    rfc_loan: loanMap.RFC_LOAN,
+
+    // loan Code ↓
+    next_payroll: nextPayrollCycle ,
+    month_pay:payPeriod,
+    // loan Code ↑
   };
 });
 

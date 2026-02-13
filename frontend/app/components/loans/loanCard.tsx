@@ -137,20 +137,24 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
               </GenButton>
 
               {openMenu && (
+              
                 <div className="absolute right-0 mt-2 bg-white  rounded shadow-md w-40 z-20">
-                  <GenButton
-                    variant="edit"
-                    className="w-full text-left px-4 py-2 text-sm rounded-t-lg rounded-b-none"
-                    onClick={() => {
-                      setEditContext({
-                        loan_id: loan.loan_id,
-                        fullname: loan.fullname,
-                      });
-                      setOpenMenu(false);
-                    }}
-                  >
-                    Edit Loan
-                  </GenButton>
+
+                    <GenButton
+                      variant="edit"
+                      className="w-full text-left px-4 py-2 text-sm rounded-t-lg rounded-b-none"
+                      onClick={() => {
+                        setEditContext({
+                          loan_id: loan.loan_id,
+                          fullname: loan.fullname,
+                        });
+                        setOpenMenu(false);
+                      }}
+                      >
+                      Edit Loan
+                    </GenButton>
+    
+                 
                   
                   
                   <div>

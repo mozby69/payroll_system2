@@ -39,10 +39,17 @@ export type Column<T> = {
     pagibig_employee_share: number;
     pagibig_employer_share: number;
     cash_assistance?:number;
+
+    // Loan Code ↓
     fch_loan: number;
     sss_loan: number;
     pagibig_loan: number;
-    pagibig_id:string;  
+    rfc_loan:number;
+    // Loan Code ↑
+    
+    pagibig_id:string; 
+    next_payroll:string; 
+    month_pay:string,
     BranchCode?: {
       branchCode: string;
       Location: string | null;
@@ -154,4 +161,11 @@ export interface PayrollEmployee {
   philhealth_contrib:number;
   net_pay:number;
   wtax:number;
+
+  // Loan Code ↓
+  rfc_loan:number;
+  fch_loan:number;
+  pagibig_loan:number;
+  sss_loan:number;
+  // Loan Code ↑
 }

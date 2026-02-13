@@ -5,7 +5,7 @@ import { LOAN_ACTION_TYPES, LoanActionType } from "./loan.types";
 
 export const addEmployeeLoanController = async (req: Request, res: Response) => {
   try {
-    const { empCode,loan_type,principal,term_value,term_unit,start_date, deduct_allowance } = req.body;
+    const { empCode,loan_type,principal,term_value,term_unit,start_date, deduct_allowance, others_type } = req.body;
 
     if (!empCode || !loan_type || !principal || !term_value || !term_unit || !start_date) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -19,11 +19,11 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
       term_unit,
       start_date: new Date(start_date),
       deduct_allowance: Boolean(deduct_allowance),
+      others_type
     });
 
     return res.status(201).json(loan);
   } catch (error: any) {
-    console.error("LOAN CREATE ERROR:", error);
     return res.status(500).json({
       message: error.message ?? "Loan creation failed",
     });
@@ -80,7 +80,6 @@ export const getAllLoans = async (req: Request, res: Response) => {
       },
     });
     } catch (err: any) {
-      console.error("PRISMA ERROR:", err);
       return res.status(500).json({
         message: err?.message,
         stack: err?.stack,
@@ -302,6 +301,56 @@ export const payEmployeeLoanController = async (
 
     return res.status(500).json({
       message: "Failed to process loan payment",
+      error: error.message,
+    });
+  }
+};
+
+
+export const getLoansByEmpCodeController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const {
+      empCode,
+      payPeriod,
+      payCycle,
+    } = req.body;
+
+    if (
+      !empCode ||
+      !payPeriod ||
+      !payCycle 
+    ) {
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
+    }
+
+    const loans = await loanService.fetchLoanByEmpCode({
+      EmpCode: empCode,
+      payPeriod,
+      payCycle,
+    });
+
+    return res.status(200).json(loans);
+  } catch (error: any) {
+
+    return res.status(500).json({
+      message: "Failed to fetch employee loans",
+      error: error.message,
+    });
+  }
+};
+
+export const getBonusRules = async (req: Request, res: Response) => {
+  try {
+    const codes = await loanService.fetchBonusRule();
+    return res.status(200).json(codes);   
+  } catch (error: any) {
+    return res.status(500).json({
+      message: "Failed to fetch bonus codes",
       error: error.message,
     });
   }
