@@ -134,26 +134,24 @@ export default function SpreadSheet({ data,totals }: Props) {
 
         <tfoot>
         <tr className="border-t-2 border-black font-bold bg-gray-100">
-          <td colSpan={2} className="py-2 text-center">
+          <td colSpan={2} className="py-2 text-center border border-gray-400">
             GRAND TOTAL
           </td>
 
-          <td className="text-center">{totals.basicPay.toFixed(2)}</td>
-          <td className="text-center">{totals.overtime.toFixed(2)}</td>
-          <td className="text-center">{totals.late.toFixed(2)}</td>
-          <td className="text-center">{totals.absence.toFixed(2)}</td>
-          <td className="text-center">{totals.gross.toFixed(2)}</td>
-          <td className="text-center">{totals.wtax.toFixed(2)}</td>
-          <td className="text-center">{totals.sss.toFixed(2)}</td>
-          <td className="text-center">{totals.philhealth.toFixed(2)}</td>
-          <td className="text-center">{totals.pagibig.toFixed(2)}</td>
-          <td colSpan={5}></td>
-          <td className="text-center bg-blue-200">
-            {totals.netPayable.toFixed(2)}
-          </td>
-          <td className="text-center">{totals.sssEmployer.toFixed(2)}</td>
-          <td className="text-center">{totals.philEmployer.toFixed(2)}</td>
-          <td className="text-center">{totals.pagibigEmployer.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.basicPay.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.overtime.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.late.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.absence.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.gross.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.wtax.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.sss.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.philhealth.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.pagibig.toFixed(2)}</td>
+          <td colSpan={6} className="border border-gray-400"></td>
+          <td className="text-center bg-blue-200 border border-gray-400">{totals.netPayable.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.philEmployer.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
         </tr>
       </tfoot>
 

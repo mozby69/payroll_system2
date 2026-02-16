@@ -2,6 +2,8 @@
 import axios from "axios";
 import { prisma } from "../../config/prismaClient";
 import { BranchDTO, CompanyDTO, DjangoExportResponse, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { Prisma } from "@prisma/client";
+
 
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
 const DJANGO_EXPORT_API_KEY = process.env.DJANGO_EXPORT_API_KEY;
@@ -91,38 +93,65 @@ const toDateOrNull = (value?: string | null): Date | null => {
     const validEmployees = employees.filter(
       (e) => e.BranchCode__BranchCode !== null
     );
+
+
+
+    await prisma.$transaction(async (tx) => {
+
+      for (const e of validEmployees) {
   
-    await prisma.$transaction(
-      validEmployees.map((e) =>
-        prisma.employee.upsert({
+        await tx.employee.upsert({
           where: { EmpCode: e.EmpCode },
           create: {
             EmpCode: e.EmpCode,
             Firstname: e.Firstname,
             Middlename: e.Middlename,
             BranchCodeId: e.BranchCode__BranchCode!,
-            Lastname:e.Lastname,
+            Lastname: e.Lastname,
             DateofBirth: toDateOrNull(e.DateofBirth),
             EmployementDate: toDateOrNull(e.EmployementDate),
-            EmploymentStatus:e.EmploymentStatus,
-            EmployeeStatus:e.EmployeeStatus,
+            EmploymentStatus: e.EmploymentStatus,
+            EmployeeStatus: e.EmployeeStatus,
             isNewEmployee: true,
           },
           update: {
             Firstname: e.Firstname,
             Middlename: e.Middlename,
             BranchCodeId: e.BranchCode__BranchCode!,
-            Lastname:e.Lastname,
-            DateofBirth:toDateOrNull(e.DateofBirth),
-            EmployementDate:toDateOrNull(e.EmployementDate),
-            EmploymentStatus:e.EmploymentStatus,
-            EmployeeStatus:e.EmployeeStatus,
+            Lastname: e.Lastname,
+            DateofBirth: toDateOrNull(e.DateofBirth),
+            EmployementDate: toDateOrNull(e.EmployementDate),
+            EmploymentStatus: e.EmploymentStatus,
+            EmployeeStatus: e.EmployeeStatus,
           },
-        })
+        });
+  
+        
+        await tx.employee_payroll.upsert({
+          where: { EmpCodeId: e.EmpCode },
+          create: {
+            EmpCodeId: e.EmpCode,
+            basic_salary: new Prisma.Decimal(0),
+            cash_assistance: new Prisma.Decimal(0),
+          },
+          update: {},
+        });
+  
+        await tx.pagIbig_List.upsert({
+          where: { EmpCodeId: e.EmpCode },
+          create: {
+            EmpCodeId: e.EmpCode,
+            pagibig_employee_share: new Prisma.Decimal(0),
+            pagibig_employer_share: new Prisma.Decimal(0),
+          },
+          update: {},
+        });
 
         
-      )
-    );
+
+      }
+  
+    });
   
     return validEmployees.length;
   };

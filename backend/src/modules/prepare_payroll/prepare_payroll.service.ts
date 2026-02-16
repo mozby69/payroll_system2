@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { addMonths, generateNextPagibigId, toMonth } from "../../helper/prepare_payroll_helper";
+import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
 import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
 
@@ -67,7 +67,7 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
       Department: true,
       Position: true,
       EmploymentStatus: true,
-
+      isNewEmployee:true,
       loan_details:{
          select:{
           loan_type:true,
@@ -151,6 +151,8 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   const rawPagibigShare = emp.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
   const rawPagibigShareEmployer = emp.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
   const pagibigId = emp.pagibig_list[0]?.pagibig_id ?? 'N/A';
+  const isNewProbi = emp.EmploymentStatus === "Probationary" && emp.isNewEmployee;
+  // const Paycodes = emp.PayCode;
 
   const semiPay = computeSemiMonthlySalary(basicSalary);
   const sssContrib = computeSSSContribution(basicSalary, sssTable);
@@ -300,11 +302,10 @@ export async function saveEmployeePayroll({empCode,basic_salary,cash_assistance,
           data: pagibigData,
         });
       } else {
-        const pagibig_id = await generateNextPagibigId(tx);
+       
 
         await tx.pagIbig_List.create({
           data: {
-            pagibig_id,
             EmpCodeId: empCode,
             ...pagibigData,
           },

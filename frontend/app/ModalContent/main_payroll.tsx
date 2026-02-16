@@ -243,7 +243,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
         </div>
 
         <div className="grid gap-y-1">
-          <label className="font-bold"></label>
+          <label className="font-bold">PHIL HEALTH</label>
           <input
             type="text"
             value={philHealth}

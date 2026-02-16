@@ -5,6 +5,7 @@ import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
 import { isPayrollDateRange } from "./payroll_archive.helper";
 import { convertPayrollLabelToPeriod } from "./payroll_archive.types";
+import { Console } from "console";
 
 
 export async function employeeProbationary(){
@@ -89,6 +90,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
             select:{
               Firstname:true,
               Lastname:true,
+              EmploymentStatus:true,
+              isNewEmployee:true,
               employeepayroll:{
                 select:{
                   basic_salary: true,
@@ -236,19 +239,20 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         const rawPagibigEmployee = emp.EmpCode.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
         const rawPagibigEmployer = emp.EmpCode.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
         const Paycodes = emp.PayCode;
+        const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
 
         const absent = computeAbsent(totalAbsent,basicSalary);
         const lateCount = computeLate(totalLateCount,basicSalary);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
-        const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,Paycodes));
-        const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,Paycodes);
-        const philhealthRate = computePhilRate(semiMonthly, phil_percentage,Paycodes);
+        const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
+        const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes,);
+        const philhealthRate = computePhilRate(semiMonthly, phil_percentage,isNewProbi,Paycodes);
         const pagibigEmployeeShare = computePagibig(rawPagibigEmployee,Paycodes);
         const pagibigEmployerShare = computePagibig(rawPagibigEmployer,Paycodes)
-        const complete_contrib = Number(computeSSSContribution(basicSalary, sssTable)) + 
-                                  computePhilRate(semiMonthly, phil_percentage) +
-                                  computePagibig(rawPagibigEmployee);
-
+        const complete_contrib = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi))
+                                +  computePhilRate(semiMonthly, phil_percentage,isNewProbi)
+                                + pagibigEmployeeShare;
+    
         // Loan Code ↓
 
         const loans = loanByEmp[emp.EmpCodeId] ?? {};
@@ -509,6 +513,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       
           philhealth_employee_share: emp.philhealth_contrib,
           philhealth_employer_share: emp.philhealth_contrib,
+          
       
           // Loan Code ↓
           fch_loan: loanDeduct(empLoans.FCH_LOAN),
@@ -516,7 +521,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           pagibig_loan: loanDeduct(empLoans.PAGIBIG_LOAN),
           rfc_loan: loanDeduct(empLoans.RFC_LOAN),
           // Loan Code ↑
-      
+
+          isNewEmployee:emp.EmpCode.isNewEmployee,
           EmpCodeId: emp.EmpCodeId,
           totalPayrollId: total.id,
         };
@@ -564,6 +570,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       await tx.employeeSummary.updateMany({
         where: { status: "FOR_APPROVAL" },
         data: { status: "DONE" },
+      });
+
+      await tx.employee.updateMany({
+        where: { isNewEmployee: true },
+        data: { isNewEmployee:false  },
       });
   
       return archivePayload.length;

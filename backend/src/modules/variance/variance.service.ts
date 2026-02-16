@@ -119,6 +119,7 @@ export async function fetchEmployeeVariance() {
 
       return {
         EmpCodeId: emp.EmpCodeId,
+        isnew:emp.EmpCode.isNewEmployee,
         PayCode: currentPayCode,
         name: `${emp.EmpCode.Firstname} ${emp.EmpCode.Lastname}`,
         variance: {
@@ -133,6 +134,20 @@ export async function fetchEmployeeVariance() {
 
   return employeeVariance;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -196,9 +211,12 @@ export async function fetchVariance() {
   // ================= VARIANCE =================
   const variance = {
     basic:totalSemiMonthly - Number(immediatePrevious?.total_basic_salary ?? 0),
-    sssEmployee:totalSSSEmployee - Number(olderPrevious?.Total_SSSContributionEmployee ?? 0),
-    sssEmployer:totalSSSEmployer - Number(olderPrevious?.Total_SSSContributionEmployer ?? 0),
-    phil:totalPhilhealth - Number(olderPrevious?.Total_PhilhealthContributionEmployee ?? 0),
+    // sssEmployee:totalSSSEmployee - Number(olderPrevious?.Total_SSSContributionEmployee ?? 0),
+    // sssEmployer:totalSSSEmployer - Number(olderPrevious?.Total_SSSContributionEmployer ?? 0),
+    // phil:totalPhilhealth - Number(olderPrevious?.Total_PhilhealthContributionEmployee ?? 0),
+    sssEmployee: olderPrevious ? totalSSSEmployee - Number(olderPrevious.Total_SSSContributionEmployee ?? 0): 0,
+    sssEmployer: olderPrevious ? totalSSSEmployer - Number(olderPrevious.Total_SSSContributionEmployer ?? 0): 0,
+    phil: olderPrevious ? totalPhilhealth - Number(olderPrevious.Total_PhilhealthContributionEmployee ?? 0): 0,
     pagibigEmployee:totalPagibigEmployee - Number(immediatePrevious?.Total_PagibigContributionEmployee ?? 0),
     pagibigEmployer:totalPagibigEmployer - Number(immediatePrevious?.Total_PagibigContributionEmployer ?? 0),
   };
