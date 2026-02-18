@@ -1,65 +1,64 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
-import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
+import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
 import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
+import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 
-export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
-  cycle: "10-25-Cycle" | "15-30-Cycle";
-    page: number;
-    limit: number;
-    search?: string;
-  }) {
-    const where = {
-      BranchCode: {
-        CompanyCode: {
-          CompanyCycle: cycle,
+export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string }) {
+
+    const baseFilter = {
+        BranchCode: {
+          CompanyCode: {
+            CompanyCycle: cycle,
+          },
         },
-      },
-      ...(search && {
+      };
+
+  const searchFilter = search
+    ? {
         OR: [
           { EmpCode: { contains: search } },
           { Firstname: { contains: search } },
           { Lastname: { contains: search } },
         ],
-      }),
-    };
-
- // const total = await prisma.employee.count({ where });
- const total = await prisma.employee.count({
-  where: {
-    ...where,
-    EmployeeStatus: {
-      notIn: ["Resigned","Inactive","Terminate"],
-    },
-  },
-});
+      }
+    : {};
 
 
-  const sssTable = await prisma.sSS_Contributions.findMany({
-    select: {
-      start_range: true,
-      end_range: true,
-      employee_share: true,
-      employer_share:true,
-    },
-    orderBy: {
-      start_range: "asc",
-    },
-  });
+  const statusFilter = {
+    OR: [
+      {
+        EmployeeStatus: {
+          notIn: ["Resigned", "Inactive", "Terminate"],
+        },
+      },
+      {
+        bod_member: {
+          in: ["bod1", "bod2"],
+        },
+      },
+    ],
+  };
 
-  const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
-  
+  const where = {
+    AND: [
+      baseFilter,
+      searchFilter,
+      statusFilter,
+    ],
+  };
+
+  const total = await prisma.employee.count({ where });
+  const bodPhil = await getBodPhilhealth();
+  const sssTable = await getSSSContributions();
+  const phil = await prisma.payroll_Parameters.findFirst({select: { SettingPercentage: true },});
 
   const data = await prisma.employee.findMany({
-    where:{
-      ...where, 
-      EmployeeStatus:{
-        notIn: ["Resigned","Inactive","Terminate"],
-      },
-    },
+    where,
     skip: (page - 1) * limit,
     take: limit,
+    orderBy: { EmpCode: "asc" },
     select: {
       EmpCode: true,
       Firstname: true,
@@ -67,30 +66,29 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
       Department: true,
       Position: true,
       EmploymentStatus: true,
-      isNewEmployee:true,
-      loan_details:{
-         select:{
-          loan_type:true,
-          per_payroll_deduct:true,
-          start_date:true,
-          // end_date:true,
-         }
+      isNewEmployee: true,
+      bod_member:true,
+      loan_details: {
+        select: {
+          loan_type: true,
+          per_payroll_deduct: true,
+          start_date: true,
+        },
       },
-      
-      pagibig_list:{
-        take:1,
-        select:{
-          pagibig_id:true,
-          pagibig_employee_share:true,
-          pagibig_employer_share:true,
-        }
+      pagibig_list: {
+        take: 1,
+        select: {
+          pagibig_id: true,
+          pagibig_employee_share: true,
+          pagibig_employer_share: true,
+        },
       },
       employeepayroll: {
-          select: {
-            basic_salary: true,
-            cash_assistance: true,
-            ecola: true
-          }
+        select: {
+          basic_salary: true,
+          cash_assistance: true,
+          ecola: true,
+        },
       },
       BranchCode: {
         select: {
@@ -106,9 +104,6 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
       },
     },
     
-    orderBy: {
-      EmpCode: "asc",
-    },
   });
 
 
@@ -152,12 +147,20 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   const rawPagibigShareEmployer = emp.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
   const pagibigId = emp.pagibig_list[0]?.pagibig_id ?? 'N/A';
   const isNewProbi = emp.EmploymentStatus === "Probationary" && emp.isNewEmployee;
-  // const Paycodes = emp.PayCode;
+  const isBod = emp.bod_member === "bod1";
+
+  const bodMap = new Map(
+    bodPhil.map((b) => [
+      b.EmpCodeId,
+      b.employee_share ? b.employee_share.toNumber() : 0,
+    ])
+  );
+  const bodShare = bodMap.get(emp.EmpCode) ?? 0;
 
   const semiPay = computeSemiMonthlySalary(basicSalary);
   const sssContrib = computeSSSContribution(basicSalary, sssTable);
   const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable);
-  const philhealthRate = computePhilRate(semiPay, phil_percentage);
+  const philhealthRate = computePhilRateEmployee(semiPay, phil_percentage,isBod,bodShare);
   const pagibigShare = computePagibig(rawPagibigShare).toFixed(2);
 
 
@@ -351,81 +354,80 @@ export async function searchEmployees(keyword: string) {
 
 
 export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
-  const where: Prisma.EmployeeSummaryWhereInput = {
-    CycleCategory: cycle,
-    ...(search && {
+
+  const searchFilter = search
+  ? {
       OR: [
         { EmpCodeId: { contains: search } },
-        { EmpCode: { Firstname: { contains: search },
-        },
-        },
-        { EmpCode: { Lastname: { contains: search },
+        { EmpCode: { Firstname: { contains: search } } },
+        { EmpCode: { Lastname: { contains: search } } },
+      ],
+    }
+  : {};
+
+  const statusOverride = {
+    OR: [
+      {
+        EmpCode: {
+          EmployeeStatus: {
+            notIn: ["Resigned", "Inactive", "Terminate"],
           },
         },
-      ],
-    }),
+      },
+      {
+        EmpCode: {
+          bod_member: {
+            in: ["bod1", "bod2"],
+          },
+        },
+      },
+    ],
   };
 
+  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
+    AND: [
+      { CycleCategory: cycle },
+      { status: { in: ["PENDING"] } },
+      searchFilter,
+      statusOverride,
+    ],
+  };
+  
+
   const [total, data] = await Promise.all([
-    //prisma.employeeSummary.count({ where }),
-  prisma.employeeSummary.count({
-      where: {
-        ...where,
-        status: {
-          in: ["PENDING"],
-        },
-        EmpCode:{
-          EmployeeStatus: {
-            notIn: ["Resigned","Inactive","Terminate"],
-          },
-          
-        }
-      },
-    }),
-    
+    prisma.employeeSummary.count({ where: finalWhere }),
+  
     prisma.employeeSummary.findMany({
-      where:{
-        ...where, 
-        status: {
-          in: ["PENDING"],
-        },
-        EmpCode:{
-          EmployeeStatus:{
-            notIn: ["Resigned","Inactive","Terminate"],
-          },
-        }
-      },
+      where: finalWhere,
       skip: (page - 1) * limit,
       take: limit,
-      select:{
-        PayCode:true,
-        EmpCodeId:true,
-        LateCount:true,
-        TotalAbsentHours:true,
-        RegularAtt:true,
+      orderBy: { EmpCodeId: "asc" },
+      select: {
+        PayCode: true,
+        EmpCodeId: true,
+        LateCount: true,
+        TotalAbsentHours: true,
+        RegularAtt: true,
         OvertimeAtt: true,
         NightShiftAtt: true,
         NightShiftOtAtt: true,
-        EmpCode:{
-          select:{
-            Firstname:true,
-            Lastname:true,
-             employeepayroll: {
+        EmpCode: {
           select: {
-              basic_salary: true,
-              cash_assistance: true,
-              ecola: true
-          }
-        }
+            Firstname: true,
+            Lastname: true,
+            employeepayroll: {
+              select: {
+                basic_salary: true,
+                cash_assistance: true,
+                ecola: true,
+              },
+            },
           },
-       
-        }
-      },
-      orderBy: {
-        EmpCodeId: "asc",
+        },
       },
     }),
   ]);
+  
 
   const normalized = data.map((emp) => {
     const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;

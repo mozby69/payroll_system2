@@ -154,10 +154,9 @@ export default function PreparePayroll() {
       <div className="rounded-xl bg-white p-5 shadow-sm border border-slate-200">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Payroll Cycle
-              </label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">Payroll Cycle</label>
               <select
                 onChange={(e)=>handleCycleChanges(e.target.value)}
                 className="rounded-lg border border-slate-300 bg-white w-50 px-3 py-2.5
@@ -168,10 +167,6 @@ export default function PreparePayroll() {
                 <option value="15-30-Cycle">15–30 Cycle</option>
               </select>
             </div>
-  
-          
-         
-
 
           </div>
   

@@ -101,11 +101,11 @@ export async function fetchEmployeeVariance() {
       const sssErDiff = currSSSEr - prevSSSEr;
 
       const prevPhilEmp = Number(prevSamePeriod?.philhealth_employee_share ?? 0);
-      const currPhilEmp = Number(emp.philhealth_contrib ?? 0);
+      const currPhilEmp = Number(emp.philhealth_contrib_employee ?? 0);
       const philEmpDiff = currPhilEmp - prevPhilEmp;
 
       const prevPhilEr = Number(prevSamePeriod?.philhealth_employer_share ?? 0);
-      const currPhilEr = Number(emp.philhealth_contrib ?? 0);
+      const currPhilEr = Number(emp.philhealth_contrib_employer ?? 0);
       const philErDiff = currPhilEr - prevPhilEr;
 
       const hasVariance =
@@ -176,7 +176,7 @@ export async function fetchVariance() {
 
   const totalSSSEmployer = computed.reduce((sum, emp) => sum + Number(emp.sss_contrib_employer ?? 0),0);
 
-  const totalPhilhealth = computed.reduce((sum, emp) => sum + Number(emp.philhealth_contrib ?? 0),0);
+  const totalPhilhealth = computed.reduce((sum, emp) => sum + Number(emp.philhealth_contrib_employee ?? 0),0);
 
   const totalPagibigEmployee = computed.reduce((sum, emp) => sum + Number(emp.pagibig_contrib_employee ?? 0),0);
 

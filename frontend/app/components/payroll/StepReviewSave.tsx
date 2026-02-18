@@ -59,7 +59,7 @@ export default function StepReviewSave({ onBack }: Props) {
     gross: emp.gross_pay,
     wtax: emp.wtax,
     sss: emp.sss_contrib_employee,
-    philhealth: emp.philhealth_contrib,
+    philhealth: emp.philhealth_contrib_employee,
     pagibig: emp.pagibig_contrib_employee,
     arE: 0,
     rfc:emp.rfc_loan,
@@ -69,7 +69,7 @@ export default function StepReviewSave({ onBack }: Props) {
     pagibigSalaryLoan: emp.pagibig_loan,
     netPayable: emp.net_pay,
     sssEmployer: emp.sss_contrib_employer,
-    philEmployer: emp.philhealth_contrib,
+    philEmployer: emp.philhealth_contrib_employer,
     pagibigEmployer: emp.pagibig_contrib_employer,
 
   }));

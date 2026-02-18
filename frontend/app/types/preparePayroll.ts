@@ -158,7 +158,8 @@ export interface PayrollEmployee {
   sss_contrib_employer:number;
   pagibig_contrib_employee:number;
   pagibig_contrib_employer:number,
-  philhealth_contrib:number;
+  philhealth_contrib_employee:number;
+  philhealth_contrib_employer:number;
   net_pay:number;
   wtax:number;
 

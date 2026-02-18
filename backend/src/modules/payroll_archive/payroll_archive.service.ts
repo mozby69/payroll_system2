@@ -1,11 +1,12 @@
 import { prisma } from "../../config/prismaClient";
-import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
+import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computePhilRateEmployer, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
 import { isPayrollDateRange } from "./payroll_archive.helper";
 import { convertPayrollLabelToPeriod } from "./payroll_archive.types";
 import { Console } from "console";
+import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 
 
 export async function employeeProbationary(){
@@ -37,40 +38,33 @@ export async function employeeProbationary(){
 export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL")[]) {
   
     try{
-      const sssTable = await prisma.sSS_Contributions.findMany({
-        select: {
-          start_range: true,
-          end_range: true,
-          employee_share: true,
-          employer_share:true,
-        },
-        orderBy: {
-          start_range: "asc",
-        },
-      });
-
+      const sssTable = await getSSSContributions();
       const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
-
-      const tax_list = await prisma.tax_table.findMany({
-        select:{
-          start_range:true,
-          end_range:true,
-          annual_base_tax_bracket:true,
-          rate_per_bracket:true,
-          annual_base_tax_per_year:true,
-        },
-      });
-
+      const bodPhil = await getBodPhilhealth();
+      const tax_list = await getTaxTable();
+      
       const employeeList = await prisma.employeeSummary.findMany({
         where:{
           status: {
             in: statuses,
           },
-          EmpCode:{
-            EmployeeStatus:{
-              notIn: ["Resigned","Inactive","Terminate"],
+          OR: [
+            {
+              EmpCode: {
+                EmployeeStatus: {
+                  notIn: ["Resigned", "Inactive", "Terminate"],
+                },
+              },
             },
-          }
+            {
+              EmpCode: {
+                bod_member: {
+                  in: ["bod1", "bod2"],
+                },
+              },
+            },
+          ],
+
         },
         select:{
           PayCode:true,
@@ -92,6 +86,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
               Lastname:true,
               EmploymentStatus:true,
               isNewEmployee:true,
+              bod_member:true,
               employeepayroll:{
                 select:{
                   basic_salary: true,
@@ -240,18 +235,36 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         const rawPagibigEmployer = emp.EmpCode.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
         const Paycodes = emp.PayCode;
         const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
+        const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
+
+        const bodMap = new Map(
+          bodPhil.map((b) => [
+            b.EmpCodeId.trim().toUpperCase(),
+            b.employee_share?.toNumber() ?? 0,
+          ])
+        );
+        
+        const normalizedId = emp.EmpCodeId.trim().toUpperCase();
+        const bodShare = bodMap.get(normalizedId) ?? 0;
+        
+
+
+     
 
         const absent = computeAbsent(totalAbsent,basicSalary);
         const lateCount = computeLate(totalLateCount,basicSalary);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
         const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes,);
-        const philhealthRate = computePhilRate(semiMonthly, phil_percentage,isNewProbi,Paycodes);
+        const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
+        const philhealthRateEmployer = computePhilRateEmployer(basicSalary, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
         const pagibigEmployeeShare = computePagibig(rawPagibigEmployee,Paycodes);
-        const pagibigEmployerShare = computePagibig(rawPagibigEmployer,Paycodes)
+        const pagibigEmployerShare = computePagibig(rawPagibigEmployer,Paycodes);
         const complete_contrib = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi))
-                                +  computePhilRate(semiMonthly, phil_percentage,isNewProbi)
+                                +  computePhilRateEmployee(semiMonthly, phil_percentage,isNewProbi)
                                 + pagibigEmployeeShare;
+
+
     
         // Loan Code ↓
 
@@ -273,7 +286,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         });
     
         const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,absent);
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRate +totalLoanDeduction);
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction);
         const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,Paycodes);
    
         return {
@@ -293,7 +306,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
           sss_contrib_employee:sssContribEmployee,
           sss_contrib_employer:sssContribEmployer,
-          philhealth_contrib:philhealthRate,
+          philhealth_contrib_employee:philhealthRateEmployee,
+          philhealth_contrib_employer:philhealthRateEmployer,
           pagibig_contrib_employee:pagibigEmployeeShare,
           pagibig_contrib_employer:pagibigEmployerShare,
           net_pay:netPay.toFixed(2),
@@ -441,7 +455,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         acc.sssEmployer += Number(emp.sss_contrib_employer ?? 0);
         acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
         acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
-        acc.philEmployee += Number(emp.philhealth_contrib ?? 0);
+        acc.philEmployee += Number(emp.philhealth_contrib_employee ?? 0);
         acc.wtax += Number(emp.wtax ?? 0);
         acc.basic += Number(emp.semi_monthly ?? 0);
         return acc;
@@ -511,8 +525,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Pagibig_employee_share: emp.pagibig_contrib_employee,
           Pagibig_employer_share: emp.pagibig_contrib_employer,
       
-          philhealth_employee_share: emp.philhealth_contrib,
-          philhealth_employer_share: emp.philhealth_contrib,
+          philhealth_employee_share: emp.philhealth_contrib_employee,
+          philhealth_employer_share: emp.philhealth_contrib_employee,
           
       
           // Loan Code ↓

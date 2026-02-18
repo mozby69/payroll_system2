@@ -401,9 +401,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
   export async function saveAllowanceArchive(selectedMonth: string) {
-    // 1️⃣ Check if month already saved (SUMMARY table)
-    const existingSummary =
-      await prisma.archive_allowance_summary.findUnique({
+
+    const existingSummary = await prisma.archive_allowance_summary.findUnique({
         where: { selectedMonth },
       });
   

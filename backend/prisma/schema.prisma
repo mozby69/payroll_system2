@@ -106,6 +106,7 @@ model Employee {
   Disbursing Boolean @default(false) @map("Disburse")
   Taxable Boolean @default(false) @map("Taxable")
   isNewEmployee Boolean @default(false)
+  bod_member String? @db.VarChar(100)
   BranchCode     Branch?  @relation(fields: [BranchCodeId], references: [branchCode])
   BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
 
@@ -119,6 +120,7 @@ model Employee {
   loan_ledger loan_ledger[] @relation()
   employee_bonues EmployeeBonus[] @relation()
   employee_salary_history EmployeeSalaryHistory[] @relation()
+  bod_philhealth BodPhilhealtContrib[] @relation()
   @@map("employee")
 }
 
@@ -541,6 +543,14 @@ model EmployeeSalaryHistory {
   @@map("employee_salary_history")
 }
 
+
+model BodPhilhealtContrib{
+  id Int @id @default(autoincrement())
+  employee_share Decimal? @db.Decimal(10,2)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  employee      Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+}
 
   // EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   // EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
