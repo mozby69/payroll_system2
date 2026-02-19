@@ -14,6 +14,7 @@ import filterRoutes from "../modules/filters/filter.routes";
 import generalRoutes from "../modules/general/general.routes";
 import allowanceRoutes from "../modules/allowance/allowance.routes";
 import varianceRoutes from '../modules/variance/variance.routes';
+import statutoryRoutes from '../modules/statutory_deductions/statutory.routes';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use("/opt", filterRoutes);
 
 router.use("/general", generalRoutes)
 router.use("/allowance",allowanceRoutes);
+router.use("/statutory",statutoryRoutes);
 
 router.use("/variance",varianceRoutes);
 // loan code ↓

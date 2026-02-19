@@ -54,11 +54,21 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   const sssTable = await getSSSContributions();
   const phil = await prisma.payroll_Parameters.findFirst({select: { SettingPercentage: true },});
 
+  const zeroSalaryCount = await prisma.employee.count({
+    where: {
+      ...where,
+      employeepayroll: {
+        basic_salary: 0,
+      },
+    },
+  });
+  
+
   const data = await prisma.employee.findMany({
     where,
     skip: (page - 1) * limit,
     take: limit,
-    orderBy: { EmpCode: "asc" },
+    orderBy: { EmpCode: "desc" },
     select: {
       EmpCode: true,
       Firstname: true,
@@ -136,7 +146,12 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
 
 // Loan Code ↑
 
-
+const bodMap = new Map(
+  bodPhil.map((b) => [
+    b.EmpCodeId,
+    b.employee_share ? b.employee_share.toNumber() : 0,
+  ])
+);
 
   const normalized = data.map(emp => {
 
@@ -149,12 +164,7 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
   const isNewProbi = emp.EmploymentStatus === "Probationary" && emp.isNewEmployee;
   const isBod = emp.bod_member === "bod1";
 
-  const bodMap = new Map(
-    bodPhil.map((b) => [
-      b.EmpCodeId,
-      b.employee_share ? b.employee_share.toNumber() : 0,
-    ])
-  );
+
   const bodShare = bodMap.get(emp.EmpCode) ?? 0;
 
   const semiPay = computeSemiMonthlySalary(basicSalary);
@@ -237,6 +247,7 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      zeroSalaryCount
     },
   };
 }
@@ -317,6 +328,10 @@ export async function saveEmployeePayroll({empCode,basic_salary,cash_assistance,
     }
   });
 }
+
+
+
+
 
 
 

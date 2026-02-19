@@ -162,8 +162,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
       </div>
       </div>
 
-      <Datatable columns={columns} data={data} />
-
+        <Datatable columns={columns} data={data} />
 
         <Pagination
           page={page}

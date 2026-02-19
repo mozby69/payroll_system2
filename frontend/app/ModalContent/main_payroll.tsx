@@ -30,9 +30,9 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
 
 
   const [basicSalary, setBasicSalary] = useState<number>(employeeSummary.basic_salary ?? 0);
-  const [pagibigEmployeeShare, setPagibigEmployeeShare] = useState<number>(employeeSummary.pagibig_employee_share ?? 0);
+  const [pagibigEmployeeShare, setPagibigEmployeeShare] = useState<string>(employeeSummary.pagibig_employee_share?.toString() ?? "");
   const [pagibigEmployerShare, setPagibigEmployerShare] = useState<number>(employeeSummary.pagibig_employer_share ?? 0);
-  const [cashAssistance, setCashAssistance] = useState<number>(Number(employeeSummary.cash_assistance ?? 0));
+  const [cashAssistance, setCashAssistance] = useState<string>(employeeSummary.cash_assistance?.toString() ?? "");
   const [sss, setSSS] = useState<number>(Number(employeeSummary.sss_contrib ?? 0));
   const [philHealth, setPhilHealth] = useState<number>(Number(employeeSummary.phil_rate ?? 0));
 
@@ -124,8 +124,9 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
 
   useEffect(() => {
     setBasicSalary(employeeSummary.basic_salary ?? 0);
-    setCashAssistance(Number(employeeSummary.cash_assistance ?? 0));
-    setPagibigEmployeeShare(employeeSummary.pagibig_employee_share ?? 0);
+    setCashAssistance(employeeSummary.cash_assistance != null ? employeeSummary.cash_assistance.toString() : "");
+    setPagibigEmployeeShare(employeeSummary.pagibig_employee_share != null ? employeeSummary.pagibig_employee_share.toString() : "");
+    
     setPagibigEmployerShare(employeeSummary.pagibig_employer_share ?? 0);
     setSSS(Number(employeeSummary.sss_contrib ?? 0));
     setPhilHealth(Number(employeeSummary.phil_rate ?? 0));
@@ -191,28 +192,15 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
     
       <div className="grid">
       <label className="font-bold">PAG-IBIG</label>
-      <div className="flex gap-x-2">
         <input
           type="number"
           value={pagibigEmployeeShare}
-          onChange={(e) => setPagibigEmployeeShare(Number(e.target.value))}
+          onChange={(e) => setPagibigEmployeeShare(e.target.value)}
           disabled={!hasPagibig}
           className={`border py-2 px-2 rounded-lg ${
             !hasPagibig ? "bg-gray-100 cursor-not-allowed" : ""
           }`}
         />
-
-        <button
-          onClick={() => setShowAddPagibig(true)}
-          disabled={hasPagibig}
-          className={`px-6 rounded text-white ${
-            hasPagibig
-              ? "bg-gray-300 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-500"
-          }`}>
-          Add
-        </button>
-      </div>
     </div>
 
     <div className="grid">
@@ -223,7 +211,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
            <input
             type="number"
             value={cashAssistance}
-            onChange={(e) => setCashAssistance(Number(e.target.value))}
+            onChange={(e) => setCashAssistance(e.target.value)}
             disabled={!hasBasicSalary}
             className={`border py-2 px-2 rounded-lg ${
               !hasBasicSalary ? "bg-gray-100 cursor-not-allowed" : ""
@@ -306,10 +294,10 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
           onFinalSave({
             ...(hasBasicSalary && {
               basic_salary: basicSalary,
-              cash_assistance: cashAssistance,
+              cash_assistance:cashAssistance !== "" ? Number(cashAssistance) : undefined,
             }),
             ...(hasPagibig && {
-              pagibig_employee_share: pagibigEmployeeShare,
+              pagibig_employee_share:pagibigEmployeeShare !== "" ? Number(pagibigEmployeeShare) : undefined,
               pagibig_employer_share: pagibigEmployerShare,
             }),
           })
@@ -338,7 +326,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
                 pagibig_employer_share: payload.pagibig_employer_share,
               });
 
-              setPagibigEmployeeShare(payload.pagibig_employee_share);
+              setPagibigEmployeeShare(payload.pagibig_employee_share.toString());
               setPagibigEmployerShare(payload.pagibig_employer_share);
               setHasPagibig(true);
 
@@ -366,7 +354,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
     
             });
             setBasicSalary(payload.basic_salary);
-            setCashAssistance(payload.cash_assistance);
+            setCashAssistance(payload.cash_assistance.toString());
             setHasBasicSalary(true);
             SweetAlert.successAlert("Salary added");
             setShowAddBasicSalary(false);

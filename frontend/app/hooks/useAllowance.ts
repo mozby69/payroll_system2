@@ -8,12 +8,7 @@ import { AxiosError } from "axios";
 
 
 
-export function useFetchAllowance(params: {
-    page: number;
-    limit: number;
-    search?: string;
-    month?:string;
-  }) {
+export function useFetchAllowance(params: {page: number; limit: number; search?: string; month?:string}) {
     return useQuery<AllowanceListResponse>({
       queryKey: [
         "allowance-list",
@@ -23,9 +18,7 @@ export function useFetchAllowance(params: {
         params.month,
       ],
       queryFn: async () => {
-        const res = await api.get("/allowance/fetch-allowance", {
-          params,
-        });
+        const res = await api.get("/allowance/fetch-allowance", {params});
         return res.data;
       },
       enabled: !!params.month, 

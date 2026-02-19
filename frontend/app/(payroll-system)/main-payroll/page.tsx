@@ -131,6 +131,14 @@ export default function PreparePayroll() {
       );
       return;
     }
+
+    if ((employee?.meta?.zeroSalaryCount ?? 0) > 0) {
+      SweetAlert.warningAlert(
+        "Invalid Basic Salary",
+        "There are employees with 0 basic salary. Please update before proceeding."
+      );
+      return;
+    }
   
     setCurrentStep(2);
   };

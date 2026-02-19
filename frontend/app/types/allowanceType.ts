@@ -6,7 +6,6 @@ export interface AllowanceProps {
     total:string | null;
     cash_assistance: string | null;
     ecola: string | null;
-
   }
   
 
@@ -20,7 +19,7 @@ export interface AllowanceProps {
   export interface AllowanceListResponse {
     data: AllowanceProps[];
     meta: AllowanceMeta;
-  }
+}
   
 
 
