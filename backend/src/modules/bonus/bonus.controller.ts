@@ -1,7 +1,6 @@
 import { Request, Response } from "express"
-import { createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
+import { approveBonusService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
-import { json } from "zod";
 
 
 
@@ -217,6 +216,9 @@ export async function updateBonusRuleController(
     
         case "PENDING_BONUS":
           return res.status(409).json(err)
+
+      case "NO_COMPANY_ASSIGNED":
+            return res.status(409).json(err)
     
         default:
           return res.status(500).json({
@@ -237,6 +239,30 @@ export async function updateBonusRuleController(
         return res.status(200).json(employeeBonus)
 
       }catch(error){
+        console.error(error)
+        return res.status(500).json({
+            message: "Failed to fetch employee bonuses"
+        })
+      }
+  }
+
+
+  export async function getEmployeeBonusBySummaryIdController(
+    req: Request,
+    res: Response
+  ) {
+    try{
+        const bonusSummaryId = Number(req.params.id);
+        if(Number.isNaN(bonusSummaryId)){
+          return res.status(400).json({
+            message: "Invalid bonus rule ID"
+          })
+        }
+
+        const employeeBonus = await getEmployeeBonusServiceBySummaryIdService(bonusSummaryId)
+        return res.status(200).json(employeeBonus)
+        
+    }catch(error){
         console.error(error)
         return res.status(500).json({
             message: "Failed to fetch employee bonuses"
@@ -289,6 +315,92 @@ export async function getBonusSummaryController(
   }
   
 }
+
+
+export async function approveBonusController(
+  req: Request,
+  res: Response
+) {
+  try {
+    // 1Validate and parse ID
+    const bonusSummaryId = Number(req.params.id)
+
+    if (isNaN(bonusSummaryId)) {
+      return res.status(400).json({
+        message: "Invalid bonus summary ID"
+      })
+    }
+
+    //  Get authenticated user
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
+    //  Call service
+    const result = await approveBonusService(
+      bonusSummaryId,
+      approvedBy
+    )
+
+    // 4 Success response
+    return res.status(200).json(result)
+
+  } catch (error: any) {
+
+    // Controlled business errors
+    return res.status(400).json({
+      message: error.message || "Failed to approve bonus"
+    })
+  }
+}
+
+
+
+
+export async function releaseBonusController(
+  req: Request,
+  res: Response
+) {
+  try {
+    //  Validate ID
+    const bonusSummaryId = Number(req.params.id)
+
+    if (isNaN(bonusSummaryId)) {
+      return res.status(400).json({
+        message: "Invalid bonus summary ID"
+      })
+    }
+
+    //  Ensure authenticated user exists
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const releasedBy = req.user.id
+
+    // Call service
+    const result = await releaseBonusService(
+      bonusSummaryId,
+      releasedBy
+    )
+
+    //  Success response
+    return res.status(200).json(result)
+
+  } catch (error: any) {
+    return res.status(400).json({
+      message: error.message || "Failed to release bonus"
+    })
+  }
+}
+
+
 
 
 

@@ -19,7 +19,7 @@ export const bonusRuleBaseSchema = z.object({
   name: z.string().min(3),
   bonusType: BonusTypeEnum,
   eligibleMonth: z.number().int().min(1).max(12),
-  minTenureMonths: z.number().int().min(0),
+  minTenureYear: z.number().int().min(0),
   formulaType: FormulaTypeEnum,
   taxable: z.boolean().default(false)
 })

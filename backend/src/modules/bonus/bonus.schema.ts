@@ -11,7 +11,7 @@ export const createBonusRuleSchema = z.object({
 
     eligibleMonth: z.number().int().min(0).max(12),
 
-    minTenureMonths: z.number().int().min(0),
+    minTenureYear: z.number().int().min(0),
 
     formulaType: z.nativeEnum(FormulaType),
 
@@ -28,7 +28,7 @@ export const updateBonusRuleSchema = z.object({
     name: z.string().min(3).optional(),
     bonusType: z.nativeEnum(BonusType).optional(),
     eligibleMonth: z.number().int().min(1).max(12).optional(),
-    minTenureMonths: z.number().int().min(0).optional(),
+    minTenureYear: z.number().int().min(0).optional(),
     formulaType: z.nativeEnum(FormulaType).optional(),
     taxable: z.boolean().optional()
   }) 

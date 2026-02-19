@@ -21,6 +21,9 @@ model User{
   updateAt    DateTime?    @updatedAt
 
   roles        UserRole[]
+  approveBonuses     BonusSummary[] @relation("ApprovedBonuses")
+  releasedBonuses     BonusSummary[] @relation("ReleasedBonuses")
+  auditLogs AuditLog[]
 
   @@map("user")
 }
@@ -348,7 +351,7 @@ model loan_ledger {
 enum BonusType {
   QUARTERLY
   MIDYEAR
-  YEAR_END
+  ANNUAL
   SPECIAL
 }
 
@@ -361,6 +364,7 @@ enum FormulaType {
 enum BonusStatus {
   GENERATED
   PENDING
+  APPROVED
   RELEASED 
   CANCELLED
   RESET
@@ -376,7 +380,7 @@ model BonusRule {
   name             String
   bonusType        BonusType
   eligibleMonth    Int        // 1–12 (March = 3, June = 6)
-  minTenureMonths  Int
+  minTenureYear    Int
   formulaType      FormulaType
   taxable          Boolean    @default(false)
 
@@ -395,7 +399,7 @@ model BonusRule {
   companyRule      BonusRuleCompany[]
 
 
-    @@unique([code, version])
+  @@unique([code, version])
 }
 
 model EmployeeBonus {
@@ -435,16 +439,66 @@ model BonusSummary {
   generateDate    DateTime
   totalEmployees  Int?
   totalAmount     Decimal? @db.Decimal(14,2)
-
   status          BonusStatus @default(GENERATED)
-  releaseDate     DateTime?
-  resetAt     DateTime?
+
+  approvedById     Int?
+  approvedDate     DateTime?
+
+  releasedById     Int?
+  releasedDate     DateTime?
+  resetAt          DateTime?
 
   createdAt        DateTime   @default(now())
 
   bonusRule        BonusRule @relation(fields: [bonusRuleId], references: [id])
   employeeBonuses  EmployeeBonus[]
+  approvedBy       User?    @relation("ApprovedBonuses", fields: [approvedById], references: [id])
+  releasedBy       User?    @relation("ReleasedBonuses", fields: [releasedById], references: [id])
 }
+
+enum AuditModule {
+  BONUS
+  PAYROLL
+  USER
+  VEHICLE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  RELEASE
+  GENERATE
+}
+
+
+model AuditLog {
+  id            Int      @id @default(autoincrement())
+
+  module        AuditModule
+  action        AuditAction
+
+  referenceId   Int
+  referenceCode String?     // optional (e.g., bonus month code)
+
+  description   String?
+  metadata      Json?
+
+  performedById Int
+  performedBy   User        @relation(fields: [performedById], references: [id])
+
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt     DateTime    @default(now())
+
+  @@index([module])
+  @@index([referenceId])
+  @@index([performedById])
+  @@index([createdAt])
+}
+
 
 
 model BonusRuleCompany {

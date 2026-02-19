@@ -2,6 +2,7 @@
 
 import { useGetBonusSummary } from "@/app/hooks/useBonus"
 import { statusBadge } from "@/app/helper/statusBadge"
+import { BookOpenCheck, Eye } from "lucide-react"
 
 
 export default function BonusArchivePage() {
@@ -53,6 +54,8 @@ export default function BonusArchivePage() {
               <th className="px-5 py-3 font-medium text-center">
                 Status
               </th>
+              <th className="px-5 py-3 font-medium text-center">Action</th>
+
             </tr>
           </thead>
 
@@ -111,6 +114,28 @@ export default function BonusArchivePage() {
                   >
                     {summary.status}
                   </span>
+                </td>
+                <td className="px-5 py-3 text-gray-600">
+                <div className="flex items-center gap-2">
+                      <button
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                                  text-blue-700 bg-blue-50 hover:bg-blue-100 
+                                  border border-blue-200 rounded-md 
+                                  transition-colors duration-200"
+                      >
+                        <Eye size={15} />
+                        View
+                      </button>
+                      <button
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                                  text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
+                                  border border-emerald-200 rounded-md 
+                                  transition-colors duration-200"
+                      >
+                        <BookOpenCheck size={15} />
+                        Approve
+                      </button>
+            </div>
                 </td>
               </tr>
             ))}

@@ -1,8 +1,9 @@
-import { Prisma } from "@prisma/client"
+import { AuditAction, AuditModule, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, getTenureInMonths } from "./bonus.utils"
+import { calculateBonusAmount, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
+import { createAuditLog } from "../audit/audit.service"
 
 //Bonus Rules
 export async function createBonusRuleService(data: CreateBonusRuleInput) {
@@ -248,8 +249,8 @@ export async function generateBonusForAllEmployees({
     for (const emp of employees) {
       if (!emp.EmployementDate) continue
 
-      const tenure = getTenureInMonths(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureMonths) continue
+      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
+      if (tenure < rule.minTenureYear) continue
       const payroll = emp.employeepayroll
       if (!payroll || !payroll.basic_salary){
         invalidEmployees.push({
@@ -320,8 +321,8 @@ export async function generateBonusForAllEmployees({
     for (const emp of employees) {
       if (!emp.EmployementDate) continue
     
-      const tenure = getTenureInMonths(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureMonths) continue
+      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
+      if (tenure < rule.minTenureYear) continue
     
       const payroll = emp.employeepayroll
       if (!payroll?.basic_salary) continue
@@ -388,7 +389,7 @@ export async function getEmployeeBonusService() {
           code: true,
           name: true,
           bonusType: true,
-          minTenureMonths: true,
+          minTenureYear: true,
         }
       },
       employee: {
@@ -404,15 +405,49 @@ export async function getEmployeeBonusService() {
   })
 
 
+
   
   return rows.map(row => ({
     ...row,
     tenureMonths: row.employee?.EmployementDate
-      ? getTenureInMonths(row.employee.EmployementDate, getLastDayOfMonthFromPeriod(row.releasePeriod))
+      ? getTenureInYears(row.employee.EmployementDate, getLastDayOfMonthFromPeriod(row.releasePeriod))
       : 0
   }))
 }
 
+export async function getEmployeeBonusServiceBySummaryIdService(
+  bonusSummaryId: number
+) {
+ return await prisma.employeeBonus.findMany({
+      where: {
+        bonusSummaryId: bonusSummaryId
+      },
+      select: {
+        employeeCode: true,
+        amount: true,
+        bonusRuleId: true,
+        releasePeriod: true,
+  
+        bonusRule: {
+          select: {
+            code: true,
+            name: true,
+            bonusType: true,
+            minTenureYear: true,
+          }
+        },
+        employee: {
+          select: {
+            Firstname: true,
+            Middlename: true,
+            Lastname: true,
+            EmployementDate: true,
+            EmploymentStatus: true,
+          }
+        }
+      }
+    })
+}
 
 
 
@@ -533,6 +568,134 @@ export async function getBonusSummaryService() {
         }
       }
     })
+}
+
+
+export async function approveBonusService(
+  bonusSummaryId: number,
+  approvedBy: number
+) {
+  return prisma.$transaction(async (tx) => {
+
+    const summary = await tx.bonusSummary.findUnique({
+      where: { id: bonusSummaryId }
+    })
+
+    if (!summary) {
+      throw new Error("Bonus summary not found.")
+    }
+
+    if (summary.status === "APPROVED") {
+      throw new Error("Bonus already released.")
+    }
+
+    if (summary.status !== "PENDING"  ) {
+      throw new Error("Released bonus cannot be modified.")
+    }
+
+
+    await tx.bonusSummary.update({
+      where: { id: bonusSummaryId },
+      data: {
+        status: "APPROVED",
+        approvedDate: new Date(),
+        approvedById: approvedBy
+      }
+    })
+
+    const updated = await tx.employeeBonus.updateMany({
+      where: {
+        bonusSummaryId,
+        status: { not: "APPROVED" }
+      },
+      data: {
+        status: "APPROVED"
+      }
+    })
+
+    
+    await createAuditLog(tx, {
+      module: AuditModule.BONUS,
+      action: AuditAction.APPROVE,
+      referenceId: bonusSummaryId,
+      performedById: approvedBy,
+      description: "Approved bonus summary",
+      metadata: {
+        previousStatus: "PENDING",
+        newStatus: "APPROVED"
+      }
+    })
+
+
+    return {
+      message: "Bonus approved successfully",
+      updatedEmployees: updated.count,
+      bonusSummaryId
+    }
+  })
+}
+
+
+
+export async function releaseBonusService(
+  bonusSummaryId: number,
+  releasedBy: number
+) {
+  return prisma.$transaction(async (tx) => {
+
+    const summary = await tx.bonusSummary.findUnique({
+      where: { id: bonusSummaryId }
+    })
+
+    if (!summary) {
+      throw new Error("Bonus summary not found.")
+    }
+
+    if (summary.status === "RELEASED") {
+      throw new Error("Bonus already released.")
+    }
+
+    if (summary.status !== "APPROVED") {
+      throw new Error("Bonus must be approved before release.")
+    }
+
+    await tx.bonusSummary.update({
+      where: { id: bonusSummaryId },
+      data: {
+        status: "RELEASED",
+        releasedDate: new Date(),
+        releasedById: releasedBy
+      }
+    })
+
+    const updated = await tx.employeeBonus.updateMany({
+      where: {
+        bonusSummaryId,
+        status: { not: "RELEASED" }
+      },
+      data: {
+        status: "RELEASED"
+      }
+    })
+
+    await createAuditLog(tx, {
+      module: AuditModule.BONUS,
+      action: AuditAction.RELEASE,
+      referenceId: bonusSummaryId,
+      performedById: releasedBy,
+      description: "Released bonus summary",
+      metadata: {
+        previousStatus: "APPROVED",
+        newStatus: "RELEASED"
+      }
+    })
+
+    return {
+      message: "Bonus released successfully",
+      updatedEmployees: updated.count,
+      bonusSummaryId
+    }
+  })
 }
 
 

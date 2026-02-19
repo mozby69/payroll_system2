@@ -34,7 +34,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
     name: initialData?.name ?? "",
     bonusType: initialData?.bonusType ?? null,
     eligibleMonth: initialData?.eligibleMonth ?? 1,
-    minTenureMonths: initialData?.minTenureMonths ?? 0,
+    minTenureYear: initialData?.minTenureYear ?? 0,
     formulaType: initialData?.formulaType ?? null,
     taxable: initialData?.taxable ?? false
   })
@@ -181,11 +181,11 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           />
 
           <InputField
-            label="Min Tenure (Months)"
-            name="minTenureMonths"
+            label="Min Tenure (Years)"
+            name="minTenureYear"
             type="number"
-            value={form.minTenureMonths}
-            error={errors?.minTenureMonths?._errors?.[0]}
+            value={form.minTenureYear}
+            error={errors?.minTenureYear?._errors?.[0]}
             onChange={handleChange}
           />
         </div>
