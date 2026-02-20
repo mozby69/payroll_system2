@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
 import { printPayroll } from "@/app/utils/printPayrollUtils";
 import { dummySummary } from "@/app/types/dummyData";
 import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
-import { useQueryClient } from "@tanstack/react-query";
+
 import SweetAlert from "../Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
 
@@ -55,6 +55,7 @@ export default function StepReviewSave({ onBack }: Props) {
     basicPay: emp.semi_monthly,
     overtime: emp.overtime,
     late: emp.late_count,
+    undertime: emp.undertime,
     absence: emp.absence,
     gross: emp.gross_pay,
     wtax: emp.wtax,
@@ -81,6 +82,7 @@ export default function StepReviewSave({ onBack }: Props) {
       acc.basicPay += toNumber(row.basicPay);
       acc.overtime += toNumber(row.overtime);
       acc.late += toNumber(row.late);
+      acc.undertime += toNumber(row.undertime);
       acc.absence += toNumber(row.absence);
       acc.gross += toNumber(row.gross);
       acc.wtax += toNumber(row.wtax);
@@ -97,6 +99,7 @@ export default function StepReviewSave({ onBack }: Props) {
       basicPay: 0,
       overtime: 0,
       late: 0,
+      undertime:0,
       absence: 0,
       gross: 0,
       wtax: 0,

@@ -9,9 +9,12 @@ interface AddPagibigModalProps {
     onClose: () => void;
   }
   
-  export const AddPagibigModal: React.FC<AddPagibigModalProps> = ({empCode,onSave,onClose}) => {
+  export const AddPagibigModal: React.FC<AddPagibigModalProps> = ({ onSave,onClose}) => {
     const [employeeShare, setEmployeeShare] = useState<number | "">("");
     const [employerShare, setEmployerShare] = useState<number | "">("");
+
+
+
     return (
       <div className="space-y-4">
         <div className="grid gap-y-2">
@@ -58,6 +61,7 @@ interface AddPagibigModalProps {
             Add Pag-IBIG
           </button>
         </div>
+        
       </div>
     );
   };

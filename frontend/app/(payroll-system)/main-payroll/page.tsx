@@ -1,9 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import "flatpickr/dist/flatpickr.min.css";
 import { useEffect, useState } from "react";
-import DateRangePicker from "../../ui/DateRangePicker";
 import { DateRange } from "../../types/utilsTypes";
 import { useFetchApiAttendance } from "../../hooks/useApiProcess";
 import { ProcessingOverlay } from "../../ui/loader/ProcessingOverlay";
@@ -25,10 +23,12 @@ export default function PreparePayroll() {
   const debouncedSearch = useDebounce(search, 400);
   const [range, setDateRange] = useState<DateRange | null>(null);
   const [branchCycle, setBranchCycle] = useState("");
-  const [showProcessing, setShowProcessing] = useState(false);
+  //const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
   const { mutate, isPending} = useImportBranches();
   const queryClient = useQueryClient();
+
+
 
   const { data: employee } = useEmployeesByCycle({
     cycle: branchCycle,
@@ -50,7 +50,7 @@ export default function PreparePayroll() {
         });
       };
 
-  const { data, isLoading, isFetching,isSuccess,error  } = useFetchApiAttendance(
+  const {isFetching,isSuccess,error  } = useFetchApiAttendance(
     range
       ? {
           startDate: range.startDate,
@@ -60,8 +60,11 @@ export default function PreparePayroll() {
       : null
   );
 
+  const showProcessing = isFetching && !!range;
+
+
   useEffect(() => {
-    if (!error) return;
+    if (!error || !range) return;
   
     const axiosError = error as AxiosError<{ message?: string }>;
   
@@ -73,35 +76,37 @@ export default function PreparePayroll() {
       "There is a pending payroll",
       message
     );
+
+    queueMicrotask(() => {
+      setDateRange(null);
+    });
   
-    setDateRange(null);
-    setShowProcessing(false);
-  }, [error]);
-  
-  
+  }, [error, range]);
+
+ 
 
   useEffect(() => {
-    if (isFetching && range) {
-      setShowProcessing(true);
+    if (isSuccess) {
+      queryClient.invalidateQueries({
+        queryKey: ["employees-computed"],
+      });
     }
-  }, [isFetching, range]);
-
+  }, [isSuccess, queryClient]);
   
+  // useEffect(() => {
+  //   if (!isFetching && showProcessing) {
+  //     const timer = setTimeout(() => {
+  //       setShowProcessing(false);
   
-  useEffect(() => {
-    if (!isFetching && showProcessing) {
-      const timer = setTimeout(() => {
-        setShowProcessing(false);
-        
-        if (isSuccess) {
-          queryClient.invalidateQueries({ 
-            queryKey: ["employees-computed"] 
-          });
-        }
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [isFetching, showProcessing, isSuccess, queryClient]);
+  //       if (isSuccess) {
+  //         queryClient.invalidateQueries({
+  //           queryKey: ["employees-computed"],
+  //         });
+  //       }
+  //     }, 800);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [isFetching, showProcessing, isSuccess, queryClient]);
 
   const steps: Step[] = [
     {

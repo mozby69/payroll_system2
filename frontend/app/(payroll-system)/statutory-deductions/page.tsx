@@ -1,16 +1,10 @@
 "use client";
-import Datatable from "@/app/components/Datatable";
-import RequestModal from "@/app/components/Modal";
-import { Pagination } from "@/app/components/Pagination";
+
 import { TabItem, Tabs } from "@/app/components/Tab";
-import { useDebounce } from "@/app/helper/useDebounce";
-import { useFetchSSSList } from "@/app/hooks/useStatutory";
-import EditSSSData from "@/app/ModalContent/Statutory/EditSSSList";
-import { Column } from "@/app/types/preparePayroll";
-import { SSSProps } from "@/app/types/statutoryType";
 import PagibigPage from "@/app/ui/StatutoryPage/PagibigPage";
+import PhilhealthPage from "@/app/ui/StatutoryPage/PhilHealthPage";
 import SSSPage from "@/app/ui/StatutoryPage/SSSPage";
-import { Pencil } from "lucide-react";
+import WTaxPage from "@/app/ui/StatutoryPage/WtaxPage";
 import { useState } from "react";
 
 
@@ -24,7 +18,7 @@ export default function StatutoryDeductions(){
             { key: "SSS", label: "SSS" },
             { key: "Pagibig", label: "Pagibig" },
             { key: "Philhealth", label: "Philhealth" },
-            { key: "Wtax", label: "Wtax" },
+            { key: "Wtax", label: "WHTax" },
         ];
 
 
@@ -48,8 +42,13 @@ export default function StatutoryDeductions(){
             )}
 
             {activeTab === "Philhealth" && (
-                <div>sdfds</div>
+              <PhilhealthPage/>
             )}
+
+            {activeTab === "Wtax" && (
+              <WTaxPage/>
+            )}
+
 
         </div>
     );

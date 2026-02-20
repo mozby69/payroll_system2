@@ -1,5 +1,5 @@
-import { useUpdatePagibigContribution, useUpdateSSSContribution } from "@/app/hooks/useStatutory";
-import { PagibigProps, SSSProps } from "@/app/types/statutoryType";
+import { useUpdatePagibigContribution } from "@/app/hooks/useStatutory";
+import { PagibigProps } from "@/app/types/statutoryType";
 import { useState } from "react";
 
 
@@ -56,7 +56,7 @@ type EditPagibigProps = {
                 type="text"
                 name="name"
                 value={form.name}
-                onChange={handleChange}
+                readOnly
                 className="input border border-slate-300 px-4 py-2.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
         </div>
@@ -91,7 +91,8 @@ type EditPagibigProps = {
             <button 
                 onClick={onClose}
                 className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded mt-4 cursor-pointer">
-                close</button>
+                close
+            </button>
             <button
                 onClick={handleSubmit}
                 className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded mt-4 cursor-pointer">

@@ -425,6 +425,7 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
         RegularAtt: true,
         OvertimeAtt: true,
         NightShiftAtt: true,
+        TotalUndertime:true,
         NightShiftOtAtt: true,
         EmpCode: {
           select: {
@@ -448,8 +449,10 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
     const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;
     const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
     const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+    const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
     const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
 
+    const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
     const lateCount = computeLate(totalLateCount,basicSalary);
     const absent = computeAbsent(totalAbsent,basicSalary);
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
@@ -466,6 +469,7 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
       late_count:lateCount,
       absence_count:absent,
       overtime:overTime,
+      undertime:undertimeCount,
       gross_pay:computeGrossPay(overTime,semiMonthlyRate,lateCount,absent),
     };
   });

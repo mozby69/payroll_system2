@@ -153,6 +153,7 @@ export interface PayrollEmployee {
   semi_monthly:number;
   overtime:number;
   late_count:number;
+  undertime:number;
   absence:number;
   gross_pay:number;
   sss_contrib_employee:number;

@@ -5,6 +5,7 @@ export interface SpreadsheetRow {
   basicPay: number | string;
   overtime: number | string;
   late: number | string;
+  undertime: number | string;
   absence: number | string;
   gross: number | string;
   wtax: number | string;
@@ -29,6 +30,7 @@ interface Props {
     basicPay: number;
     overtime: number;
     late: number;
+    undertime: number;
     absence: number;
     gross: number;
     wtax: number;
@@ -70,6 +72,7 @@ export default function SpreadSheet({ data,totals }: Props) {
             <th className="border border-slate-300">Basic Pay</th>
             <th className="border border-slate-300">Overtime</th>
             <th className="border border-slate-300">Late</th>
+            <th className="border border-slate-300">Undertime</th>
             <th className="border border-slate-300">Absence</th>
             <th className="border border-slate-300">Gross</th>
             <th className="border border-slate-300">W/Tax</th>
@@ -103,10 +106,10 @@ export default function SpreadSheet({ data,totals }: Props) {
               <tr key={idx} className="border border-gray-300">
                 <td className="py-2 text-center">{idx + 1}</td>
                 <td className="py-2 text-center">{row.name}</td>
-
                 <td className="py-2 text-center">{row.basicPay}</td>
                 <td className="py-2 text-center">{row.overtime}</td>
                 <td className="py-2 text-center">{row.late}</td>
+                <td className="py-2 text-center">{row.undertime}</td>
                 <td className="py-2 text-center">{row.absence}</td>
                 <td className="py-2 text-center">{row.gross}</td>
                 <td className="py-2 text-center">{row.wtax}</td>
@@ -141,6 +144,7 @@ export default function SpreadSheet({ data,totals }: Props) {
           <td className="text-center border border-gray-400">{totals.basicPay.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.overtime.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.late.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.undertime.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.absence.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.gross.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.wtax.toFixed(2)}</td>

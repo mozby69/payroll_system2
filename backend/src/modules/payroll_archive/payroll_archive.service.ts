@@ -229,6 +229,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       const normalized = employeeList.map((emp) => {
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
         const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+        const totalUndertimeCount = emp.TotalUndertime ? Number(emp.TotalUndertime): 0;
         const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
         const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
         const rawPagibigEmployee = emp.EmpCode.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
@@ -253,6 +254,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
         const absent = computeAbsent(totalAbsent,basicSalary);
         const lateCount = computeLate(totalLateCount,basicSalary);
+        const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
         const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes,);
@@ -294,6 +296,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           semi_monthly:semiMonthly.toFixed(2),
           overtime:overTime,
           late_count:lateCount,
+          undertime:undertimeCount,
           absence:absent,
           gross_pay:grossPay,
 
@@ -449,6 +452,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         acc.gross += Number(emp.gross_pay ?? 0);
         acc.net += Number(emp.net_pay ?? 0);
         acc.late += Number(emp.late_count ?? 0);
+        acc.undertime += Number(emp.undertime ?? 0);
         acc.absent += Number(emp.absence ?? 0);
         acc.overtime += Number(emp.overtime ?? 0);
         acc.sssEmployee += Number(emp.sss_contrib_employee ?? 0);
@@ -464,6 +468,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         gross: 0,
         net: 0,
         late: 0,
+        undertime: 0,
         absent: 0,
         overtime: 0,
         sssEmployee: 0,
@@ -498,6 +503,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Total_PhilhealthContributionEmployer: totals.philEmployee, // if same logic
           total_wtax: totals.wtax,
           total_basic_salary: totals.basic,
+          Total_Undertime:totals.undertime,
           createdAt: nowPH(),
         },
       });
@@ -510,6 +516,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         return {
           PayCode: emp.PayCode,
           Late: emp.late_count,
+          undertime:emp.undertime,
           Absent: emp.absence,
           cycle_category: emp.CycleCategory,
           payroll_period: emp.PayrollPeriod,

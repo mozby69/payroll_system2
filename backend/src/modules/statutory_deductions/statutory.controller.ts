@@ -1,4 +1,4 @@
-import { displayPagibigContributions, displaySSSContributions, updatePagibigContribution, updateSSSContribution } from "./statutory.service";
+import { displayPagibigContributions, displayPhilhealthContribution, displaySSSContributions, displayWTax, updatePagibigContribution, updatePhilhealth, updateSSSContribution, updateWTax } from "./statutory.service";
 
 import { Request,Response } from "express";
 
@@ -47,6 +47,22 @@ export const displaySSSContributionsController = async (req: Request, res: Respo
   }
 
 
+  export const updatePhilhealthController = async (req: Request, res: Response) => {
+    try{
+      const id = Number(req.params.id);
+      const { SettingPercentage } = req.body;
+
+      const updated = await updatePhilhealth(
+        id,
+        SettingPercentage
+      );
+
+      return res.status(200).json(updated);
+    }
+    catch(error){
+      return res.status(500).json({ message: `SERVER ERROR ${error}`})
+    }
+  }
 
   export const displayPagibigContributionsController = async (req: Request, res: Response) => {
     try{
@@ -62,3 +78,37 @@ export const displaySSSContributionsController = async (req: Request, res: Respo
       res.status(500).json({message:`SERVER ERROR: ${error}`})
     }
   }
+
+
+export const displayPhilhealthContributionController = async (req:Request, res:Response) =>{
+  try{
+    const data = await displayPhilhealthContribution();
+    return res.status(200).json(data);
+  }
+  catch(error){
+    res.status(500).json({message:`server error ${error}`});
+  }
+}
+
+
+export const displayWTaxController = async (req:Request, res:Response) => {
+  try{
+    const data = await displayWTax();
+    return res.status(200).json(data);
+  }
+  catch(error){
+    res.status(500).json({message:`server error ${error}`})
+  }
+}
+
+
+export const updateWTaxController = async (req: Request, res:Response) => {
+  try{
+    const id = Number(req.params.id);
+    const updated = await updateWTax(id, req.body);
+    return res.status(200).json(updated);
+  }
+  catch(error){
+    return res.status(500).json({ message: `SERVER ERROR ${error}`})
+  }
+}

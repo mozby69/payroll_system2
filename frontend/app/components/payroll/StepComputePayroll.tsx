@@ -1,6 +1,6 @@
 import DateRangePicker from "@/app/ui/DateRangePicker";
 import SweetAlert from "../Swal";
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import { DateRange } from "@/app/types/utilsTypes";
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay";
 import { Column } from "@/app/types/preparePayroll";
@@ -9,7 +9,6 @@ import { useComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
-import { AxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
 import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
@@ -31,9 +30,9 @@ interface Props {
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");
       const debouncedSearch = useDebounce(search, 400);
-      const [showProcessing, setShowProcessing] = useState(false);
+      const [showProcessing] = useState(false);
 
-      const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
+      //const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
       const queryClient = useQueryClient();
       const { data: disabledRanges = [] } = useDisabledPayrollDates(cycle);
 
@@ -77,6 +76,10 @@ interface Props {
           accessor: (row) => row.overtime,
         },
         {
+          header:"UNDERTIME",
+          accessor: (row) => row.undertime,
+        },
+        {
           header:"GROSS PAY",
           accessor: (row) => row.gross_pay,
         }
@@ -84,9 +87,9 @@ interface Props {
       
       ] 
 
-      useEffect(() => {
-        setPage(1);
-      }, [range]);
+      // useEffect(() => {
+      //   setPage(1);
+      // }, [range]);
 
 
     

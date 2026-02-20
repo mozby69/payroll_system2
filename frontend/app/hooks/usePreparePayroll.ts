@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
-import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
+import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
 

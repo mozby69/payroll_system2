@@ -189,6 +189,7 @@ model totalPayroll{
   total_wtax Decimal? @db.Decimal(10,2) @map("total_wtax")
   total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
   selected_payroll_date Json? @map("selected_payroll_date")
+  Total_Undertime  Decimal? @db.Decimal(10,2) @map("total_undertime")
 
  employee_archives EmployeePayrollArchive[]
 
@@ -236,7 +237,7 @@ model SSS_Contributions {
 model Payroll_Parameters{
   id Int @id @default(autoincrement())
   SettingName String? @db.VarChar(100)
-  SettingPercentage Decimal? @db.Decimal(10,2)
+  SettingPercentage Decimal? @db.Decimal(10,3)
   LastModifiedBy String? @db.VarChar(100)
   LastModifiedDate DateTime? @db.Date
   Created_at DateTime? @default(now()) 
@@ -252,7 +253,7 @@ model EmployeePayrollArchive {
   cycle_category  String? @db.VarChar(100) @map("cycle_category")
   payroll_period String? @db.VarChar(100) @map("payroll_period")
   selected_payroll_date String? @db.VarChar(100) @map("selected_payroll_date")
-  undertime Decimal? @db.Decimal(10,2)
+  undertime Decimal? @db.Decimal(10,2)  @map("undertime")
   Overtime  Decimal? @db.Decimal(10,2) @map("overtime")
   Grosspay  Decimal? @db.Decimal(10,2) @map("grosspay")
   w_tax Decimal? @db.Decimal(10,2)

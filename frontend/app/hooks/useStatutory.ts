@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { PagibigResponse, SSSResponse } from "../types/statutoryType";
+import { PagibigResponse, PhilResponse, SSSResponse, WTaxResponse } from "../types/statutoryType";
 import SweetAlert from "../components/Swal";
 
 
@@ -94,3 +94,78 @@ export function useFetchSSSList(params: {page: number; limit: number; search?: s
     });
   }
   
+
+
+export function useFetchPhilList() {
+    return useQuery<PhilResponse>({
+      queryKey: ["phil-list",],
+      queryFn: async () => {
+        const res = await api.get("/statutory/philhealth-list");
+        return res.data;
+      },
+    });
+  }
+
+  export function useUpdatePhilhealth() {
+    const queryClient = useQueryClient();
+  
+    return useMutation({
+      mutationFn: async (payload: {id: number; SettingPercentage: string}) => {
+        const res = await api.put(`/statutory/philhealth-edit/${payload.id}`,payload);
+        return res.data;
+      },
+      onSuccess: () => {
+        SweetAlert.successAlert("Updated successfully");
+        queryClient.invalidateQueries({
+          queryKey: ["phil-list"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["employees"],
+        });
+      },
+    });
+  }
+
+
+
+  export function useFetchWTax() {
+    return useQuery<WTaxResponse>({
+      queryKey: ["wtax-list"],
+      queryFn: async () => {
+        const res = await api.get("/statutory/display-wtax");
+        return res.data;
+      },
+    });
+  }
+
+
+
+  export function useUpdateWtax() {
+    const queryClient = useQueryClient();
+  
+    return useMutation({
+      mutationFn: async (payload: {
+        id: number;
+        start_range: number;
+        end_range: number;
+        annual_base_tax_bracket: number;
+        rate_per_bracket: number;
+        annual_base_tax_per_year: number;
+
+      }) => {
+        const response = await api.put(`statutory/wtax-edit/${payload.id}`,payload);
+        return response.data;
+      },
+      onSuccess: async () => {
+        SweetAlert.successAlert("Updated successfully");
+        await queryClient.refetchQueries({
+          queryKey: ["wtax-list"],
+        });
+
+        await queryClient.refetchQueries({
+          queryKey: ["employees"],
+        });
+
+      },
+    });
+  }

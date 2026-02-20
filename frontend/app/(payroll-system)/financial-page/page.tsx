@@ -28,11 +28,12 @@ export default function FinancialPage(){
         basicPay: emp.semi_monthly,
         overtime: emp.overtime,
         late: emp.late_count,
+        undertime: emp.undertime,
         absence: emp.absence,
         gross: emp.gross_pay,
         wtax: emp.wtax,
         sss: emp.sss_contrib_employee,
-        philhealth: emp.philhealth_contrib,
+        philhealth: emp.philhealth_contrib_employee,
         pagibig: emp.pagibig_contrib_employee,
         arE: 0,
 
@@ -46,7 +47,7 @@ export default function FinancialPage(){
         calamityLoan: 0,
         netPayable: emp.net_pay,
         sssEmployer: emp.sss_contrib_employer,
-        philEmployer: emp.philhealth_contrib,
+        philEmployer: emp.philhealth_contrib_employee,
         pagibigEmployer: emp.pagibig_contrib_employer,
     
       }));
@@ -80,6 +81,7 @@ export default function FinancialPage(){
             acc.basicPay += toNumber(row.basicPay);
             acc.overtime += toNumber(row.overtime);
             acc.late += toNumber(row.late);
+            acc.undertime += toNumber(row.undertime);
             acc.absence += toNumber(row.absence);
             acc.gross += toNumber(row.gross);
             acc.wtax += toNumber(row.wtax);
@@ -96,6 +98,7 @@ export default function FinancialPage(){
             basicPay: 0,
             overtime: 0,
             late: 0,
+            undertime:0,
             absence: 0,
             gross: 0,
             wtax: 0,

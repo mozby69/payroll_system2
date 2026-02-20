@@ -1,4 +1,4 @@
-import { AllowanceSummary, ArchiveAllowance } from "@/app/types/allowanceType";
+import { AllowanceSummary } from "@/app/types/allowanceType";
 
 
 import { useFetchArchiveAllowanceModal } from "@/app/hooks/useAllowance";
@@ -11,7 +11,7 @@ interface ViewEmployeeListAllowanceProps {
   }
 
 
-export const ViewEmployeeListAllowance:React.FC<ViewEmployeeListAllowanceProps> = ({onClose,allowanceSummary}) => {
+export const ViewEmployeeListAllowance:React.FC<ViewEmployeeListAllowanceProps> = ({allowanceSummary}) => {
     const { data, isLoading } = useFetchArchiveAllowanceModal(
         allowanceSummary.selectedMonth
       );

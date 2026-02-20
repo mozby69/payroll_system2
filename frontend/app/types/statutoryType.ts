@@ -44,3 +44,21 @@ export interface PagibigResponse {
   data: PagibigProps[];
   meta: PagibigMeta;
 }
+
+
+export interface PhilResponse {
+  id:number;
+  SettingName:string;
+  SettingPercentage:string;
+}
+
+export interface WTaxItem {
+  id:number;
+  start_range:number;
+  end_range:number;
+  annual_base_tax_bracket:number;
+  rate_per_bracket:number;
+  annual_base_tax_per_year:number;
+}
+
+export type WTaxResponse = WTaxItem[];

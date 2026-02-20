@@ -11,7 +11,7 @@ import { fi } from "zod/v4/locales";
 
 
 
-
+//SSS
 export async function displaySSSContributions({page,limit,search}: StatutoryProps) {
 
     try{
@@ -96,20 +96,6 @@ export async function updateSSSContribution(id:number,
 
 
 
-export async function updatePagibigContribution(id:number,
-    data:{
-        pagibig_employee_share:number;
-        pagibig_employer_share:number;
-
-    }){
-    return prisma.pagIbig_List.update({
-        where:{ pagibig_id: id },
-        data:{
-            pagibig_employee_share:data.pagibig_employee_share,
-            pagibig_employer_share:data.pagibig_employer_share,
-        }
-    })
-}
 
 
 
@@ -117,66 +103,51 @@ export async function updatePagibigContribution(id:number,
 
 
 
-
-
+// PAGIBIG 
 export async function displayPagibigContributions({page,limit,search}: StatutoryProps) {
 
     try{
 
-        const searchParts = search?.trim().split(" ") || [];
+      const searchFilter = search
+      ? {
+          OR: [
+            { EmpCodeId: { contains: search } },
+            { EmpCode: { Firstname: { contains: search } } },
+            { EmpCode: { Lastname: { contains: search } } },
+          ],
+        }
+      : {};
+        
+        const statusOverride = {
+          OR: [
+            {
+              EmpCode: {
+                EmployeeStatus: {
+                  notIn: ["Resigned", "Inactive", "Terminate"],
+                },
+              },
+            },
+            {
+              EmpCode: {
+                bod_member: {
+                  in: ["bod1", "bod2"],
+                },
+              },
+            },
+          ],
+        };
 
-        const employeeWhere: Prisma.PagIbig_ListWhereInput = {
-          ...(search && {
-            OR: [
-              {
-                EmpCodeId: {
-                  contains: search,
-                },
-              },
-              {
-                EmpCode: {
-                  Firstname: {
-                    contains: search,
-                  },
-                },
-              },
-              {
-                EmpCode: {
-                  Lastname: {
-                    contains: search,
-                  },
-                },
-              },
-              ...(searchParts.length >= 2
-                ? [
-                    {
-                      AND: [
-                        {
-                          EmpCode: {
-                            Firstname: {
-                              contains: searchParts[0],
-                            },
-                          },
-                        },
-                        {
-                          EmpCode: {
-                            Lastname: {
-                              contains: searchParts[1],
-                            },
-                          },
-                        },
-                      ],
-                    },
-                  ]
-                : []),
-            ],
-          }),
+        const finalWhere: Prisma.PagIbig_ListWhereInput = {
+          AND: [
+            searchFilter,
+            statusOverride,
+          ],
         };
         
           
 
            const employeeList = await prisma.pagIbig_List.findMany({
-            where: employeeWhere,
+            where: finalWhere,
             skip: (page - 1) * limit,
             take: limit,
             select:{
@@ -208,7 +179,7 @@ export async function displayPagibigContributions({page,limit,search}: Statutory
                 };
             });
 
-            const total = await prisma.pagIbig_List.count({ where: employeeWhere });
+            const total = await prisma.pagIbig_List.count({ where: finalWhere });
 
             return {
                 data: normalized,
@@ -227,3 +198,76 @@ export async function displayPagibigContributions({page,limit,search}: Statutory
 
 }
 
+
+export async function updatePagibigContribution(id:number,
+  data:{
+      pagibig_employee_share:number;
+      pagibig_employer_share:number;
+
+  }){
+  return prisma.pagIbig_List.update({
+      where:{ pagibig_id: id },
+      data:{
+          pagibig_employee_share:data.pagibig_employee_share,
+          pagibig_employer_share:data.pagibig_employer_share,
+      }
+  })
+}
+
+
+
+
+
+
+// philhealth 
+
+export async function displayPhilhealthContribution(){
+  try{
+    const data = await prisma.payroll_Parameters.findFirst();
+    return data;
+  }
+  catch(error){
+    console.error("error occured",error);
+  }
+}
+
+export async function updatePhilhealth(id:number, SettingPercentage:string){
+  return prisma.payroll_Parameters.update({
+    where :{ id },
+    data:{ SettingPercentage: new Prisma.Decimal(SettingPercentage)},
+  });
+}
+
+export async function displayWTax(){
+  try{
+    const data = await prisma.tax_table.findMany();
+    return data;
+  }
+  catch(error){
+    console.error("error occured",error);
+  }
+}
+
+
+
+
+export async function updateWTax(id:number,
+  data:{
+    start_range:number;
+    end_range:number;
+    annual_base_tax_bracket:number;
+    rate_per_bracket:number;
+    annual_base_tax_per_year:number;
+
+  }){
+  return prisma.tax_table.update({
+      where:{ id: id },
+      data:{
+        start_range:data.start_range,
+        end_range:data.end_range,
+        annual_base_tax_bracket:data.annual_base_tax_bracket,
+        rate_per_bracket:data.rate_per_bracket,
+        annual_base_tax_per_year:data.annual_base_tax_per_year,
+      }
+  })
+}
