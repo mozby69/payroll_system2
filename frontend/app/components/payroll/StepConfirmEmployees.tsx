@@ -191,7 +191,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
      {isModalOpen && currentSelectedRow && (
       <RequestModal size="xxxl" title={`Employee:${currentSelectedRow.Firstname}, ${currentSelectedRow.Lastname}`} onClose={closeModal}>
         <ViewEmployeePayroll
-          key={currentSelectedRow.EmpCode}
+           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.basic_salary}`}
           employeeSummary={currentSelectedRow}
           onFinalSave={handleSavePayroll}
           onQuickSave={savePayrollSilently}

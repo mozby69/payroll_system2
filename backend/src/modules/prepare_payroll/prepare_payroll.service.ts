@@ -4,6 +4,7 @@ import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
 import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
+import { nowPH } from "../../utils/timezone";
 
 export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string }) {
 
@@ -261,70 +262,84 @@ const bodMap = new Map(
 
 
 
-export async function saveEmployeePayroll({empCode,basic_salary,cash_assistance,pagibig_employee_share,pagibig_employer_share}: {
+export async function updateEmployeeSalary({
+  empCode,
+  old_salary,
+  new_salary,
+  remarks,
+  changed_by,
+  cash_assistance,
+}: {
+  empCode: string;
+  old_salary: number;
+  new_salary: number;
+  remarks: string;
+  changed_by: string;
+  cash_assistance: number;
+}) {
+  return await prisma.$transaction(async (tx) => {
+    // 1️⃣ Save history
+    await tx.employeeSalaryHistory.create({
+      data: {
+        EmpCodeId: empCode,
+        old_salary,
+        new_salary,
+        remarks,
+        changed_by,
+        createdAt: nowPH(),
+      },
+    });
+
+    // 2️⃣ Update payroll table
+    await tx.employee_payroll.update({
+      where: { EmpCodeId: empCode },
+      data: {
+        basic_salary: new_salary,
+        cash_assistance,
+      },
+    });
+  });
+}
+
+
+export async function updateEmployeePayrollFields({
+  empCode,
+  basic_salary,
+  cash_assistance,
+  pagibig_employee_share,
+}: {
   empCode: string;
   basic_salary?: number;
   cash_assistance?: number;
   pagibig_employee_share?: number;
-  pagibig_employer_share?: number;
 }) {
   return await prisma.$transaction(async (tx) => {
-
-    /* ================= BASIC PAYROLL ================= */
-    if (basic_salary !== undefined || cash_assistance !== undefined) {
-      const payroll = await tx.employee_payroll.findFirst({
+    // 1️⃣ Update employee_payroll table
+    if (
+      basic_salary !== undefined ||
+      cash_assistance !== undefined
+    ) {
+      await tx.employee_payroll.update({
         where: { EmpCodeId: empCode },
+        data: {
+          ...(basic_salary !== undefined && { basic_salary }),
+          ...(cash_assistance !== undefined && { cash_assistance }),
+        },
       });
-
-      const payrollData: any = {};
-      if (basic_salary !== undefined) payrollData.basic_salary = basic_salary;
-      if (cash_assistance !== undefined) payrollData.cash_assistance = cash_assistance;
-
-      if (payroll) {
-        await tx.employee_payroll.update({
-          where: { payroll_id: payroll.payroll_id },
-          data: payrollData,
-        });
-      } else {
-        await tx.employee_payroll.create({
-          data: {
-            EmpCodeId: empCode,
-            ...payrollData,
-          },
-        });
-      }
     }
 
-    /* ================= PAG-IBIG ================= */
-    if (
-      pagibig_employee_share !== undefined ||
-      pagibig_employer_share !== undefined
-    ) {
-      const pagibig = await tx.pagIbig_List.findFirst({
+    // 2️⃣ Update pagibig_list table (employee share only)
+    if (pagibig_employee_share !== undefined) {
+      await tx.pagIbig_List.upsert({
         where: { EmpCodeId: empCode },
+        update: {
+          pagibig_employee_share,
+        },
+        create: {
+          EmpCodeId: empCode,
+          pagibig_employee_share,
+        },
       });
-
-      const pagibigData: any = {};
-      if (pagibig_employee_share !== undefined)
-        pagibigData.pagibig_employee_share = pagibig_employee_share;
-      if (pagibig_employer_share !== undefined)
-        pagibigData.pagibig_employer_share = pagibig_employer_share;
-
-      if (pagibig) {
-        await tx.pagIbig_List.update({
-          where: { pagibig_id: pagibig.pagibig_id },
-          data: pagibigData,
-        });
-      } else {
-       
-
-        await tx.pagIbig_List.create({
-          data: {
-            EmpCodeId: empCode,
-            ...pagibigData,
-          },
-        });
-      }
     }
   });
 }

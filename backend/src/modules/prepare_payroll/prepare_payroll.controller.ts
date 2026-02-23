@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ComputePayroll, fetchEmployeesByPayrollCycle, saveEmployeePayroll, searchEmployees } from "./prepare_payroll.service";
+import { ComputePayroll, fetchEmployeesByPayrollCycle, searchEmployees, updateEmployeePayrollFields, updateEmployeeSalary } from "./prepare_payroll.service";
 
 
 
@@ -30,40 +30,61 @@ export const getEmployeesByCycle = async (req: Request,res: Response) => {
 
 
 export const saveEmployeePayrollController = async (req: Request,res: Response) => {
-  const {
-    empCode,
-    basic_salary,
-    cash_assistance,
-    pagibig_employee_share,
-    pagibig_employer_share,
-  } = req.body;
+  try {
+    const {
+      empCode,
+      basic_salary,
+      old_salary,
+      cash_assistance,
+      pagibig_employee_share,
+      remarks,
+    } = req.body;
 
-  if (!empCode) {
-    return res.status(400).json({ message: "empCode is required" });
+    if (!empCode) {
+      return res.status(400).json({ message: "empCode is required" });
+    }
+
+    if (
+      basic_salary !== undefined &&
+      old_salary !== undefined &&
+      Number(basic_salary) !== Number(old_salary)
+    ) {
+      if (!remarks || !remarks.trim()) {
+        return res.status(400).json({ message: "Remarks is required when changing salary"});
+      }
+
+      await updateEmployeeSalary({
+        empCode,
+        old_salary: Number(old_salary),
+        new_salary: Number(basic_salary),
+        cash_assistance: Number(cash_assistance ?? 0),
+        remarks,
+        changed_by: req.user?.username ?? "SYSTEM",
+      });
+    }
+
+    await updateEmployeePayrollFields({
+      empCode,
+      basic_salary:
+        basic_salary !== undefined ? Number(basic_salary) : undefined,
+      cash_assistance:
+        cash_assistance !== undefined
+          ? Number(cash_assistance)
+          : undefined,
+      pagibig_employee_share:
+        pagibig_employee_share !== undefined
+          ? Number(pagibig_employee_share)
+          : undefined,
+    });
+
+    return res.json({ message: "Payroll saved successfully" });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
-
-  await saveEmployeePayroll({
-    empCode,
-    basic_salary:
-      basic_salary !== undefined ? Number(basic_salary) : undefined,
-
-    cash_assistance:
-      cash_assistance !== undefined ? Number(cash_assistance) : undefined,
-
-    pagibig_employee_share:
-      pagibig_employee_share !== undefined
-        ? Number(pagibig_employee_share)
-        : undefined,
-
-    pagibig_employer_share:
-      pagibig_employer_share !== undefined
-        ? Number(pagibig_employer_share)
-        : undefined,
-  });
-
-  res.json({ message: "Payroll saved successfully" });
 };
-
 
 
 
