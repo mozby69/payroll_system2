@@ -107,6 +107,7 @@ export async function saveEmployeeAttendance(
         data: finalData,
         skipDuplicates: true,
       });
+      
     });
   }
   

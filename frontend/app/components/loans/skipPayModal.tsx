@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useClosedLoan, useEmpLoanById, usePayEmployeeLoan } from "@/app/hooks/useLoans";
-import GenButton from "../Buttons";
+import { useEmpLoanById, usePayEmployeeLoan } from "@/app/hooks/useLoans";
 import { LedgerRow } from "@/app/types/loanTypes";
 import SweetAlert from "../Swal";
 
@@ -16,7 +15,6 @@ type Props = {
 export default function SkipPayModal({
   loan_id,
   fullname,
-  onSuccess,
 }: Props) {
   const { data, isLoading, isError } = useEmpLoanById(
     loan_id,
@@ -24,7 +22,7 @@ export default function SkipPayModal({
   );
 
   const payLoan = usePayEmployeeLoan();
-  const { mutate: closeLoan, isPending } = useClosedLoan();
+
 
   const rows: LedgerRow[] = useMemo(() => {
     if (!data) return [];

@@ -6,7 +6,9 @@ import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP 
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
 
-export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string }) {
+export async function fetchEmployeesByPayrollCycle({
+  cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
+  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
 
     const baseFilter = {
         BranchCode: {
@@ -14,6 +16,11 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
             CompanyCycle: cycle,
           },
         },
+        ...(onlyNew && { isNewEmployee: true }), 
+        ...(onlyMissingSetup && {
+          Disbursing: true,
+          isNewEmployee:false
+        }),
       };
 
   const searchFilter = search
@@ -79,6 +86,9 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
       EmploymentStatus: true,
       isNewEmployee: true,
       bod_member:true,
+      Taxable:true,
+      Disbursing:true,
+      WithAtm:true,
       loan_details: {
         select: {
           loan_type: true,
@@ -182,6 +192,7 @@ const bodMap = new Map(
     SSS_LOAN: 0,
     PAGIBIG_LOAN: 0,
     RFC_LOAN: 0,
+    ARE_LOAN: 0,
   };
 
   const nextPayrollCycle =
@@ -233,7 +244,7 @@ const bodMap = new Map(
     sss_loan: loanMap.SSS_LOAN,
     pagibig_loan: loanMap.PAGIBIG_LOAN,
     rfc_loan: loanMap.RFC_LOAN,
-
+    are_loan: loanMap.ARE_LOAN,
     // loan Code ↓
     next_payroll: nextPayrollCycle ,
     month_pay:payPeriod,

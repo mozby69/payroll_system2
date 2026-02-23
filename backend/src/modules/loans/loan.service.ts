@@ -34,12 +34,16 @@ export async function saveEmployeeLoan(data: loanProps){
           term_unit: true,
           start_date: true,
           deduct_allowance: true,
+         
         },
+        
     });
 
     if (existingLoan) {
       throw new Error("You have Existing Active Loan");
     }
+
+ 
 
       const existingEmp = await tx.employee.findUnique({
         where:{
@@ -54,9 +58,21 @@ export async function saveEmployeeLoan(data: loanProps){
                 }
               }
             }
+          },
+          employeepayroll:{
+            select:{
+              basic_salary:true
+            }
           }
         }
       })
+      const basicSalary =
+        existingEmp?.employeepayroll?.basic_salary?.toNumber() ?? 0;
+
+      if (basicSalary <= 0) { 
+        throw new Error("Enter Employee Basic Salary First.");
+      }
+
 
       const loan = await tx.loan_details.create({
         data: {
@@ -796,7 +812,7 @@ export const fetchLoanByEmpCode = async (payCyclePeriod: PayCyclePeriod): Promis
         EmpCodeId: payCyclePeriod.EmpCode,
         status: "ACTIVE",
         loan_type: {
-          in: ["PAGIBIG_LOAN", "SSS_LOAN", "FCH_LOAN", "RFC_LOAN"],
+          in: ["PAGIBIG_LOAN", "SSS_LOAN", "FCH_LOAN", "RFC_LOAN", "ARE_LOAN"],
         },
       },
       select: {

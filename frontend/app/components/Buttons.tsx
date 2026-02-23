@@ -36,7 +36,7 @@ export default function GenButton({
                 primary: "border-2 border-mainhighlight bg-mainhighlight text-mainLight hover:bg-[#ff4920]",
                 edit: "border-2 border-decision bg-decision text-mainLight hover:bg-[#faa81c]",
                 positive: "border-2 border-positive bg-positive text-mainLight hover:bg-[#44a75c] ",
-                secondary: "border-2 border-mainGray bg-mainGray text-mainLight hover:bg-mainLightGray hover:text-mainGray ",
+                secondary: "border-2 border-mainGray bg-mainGray text-mainLight hover:bg-mainLightGray hover:text-mainLight ",
                 outline:
                     "border-2 border-mainDark text-mainDark hover:bg-mainDark hover:text-mainLight",
                 danger: "border-2 border-negative bg-negative text-mainLight hover:bg-red-700",

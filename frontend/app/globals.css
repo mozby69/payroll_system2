@@ -64,33 +64,30 @@
   }
 
 
-
-.scrollbar-custom::-webkit-scrollbar {
-  height: 10px; 
-}
-
 .scrollbar-custom::-webkit-scrollbar-track {
-  background: var(--color-primaryNaya); 
-  border-radius: 10px;
+  background: var(--color-mainBg);
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb {
-  background-color: var(--color-lightNeutralNaya); 
+  background-color: var(--color-mainNeutral);
   border-radius: 10px;
-  border: 2px solid var(--color-primaryNaya)
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-  background-color:  var(--color-lightNeutralNaya); 
+  background-color: var(--color-mainLightGray);
 }
 
-
-/* Firefox support */
+/* Firefox */
 .scrollbar-custom {
-  scrollbar-color: var(--color-lightNeutralNaya) var(--color-primaryNaya); 
+  scrollbar-color: var(--color-mainNeutral) var(--color-mainBg);
   scrollbar-width: thin;
+  padding-right: 0.5rem;
 }
 
+
+.animate-pulse-soft {
+  animation: pulse 2s infinite;
+}
 
 
 }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Filter, View } from "lucide-react";
@@ -7,107 +6,52 @@ import { useEmployees } from "../../hooks/employees";
 import FilterModal from "../../components/Filter";
 import ActiveFilters from "@/app/components/FilterObject";
 import GenButton from "@/app/components/Buttons";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { FilterProvider, useFilters } from "@/app/components/FilterContext";
 
+const FILTER_KEYS = ["department", "company", "status"] as const;
 
-export default function EmployeeList() {
-    
-    const didInit = useRef(false);
-    const router = useRouter();
-    const searchParams = useSearchParams();
+function EmployeeListContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { filters } = useFilters();
 
-    const search = searchParams.get("search") ?? "";
-    const page = Number(searchParams.get("page") ?? 1);
-    const limit = 10;
+  const search = searchParams.get("search") ?? "";
+  const page = Number(searchParams.get("page") ?? 1);
+  const limit = 10;
 
-    const FILTER_KEYS = ["department", "company", "status"] as const;
+  const { data, isLoading, isError } = useEmployees(
+    page,
+    limit,
+    search,
+    filters
+  );
 
-    type FilterKey = (typeof FILTER_KEYS)[number];
+  const [open, setOpen] = useState(false);
 
-    const filters = FILTER_KEYS.reduce<Record<FilterKey, string[]>>(
-      (acc, key) => {
-        acc[key] = searchParams.getAll(key);
-        return acc;
-      },
-      {} as Record<FilterKey, string[]>
-    );
+  const updateParams = (fn: (params: URLSearchParams) => void) => {
+    const params = new URLSearchParams(searchParams.toString());
+    fn(params);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
+  const handleSearch = (value: string) => {
+    updateParams(params => {
+      if (value) {
+        params.set("search", value);
+      } else {
+        params.delete("search");
+      }
 
-    const { data, isLoading, isError } = useEmployees(
-        page,
-        limit,
-        search,
-        filters
-    );
-
-    const [open, setOpen] = useState(false);
-
-    const updateParams = (fn: (params: URLSearchParams) => void) => {
-        const params = new URLSearchParams(searchParams.toString());
-        fn(params);
-        router.replace(`?${params.toString()}`, { scroll: false });
-    };
-
-    const handleSearch = (value: string) => {
-        updateParams((params) => {
-        value ? params.set("search", value) : params.delete("search");
-        params.set("page", "1");
-        });
-    };
-
-    const goToPage = (p: number) => {
-        updateParams((params) => {
-        params.set("page", String(p));
-        });
-    };
-
-    const toggleFilter = (key: string, value: string) => {
-        updateParams((params) => {
-        const values = params.getAll(key);
-
-        params.delete(key);
-        if (!values.includes(value)) {
-            [...values, value].forEach((v) => params.append(key, v));
-        } else {
-            values.filter((v) => v !== value).forEach((v) => params.append(key, v));
-        }
-
-        params.set("page", "1");
-        });
-    };
-
-    const removeFilter = (key: string, value: string) => {
-        updateParams((params) => {
-        const values = params.getAll(key).filter((v) => v !== value);
-        params.delete(key);
-        values.forEach((v) => params.append(key, v));
-        });
-    };
-
-
-    const clearAll = () => {
-        updateParams((params) => {
-        ["department", "company", "status"].forEach((k) => params.delete(k));
-        params.set("page", "1");
-        });
-    };
-
-
-    // useEffect(() => {
-    // if (didInit.current) return;
-    // didInit.current = true;
-
-    // const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
-
-    // if (nav?.type === "reload") {
-    //     const params = new URLSearchParams(searchParams.toString());
-    //     params.set("page", "1");
-    //     router.replace(`?${params.toString()}`, { scroll: false });
-    // }
-    // }, [router, searchParams]);
-
-
-
+      params.set("page", "1");
+    });
+  };
+  
+  const goToPage = (p: number) => {
+    updateParams((params) => {
+      params.set("page", String(p));
+    });
+  };
 
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center py-8 text-mainGray">
@@ -135,11 +79,7 @@ export default function EmployeeList() {
           </div>
         </div>
 
-        <ActiveFilters
-          filters={filters}
-          onRemove={removeFilter}
-          onClearAll={clearAll}
-        />
+        <ActiveFilters />
 
         <table className="w-full border-separate border-spacing-0 rounded-xl overflow-hidden shadow-lg">
           <thead className="bg-mainDark text-white">
@@ -173,7 +113,10 @@ export default function EmployeeList() {
             {!isLoading &&
               !isError &&
               data?.data.map((emp) => (
-                <tr key={emp.EmpCode} className="odd:bg-mainLight even:bg-mainNeutral">
+                <tr
+                  key={emp.EmpCode}
+                  className="odd:bg-mainLight even:bg-mainNeutral"
+                >
                   <td className="p-4">{emp.EmpCode}</td>
                   <td className="p-4">
                     {emp.Lastname}, {emp.Firstname} {emp.Middlename}
@@ -184,7 +127,9 @@ export default function EmployeeList() {
                   <td className="p-4">
                     <GenButton
                       variant="outline"
-                      onClick={() => router.push(`/profile/${emp.EmpCode}`)}
+                      onClick={() =>
+                        router.push(`/profile/${emp.EmpCode}`)
+                      }
                     >
                       <View size={16} /> Details
                     </GenButton>
@@ -201,17 +146,18 @@ export default function EmployeeList() {
             </span>
 
             <div className="flex gap-2">
-              <GenButton variant="secondary"
-                disabled={page === 1} onClick={() => goToPage(page - 1)}
-                className="px-3 py-1 rounded disabled:opacity-50"
+              <GenButton
+                variant="secondary"
+                disabled={page === 1}
+                onClick={() => goToPage(page - 1)}
               >
                 Prev
               </GenButton>
 
-              <GenButton variant="secondary"
+              <GenButton
+                variant="secondary"
                 disabled={page === data.meta.totalPages}
                 onClick={() => goToPage(page + 1)}
-                className="px-3 py-1 rounded disabled:opacity-50"
               >
                 Next
               </GenButton>
@@ -220,13 +166,15 @@ export default function EmployeeList() {
         )}
       </div>
 
-      <FilterModal
-        open={open}
-        onClose={() => setOpen(false)}
-        filters={filters}
-        onToggle={toggleFilter}
-        filterKeys={FILTER_KEYS}
-      />
+      <FilterModal open={open} onClose={() => setOpen(false)} />
     </div>
+  );
+}
+
+export default function EmployeeList() {
+  return (
+    <FilterProvider filterKeys={FILTER_KEYS}>
+      <EmployeeListContent />
+    </FilterProvider>
   );
 }

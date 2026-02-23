@@ -39,12 +39,16 @@ export type Column<T> = {
     pagibig_employee_share: number;
     pagibig_employer_share: number;
     cash_assistance?:number;
-
+    WithAtm:boolean;
+    Disbursing:boolean;
+    Taxable:boolean;
+    
     // Loan Code ↓
     fch_loan: number;
     sss_loan: number;
     pagibig_loan: number;
     rfc_loan:number;
+    are_loan:number;
     // Loan Code ↑
     
     pagibig_id:string; 

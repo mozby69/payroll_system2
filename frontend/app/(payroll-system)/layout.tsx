@@ -51,12 +51,12 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
             {openMenu &&(
               <ul className="absolute text-sm top-14 right-0 bg-mainLight w-50 h-auto rounded-bl-xl py-4 px-8 flex flex-col gap-y-4 items-start justify-end shadow-[0px_4px_6px_2px_rgba(0,0,0,0.1)] cursor-pointer">
-                <li className="inline-flex gap-4 items-end justify-center w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
+                <li className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
                   <Settings/>
                   Settings
                 </li>
                 <li
-                 className="inline-flex gap-4 items-end justify-center w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                 className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
                   onClick={()=>setUserModal(true)}
                  >
                   <User/>
@@ -76,7 +76,7 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
                       }
                     );
                   }}
-                  className="inline-flex gap-4 items-end justify-center w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
+                  className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
                   <LogOut/>
                   Sign Out
                 </li>

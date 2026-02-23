@@ -24,7 +24,7 @@ export default function EarlyPayModal({
   );
 
   const payLoan = usePayEmployeeLoan();
-  const { mutate: closeLoan, isPending } = useClosedLoan();
+  const { mutate: closeLoan } = useClosedLoan();
 
   const rows: LedgerRow[] = useMemo(() => {
     if (!data) return [];

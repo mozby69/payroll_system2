@@ -1,21 +1,13 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useFilters } from "./FilterContext";
 
-type Filters = Record<string, string[]>;
+export default function ActiveFilters() {
+  const { filters, removeFilter, clearAll } = useFilters();
 
-type Props<T extends Filters> = {
-  filters: T;
-  onRemove: (key: keyof T, value: string) => void;
-  onClearAll: () => void;
-};
-
-export default function ActiveFilters<T extends Filters>({
-  filters,
-  onRemove,
-  onClearAll,
-}: Props<T>) {
-  const hasFilters = Object.values(filters).flat().length > 0;
+  const hasFilters =
+    Object.values(filters).flat().length > 0;
 
   if (!hasFilters) return null;
 
@@ -27,10 +19,10 @@ export default function ActiveFilters<T extends Filters>({
         values.map((value) => (
           <span
             key={`${key}-${value}`}
-            className="flex items-center gap-2 bg-mainBg text-white px-3 py-1 rounded-full text-md"
+            className="flex items-center gap-2 bg-mainBg text-white px-3 py-1 rounded-full"
           >
             {value}
-            <button onClick={() => onRemove(key as keyof T, value)}>
+            <button onClick={() => removeFilter(key, value)}>
               <X size={14} />
             </button>
           </span>
@@ -38,8 +30,8 @@ export default function ActiveFilters<T extends Filters>({
       )}
 
       <button
-        onClick={onClearAll}
-        className="text-sm font-bold text-mainBg underline ml-2"
+        onClick={clearAll}
+        className="text-sm font-bold underline ml-2"
       >
         Clear all
       </button>

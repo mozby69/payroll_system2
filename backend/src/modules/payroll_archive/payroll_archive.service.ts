@@ -557,7 +557,60 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         skipDuplicates: true,
       });
 
-            // Loan Code ↓
+
+      // Disburse code ↓
+
+      const disbursingEmployees = await tx.employee.findMany({
+        where:{
+          EmpCode: {in: empCodes},
+          Disbursing:true
+        },
+        select:{
+          EmpCode:true
+        }
+      })
+
+      if (disbursingEmployees.length === 0){
+        return archivePayload.length;
+      }
+
+      const disbursingEmpCodes = disbursingEmployees.map(e => e.EmpCode);
+
+      const disburseArchives = await tx.employeePayrollArchive.findMany({
+        where: {
+          EmpCodeId: { in: disbursingEmpCodes },
+          totalPayrollId: total.id,
+        },
+        select: {
+          id: true,
+          Netpay: true,
+          EmpCodeId: true,
+        },
+      });
+
+      const totalDisburseAmount = disburseArchives.reduce(
+        (sum, emp) => sum + Number(emp.Netpay ?? 0),
+        0
+      );
+
+      const mainDisburse = await tx.main_disburse.create({
+        data: {
+          typeDisburse: "PAYROLL", 
+          payrollPeriod: payrollPeriod,
+          createdAt: nowPH(),
+          totalDisburse: totalDisburseAmount,
+        },
+      });
+
+      await tx.emp_disburse.createMany({
+        data: disburseArchives.map((archive) => ({
+          empArchiveId: archive.id,
+          mainDisburseId: mainDisburse.mainDisburseID,
+        })),
+      });
+      // Disburse code ↑
+
+      // Loan Code ↓
 
             const transaction_date = nowPH();
 
