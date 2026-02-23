@@ -8,6 +8,8 @@ import { useDebounce } from "@/app/utils/useDebounce";
 import { Pagination } from "@/app/components/Pagination";
 import SweetAlert from "@/app/components/Swal";
 import AllowanceArchiveTab from "@/app/components/allowance/archiveTab";
+import { TabItem, Tabs } from "@/app/components/Tab";
+
 
 
 type AllowanceTab = "current" | "archive";
@@ -79,34 +81,21 @@ export default function AllowancePage(){
           ];
           
 
-
+          const tabs: TabItem<AllowanceTab>[] = [
+            { key: "current", label: "Employee Allowance" },
+            { key: "archive", label: "Allowance Archive" },
+          ];
 
       
     return(
         <>
             <div className="p-8">
 
-            <div className="flex border-b border-slate-200 mb-6">
-              <button onClick={() => setActiveTab("current")}
-                className={`px-6 py-3 text-sm font-semibold transition
-                  ${
-                    activeTab === "current"
-                      ? "border-b-2 border-blue-600 text-blue-700"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}>
-                Employee Allowance
-              </button>
-
-              <button onClick={() => setActiveTab("archive")}
-                className={`px-6 py-3 text-sm font-semibold transition
-                  ${ activeTab === "archive"
-                      ? "border-b-2 border-blue-600 text-blue-700"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}>
-                Allowance Archive
-              </button>
-            </div>
-
+            <Tabs
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              tabs={tabs}
+            />
 
             {activeTab === "current" && (
               <>
@@ -157,9 +146,9 @@ export default function AllowancePage(){
               )}
 
 
-        {activeTab === "archive" && (
-          <AllowanceArchiveTab/>
-        )}
+              {activeTab === "archive" && (
+                <AllowanceArchiveTab/>
+              )}
                   
            </div>
         </>

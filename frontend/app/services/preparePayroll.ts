@@ -1,5 +1,5 @@
 import api from "./axios";
-import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
+import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
 import { ImportResponse } from "../hooks/usePreparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
@@ -77,6 +77,7 @@ export interface ComputedProps{
   absence_count:number;
   overtime:number;
   gross_pay:number;
+  undertime:number;
   EmpCode:{
     Firstname:string;
     Lastname:string;

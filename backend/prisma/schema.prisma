@@ -110,6 +110,7 @@ model Employee {
   Disbursing Boolean @default(false) @map("Disburse")
   Taxable Boolean @default(false) @map("Taxable")
   isNewEmployee Boolean @default(false)
+  bod_member String? @db.VarChar(100)
   BranchCode     Branch?  @relation(fields: [BranchCodeId], references: [branchCode])
   BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
 
@@ -123,6 +124,7 @@ model Employee {
   loan_ledger loan_ledger[] @relation()
   employee_bonues EmployeeBonus[] @relation()
   employee_salary_history EmployeeSalaryHistory[] @relation()
+  bod_philhealth BodPhilhealtContrib[] @relation()
   @@map("employee")
 }
 
@@ -191,6 +193,7 @@ model totalPayroll{
   total_wtax Decimal? @db.Decimal(10,2) @map("total_wtax")
   total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
   selected_payroll_date Json? @map("selected_payroll_date")
+  Total_Undertime  Decimal? @db.Decimal(10,2) @map("total_undertime")
 
  employee_archives EmployeePayrollArchive[]
 
@@ -212,11 +215,11 @@ model Employee_payroll{
 
 
 model PagIbig_List{
-  pagibig_id String @id @db.VarChar(20)
+  pagibig_id Int @id @default(autoincrement())
   pagibig_employee_share Decimal? @db.Decimal(10,2)
   pagibig_employer_share Decimal? @db.Decimal(10,2)
 
-  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   // employee_payroll Employee_payroll[] @relation
@@ -225,7 +228,7 @@ model PagIbig_List{
 
 
 
-model SSS_Contributions{
+model SSS_Contributions {
   sss_contrib_id Int @id @default(autoincrement())
   start_range Decimal? @db.Decimal(10,2)
   end_range Decimal? @db.Decimal(10,2)
@@ -238,7 +241,7 @@ model SSS_Contributions{
 model Payroll_Parameters{
   id Int @id @default(autoincrement())
   SettingName String? @db.VarChar(100)
-  SettingPercentage Decimal? @db.Decimal(10,2)
+  SettingPercentage Decimal? @db.Decimal(10,3)
   LastModifiedBy String? @db.VarChar(100)
   LastModifiedDate DateTime? @db.Date
   Created_at DateTime? @default(now()) 
@@ -254,7 +257,7 @@ model EmployeePayrollArchive {
   cycle_category  String? @db.VarChar(100) @map("cycle_category")
   payroll_period String? @db.VarChar(100) @map("payroll_period")
   selected_payroll_date String? @db.VarChar(100) @map("selected_payroll_date")
-  undertime Decimal? @db.Decimal(10,2)
+  undertime Decimal? @db.Decimal(10,2)  @map("undertime")
   Overtime  Decimal? @db.Decimal(10,2) @map("overtime")
   Grosspay  Decimal? @db.Decimal(10,2) @map("grosspay")
   w_tax Decimal? @db.Decimal(10,2)
@@ -272,7 +275,7 @@ model EmployeePayrollArchive {
   pagibig_loan Decimal? @db.Decimal(10,2)
   sss_loan Decimal? @db.Decimal(10,2)
   sss_calamity_loan Decimal? @db.Decimal(10,2)
-  status String? @db.VarChar(100) @default("PENDING")
+  isNewEmployee Boolean @default(false)
   created_at DateTime @default(now())
 
   totalPayrollId Int @map("total_payroll_id")
@@ -605,6 +608,14 @@ model EmployeeSalaryHistory {
   @@map("employee_salary_history")
 }
 
+
+model BodPhilhealtContrib{
+  id Int @id @default(autoincrement())
+  employee_share Decimal? @db.Decimal(10,2)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
+  employee      Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+}
 
   // EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   // EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])

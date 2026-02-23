@@ -69,6 +69,7 @@ export type Column<T> = {
       page: number;
       limit: number;
       totalPages: number;
+      zeroSalaryCount:number;
     };
   };
 
@@ -152,13 +153,15 @@ export interface PayrollEmployee {
   semi_monthly:number;
   overtime:number;
   late_count:number;
+  undertime:number;
   absence:number;
   gross_pay:number;
   sss_contrib_employee:number;
   sss_contrib_employer:number;
   pagibig_contrib_employee:number;
   pagibig_contrib_employer:number,
-  philhealth_contrib:number;
+  philhealth_contrib_employee:number;
+  philhealth_contrib_employer:number;
   net_pay:number;
   wtax:number;
 

@@ -53,21 +53,56 @@ export const computeGrossPay = (overtime:number | null,basicPay:number | null,la
 
 
 
-export const computePhilRate = (basicPay: number | null,philPercentage: number | null,payCode?: string | null): number => {
+export const computePhilRateEmployee = (basicPay: number | null,philPercentage: number | null, isBod:boolean, bodEmployeeShare?: number | null, isNewProbi?: boolean,payCode?: string | null): number => {
+  if (basicPay == null || philPercentage == null) return 0;
+
+  if (isBod) {
+    return Number(bodEmployeeShare ?? 0);
+  }
 
   if (basicPay == null || philPercentage == null) return 0;
 
+  const isProbi = isNewProbi ?? false;
+
   if (payCode) {
     const parts = payCode.split("-");
-    if (parts.length < 4) return 0;
+    if (parts.length >= 4) {
+      const startDay = Number(parts[1]);
 
-    const startDay = Number(parts[1]);
-    if (startDay !== 1) return 0;
+      if (isProbi && startDay !== 1 && startDay !== 16) return 0;
+      if (!isProbi && startDay !== 1) return 0;
+    }
   }
 
   const result = basicPay * philPercentage;
   return Number(result.toFixed(2));
 };
+
+
+export const computePhilRateEmployer = (basicPay: number | null,philPercentage: number | null, isBod:boolean,bodEmployeeShare?: number | null, isNewProbi?: boolean,payCode?: string | null): number => {
+  if (basicPay == null || philPercentage == null || bodEmployeeShare == null) return 0;
+
+  if (isBod) {
+      const res = basicPay * philPercentage;
+      const final = res - bodEmployeeShare;
+      return Number(final.toFixed(2));
+    }
+
+  const isProbi = isNewProbi ?? false;
+
+  if (payCode) {
+    const parts = payCode.split("-");
+    if (parts.length >= 4) {
+      const startDay = Number(parts[1]);
+
+      if (isProbi && startDay !== 1 && startDay !== 16) return 0;
+      if (!isProbi && startDay !== 1) return 0;
+    }
+  }
+  const result = (basicPay / 2) * philPercentage;
+  return Number(result.toFixed(2));
+};
+
 
 
 
@@ -120,19 +155,23 @@ export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFi
 
 
 
-export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[], payCode?: string | null): string => {
-  if (!monthlySalary || !ranges.length) return '0.00';
+export const computeSSSContribution = (monthlySalary: number,ranges: SSSRange[],isNewProbi?: boolean,payCode?: string | null): string => {
+  if (!monthlySalary || !ranges.length) return "0.00";
 
+  const isProbi = isNewProbi ?? false;
+
+  // ✅ Only apply cutoff logic if payCode exists
   if (payCode) {
     const parts = payCode.split("-");
-    if (parts.length < 4) return '0.00';
-    const startDay = Number(parts[1]);
-    if (startDay !== 1) return '0.00';
+    if (parts.length >= 4) {
+      const startDay = Number(parts[1]);
+
+      if (isProbi && startDay !== 1 && startDay !== 16) return "0.00";
+      if (!isProbi && startDay !== 1) return "0.00";
+    }
   }
 
-  
-
-  const match = ranges.find(r => {
+  const match = ranges.find((r) => {
     if (!r.start_range || !r.end_range) return false;
 
     const start = r.start_range.toNumber();
@@ -142,22 +181,26 @@ export const computeSSSContribution = (monthlySalary: number, ranges: SSSRange[]
   });
 
   return (match?.employee_share?.toNumber() ?? 0).toFixed(2);
-
-
 };
 
-export const computeSSSContributionEmployer = (monthlySalary: number, ranges: SSSRange[], payCode?: string | null): string => {
-  if (!monthlySalary || !ranges.length) return '0.00';
+
+
+export const computeSSSContributionEmployer = (monthlySalary: number,ranges: SSSRange[],isNewProbi?: boolean,payCode?: string | null): string => {
+  if (!monthlySalary || !ranges.length) return "0.00";
+
+  const isProbi = isNewProbi ?? false;
 
   if (payCode) {
     const parts = payCode.split("-");
-    if (parts.length < 4) return '0.00';
-    const startDay = Number(parts[1]);
-    if (startDay !== 1) return '0.00';
+    if (parts.length >= 4) {
+      const startDay = Number(parts[1]);
+
+      if (isProbi && startDay !== 1 && startDay !== 16) return "0.00";
+      if (!isProbi && startDay !== 1) return "0.00";
+    }
   }
 
-
-  const match = ranges.find(r => {
+  const match = ranges.find((r) => {
     if (!r.start_range || !r.end_range) return false;
 
     const start = r.start_range.toNumber();

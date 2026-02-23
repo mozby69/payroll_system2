@@ -1,7 +1,7 @@
 import { Column, EmployeeRow } from "@/app/types/preparePayroll";
 import Datatable from "../Datatable";
 import { Pagination } from "../Pagination";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {  useState } from "react";
 import { FileText } from "lucide-react";
 import RequestModal from "../Modal";
 import { PayrollSavePayload, ViewEmployeePayroll } from "@/app/ModalContent/main_payroll";
@@ -36,7 +36,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
   const [selectedRow, setSelectedRow] = useState<EmployeeRow | null>(null);
   const updatePayrollMutation = useUpdateEmployeePayroll();
   
-  const [rows, setRows] = useState<EmployeeRow[]>(data);
+  //const [rows, setRows] = useState<EmployeeRow[]>(data);
 
   
 
@@ -57,18 +57,22 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     setSelectedRow(null);
   };
   
-  useEffect(() => {
-    setRows(data);
-  }, [data]);
+  // useEffect(() => {
+  //   setRows(data);
+  // }, [data]);
 
-  useEffect(() => {
-    if (!selectedRow) return;
+  // useEffect(() => {
+  //   if (!selectedRow) return;
   
-    const fresh = rows.find(r => r.EmpCode === selectedRow.EmpCode);
-    if (fresh) {
-      setSelectedRow(fresh);
-    }
-  }, [rows]);
+  //   const fresh = rows.find(r => r.EmpCode === selectedRow.EmpCode);
+  //   if (fresh) {
+  //     setSelectedRow(fresh);
+  //   }
+  // }, [rows]);
+
+  const currentSelectedRow = selectedRow
+  ? data.find(r => r.EmpCode === selectedRow.EmpCode) ?? selectedRow
+  : null;
   
 
     
@@ -162,8 +166,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
       </div>
       </div>
 
-      <Datatable columns={columns} data={data} />
-
+        <Datatable columns={columns} data={data} />
 
         <Pagination
           page={page}
@@ -185,11 +188,11 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
 
 
-     {isModalOpen && selectedRow && (
-      <RequestModal size="xxxl" title={`Employee:${selectedRow.Firstname}, ${selectedRow.Lastname}`} onClose={closeModal}>
+     {isModalOpen && currentSelectedRow && (
+      <RequestModal size="xxxl" title={`Employee:${currentSelectedRow.Firstname}, ${currentSelectedRow.Lastname}`} onClose={closeModal}>
         <ViewEmployeePayroll
-          key={selectedRow.EmpCode}
-          employeeSummary={selectedRow}
+           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.basic_salary}`}
+          employeeSummary={currentSelectedRow}
           onFinalSave={handleSavePayroll}
           onQuickSave={savePayrollSilently}
           onClose={closeModal}

@@ -1,10 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AxiosError } from "axios";
-import { ApiErrorResponse, ArchiveSuccessResponse } from "../types/generalTypes";
 import SweetAlert from "../components/Swal";
-import { PayrollEmployee, PayrollResponse } from "../types/preparePayroll";
-import { useRouter } from "next/navigation";
+import {  PayrollResponse } from "../types/preparePayroll";
 import { getEmployeeArchivedService, getTotalPayrollRequest } from "../services/archive.services";
 import { GetEmployeeArchivedParams } from "../types/totalPayroll";
 

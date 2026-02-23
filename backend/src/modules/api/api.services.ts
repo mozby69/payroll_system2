@@ -6,6 +6,7 @@ import { nowPH } from "../../utils/timezone";
 import { EmployeeSummaryTypes } from "./api.types";
 import { generatePayCode } from "./api.utils";
 import { io } from "../../server";
+import { appendMissingBodEmployees } from "../general/general.services";
 
 export async function fetchHrAttendance(params: ApiParams){
     const {startDate, endDate, branchCycle} = params;
@@ -79,9 +80,11 @@ export async function saveEmployeeAttendance(
           status: "PENDING",
         },
       });
+      
+      const bodAttendance = await appendMissingBodEmployees(tx, employees);
   
-      await tx.employeeSummary.createMany({
-        data: employees.map((emp) => ({
+      const finalData = [
+        ...employees.map((emp) => ({
           EmpCodeId: emp.EmpCode_id,
           PayCode: emp.PayCode,
           CycleCategory: emp.CycleCategory,
@@ -94,9 +97,14 @@ export async function saveEmployeeAttendance(
           OvertimeAtt: emp.OvertimeAtt,
           NightShiftAtt: emp.NightShiftAtt,
           NightShiftOtAtt: emp.NightShiftOtAtt,
-          selected_payroll_date:emp.selected_payroll_date,
+          selected_payroll_date: emp.selected_payroll_date,
           createdAt: nowPH(),
         })),
+        ...bodAttendance,
+      ];
+    
+      await tx.employeeSummary.createMany({
+        data: finalData,
         skipDuplicates: true,
       });
     });
