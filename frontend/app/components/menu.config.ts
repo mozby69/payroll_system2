@@ -8,8 +8,10 @@ import {
     Receipt,
     ShieldCheck,
     HandCoins,
-    PhilippinePeso
+    PhilippinePeso,
+    CreditCard
   } from "lucide-react"
+
   
   export const MENU_SECTIONS = [
     {
@@ -21,28 +23,32 @@ import {
           icon: LayoutDashboard
         },
         {
-          label: "Run Payroll",
-          path: "/main-payroll",
+          label: "Payroll",
           icon: Calculator,
-          permission: "BONUS_GENERATE"
+          permission: "BONUS_GENERATE",
+          children: [
+            {
+              label: "Run Payroll",
+              path: "/main-payroll",
+              icon: Calculator,
+            },
+            {
+              label: "Payroll Archive",
+              path: "/archive-payroll",
+              icon: Archive,
+            },
+            {
+              label: "Payroll List",
+              path: "/financial-page",
+              icon: BookMarked,
+            }
+          ]
         },
         {
-          label: "Payroll Archive",
-          path: "/archive-payroll",
-          icon: Archive,
-          permission: "BONUS_GENERATE"
-        },
-        {
-          label: "Bonus Manager",
-          path: "/bonus-manager",
-          icon: CircleDollarSign,
-          permission: "BONUS_VIEW" 
-        },
-        {
-          label: "Payroll List",
-          path: "/financial-page",
-          icon: BookMarked,
-          permission: "BONUS_GENERATE"
+          label:"Disbursement",
+          path:"/disburse-payroll",
+          icon: CreditCard,
+          permission: "BONUS_GENERATE",
         }
       ]
     },
@@ -84,11 +90,17 @@ import {
       title: "Benefits",
       items: [
         {
+          label: "Bonus Manager",
+          path: "/bonus-manager",
+          icon: CircleDollarSign,
+          permission: "BONUS_VIEW"
+        },
+          {
           label: "Employees Allowance",
           path: "/allowance",
           icon: PhilippinePeso,
           permission: "BONUS_GENERATE"
-        }
+        },
       ]
     }
   ]

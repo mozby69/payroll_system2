@@ -4,7 +4,7 @@ import { FilterKey } from "./FilterTypes";
 
 export type AddLoanPayload = {
   empCode: string;
-  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS";
+  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN" ;
   principal: number;
   term_value: number;
   term_unit: "MONTHS" | "YEARS";
@@ -16,7 +16,7 @@ export type AddLoanPayload = {
 export interface LoanList{
     loan_id: number;
     principal: number;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS";
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
     term_value: number;
     term_unit: "MONTHS" | "YEARS";
     start_date: string;
@@ -85,7 +85,8 @@ export type LoanLedgerItem = {
 };
 
 
-export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
+export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
+export type AreType = "HOUSING" | "OTHERS";
 export type TermUnit = "MONTHS" | "YEARS";
 
 export type EmpLoanResponse = {
@@ -171,6 +172,7 @@ export type EmpLoansByCycleResponse = {
   SSS_LOAN: LoanWithCycleInfo | null;
   PAGIBIG_LOAN: LoanWithCycleInfo | null;
   RFC_LOAN: LoanWithCycleInfo | null;
+  ARE_LOAN: LoanWithCycleInfo | null;
 };
 
 
@@ -178,3 +180,14 @@ export type BonusRules = {
   code: string;
   name:string;
 }
+
+export type InfoProps = {
+  label: string;
+  value: string | number | null | undefined;
+};
+
+export type EmployeeSearchItem = {
+  EmpCode: string;
+  Firstname: string;
+  Lastname: string;
+};

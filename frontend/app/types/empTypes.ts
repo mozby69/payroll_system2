@@ -109,3 +109,4 @@ export type UpdateEmployeePayrollPayload = {
   cashAssistance: number;
   ecola: number;
 };
+

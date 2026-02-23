@@ -71,7 +71,8 @@ const SweetAlert = {
   confirmationAlert: (
     title: string = "Are you sure?",
     text: string = "",
-    onConfirm: () => void
+    onConfirm?: () => void,
+    onCancel?: () => void
   ) => {
     return Swal.fire({
       title,
@@ -85,7 +86,10 @@ const SweetAlert = {
     }).then((result) => {
       if (result.isConfirmed && typeof onConfirm === "function") {
         onConfirm();
-        
+      }
+
+      if (result.isDismissed && typeof onCancel === "function") {
+        onCancel();
       }
     });
   },

@@ -4,11 +4,13 @@ import { addMonths, generateNextPagibigId, toMonth } from "../../helper/prepare_
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRate, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
 import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
 
-export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
+export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search, onlyNew,onlyMissingSetup}: {
   cycle: "10-25-Cycle" | "15-30-Cycle";
     page: number;
     limit: number;
     search?: string;
+    onlyNew?: boolean;
+    onlyMissingSetup?: boolean;
   }) {
     const where = {
       BranchCode: {
@@ -16,6 +18,12 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
           CompanyCycle: cycle,
         },
       },
+      ...(onlyNew && { isNewEmployee: true }), 
+      ...(onlyMissingSetup && {
+        Disbursing: true,
+        isNewEmployee:false
+      }),
+
       ...(search && {
         OR: [
           { EmpCode: { contains: search } },
@@ -67,7 +75,9 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
       Department: true,
       Position: true,
       EmploymentStatus: true,
-
+      Taxable:true,
+      Disbursing:true,
+      WithAtm:true,
       loan_details:{
          select:{
           loan_type:true,
@@ -166,6 +176,7 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
     SSS_LOAN: 0,
     PAGIBIG_LOAN: 0,
     RFC_LOAN: 0,
+    ARE_LOAN: 0,
   };
 
   const nextPayrollCycle =
@@ -217,7 +228,7 @@ export async function fetchEmployeesByPayrollCycle({cycle, page,limit,search}: {
     sss_loan: loanMap.SSS_LOAN,
     pagibig_loan: loanMap.PAGIBIG_LOAN,
     rfc_loan: loanMap.RFC_LOAN,
-
+    are_loan: loanMap.ARE_LOAN,
     // loan Code ↓
     next_payroll: nextPayrollCycle ,
     month_pay:payPeriod,

@@ -11,6 +11,15 @@ export const getEmployeesByCycle = async (req: Request,res: Response) => {
   const search =
     typeof req.query.search === "string" ? req.query.search.trim() : undefined;
 
+  const onlyNew =
+    typeof req.query.onlyNew === "string"
+      ? req.query.onlyNew === "true"
+      : undefined;
+  const onlyMissingSetup  = 
+    typeof req.query.onlyMissingSetup  === "string"
+      ? req.query.onlyMissingSetup  === "true"
+      :undefined;
+
   if (!cycle) {
     return res.status(400).json({ message: "cycle is required" });
   }
@@ -20,6 +29,8 @@ export const getEmployeesByCycle = async (req: Request,res: Response) => {
     page,
     limit,
     search,
+    onlyNew,
+    onlyMissingSetup
   });
 
   res.json(result);

@@ -31,6 +31,8 @@ export const fetchEmployeesByCycle = async (
     page: number;
     limit: number;
     search?: string;
+    onlyNew?:boolean;
+    onlyMissingSetup?:boolean;
   }
 ): Promise<PaginatedResponse<EmployeeRow>> => {
   const res = await api.get("/prepare-payroll/employee-category-cycle", {

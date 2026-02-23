@@ -1,5 +1,5 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
 import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
@@ -41,7 +41,13 @@ export function useEmployeesByCycle(
     page: number;
     limit: number;
     search?: string;
+    onlyNew?: boolean;
+    onlyMissingSetup?: boolean;
   }
+  // options?: Omit<
+  //   UseQueryOptions<PaginatedResponse<EmployeeRow>>,
+  //   "queryKey" | "queryFn"
+  // >
 ) {
   return useQuery<PaginatedResponse<EmployeeRow>>({
     queryKey: ["employees", params],
@@ -51,8 +57,12 @@ export function useEmployeesByCycle(
         page: params.page,
         limit: params.limit,
         search: params.search,
+        onlyNew: params.onlyNew,
+        onlyMissingSetup: params.onlyMissingSetup
       }),
     enabled: !!params.cycle,
+    // enabled: options?.enabled ?? !!params.cycle,
+    // ...options,
   });
 }
 

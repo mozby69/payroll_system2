@@ -277,6 +277,8 @@ model EmployeePayrollArchive {
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
+  empDisburses emp_disburse[] 
+
  @@unique([PayCode, EmpCodeId])
 
 
@@ -544,3 +546,32 @@ model EmployeeSalaryHistory {
 
   // EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   // EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+enum DisburseStatus {
+  APPROVED
+  AWAITING
+  REJECTED
+}
+
+model main_disburse {
+  mainDisburseID Int      @id @default(autoincrement())
+  typeDisburse   String   @db.VarChar(50) @map("type_disburse")
+  payrollPeriod  String   @db.VarChar(50) @map("payroll_period")
+  createdAt      DateTime @map("created_at")
+  status         DisburseStatus @default(AWAITING)
+  totalDisburse  Decimal  @db.Decimal(10,2)
+
+  empDisburses   emp_disburse[]   
+}
+
+model emp_disburse {
+  disburseID      Int @id @default(autoincrement())
+
+  empArchiveId    Int @map("emp_archive_id")
+  empArchive      EmployeePayrollArchive @relation(fields: [empArchiveId], references: [id], onDelete: Cascade)
+
+  mainDisburseId  Int @map("main_disburse_id")
+  mainDisburse    main_disburse @relation(fields: [mainDisburseId], references: [mainDisburseID], onDelete: Cascade)
+
+  @@unique([empArchiveId])
+}

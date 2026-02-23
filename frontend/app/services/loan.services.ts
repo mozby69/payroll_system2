@@ -1,5 +1,5 @@
 import {api} from "./axios"
-import {AddLoanPayload, BonusRules, CloseLoanRequest, EmpLoansByCycleResponse, FetchEmpLoansPayload, LoanActionType, LoanFilters,UpdateLoanPayload} from "../types/loanTypes"
+import {AddLoanPayload, CloseLoanRequest, EmpLoansByCycleResponse, FetchEmpLoansPayload, LoanActionType, LoanFilters,UpdateLoanPayload} from "../types/loanTypes"
 
 
 export const addEmployeeLoan = async (payload: AddLoanPayload) => {

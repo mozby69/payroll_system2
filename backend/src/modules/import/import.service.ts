@@ -107,6 +107,7 @@ const toDateOrNull = (value?: string | null): Date | null => {
             EmploymentStatus:e.EmploymentStatus,
             EmployeeStatus:e.EmployeeStatus,
             isNewEmployee: true,
+            Disbursing:true,
           },
           update: {
             Firstname: e.Firstname,

@@ -8,7 +8,7 @@ import ModifyLoan from "./loanModal";
 import SweetAlert from "../Swal";
 import EarlyPayModal from "./earlyPayModal";
 import SkipPayModal from "./skipPayModal";
-import { skip } from "node:test";
+import { InfoProps, LoanLedgerItem } from "@/app/types/loanTypes";
 
 type LoanCardProps = {
   loan: {
@@ -46,7 +46,7 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
     isOpen
   );
 
-  const { mutate: closeLoan, isPending } = useClosedLoan();
+  const { mutate: closeLoan } = useClosedLoan();
 
 
 
@@ -230,7 +230,6 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
                         </li>
                     ) : (
                         <>
-                        {/* HEADER */}
                         <li className="grid grid-cols-5 text-xs font-semibold text-mainGray border-b pb-2">
                             <span>Date Paid</span>
                             <span>Transaction</span>
@@ -239,14 +238,15 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
                             <span className="text-right">Remarks</span>
                         </li>
 
-                        {/* ROWS */}
-                        {details.ledger.map((l: any) => (
+                        {details.ledger.map((l: LoanLedgerItem) => (
                             <li
                             key={l.loan_ledger_id}
                             className="grid grid-cols-5 text-sm items-center py-1 gap-x-4"
                             >
                             <span>
-                                {new Date(l.transaction_date).toLocaleDateString()}
+                              {l.transaction_date
+                                ? new Date(l.transaction_date).toLocaleDateString()
+                                : "-"}
                             </span>
                             <span>{l.transaction_type}</span>
                             <span className="text-right">
@@ -304,7 +304,7 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
   );
 }
 
-function Info({ label, value }: { label: string; value: any }) {
+function Info({ label, value }: InfoProps) {
   return (
     <div>
       <span className="text-sm text-mainGray">{label}</span>
