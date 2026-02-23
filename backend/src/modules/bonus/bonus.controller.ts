@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
-import { approveBonusService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
+import { approveBonusService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
+import { json } from "zod";
 
 
 
@@ -10,8 +11,8 @@ export async function creataBonusRuleController(
 ) {
     try{
          const data = createBonusRuleSchema.parse(req.body);
-         await createBonusRuleService(data)
-         res.status(201).json({message: "Bonus rule created"})
+         const created = await createBonusRuleService(data)
+         res.status(201).json({message: "Bonus rule created", initialData: {id: created.id, name: created.name}})
     } catch (error: any) {
         console.error(error)
         return res.status(500).json({
@@ -202,7 +203,7 @@ export async function updateBonusRuleController(
         bonusRuleId: Number(bonusRuleId),
         releasePeriod,
         asOfDate: new Date(asOfDate),
-        generateDate: new Date(generateDate)
+        generateDate: new Date(generateDate),
       })
   
       return res.status(200).json({
@@ -322,7 +323,7 @@ export async function approveBonusController(
   res: Response
 ) {
   try {
-    // 1Validate and parse ID
+    // Validate and parse ID
     const bonusSummaryId = Number(req.params.id)
 
     if (isNaN(bonusSummaryId)) {
@@ -331,7 +332,7 @@ export async function approveBonusController(
       })
     }
 
-    //  Get authenticated user
+    // Get authenticated user
     if (!req.user) {
       return res.status(401).json({
         message: "Unauthorized"
@@ -340,13 +341,13 @@ export async function approveBonusController(
 
     const approvedBy = req.user.id
 
-    //  Call service
+    // Call service
     const result = await approveBonusService(
       bonusSummaryId,
       approvedBy
     )
 
-    // 4 Success response
+    // Success response
     return res.status(200).json(result)
 
   } catch (error: any) {
@@ -358,6 +359,39 @@ export async function approveBonusController(
   }
 }
 
+export async function rejectBonusController(
+  req: Request,
+  res: Response
+) {
+  try{
+    const bonusSummaryId = Number(req.params.id)
+
+    if(isNaN(bonusSummaryId)){
+      return res.status(400),json({
+        message: "Invali bonus summary ID"
+      })
+    }
+    if(!req.user){
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const releasedBy = req.user.id
+    const result = await rejectBonusService(
+      bonusSummaryId,
+      releasedBy
+    )
+
+    return res.status(200).json(result)
+
+  } catch (error: any) {
+    return res.status(400).json({
+      message: error.message || "Failed to release bonus"
+    })
+  }
+  
+}
 
 
 
@@ -366,7 +400,7 @@ export async function releaseBonusController(
   res: Response
 ) {
   try {
-    //  Validate ID
+    // Validate ID
     const bonusSummaryId = Number(req.params.id)
 
     if (isNaN(bonusSummaryId)) {
@@ -375,7 +409,7 @@ export async function releaseBonusController(
       })
     }
 
-    //  Ensure authenticated user exists
+    // Ensure authenticated user exists
     if (!req.user) {
       return res.status(401).json({
         message: "Unauthorized"
@@ -399,6 +433,39 @@ export async function releaseBonusController(
     })
   }
 }
+
+
+export async function getEmployeesByBonusSummaryController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const companyCode = req.query.companyCode as string | undefined
+    const id = req.query.id
+      ? Number(req.query.id)
+      : undefined
+
+    const data =
+      await getEmployeesByBonusSummarySerive(companyCode, id)
+
+    return res.status(200).json({
+      success: true,
+      data,
+    })
+
+  } catch (error: any) {
+    return res.status(200).json({
+      success: false,
+      data: {
+        summary: null,
+        companies: [],
+        employees: [],
+      },
+      message: error.message,
+    })
+  }
+}
+
 
 
 

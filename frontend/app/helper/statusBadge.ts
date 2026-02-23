@@ -7,7 +7,7 @@ export function statusBadge(status: string) {
       case "RELEASED":
         return "bg-green-100 text-green-700"
       case "CANCELLED":
-        return "bg-gray-200 text-gray-600"
+        return "bg-red-100 text-red-700"
       case "RESET":
         return "bg-red-100 text-red-700"
       default:

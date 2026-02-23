@@ -1,6 +1,8 @@
 import { useCreateBonusCompanyRules } from "@/app/hooks/useBonus"
 import { useGetCompanyDetails } from "@/app/hooks/useGeneral"
 import { CreateBonusRuleCompanyForm, createBonusRuleCompanySchema } from "@/app/schema/bonus.schema"
+import { handleApiError } from "@/app/utils/handleApiError"
+import { AxiosError } from "axios"
 import { useState } from "react"
 import toast from "react-hot-toast"
 import { ZodFormattedError } from "zod"
@@ -54,7 +56,11 @@ export default function CreateCompanyRulesModal({
                 position: "top-center",
               });
         },
-        onError: (err) => console.error(err)
+        onError: (error) => {
+          toast.error(handleApiError(error), {
+            position: "top-center",
+          })
+        }
       })
     }
   

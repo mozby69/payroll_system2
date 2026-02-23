@@ -79,4 +79,23 @@ export async function deleteBonusRuleServices(id: number) {
             const res = await api.get("/bonus/get-summary")
             return res.data
       }
+
+      export async function getEmployeeGeneratedBonusService(
+        companyCode?: string,
+        id?: number
+      ) {
+        const res = await api.get("/bonus/employee-bonuses", {
+          params: {
+            companyCode,
+            id
+          },
+        })
+        return res.data
+      }
+
+
+      export async function  approveBonusService(id: number) {
+          const res = await api.post(`/bonus/approve/${id}`)
+          return res.data
+      }
       

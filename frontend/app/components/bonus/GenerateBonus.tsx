@@ -1,38 +1,111 @@
 "use client"
 
 import { useState } from "react"
-import { useGetEmployeeBonus, useResetBonus, useSubmitBonus } from "@/app/hooks/useBonus"
+import {
+  useGetEmployeeGeneratedBonus,
+  useResetBonus,
+  useSubmitBonus,
+} from "@/app/hooks/useBonus"
 import RequestModal from "../Modal"
 import CreateBonusModal from "./modals/CreateBonus"
+import { EmployeBonusType } from "@/app/types/bonusType"
+import EditBonusModal from "./modals/EditBonusModal"
+import SweetAlert from "../Swal"
+import toast from "react-hot-toast"
+import { handleApiError } from "@/app/utils/handleApiError"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
+  const [editModal, setIsOpenEditModal] = useState(false)
+  const [selectedBonus, setSelectedBonus] = useState<EmployeBonusType | null>(null)
+  const [selectedCompany, setSelectedCompany] = useState<string | undefined>()
 
   const resetBonusMutation = useResetBonus()
   const submitBonusMutation = useSubmitBonus()
 
-
-  const {
-    data: employeeBonuses,
-    isLoading,
-    error
-  } = useGetEmployeeBonus()
-
-  if (isLoading) {
-    return (
-      <div className="p-6 text-sm text-gray-500">
-        Loading employee bonuses…
-      </div>
+  const handleSubmitBonus = () => {
+    SweetAlert.confirmationAlert(
+      "Submit Bonus",
+      "Are you sure you want to submit this bonus? This action cannot be undone.",
+      async () => {
+        try {
+          const data = await submitBonusMutation.mutateAsync()
+  
+          toast.success(data.message, {
+            position: "top-center",
+          })
+        } catch (error) {
+          toast.error(handleApiError(error), {
+            position: "top-center",
+          })
+        }
+      }
     )
   }
 
-  if (error) {
-    return (
-      <div className="p-6 text-sm text-red-600">
-        Failed to load employee bonuses
-      </div>
+  const handleResetBonus = () => {
+    SweetAlert.confirmationAlert(
+      "Reset Bonus?",
+      "Are you sure you want to reset this bonus? This action cannot be undone.",
+      async () => {
+        try {
+          const data = await resetBonusMutation.mutateAsync()
+  
+          toast.success(data.message, {
+            position: "top-center",
+          })
+        } catch (error) {
+          toast.error(handleApiError(error), {
+            position: "top-center",
+          })
+        }
+      }
     )
   }
+
+  const { data } =
+    useGetEmployeeGeneratedBonus(selectedCompany)
+
+  const summary = data?.data.summary
+  const companies = data?.data.companies ?? []
+  const employees = data?.data.employees ?? []
+
+  // ✅ derive active company safely
+  const activeCompany =
+    selectedCompany ?? companies[0]?.companyCode
+
+    const totals = employees.reduce(
+      (acc, emp) => {
+        acc.basicSalary += Number(emp.basicSalary || 0)
+        acc.halfMonth += Number(emp.basicSalary || 0) / 2
+        acc.bonusAmount += Number(emp.bonusAmount || 0)
+        acc.fchLoan += Number(emp.fchLoan || 0)
+        acc.netAmount += Number(emp.netAmount || 0)
+        return acc
+      },
+      {
+        basicSalary: 0,
+        halfMonth: 0,
+        bonusAmount: 0,
+        fchLoan: 0,
+        netAmount: 0,
+      }
+    )
+
+    const handleEditBonus = (bonus: EmployeBonusType) => {
+      if (!bonus.bonusId || bonus.bonusId === 0) {
+        SweetAlert.warningAlert(
+          "Warning",
+          "This employee has no generated bonus to edit."
+        )
+        return
+      }
+      setSelectedBonus(bonus)
+      setIsOpenEditModal(true)
+    }
+    
+      
+    
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,97 +120,181 @@ export default function GenerateBonusPage() {
             View and generate employee bonus payouts
           </p>
         </div>
-        <button
-          onClick={() => submitBonusMutation.mutate()}
-          className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium
-                     hover:bg-blue-700"
-        >
-          Submit
-        </button>
-    <button
-          onClick={() => resetBonusMutation.mutate()}
-          className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium
-                     hover:bg-blue-700"
-        >
-          Reset
-        </button>
-        <button
-          onClick={() => setIsOpenAddModal(true)}
-          className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium
-                     hover:bg-blue-700"
-        >
-          Generate Bonus
-        </button>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr className="text-left text-gray-600">
-              <th className="px-4 py-3 font-medium">Employee</th>
-              <th className="px-4 py-3 font-medium">Bonus Rule</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Amount</th>
-              <th className="px-4 py-3 font-medium">Tenure</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {employeeBonuses?.length === 0 && (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-gray-500"
-                >
-                  No bonuses generated yet
-                </td>
-              </tr>
+        <div className="flex gap-2">
+        {employees.length !== 0 && (
+            <button
+              onClick={() => handleSubmitBonus()}
+              className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+            >
+              Submit
+            </button>
             )}
 
-            {employeeBonuses?.map(bonus => (
-              <tr
-                key={`${bonus.employeeCode}-${bonus.bonusRuleId}`}
-                className="border-t hover:bg-gray-50"
-              >
-                {/* Employee */}
-                <td className="px-4 py-3">
-                  {bonus.employee.Lastname},{" "}
-                  {bonus.employee.Firstname}
-                </td>
-
-                {/* Rule */}
-                <td className="px-4 py-3">
-                  {bonus.bonusRule.name}
-                </td>
-
-                {/* Type */}
-                <td className="px-4 py-3">
-                  {bonus.bonusRule.bonusType}
-                </td>
-
-                {/* Amount */}
-                <td className="px-4 py-3 font-semibold">
-                  ₱{Number(bonus.amount).toLocaleString()}
-                </td>
-
-                {/* Tenure */}
-                <td className="px-4 py-3">
-                  {bonus.tenureMonths} mo
-                </td>
-
-                {/* Status */}
-                <td className="px-4 py-3">
-                  {bonus.employee.EmploymentStatus}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <button
+            onClick={() => handleResetBonus()}
+            className="px-4 py-2 rounded-md bg-gray-600 text-white text-sm font-medium hover:bg-gray-700"
+          >
+            Reset
+          </button>
+          {employees.length === 0 && (
+          <button
+            onClick={() => setIsOpenAddModal(true)}
+            className="px-4 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700"
+          >
+            Generate Bonus
+          </button>
+             )}
+        </div>
       </div>
 
-      {/* Modal */}
+      {/* ✅ SUMMARY INFO */}
+      {summary && (
+        <div className="bg-white border rounded-xl p-4 shadow-sm flex justify-between text-sm">
+          <div>
+            <div className="font-medium text-gray-700">
+              {summary.bonusRule?.name}
+            </div>
+            <div className="text-gray-500">
+              Release Period: {summary.releasePeriod}
+            </div>
+          </div>
+
+          <div className="text-right">
+            <div>Total Employees: {summary.totalEmployees}</div>
+            <div className="font-semibold text-blue-600">
+              Total Amount: ₱{Number(summary.totalAmount).toLocaleString()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company Buttons */}
+      {companies.length > 0 && (
+        <div className="flex gap-3">
+          {companies.map(company => {
+            const isActive =
+              activeCompany === company.companyCode
+
+            return (
+              <button
+                key={company.companyCode}
+                onClick={() =>
+                  setSelectedCompany(company.companyCode)
+                }
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {company.companyCode}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-white border rounded-xl shadow-sm flex flex-col h-150">
+        <div className="flex-1 overflow-y-auto">
+          <table className="w-full text-sm border-collapse">
+
+            <thead className="bg-gray-50 border-b sticky top-0 z-20">
+              <tr className="text-gray-600">
+                <th className="px-4 py-3 text-left w-12">#</th>
+                <th className="px-4 py-3 text-left">Employee</th>
+                <th className="px-4 py-3 text-center">Date Hired</th>
+                <th className="px-4 py-3 text-center">Tenure</th>
+                <th className="px-4 py-3 text-right">Monthly Basic</th>
+                <th className="px-4 py-3 text-right">Half Month</th>
+                <th className="px-4 py-3 text-right">Bonus Amount</th>
+                <th className="px-4 py-3 text-right">FCH Loan</th>
+                <th className="px-4 py-3 text-right">Net Bonus</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {employees.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
+                    No bonuses generated yet
+                  </td>
+                </tr>
+              )}
+
+              {employees.map((bonus, index) => (
+                <tr
+                  key={bonus.employeeCode}
+                  className="border-t hover:bg-gray-50 transition-colors cursor-pointer"
+                  onDoubleClick={()=>handleEditBonus(bonus)}
+                >
+                  <td className="px-4 py-3">{index + 1}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {bonus.fullName}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {bonus.employementDate
+                      ? new Date(bonus.employementDate).toLocaleDateString()
+                      : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {bonus.tenureYears}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    ₱{Number(bonus.basicSalary).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    ₱{Number(bonus.bonusAmount).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right text-red-600">
+                    ₱{Number(bonus.fchLoan).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-green-600">
+                    ₱{Number(bonus.netAmount).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+
+            {employees.length > 0 && (
+            <tfoot className="bg-gray-100 border-t sticky bottom-0 z-10">
+              <tr className="font-semibold text-gray-700">
+                <td colSpan={4} className="px-4 py-3 text-right">
+                  TOTAL
+                </td>
+
+                <td className="px-4 py-3 text-right">
+                  ₱{totals.basicSalary.toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3 text-right">
+                  ₱{totals.halfMonth.toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3 text-right">
+                  ₱{totals.bonusAmount.toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3 text-right text-red-600">
+                  ₱{totals.fchLoan.toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3 text-right text-green-700">
+                  ₱{totals.netAmount.toLocaleString()}
+                </td>
+              </tr>
+            </tfoot>
+          )}
+
+          </table>
+        </div>
+      </div>
+
+      {/*Add Modal */}
       {addModal && (
         <RequestModal
           title="Generate Employee Bonus"
@@ -149,6 +306,21 @@ export default function GenerateBonusPage() {
           />
         </RequestModal>
       )}
+
+      {/*Edit Bonus Modal*/}
+      {editModal && selectedBonus && (
+        <RequestModal
+           title="Modify Employee Bonus"
+           size="md"
+           onClose={()=>setIsOpenEditModal(false)}
+         >
+           <EditBonusModal
+              bonus={selectedBonus}
+              onClose={() => setIsOpenEditModal(false)}
+             />
+        </RequestModal>
+      )}
+
     </div>
   )
 }

@@ -1,12 +1,44 @@
 "use client"
 
-import { useGetBonusSummary } from "@/app/hooks/useBonus"
+import { useApproveBonus, useGetBonusSummary } from "@/app/hooks/useBonus"
 import { statusBadge } from "@/app/helper/statusBadge"
 import { BookOpenCheck, Eye } from "lucide-react"
+import { useState } from "react"
+import RequestModal from "../Modal"
+import ViewArchiveModal from "./modals/ViewArchiveModal"
+import toast from "react-hot-toast"
+import SweetAlert from "../Swal"
+import { BonusSummaryType } from "@/app/types/bonusType"
 
 
 export default function BonusArchivePage() {
-  const { data: bonusSummary, isLoading, error } = useGetBonusSummary()
+  const { data: bonusSummary, isLoading, error } = useGetBonusSummary();
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | undefined>()
+
+  const approve = useApproveBonus();
+
+  const handleViewArchive = (id: number) =>{
+      setIsViewModalOpen(true)
+      setSelectedId(id);
+  }
+
+  const handleApproveBonus = (summary: BonusSummaryType) => {
+    SweetAlert.confirmationAlert(
+      "Are you sure?", 
+      `Are you sure you want to approve this bonus ${summary.bonusRule.name}  ? This action cannot be undone.`,
+      ()=>{ 
+        approve.mutate(summary.id, {
+          onSuccess: (data) => {
+            toast.success(data.message, {
+              position: "top-center",
+            });
+          }
+        })
+      } )
+   
+  }
+
 
   if (isLoading) {
     return (
@@ -43,8 +75,8 @@ export default function BonusArchivePage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr className="text-left text-gray-600">
-              <th className="px-5 py-3 font-medium">Rule Code</th>
-              <th className="px-5 py-3 font-medium">Rule Name</th>
+              <th className="px-5 py-3 font-medium">Bonus Code</th>
+              <th className="px-5 py-3 font-medium">Bonus Name</th>
               <th className="px-5 py-3 font-medium">Company</th>
               <th className="px-5 py-3 font-medium">Release Period</th>
               <th className="px-5 py-3 font-medium">Employees</th>
@@ -107,7 +139,7 @@ export default function BonusArchivePage() {
                   ₱{Number(summary.totalAmount).toLocaleString()}
                 </td>
 
-                <td className="px-5 py-3 text-center">
+                <td className="px-5 py-3 text-center"> 
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
                       ${statusBadge(summary.status)}`}
@@ -122,6 +154,7 @@ export default function BonusArchivePage() {
                                   text-blue-700 bg-blue-50 hover:bg-blue-100 
                                   border border-blue-200 rounded-md 
                                   transition-colors duration-200"
+                        onClick={()=>handleViewArchive(summary.id)}
                       >
                         <Eye size={15} />
                         View
@@ -131,6 +164,7 @@ export default function BonusArchivePage() {
                                   text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
                                   border border-emerald-200 rounded-md 
                                   transition-colors duration-200"
+                        onClick={()=>handleApproveBonus(summary)}
                       >
                         <BookOpenCheck size={15} />
                         Approve
@@ -142,6 +176,15 @@ export default function BonusArchivePage() {
           </tbody>
         </table>
       </div>
+
+          {isViewModalOpen && (
+            <RequestModal 
+                title="Archived Bonus Summary" 
+                size="xxxl"
+                onClose={()=>setIsViewModalOpen(false)}>
+                <ViewArchiveModal id={selectedId}/>
+            </RequestModal>
+          )}
 
     </div>
   )

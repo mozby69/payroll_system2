@@ -8,10 +8,8 @@ import { TabButton } from "@/app/components/TabButton"
 import { useAuth } from "@/app/components/UserContext"
 
 type BonusTab = "GENERATE" | "ARCHIVE" | "RULES"
-
 export default function BonusManager() {
   const { hasPermission } = useAuth()
-
 
   const allowedTabs = useMemo<BonusTab[]>(() => {
     const tabs: BonusTab[] = ["ARCHIVE"]
@@ -27,17 +25,12 @@ export default function BonusManager() {
     return tabs
   }, [hasPermission])
 
- 
-  const [activeTab, setActiveTab] = useState<BonusTab>(
-    allowedTabs[0]
-  )
-
+  const [activeTab, setActiveTab] = useState<BonusTab>(allowedTabs[0])
 
   const handleTabChange = (tab: BonusTab) => {
     if (!allowedTabs.includes(tab)) return
     setActiveTab(tab)
   }
-
 
   if (!allowedTabs.includes(activeTab)) {
     setActiveTab(allowedTabs[0])
@@ -45,54 +38,61 @@ export default function BonusManager() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-8 py-10">
+    <div className="h-screen bg-gray-50 flex flex-col">
+
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Bonus Management
-          </h1>
-          <p className="text-sm text-gray-500">
-            Prepare, generate, and archive employee bonuses
-          </p>
-        </div>
+      <div className="px-8 pt-8 pb-6">
+        <h1 className="text-2xl font-semibold text-gray-800">
+          Bonus Management
+        </h1>
+        <p className="text-sm text-gray-500">
+          Prepare, generate, and archive employee bonuses
+        </p>
       </div>
 
       {/* Main Card */}
-      <div className="bg-white rounded-xl shadow-sm border h-[calc(100vh-180px)] flex flex-col">
-        {/* Tabs */}
-        <div className="border-b px-6 py-4">
-          <div className="flex gap-8">
-            {hasPermission("BONUS_GENERATE") && (
-              <TabButton
-                label="Generate"
-                active={activeTab === "GENERATE"}
-                onClick={() => handleTabChange("GENERATE")}
-              />
-            )}
+      <div className="flex-1 px-8 pb-8">
+        <div className="bg-white rounded-xl shadow-sm border h-full flex flex-col">
 
-            <TabButton
-              label="Archive"
-              active={activeTab === "ARCHIVE"}
-              onClick={() => handleTabChange("ARCHIVE")}
-            />
+          {/* Tabs */}
+          <div className="border-b px-6 py-4 shrink-0">
+            <div className="flex gap-8">
+              {hasPermission("BONUS_GENERATE") && (
+                <TabButton
+                  label="Generate"
+                  active={activeTab === "GENERATE"}
+                  onClick={() => handleTabChange("GENERATE")}
+                />
+              )}
 
-            {hasPermission("ADMIN_MANAGE") && (
               <TabButton
-                label="Configure Bonus Rules"
-                active={activeTab === "RULES"}
-                onClick={() => handleTabChange("RULES")}
+                label="Archive"
+                active={activeTab === "ARCHIVE"}
+                onClick={() => handleTabChange("ARCHIVE")}
               />
-            )}
+
+              {hasPermission("ADMIN_MANAGE") && (
+                <TabButton
+                  label="Configure Bonus Rules"
+                  active={activeTab === "RULES"}
+                  onClick={() => handleTabChange("RULES")}
+                />
+              )}
+            </div>
           </div>
-        </div>
+ 
+          {/* Content Area — ONLY SCROLL AREA */}
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full overflow-y-auto p-6">
+              {activeTab === "GENERATE" && <GenerateBonusPage />}
+              {activeTab === "ARCHIVE" && <BonusArchivePage />}
+              {activeTab === "RULES" && <BonusRulesPage />}
+            </div>
+          </div>
 
-        <div className="flex-1 overflow-auto p-6">
-          {activeTab === "GENERATE" && <GenerateBonusPage />}
-          {activeTab === "ARCHIVE" && <BonusArchivePage />}
-          {activeTab === "RULES" && <BonusRulesPage />}
         </div>
       </div>
     </div>
   )
 }
+

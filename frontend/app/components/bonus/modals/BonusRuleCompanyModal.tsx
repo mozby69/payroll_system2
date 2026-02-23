@@ -1,13 +1,13 @@
 import { useDeleteBonusCompanyRUles, useGetBonusCompanyRules } from "@/app/hooks/useBonus"
-import { BonusCompanyRule } from "@/app/types/bonusType";
+import { BonusCompanyRule, BonusRuleCompanyModalProps } from "@/app/types/bonusType";
 import { useState } from "react";
 import RequestModal from "../../Modal";
 import CreateCompanyRulesModal from "./CreateCompanyBonus";
 import toast from "react-hot-toast";
+import SweetAlert from "../../Swal";
+import { handleApiError } from "@/app/utils/handleApiError";
 
-type BonusRuleCompanyModalProps = {
-  initialData?: { id?: number; name?: string }
-}
+
 
 export default function BonusRuleCompanyModal({
   initialData
@@ -21,13 +21,23 @@ export default function BonusRuleCompanyModal({
   const deleteMutation = useDeleteBonusCompanyRUles()
 
   const handleDelete = (row: BonusCompanyRule) => {
-    deleteMutation.mutate(row.id, {
-      onSuccess: (data) => {
-        toast.success(data.message, {
-          position: "top-center",
-        });
+    SweetAlert.confirmationAlert(
+      "Remove Company",
+      "Are you sure you want to remove this company from this bonus rule? This action cannot be undone.",
+      async () => {
+        try {
+          await deleteMutation.mutateAsync(row.id)
+  
+          toast.success("Company successfully removed.", {
+            position: "top-center",
+          })
+        } catch (error) {
+          toast.error(handleApiError(error), {
+            position: "top-center",
+          })
+        }
       }
-    })
+    )
   }
 
   if (!initialData?.id) {

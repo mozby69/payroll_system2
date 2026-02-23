@@ -19,16 +19,22 @@ export type BonusRuleInfo = {
     Lastname: string
     EmployementDate: string // ISO string from backend
     EmploymentStatus: string
+    employeepayroll: EmployeePayroll
+  }
+
+  export type EmployeePayroll = {
+      basic_salary: string;
   }
 
 
   export type EmployeeBonus = {
     employeeCode: string
-    amount: string // keep string if coming from Decimal
+    amount: string 
     bonusRuleId: number
     bonusRule: BonusRuleInfo
     employee: EmployeeInfo
     tenureMonths: number
+
   }
 
 export type InvalidEmployees = {
@@ -70,6 +76,53 @@ export type InvalidEmployees = {
           companyCode: string
         }[]
       }
+  }
+
+  export type EmployeBonusType = {
+    employeeCode: string
+    companyCode: string
+    fullName: string
+    employementDate: string | null
+    tenureYears: number
+    basicSalary: number
+    bonusAmount: number
+    bonusStatus: string
+    bonusId?: number | null
+    fchLoan: number
+    netAmount: number
+  }
+
+  export type EmployeeGenerateBonusResponse = {
+    success: boolean
+    data: {
+      summary: {
+        id: number
+        bonusRuleId: number
+        releasePeriod: string
+        asOfDate: string
+        generateDate: string | null
+        totalEmployees: number
+        totalAmount: number
+        status: string
+        releaseDate: string | null
+        resetAt: string | null
+        createdAt: string
+        bonusRule: {
+          bonusType: string
+          code: string
+          name: string
+        }
+      }
+      employees: EmployeBonusType[]
+      companies: {
+        companyCode: string
+      }[]
+    }
+  }
+  
+
+  export type BonusRuleCompanyModalProps = {
+    initialData?: { id?: number; name?: string }
   }
   
 

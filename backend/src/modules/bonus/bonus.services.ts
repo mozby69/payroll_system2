@@ -18,36 +18,36 @@ export async function updateBonusRuleService(
   const rule = await prisma.bonusRule.findUnique({ where: { id } })
   if (!rule) throw new Error("Bonus rule not found")
 
-  const used = await prisma.employeeBonus.findFirst({
-    where: { bonusRuleId: id }
-  })
-  if (used) {
-      const newRule = await prisma.bonusRule.create({
-        data: {
-          ...rule,
-          ...data,
-          id: undefined,
-          version: rule.version + 1,
-          parentRuleId: rule.id,
-          isActive: true,
-          createdAt: new Date()
-        }
-      })
-      await prisma.bonusRule.update({
-        where: {id: rule.id},
-        data: {isActive: false}
-      })
+  // const used = await prisma.employeeBonus.findFirst({
+  //   where: { bonusRuleId: id }
+  // })
+  // if (used) {
+  //     const newRule = await prisma.bonusRule.create({
+  //       data: {
+  //         ...rule,
+  //         ...data,
+  //         id: undefined,
+  //         version: rule.version + 1,
+  //         parentRuleId: rule.id,
+  //         isActive: true,
+  //         createdAt: new Date()
+  //       }
+  //     })
+  //     await prisma.bonusRule.update({
+  //       where: {id: rule.id},
+  //       data: {isActive: false}
+  //     })
 
-      await prisma.bonusRuleCompany.updateMany({
-        where: {bonusRuleId: rule.id},
-        data: {
-          bonusRuleId: newRule.id
-        }
-      }
-    )     
+  //     await prisma.bonusRuleCompany.updateMany({
+  //       where: {bonusRuleId: rule.id},
+  //       data: {
+  //         bonusRuleId: newRule.id
+  //       }
+  //     }
+  //   )     
     
-    return newRule
-  }
+  //   return newRule
+  // }
   return prisma.bonusRule.update({
     where: { id },
     data
@@ -59,6 +59,13 @@ export async function getAllBonusRulesService() {
   return prisma.bonusRule.findMany({
     where: {
       isActive: true
+    },
+    include:{
+      companyRule: {
+        select:{
+          companyCode: true
+        }
+      }
     },
       orderBy: {
           createdAt: "desc"
@@ -164,7 +171,7 @@ export async function generateBonusForAllEmployees({
   releasePeriod,
   companyCode, 
   asOfDate,
-  generateDate
+  generateDate,
 }: {
   bonusRuleId: number
   releasePeriod: string
@@ -195,10 +202,26 @@ export async function generateBonusForAllEmployees({
         bonusRuleId,
         releasePeriod,
         status: {
-          in: ["GENERATED", "PENDING", "RELEASED"]
+          in: ["GENERATED", "PENDING", "RELEASED", "APPROVED"]
         }
       }
     })
+
+    if (blockingSummary?.status === "RELEASED") {
+      throw {
+        code: "PENDING_BONUS",  
+        status: 409,
+        message: "A bonus generation is already released."
+      }
+    }
+
+    if (blockingSummary?.status === "APPROVED") {
+      throw {
+        code: "PENDING_BONUS",
+        status: 409,
+        message: "A bonus generation is already approved."
+      }
+    }
 
 
     if(pendingChecker.length > 0 || blockingSummary){
@@ -208,8 +231,8 @@ export async function generateBonusForAllEmployees({
         message: "A bonus generation is already pending. Please complete or cancel the existing process before generating a new bonus."
       }
       
-    }
-
+    } 
+ 
     const companies = await tx.bonusRuleCompany.findMany({
       where: {
         bonusRuleId,
@@ -233,11 +256,20 @@ export async function generateBonusForAllEmployees({
               in: companyCodes
             }
           }
-         }
+         },
       },
-      include: { employeepayroll: true }
+      include: { 
+        employeepayroll: true,
+         loan_details:{
+            where: {
+              status: "ACTIVE"
+            }
+         }
+         }
     })
 
+
+console.log("wow")
 
     const invalidEmployees: Array<{
       empCode: string
@@ -318,6 +350,7 @@ export async function generateBonusForAllEmployees({
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
     
 
+
     for (const emp of employees) {
       if (!emp.EmployementDate) continue
     
@@ -333,18 +366,38 @@ export async function generateBonusForAllEmployees({
         rule.formulaType,
         Number(payroll.basic_salary)
       )
-
-
-
+      
+      // Find matching active loans
+      const matchingLoans = emp.loan_details.filter(
+        loan =>
+          loan.status === "ACTIVE" &&
+          loan.others_types === rule.code
+      )
+      
+      // Compute total principal
+      const totalPrincipal = matchingLoans.reduce(
+        (sum, loan) => sum + Number(loan.principal),
+        0
+      )
+      
+      // Deduct from bonus
+      let finalAmount = amount - totalPrincipal
+      
+      // Prevent negative bonus
+      if (finalAmount < 0) {
+        finalAmount = 0
+      }
     
       if (amount <= 0) continue
-    
+
       rows.push({
         employeeCode: emp.EmpCode,
         bonusRuleId: rule.id,
-        amount,
+        amount: amount,
         bonusSummaryId: bonusSummary.id,
         generatedForMonth: rule.eligibleMonth,
+        loanDeduction: totalPrincipal,
+        netAmount: finalAmount,
         releasePeriod,
         status: "GENERATED"
       })
@@ -383,7 +436,6 @@ export async function getEmployeeBonusService() {
       amount: true,
       bonusRuleId: true,
       releasePeriod: true,
-
       bonusRule: {
         select: {
           code: true,
@@ -399,7 +451,17 @@ export async function getEmployeeBonusService() {
           Lastname: true,
           EmployementDate: true,
           EmploymentStatus: true,
+            employeepayroll: {
+                select: {
+                  basic_salary: true
+                }
+            }
         }
+      }
+    },
+    orderBy:{
+      employee: {
+        Firstname: "desc"
       }
     }
   })
@@ -542,6 +604,7 @@ export async function submitBonusSerive(){
       })
       return {
         updated: update.count,
+        message: "Bonus summaries successfully submitted.",
         summaryIds 
       }
     })
@@ -566,6 +629,9 @@ export async function getBonusSummaryService() {
             }
           }
         }
+      },
+      orderBy: {
+        id: "desc"
       }
     })
 }
@@ -635,7 +701,38 @@ export async function approveBonusService(
   })
 }
 
+export async function  rejectBonusService(
+  bonusSummaryId: number,
+  releasedBy: number
+) {
+    return prisma.$transaction(async (tx) =>{
+      const summary = await tx.bonusSummary.update({
+        where: {
+          id: bonusSummaryId
+        },
+        data:{
+          status: "CANCELLED",
+          updatedAt: new Date(),
+          rejectedById: releasedBy
+        }
+      })
 
+      await tx.employeeBonus.updateMany({
+        where:{
+          bonusSummaryId: bonusSummaryId
+        },
+        data: {
+          status: "CANCELLED"
+        }
+      })
+      
+      return {
+        message: "Bonus summary has been successfully cancelled.",
+        summary,
+      }
+
+    })
+}
 
 export async function releaseBonusService(
   bonusSummaryId: number,
@@ -643,57 +740,227 @@ export async function releaseBonusService(
 ) {
   return prisma.$transaction(async (tx) => {
 
+
     const summary = await tx.bonusSummary.findUnique({
-      where: { id: bonusSummaryId }
+      where: { id: bonusSummaryId },
+      include: {
+        bonusRule: {
+          select: {
+            id: true,
+            code: true,
+            name: true
+          },
+        },
+      },
     })
 
     if (!summary) {
-      throw new Error("Bonus summary not found.")
+      throw new Error("Bonus summary not found")
     }
 
-    if (summary.status === "RELEASED") {
-      throw new Error("Bonus already released.")
-    }
-
-    if (summary.status !== "APPROVED") {
-      throw new Error("Bonus must be approved before release.")
-    }
-
-    await tx.bonusSummary.update({
+  
+    const loanSummary = await tx.bonusSummary.findUnique({
       where: { id: bonusSummaryId },
+      include: {
+        employeeBonuses: {
+          where: {
+            employee: {
+              loan_details: {
+                some: {
+                  status: "ACTIVE",
+                  others_types: summary.bonusRule.code,
+                  principal: { not: 0 },
+                },
+              },
+            },
+          },
+          include: {
+            employee: {
+              include: {
+                loan_details: {
+                  where: {
+                    status: "ACTIVE",
+                    others_types: summary.bonusRule.code,
+                    principal: { not: 0 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if(!loanSummary){
+      throw new Error("Bonus summary not found")
+    }
+
+
+    const allLoanDetails = loanSummary.employeeBonuses.flatMap(b =>
+      b.employee?.loan_details ?? []
+    )
+
+    const loanIds = allLoanDetails.map(l => l.loan_id)
+
+    await tx.loan_details.updateMany({
+      where: {
+        loan_id: {
+          in: loanIds
+        }
+      },
       data: {
-        status: "RELEASED",
-        releasedDate: new Date(),
-        releasedById: releasedBy
+        status: "CLOSED"
       }
     })
 
-    const updated = await tx.employeeBonus.updateMany({
-      where: {
-        bonusSummaryId,
-        status: { not: "RELEASED" }
+    await tx.loan_ledger.createMany({
+      data: allLoanDetails.map(loan => ({
+        loan_id: loan.loan_id,
+        EmpCodeId: loan.EmpCodeId,
+        transaction_date: new Date(),
+        transaction_type: "PAYROLL_DEDUCT",
+        debit_amount: 0,
+        credit_amount: Number(loan.principal),
+        remarks: `Loan deducted from  ${summary.bonusRule.name}`,
+        payment_status: "PAID"
+      }))
+    })
+
+    await tx.bonusSummary.update({
+      where:{
+        id: bonusSummaryId
       },
-      data: {
+      data:{
         status: "RELEASED"
       }
     })
 
-    await createAuditLog(tx, {
-      module: AuditModule.BONUS,
-      action: AuditAction.RELEASE,
-      referenceId: bonusSummaryId,
-      performedById: releasedBy,
-      description: "Released bonus summary",
-      metadata: {
-        previousStatus: "APPROVED",
-        newStatus: "RELEASED"
+    await tx.employeeBonus.updateMany({
+      where: {
+        bonusSummaryId
+      },
+      data:{
+        status: "RELEASED"
       }
     })
 
     return {
-      message: "Bonus released successfully",
-      updatedEmployees: updated.count,
-      bonusSummaryId
+      message: "Employees with active loans retrieved successfully",
+      updatedEmployees: loanIds,
+      bonusSummaryId,
+    }
+  })
+}
+
+
+export async function getEmployeesByBonusSummarySerive(
+  companyCode?: string,
+  id?: number
+) {
+  return await prisma.$transaction(async (tx) => {
+    const summary = await tx.bonusSummary.findFirst({
+      include: {
+        bonusRule: {
+          select: { code: true, name: true, bonusType: true,  }
+        }
+      },
+      where: id 
+      ? {id}
+      : {status: "GENERATED"}
+    })
+    if (!summary) {
+      return {
+        summary: null,
+        companies: [],
+        employees: [],
+      }
+    }
+    const allowedCompanies = await tx.bonusRuleCompany.findMany({
+      where: {
+        bonusRuleId: summary.bonusRuleId,
+      },
+      select: { companyCode: true },
+      orderBy:{
+        companyCode: "asc"
+      }
+    })
+
+    const companyCodes = allowedCompanies.map(c => c.companyCode)
+
+    if (companyCodes.length === 0) {
+      return {
+        summary,
+        companies: [],
+        employees: [],
+      }
+    }
+
+    const selectedCompanyCode =
+    companyCode ?? allowedCompanies[0].companyCode
+  
+  const employees = await tx.employee.findMany({
+    where: {
+      EmployeeStatus: "Active",
+      BranchCode: {
+        CompanyCode: {
+          CompanyCode: selectedCompanyCode,
+        },
+      },
+    },
+    include: {
+      employeepayroll: true,
+      employee_bonues: {
+        where: { bonusSummaryId: summary.id },
+      },
+      BranchCode: {
+        select: {
+          CompanyCode: {
+            select: {
+              CompanyCode: true,
+            },
+          },
+        },
+      },
+      loan_details: {
+        where: {
+          status: "ACTIVE",
+          others_types: summary.bonusRule.code,
+        },
+      },
+    },
+    orderBy: { Lastname: "asc" },
+  })
+
+    const result = employees.map(emp => {
+      const bonus = emp.employee_bonues[0]
+
+      return {
+        employeeCode: emp.EmpCode,
+        companyCode:
+          emp.BranchCode?.CompanyCode?.CompanyCode,
+        fullName: `${emp.Lastname}, ${emp.Firstname}`,
+        employementDate: emp.EmployementDate,
+        tenureYears: emp.EmployementDate
+          ? getTenureInYears(
+              emp.EmployementDate,
+              getLastDayOfMonthFromPeriod(summary.releasePeriod)
+            )
+          : 0,
+        basicSalary:
+          emp.employeepayroll?.basic_salary ?? 0,
+        bonusAmount: bonus?.amount ?? 0,
+        bonusStatus:
+          bonus?.status ?? "NOT_GENERATED",
+        bonusId: bonus?.id ?? null,
+        fchLoan: bonus?.loanDeduction ?? 0,
+        netAmount: bonus?.netAmount ?? 0,
+      }
+    })
+
+    return {
+      summary,
+      companies: allowedCompanies,
+      employees: result,
     }
   })
 }

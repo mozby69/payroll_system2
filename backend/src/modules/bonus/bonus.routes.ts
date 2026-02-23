@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { approveBonusController, creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getBonusSummaryController, getEmployeeBonusBySummaryIdController, getEmployeeBonusController, releaseBonusController, resetBonusController, submitBonusController, updateBonusRuleController } from "./bonus.controller";
+import { approveBonusController, creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getBonusSummaryController, getEmployeeBonusBySummaryIdController, getEmployeeBonusController, getEmployeesByBonusSummaryController, rejectBonusController, releaseBonusController, resetBonusController, submitBonusController, updateBonusRuleController } from "./bonus.controller";
 import { authenticateToken } from "../../middleware/authMiddleware";
+import { getEmployeeBonusServiceBySummaryIdService } from "./bonus.services";
 
 
 const router = Router();
@@ -26,6 +27,9 @@ router.get("/get-summary", getBonusSummaryController)
 router.get("/get-summary/:id", getEmployeeBonusBySummaryIdController)
 router.post("/approve/:id", authenticateToken, approveBonusController)
 router.post("/release/:id", authenticateToken, releaseBonusController)
+router.post("/reject/:id", authenticateToken, rejectBonusController)
+
+router.get("/employee-bonuses/", getEmployeesByBonusSummaryController)
   
 
 export default router;

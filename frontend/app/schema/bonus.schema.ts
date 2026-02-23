@@ -40,13 +40,21 @@ export const updateBonusRuleSchema =
 export type UpdateBonusRuleForm =
   z.infer<typeof updateBonusRuleSchema>
 
+  const companyRuleSchema = z.object({
+    companyCode: z.string(),
+  })
+  
 
 export const bonusRuleResponseSchema =
   bonusRuleBaseSchema.extend({
     id: z.number(),
     createdAt: z.string().optional(),
-    updatedAt: z.string().optional()
+    updatedAt: z.string().optional(),
+
+
+    companyRule: z.array(companyRuleSchema).optional(),
   })
+
 
 
 export const bonusRuleListSchema =
