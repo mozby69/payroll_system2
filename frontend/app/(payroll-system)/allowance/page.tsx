@@ -3,7 +3,7 @@ import Datatable from "@/app/components/Datatable";
 import { AllowanceProps } from "@/app/types/allowanceType";
 import { Column } from "@/app/types/preparePayroll";
 import { useAllowanceSummary, useFetchAllowance, useSaveAllowance } from "@/app/hooks/useAllowance";
-import { useState } from "react";
+import {  useState } from "react";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { Pagination } from "@/app/components/Pagination";
 import SweetAlert from "@/app/components/Swal";
@@ -86,6 +86,11 @@ export default function AllowancePage(){
             { key: "archive", label: "Allowance Archive" },
           ];
 
+          const handleSearchChange = (value: string) => {
+            setSearch(value);
+            setPage(1);
+          };
+
       
     return(
         <>
@@ -110,7 +115,7 @@ export default function AllowancePage(){
                           type="text"
                           placeholder="Search..."
                           value={search}
-                          onChange={(e) => setSearch(e.target.value)}
+                          onChange={(e) => handleSearchChange(e.target.value)}
                           className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                           />  
                           <input

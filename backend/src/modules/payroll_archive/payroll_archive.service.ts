@@ -315,10 +315,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           pagibig_contrib_employer:pagibigEmployerShare,
           net_pay:netPay.toFixed(2),
           wtax:TaxList,
-        };
 
+      
+        };
+ 
 
       });
+
+
 
       return normalized;
     

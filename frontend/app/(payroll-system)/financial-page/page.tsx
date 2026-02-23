@@ -47,7 +47,7 @@ export default function FinancialPage(){
         calamityLoan: 0,
         netPayable: emp.net_pay,
         sssEmployer: emp.sss_contrib_employer,
-        philEmployer: emp.philhealth_contrib_employee,
+        philEmployer: emp.philhealth_contrib_employer,
         pagibigEmployer: emp.pagibig_contrib_employer,
     
       }));
