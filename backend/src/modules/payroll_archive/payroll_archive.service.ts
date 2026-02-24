@@ -234,6 +234,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
       const normalized = employeeList.map((emp) => {
+        
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
         const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
         const totalUndertimeCount = emp.TotalUndertime ? Number(emp.TotalUndertime): 0;
@@ -297,6 +298,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction);
         const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,Paycodes);
+        const companyId = emp.EmpCode.BranchCode?.company_id;
    
         return {
           ...emp,
@@ -322,7 +324,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           pagibig_contrib_employer:pagibigEmployerShare,
           net_pay:netPay.toFixed(2),
           wtax:TaxList,
-
+          company_id:companyId,
       
         };
  
@@ -518,6 +520,90 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           createdAt: nowPH(),
         },
       });
+
+  // ================= 1️⃣ CREATE TOTAL PAYROLL PER COMPANY =================
+      const groupedByCompany = computed.reduce((acc, emp) => {
+        const companyId = emp.company_id;
+      
+        if (!companyId) return acc;
+      
+        if (!acc[companyId]) {
+          acc[companyId] = [];
+        }
+      
+        acc[companyId].push(emp);
+        return acc;
+      }, {} as Record<string, typeof computed>);
+
+
+      const companyTotalsData = Object.entries(groupedByCompany).map(
+        ([companyId, employees]) => {
+          const totals = employees.reduce(
+            (acc, emp) => {
+              acc.gross += Number(emp.gross_pay ?? 0);
+              acc.net += Number(emp.net_pay ?? 0);
+              acc.late += Number(emp.late_count ?? 0);
+              acc.absent += Number(emp.absence ?? 0);
+              acc.overtime += Number(emp.overtime ?? 0);
+              acc.sssEmployee += Number(emp.sss_contrib_employee ?? 0);
+              acc.sssEmployer += Number(emp.sss_contrib_employer ?? 0);
+              acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
+              acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
+              acc.philEmployee += Number(emp.philhealth_contrib_employee ?? 0);
+              acc.wtax += Number(emp.wtax ?? 0);
+              acc.basic += Number(emp.semi_monthly ?? 0);
+              acc.undertime += Number(emp.undertime ?? 0);
+              return acc;
+            },
+            {
+              gross: 0,
+              net: 0,
+              late: 0,
+              absent: 0,
+              overtime: 0,
+              sssEmployee: 0,
+              sssEmployer: 0,
+              pagibigEmployee: 0,
+              pagibigEmployer: 0,
+              philEmployee: 0,
+              wtax: 0,
+              basic: 0,
+              undertime: 0,
+            }
+          );
+      
+          return {
+            total_payroll_id: total.id,
+            company_id: companyId,
+            PayCycle: payrollPeriod,
+            cycle_category: cycleCategory,
+            payroll_period: payCycle,
+            selected_payroll_date: {
+              start_date: rawSelectedPayrollDate.start_date,
+              end_date: rawSelectedPayrollDate.end_date,
+            },
+            Total_GrossPay: totals.gross,
+            Total_NetPay: totals.net,
+            Total_Late: totals.late,
+            Total_Absent: totals.absent,
+            Total_OverTimePay: totals.overtime,
+            Total_SSSContributionEmployee: totals.sssEmployee,
+            Total_SSSContributionEmployer: totals.sssEmployer,
+            Total_PagibigContributionEmployee: totals.pagibigEmployee,
+            Total_PagibigContributionEmployer: totals.pagibigEmployer,
+            Total_PhilhealthContributionEmployee: totals.philEmployee,
+            Total_PhilhealthContributionEmployer: totals.philEmployee,
+            total_wtax: totals.wtax,
+            total_basic_salary: totals.basic,
+            Total_Undertime: totals.undertime,
+            createdAt: nowPH(),
+          };
+        }
+      );
+
+
+
+
   
       // ================= 2️⃣ INSERT EMPLOYEE ARCHIVES =================
       
@@ -563,10 +649,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
   
-      await tx.employeePayrollArchive.createMany({
-        data: archivePayload,
-        skipDuplicates: true,
-      });
 
 
       // Disburse code ↓
@@ -581,9 +663,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         }
       })
 
-      if (disbursingEmployees.length === 0){
-        return archivePayload.length;
-      }
+      // if (disbursingEmployees.length === 0){
+      //   return archivePayload.length;
+      // }
 
       const disbursingEmpCodes = disbursingEmployees.map(e => e.EmpCode);
 
@@ -652,6 +734,17 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           // Loan Code ↑ 
   
       // ================= 3️⃣ UPDATE SUMMARY =================
+
+      await tx.totalPayrollByCompany.createMany({
+        data: companyTotalsData,
+      });
+
+      await tx.employeePayrollArchive.createMany({
+        data: archivePayload,
+        skipDuplicates: true,
+      });
+
+  
       await tx.employeeSummary.updateMany({
         where: { status: "FOR_APPROVAL" },
         data: { status: "DONE" },
