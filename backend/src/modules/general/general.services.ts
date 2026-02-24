@@ -91,3 +91,25 @@ export async function appendMissingBodEmployees(tx: Prisma.TransactionClient, em
     }));
   }
   
+
+
+
+
+
+// FILTER COMPANY OR BY BRANCH FOR SPREADSHEET
+
+export async function getCompaniesByCycle(cycle: string) {
+  const companies = await prisma.company_details.findMany({
+    where: {
+      CompanyCycle: cycle, 
+    },
+    select: {
+      CompanyCode: true,
+      CompanyName: true,
+      CompanyCycle: true,
+    },
+    orderBy: { CompanyCode: "asc" },
+  });
+
+  return companies;
+}

@@ -17,7 +17,7 @@ type AllowanceTab = "current" | "archive";
 
 export default function AllowancePage(){
         const [activeTab, setActiveTab] = useState<AllowanceTab>("current");
-        const PAGE_SIZE = 8;
+        const PAGE_SIZE = 10;
         const [page, setPage] = useState(1);
         const [search, setSearch] = useState("");
         const debouncedSearch = useDebounce(search, 400);
@@ -25,7 +25,7 @@ export default function AllowancePage(){
         const saveAllowance = useSaveAllowance(month);
         const { data: allowance_data } = useFetchAllowance({
                 page,
-                limit: 8,
+                limit: 10,
                 search: debouncedSearch,
                 month,
             });
@@ -48,7 +48,7 @@ export default function AllowancePage(){
         const columns: Column<AllowanceProps>[] = [
             {
               header: "Employee",
-              render: (row) => `${row.Firstname}, ${row.Lastname}`,
+              render: (row) => `${row.Lastname}, ${row.Firstname}`,
               footer: "TOTAL",
             },
             {

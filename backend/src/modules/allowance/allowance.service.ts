@@ -12,16 +12,34 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
     const monthName = new Date(prev.year, prev.month - 1).toLocaleString("en-US", { month: "long" });
   
     const employeeWhere: Prisma.EmployeeWhereInput = {
-      EmployeeStatus: {
-        notIn: ["Resigned", "Inactive", "Terminate"],
-      },
-      ...(search && {
-        OR: [
-          { EmpCode: { contains: search } },
-          { Firstname: { contains: search } },
-          { Lastname: { contains: search } },
-        ],
-      }),
+      AND: [
+        {
+          OR: [
+            {
+              EmployeeStatus: {
+                notIn: ["Resigned", "Inactive", "Terminate"],
+              },
+            },
+            {
+              bod_member: {
+                in: ["bod1", "bod2"],
+              },
+            },
+          ],
+        },
+    
+        ...(search
+          ? [
+              {
+                OR: [
+                  { EmpCode: { contains: search } },
+                  { Firstname: { contains: search } },
+                  { Lastname: { contains: search } },
+                ],
+              },
+            ]
+          : []),
+      ],
     };
   
     const employees = await prisma.employee.findMany({
@@ -32,10 +50,12 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         EmpCode: true,
         Firstname: true,
         Lastname: true,
+        EmployeeStatus:true,
         employeepayroll: {
           select: {
             cash_assistance: true,
             ecola: true,
+            with_ecola:true,
           },
         },
         employeesummary: {
@@ -52,42 +72,49 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         },
       },
       orderBy: {
-        EmpCode: "asc",
+        Lastname:"asc",
       },
     });
   
     const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
 
     const normalized = employees.map((emp) => {
-      const totalAbsentHours = emp.employeesummary.reduce(
-        (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
-        0
-      );
+      const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
 
-      const cashAssistance =
-        emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
+      const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
 
-      const ecola =
-        emp.employeepayroll?.ecola?.toNumber() ?? 0;
+      const ecola = emp.employeepayroll?.ecola?.toNumber() ?? 0;
 
       const cashDailyRate = cashAssistance / daysInPrevMonth;
+      
       const ecolaDailyRate = ecola / daysInPrevMonth;
 
-      const absentDeduction =
-        (cashDailyRate * totalAbsentHours) +
-        (ecolaDailyRate * totalAbsentHours);
+      const hasEcola = emp.employeepayroll?.with_ecola === true;
 
-      const total = cashAssistance + ecola - absentDeduction;
+      const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
+    
+      const totalEcola = hasEcola ? ecola - (ecolaDailyRate * totalAbsentHours) : 0;
+      
+      const total = totalCashAllowance + totalEcola;
+      
+      const totalDeduction = (cashDailyRate * totalAbsentHours) + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
+
+      // const cashDailyRate = cashAssistance / daysInPrevMonth;
+      // const ecolaDailyRate = ecola / daysInPrevMonth;
+
+      // const absentDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
+
+      // const total = cashAssistance + ecola - absentDeduction;
 
       return {
         EmpCode: emp.EmpCode,
         Firstname: emp.Firstname,
         Lastname: emp.Lastname,
         cash_assistance: cashAssistance,   
-        ecola: ecola,                      
+        ecola: totalEcola,                      
         totalAbsentHours,
         total: total,                     
-        totalDeduction: absentDeduction,   
+        totalDeduction: totalDeduction,   
       };
     });
 
@@ -214,9 +241,21 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
   
     const employees = await prisma.employee.findMany({
       where: {
-        EmployeeStatus: {
-          notIn: ["Resigned", "Inactive", "Terminate"],
-        },
+        OR: [
+          {
+            EmployeeStatus: {
+              notIn: ["Resigned", "Inactive", "Terminate"],
+            },
+          },
+          {
+            bod_member: {
+              in: ["bod1", "bod2"],
+            },
+          },
+        ],
+        // EmployeeStatus: {
+        //   notIn: ["Resigned", "Inactive", "Terminate"],
+        // },
       },
       select: {
         EmpCode: true,
@@ -226,6 +265,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           select: {
             cash_assistance: true,
             ecola: true,
+            with_ecola:true,
           },
         },
         employeesummary: {
@@ -248,21 +288,42 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
       const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
       const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
+      const hasEcola = emp.employeepayroll?.with_ecola === true;
+
       const ecola = emp.employeepayroll?.ecola?.toNumber() ?? 0;
       const cashDailyRate = cashAssistance / daysInPrevMonth;
       const ecolaDailyRate = ecola / daysInPrevMonth;
+
       const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
-      const totalEcola = ecola - (ecolaDailyRate * totalAbsentHours);
-      const total = totalCashAllowance + totalEcola;
-      const totalDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
+    
+      const totalEcola = hasEcola
+        ? ecola - (ecolaDailyRate * totalAbsentHours)
+        : 0;
+      
+      const total =
+        totalCashAllowance + totalEcola;
+      
+      const totalDeduction =
+        (cashDailyRate * totalAbsentHours) +
+        (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
+
+
+      // const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
+      // const totalEcola = ecola - (ecolaDailyRate * totalAbsentHours);
+      // const total = totalCashAllowance + totalEcola;
+      // const totalDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
+
+
       // loan code ↓
       const fch_rfc_deducted = 0;
       // loan code ↑
+
+
       return {
         EmpCode: emp.EmpCode,
         name: `${emp.Firstname ?? ""} ${emp.Lastname ?? ""}`.trim(),
         cash_allowance: totalCashAllowance,
-        ecola: totalEcola,
+        computed_ecola: totalEcola,
         absent: totalAbsentHours,
         total,
         selectedMonth,
@@ -375,7 +436,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     const summary = rows.reduce(
       (acc, row) => {
         acc.cash_allowance += row.cash_allowance;
-        acc.ecola += row.ecola;
+        acc.ecola += row.computed_ecola;
         acc.total += row.total;
         acc.totalDeduction += row.totalDeduction;
         return acc;
@@ -436,7 +497,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           EmpCode: emp.EmpCode,
           name: emp.name,
           cash_allowance: emp.cash_allowance,
-          ecola: emp.ecola,
+          ecola: emp.computed_ecola,
           absent: emp.absent,
           total: emp.total,
           totalDeduction: emp.totalDeduction,
