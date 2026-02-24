@@ -2,7 +2,7 @@
 import Datatable from "@/app/components/Datatable";
 import { AllowanceProps } from "@/app/types/allowanceType";
 import { Column } from "@/app/types/preparePayroll";
-import { useAllowanceSummary, useFetchAllowance, useSaveAllowance } from "@/app/hooks/useAllowance";
+import {  useFetchAllowance, useSaveAllowance } from "@/app/hooks/useAllowance";
 import {  useState } from "react";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { Pagination } from "@/app/components/Pagination";

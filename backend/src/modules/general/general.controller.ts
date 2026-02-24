@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import puppeteer from "puppeteer";
 
 export async function getCompanyDetailsController(
    req: Request,
@@ -35,3 +36,38 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
       res.status(500).json({ message: "Failed to fetch companies" });
     }
   }
+
+
+
+  export const generatePdfController = async (req: Request, res: Response) => {
+    try {
+      const { path } = req.query;
+  
+      if (!path || typeof path !== "string") {
+        return res.status(400).send("Missing path parameter");
+      }
+  
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
+  
+      const fullUrl = `http://localhost:3000${path}`;
+  
+      await page.goto(fullUrl, {
+        waitUntil: "networkidle0",
+      });
+  
+      const pdf = await page.pdf({
+        format: "A4",
+        printBackground: true,
+      });
+  
+      await browser.close();
+  
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.send(pdf);
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("PDF generation failed");
+    }
+  };

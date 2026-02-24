@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { EmployeeSummaryTypes } from "../api/api.types";
 import { nowPH } from "../../utils/timezone";
-
+import puppeteer from "puppeteer";
 
 
 export async function getCompanyDetailsServices() {
@@ -113,3 +113,10 @@ export async function getCompaniesByCycle(cycle: string) {
 
   return companies;
 }
+
+
+
+
+
+
+

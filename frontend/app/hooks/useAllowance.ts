@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceProps, AllowanceSummary, AllowanceSummaryResponse, ArchiveAllowance, ArchiveAllowanceResponse } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";

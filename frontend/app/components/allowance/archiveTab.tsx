@@ -4,13 +4,23 @@ import { useDebounce } from "@/app/utils/useDebounce";
 import { useState } from "react";
 import Datatable from "../Datatable";
 import { Column } from "@/app/types/preparePayroll";
-import { FileText } from "lucide-react";
+import { FileText, Printer } from "lucide-react";
 import RequestModal from "../Modal";
 import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
 import { Pagination } from "../Pagination";
+import FilterBranchPrint from "@/app/ModalContent/Allowance/ViewPrint";
 
 
-
+{/* <button
+onClick={() => {
+  window.open(
+    "http://localhost:5000/api/general/print?path=/print",
+    "_blank"
+  );
+}}
+className="px-3 py-2 text-sm bg-cyan-800 hover:bg-cyan-600 hover:cursor-pointer text-white rounded">
+<Printer/>
+</button> */}
 
 
 export default function AllowanceArchiveTab(){
@@ -18,6 +28,7 @@ export default function AllowanceArchiveTab(){
             const [page, setPage] = useState(1);
             const [search, setSearch] = useState("");
             const [isModalOpen, setIsModalOpen] = useState(false);
+            const [isModalOpenPrint, setIsModalOpenPrint] = useState(false);
             const debouncedSearch = useDebounce(search, 400);
             const [selectedRow, setSelectedRow] = useState<AllowanceSummary | null>(null);
             const { data: allowance_data } = useFetchAllowanceSummary({
@@ -57,8 +68,14 @@ export default function AllowanceArchiveTab(){
                               <div className="flex gap-2">
                                 <button
                                 onClick={ () => openModal(row)}
-                                className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
+                                className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 hover:cursor-pointer text-white rounded">
                                 <FileText/>
+                                </button>
+
+                                <button
+                                  onClick={() => {openModalPrint() }}
+                                  className="px-3 py-2 text-sm bg-cyan-800 hover:bg-cyan-600 hover:cursor-pointer text-white rounded">
+                                 <Printer/>
                                 </button>
                               </div>
                             ),
@@ -70,11 +87,21 @@ export default function AllowanceArchiveTab(){
           setSelectedRow(row);
           setIsModalOpen(true);
         };
-        
+
         const closeModal = () => {
           setIsModalOpen(false);
           setSelectedRow(null);
         };
+
+        const openModalPrint = () => {
+          setIsModalOpenPrint(true);
+        };
+        
+
+        const closeModalPrint = () => {
+          setIsModalOpenPrint(false);
+        };
+  
 
             return(
         
@@ -112,6 +139,12 @@ export default function AllowanceArchiveTab(){
                 </RequestModal>
               )}
 
+
+          {isModalOpenPrint && (
+              <RequestModal size="xl" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
+                <FilterBranchPrint/>
+              </RequestModal>
+            )}
 
 
                 </div>
