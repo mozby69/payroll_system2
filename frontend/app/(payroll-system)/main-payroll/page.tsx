@@ -38,6 +38,12 @@ export default function PreparePayroll() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+
 
   // Disburse Code ↓
   const [shouldCheckModal, setShouldCheckModal] = useState(false);
@@ -360,7 +366,7 @@ export default function PreparePayroll() {
             data={employee?.data ?? []}
             meta={employee?.meta ?? { total: 0, page: 1, limit: 10, totalPages: 0 }}
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             page={page}
             onPageChange={setPage}
             onNext={() => goToStep2()}

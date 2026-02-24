@@ -153,6 +153,9 @@ export interface PayrollEmployee {
   EmpCode: {
     Firstname: string;
     Lastname: string;
+    BranchCode:{
+      company_id:string;
+    }
   };
   semi_monthly:number;
   overtime:number;

@@ -88,19 +88,18 @@ const toDateOrNull = (value?: string | null): Date | null => {
 
 
 
-  export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> => {
+export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> => {
+  const validEmployees = employees.filter(e => e.BranchCode__BranchCode !== null);
 
-    const validEmployees = employees.filter(
-      (e) => e.BranchCode__BranchCode !== null
-    );
+  const chunkSize = 50; // process 50 employees at a time
+  for (let i = 0; i < validEmployees.length; i += chunkSize) {
+    const chunk = validEmployees.slice(i, i + chunkSize);
 
-
-
-    await prisma.$transaction(async (tx) => {
-
-      for (const e of validEmployees) {
-  
-        await tx.employee.upsert({
+    
+    await Promise.all(
+      chunk.map(async (e) => {
+ 
+        await prisma.employee.upsert({
           where: { EmpCode: e.EmpCode },
           create: {
             EmpCode: e.EmpCode,
@@ -113,7 +112,6 @@ const toDateOrNull = (value?: string | null): Date | null => {
             EmploymentStatus: e.EmploymentStatus,
             EmployeeStatus: e.EmployeeStatus,
             isNewEmployee: true,
-            Disbursing:true,
           },
           update: {
             Firstname: e.Firstname,
@@ -126,9 +124,9 @@ const toDateOrNull = (value?: string | null): Date | null => {
             EmployeeStatus: e.EmployeeStatus,
           },
         });
-  
-        
-        await tx.employee_payroll.upsert({
+
+      
+        await prisma.employee_payroll.upsert({
           where: { EmpCodeId: e.EmpCode },
           create: {
             EmpCodeId: e.EmpCode,
@@ -137,8 +135,9 @@ const toDateOrNull = (value?: string | null): Date | null => {
           },
           update: {},
         });
-  
-        await tx.pagIbig_List.upsert({
+
+
+        await prisma.pagIbig_List.upsert({
           where: { EmpCodeId: e.EmpCode },
           create: {
             EmpCodeId: e.EmpCode,
@@ -147,17 +146,18 @@ const toDateOrNull = (value?: string | null): Date | null => {
           },
           update: {},
         });
+      })
+    );
+  }
 
-        
+  return validEmployees.length;
+};
+  
 
-      }
-  
-    });
-  
-    return validEmployees.length;
-  };
-  
-  
+
+
+
+
 
   export const saveEmployeeDetails = async (details: EmployeeDetailsDTO[]): Promise<number> => {
     if (!Array.isArray(details) || details.length === 0) return 0;

@@ -87,6 +87,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
               EmploymentStatus:true,
               isNewEmployee:true,
               bod_member:true,
+              BranchCode:{
+                select:{
+                  company_id:true,
+                },
+              },
               employeepayroll:{
                 select:{
                   basic_salary: true,
@@ -107,7 +112,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           
         },
         orderBy:{
-          EmpCodeId:'asc',
+          EmpCode:{
+            Lastname:"asc",
+          }
         }
       });
 
@@ -315,10 +322,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           pagibig_contrib_employer:pagibigEmployerShare,
           net_pay:netPay.toFixed(2),
           wtax:TaxList,
-        };
 
+      
+        };
+ 
 
       });
+
+
 
       return normalized;
     

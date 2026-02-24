@@ -8,6 +8,7 @@ import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive
 
 import SweetAlert from "../Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
+import CompanyFilter from "../CompanyFilter";
 
 
 
@@ -18,11 +19,14 @@ interface Props {
 }
 
 export default function StepReviewSave({ onBack }: Props) {
+  const [selectedCompany, setSelectedCompany] = useState("");
   const [loading, setLoading] = useState(false);
   const { data, isLoading } = useDisplayPayroll();
   const savePayroll = useSavePayroll();
 
   const payCode = data?.data?.[0]?.PayCode ?? "-";
+
+  const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
 
   const handleSave = () => {
     SweetAlert.confirmationAlert(
@@ -38,7 +42,12 @@ export default function StepReviewSave({ onBack }: Props) {
 
 
 
-  const rows: SpreadsheetRow[] = (data?.data ?? []).map((emp) => ({
+  const rows: SpreadsheetRow[] = (data?.data ?? [])
+  .filter((emp) => {
+    if (!selectedCompany) return true;
+    return emp.EmpCode.BranchCode?.company_id === selectedCompany;
+  })
+  .map((emp) => ({
     name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
     basicPay: emp.semi_monthly,
     overtime: emp.overtime,
@@ -119,14 +128,27 @@ export default function StepReviewSave({ onBack }: Props) {
   return (
     <div className="space-y-4">
 
-      <div className="print:hidden">
-        <h2 className="text-lg font-semibold text-slate-800">
-          Review & Save Payroll
-        </h2>
+      <div className="print:hidden flex justify-between">
 
-        <div className="text-sm text-slate-600">
-          Final payroll summary and confirmation.
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">
+            Review & Save Payroll
+          </h2>
+
+          <div className="text-sm text-slate-600">
+            Final payroll summary and confirmation.
+          </div>
+
         </div>
+
+        <div>
+          <CompanyFilter
+          value={selectedCompany}
+          cycle={currentCycle}    
+          onChange={setSelectedCompany}
+        />
+        </div>
+
       </div>
 
       <div className="flex justify-between px-4 pt-4">

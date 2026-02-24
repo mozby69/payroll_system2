@@ -70,6 +70,12 @@ export default function PagibigPage(){
                     setIsModalOpen(false);
                 };
 
+                const handleSearchChange = (value: string) => {
+                  setSearch(value);
+                  setPage(1);
+                };
+          
+
     return(
         <>
 
@@ -78,7 +84,7 @@ export default function PagibigPage(){
                                 type="text"
                                 placeholder="Search..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => handleSearchChange(e.target.value)}
                                 className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                             />  
                         </div>

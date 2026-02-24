@@ -1,4 +1,5 @@
 "use client";
+import CompanyFilter from "@/app/components/CompanyFilter";
 import RequestModal from "@/app/components/Modal";
 import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadSheet";
 import SweetAlert from "@/app/components/Swal";
@@ -21,11 +22,18 @@ export default function FinancialPage(){
       const recheckPayroll = useReCheckPayroll();
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading, setLoading] = useState(false);
+      const [selectedCompany, setSelectedCompany] = useState("");
+
 
       const payCode = data?.data?.[0]?.PayCode ?? "-";
+      const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
 
-
-     const rows: SpreadsheetRow[] = (data?.data ?? []).map((emp) => ({
+     const rows: SpreadsheetRow[] = (data?.data ?? [])
+     .filter((emp) => {
+      if (!selectedCompany) return true;
+      return emp.EmpCode.BranchCode?.company_id === selectedCompany;
+      })
+     .map((emp) => ({
         name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
         basicPay: emp.semi_monthly,
         overtime: emp.overtime,
@@ -49,7 +57,7 @@ export default function FinancialPage(){
         calamityLoan: 0,
         netPayable: emp.net_pay,
         sssEmployer: emp.sss_contrib_employer,
-        philEmployer: emp.philhealth_contrib_employee,
+        philEmployer: emp.philhealth_contrib_employer,
         pagibigEmployer: emp.pagibig_contrib_employer,
     
       }));
@@ -140,7 +148,7 @@ export default function FinancialPage(){
         };
 
     return (
-        <div className="p-4">
+        <div className="py-8 px-4">
             
             <div className="flex justify-between px-4 gap-x-4">
               <div>
@@ -169,9 +177,20 @@ export default function FinancialPage(){
               </div>
             </div>
         
-                <div className="mt-8 px-4 text-slate-700">
-                  <span className="font-semibold">Payroll Period:</span> {payCode}
+            <div className="flex justify-between mt-10">
+
+                <div className="px-4 text-slate-700">
+                    <span className="font-semibold">Payroll Period:</span> {payCode}
                 </div>
+
+                <div>
+                  <CompanyFilter
+                  value={selectedCompany}
+                  cycle={currentCycle}         
+                  onChange={setSelectedCompany}
+                />
+                </div>
+            </div>
 
               <SpreadSheet data={rows} totals={totals}/>
 
