@@ -552,10 +552,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
   
-      await tx.employeePayrollArchive.createMany({
-        data: archivePayload,
-        skipDuplicates: true,
-      });
+
 
 
       // Disburse code ↓
@@ -570,9 +567,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         }
       })
 
-      if (disbursingEmployees.length === 0){
-        return archivePayload.length;
-      }
+      // if (disbursingEmployees.length === 0){
+      //   return archivePayload.length;
+      // }
 
       const disbursingEmpCodes = disbursingEmployees.map(e => e.EmpCode);
 
@@ -641,6 +638,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           // Loan Code ↑ 
   
       // ================= 3️⃣ UPDATE SUMMARY =================
+     
+
+      
+      await tx.employeePayrollArchive.createMany({
+        data: archivePayload,
+        skipDuplicates: true,
+      });
+
       await tx.employeeSummary.updateMany({
         where: { status: "FOR_APPROVAL" },
         data: { status: "DONE" },

@@ -36,19 +36,7 @@ export default function StepReviewSave({ onBack }: Props) {
 
   
 
-  const handlePrint = async () => {
-    try {
-      setLoading(true);
-      await printPayroll(
-    dummySummary
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to print payroll");
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const rows: SpreadsheetRow[] = (data?.data ?? []).map((emp) => ({
     name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
@@ -112,6 +100,20 @@ export default function StepReviewSave({ onBack }: Props) {
       pagibigEmployer: 0,
     }
   );
+
+  const handlePrint = async () => {
+    try {
+      setLoading(true);
+      await printPayroll(
+        rows
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to print payroll");
+    } finally {
+      setLoading(false);
+    }
+  };
   
 
   return (

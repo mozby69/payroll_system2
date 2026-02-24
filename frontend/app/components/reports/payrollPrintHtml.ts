@@ -1,105 +1,133 @@
-// app/components/reports/payrollPrintHtml.ts
+import { SpreadsheetRow } from "./SpreadSheet"
 
-export interface PayrollRow {
-    employee: string;
-    basicPay: number;
-    overtime: number;
-    late: number;
-    absence: number;
-    total: number;
-    wTax: number;
-    sss: number;
-    philHealth: number;
-    pagIbig: number;
-    arE: number;
-    fch: number;
-    salary: number;
-    calamity: number;
-    pagSalaryLoan: number;
-    netPayable: number;
-    sssEmpShare: number;
-    philEmpShare: number;
-    pagEmpShare: number;
+export function payrollPrintHtml(data: SpreadsheetRow[]) {
+
+  const pad = (text: string, length: number, right = false) => {
+    text = text.toString()
+    if (text.length > length) return text.substring(0, length)
+    return right ? text.padStart(length, " ") : text.padEnd(length, " ")
   }
-  
-  export function payrollPrintHtml(data: PayrollRow[]) {
-    return `
-  <table class="payroll-table">
-  
-    <!-- COLUMN WIDTH CONTROL -->
-    <colgroup>
-      <col style="width:40px">
-      <col style="width:160px">
-      <col span="18" style="width:auto">
-    </colgroup>
-  
-    <thead>
-      <!-- GROUP HEADERS -->
-      <tr class="group-header">
-        <th colspan="13"></th>
-        <th colspan="3">SSS LOANS</th>
-        <th colspan="1"></th>
-        <th colspan="3">EMPLOYEE SHARE</th>
-      </tr>
-  
-      <!-- COLUMN HEADERS -->
-      <tr>
-        <th>No.</th>
-        <th>Employee Name</th>
-        <th>Basic Pay</th>
-        <th>Overtime</th>
-        <th>Late</th>
-        <th>Absence</th>
-        <th>Total</th>
-        <th>W/Tax</th>
-        <th>SSS</th>
-        <th>PhillHealth</th>
-        <th>Pag-ibig</th>
-        <th>AR/E</th>
-        <th>FCH</th>
-        <th>Salary</th>
-        <th>Calamity</th>
-        <th>Pag. Sal. Ln</th>
-        <th>Net Payable</th>
-        <th>SSS</th>
-        <th>Philhealth</th>
-        <th>Pag-ibig</th>
-      </tr>
-    </thead>
-  
-    <tbody>
-      ${data
-        .map(
-          (row, i) => `
-        <tr>
-          <td class="center">${i + 1}</td>
-          <td class="truncate" title="${row.employee}">
-            ${row.employee}
-          </td>
-          <td class="right">${row.basicPay}</td>
-          <td class="right">${row.overtime}</td>
-          <td class="right">${row.late}</td>
-          <td class="right">${row.absence}</td>
-          <td class="right">${row.total}</td>
-          <td class="right">${row.wTax}</td>
-          <td class="right">${row.sss}</td>
-          <td class="right">${row.philHealth}</td>
-          <td class="right">${row.pagIbig}</td>
-          <td class="right">${row.arE}</td>
-          <td class="right">${row.fch}</td>
-          <td class="right">${row.salary}</td>
-          <td class="right">${row.calamity}</td>
-          <td class="right">${row.pagSalaryLoan}</td>
-          <td class="right bold">${row.netPayable}</td>
-          <td class="right">${row.sssEmpShare}</td>
-          <td class="right">${row.philEmpShare}</td>
-          <td class="right">${row.pagEmpShare}</td>
-        </tr>
-      `
-        )
-        .join("")}
-    </tbody>
-  </table>
-  `;
-  }
-  
+
+  const format = (val: number | string) =>
+    Number(val || 0).toFixed(2)
+
+  const lineWidth = 220
+  const separator = "-".repeat(lineWidth)
+
+  /* GROUP HEADER */
+  const headerGroup =
+    pad("", 152) +
+    pad("SSS LOANS", 24) +
+    pad("", 16) +
+    pad("EMPLOYER SHARE", 14)
+
+  /* COLUMN HEADER */
+  const headerColumns =
+    pad("No", 5) +
+    pad("Employee Name", 30) +
+    pad("Basic", 9) +
+    pad("OT", 9) +
+    pad("Late", 9) +
+    pad("UT", 9) +
+    pad("Absence", 9) +
+    pad("Gross", 9) +
+    pad("W/Tax", 9) +
+    pad("SSS", 9) +
+    pad("PhilH", 9) +
+    pad("PagI", 9) +
+    pad("AR/E", 9) +
+    pad("FCH", 9) +
+    pad("Sal Ln", 9) +
+    pad("Cal Ln", 9) +
+    pad("PagI Ln", 9) +
+    pad("Net Pay", 9) +
+    pad("SSS", 9) +
+    pad("Phil ER", 9) +
+    pad("Pag-ibig", 9)
+
+  /* ROWS */
+  const rows = data.map((row, i) =>
+    pad(String(i + 1), 5) +
+    pad(row.name, 30) +
+    pad(format(row.basicPay), 9, true) +
+    pad(format(row.overtime), 9, true) +
+    pad(format(row.late), 9, true) +
+    pad(format(row.undertime), 9, true) +
+    pad(format(row.absence), 9, true) +
+    pad(format(row.gross), 9, true) +
+    pad(format(row.wtax), 9, true) +
+    pad(format(row.sss), 9, true) +
+    pad(format(row.philhealth), 9, true) +
+    pad(format(row.pagibig), 9, true) +
+    pad(format(row.arE), 9, true) +
+    pad(format(row.fch), 9, true) +
+    pad(format(row.salaryLoan), 9, true) +
+    pad(format(row.calamityLoan), 9, true) +
+    pad(format(row.pagibigSalaryLoan), 9, true) +
+    pad(format(row.netPayable), 9, true) +
+    pad(format(row.sssEmployer), 9, true) +
+    pad(format(row.philEmployer), 9, true) +
+    pad(format(row.pagibigEmployer), 9, true)
+  ).join("\n")
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+
+<style>
+@page { margin: 5mm; }
+
+body {
+  font-family: "Courier New", monospace;
+  font-size: 10pt;
+  margin: 0;
+}
+
+.report-wrapper {
+  padding: 10px;
+}
+
+.report-title {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.separator {
+  border-top: 1px solid #000;
+  margin: 4px 0;
+}
+
+pre {
+  margin: 0;
+  line-height: 1.4;
+  white-space: pre;
+}
+</style>
+
+</head>
+<body>
+
+<div class="report-wrapper">
+
+<div class="report-title">
+  PAYROLL REPORT
+</div>
+
+<div class="separator"></div>
+
+<pre>
+${headerGroup}
+${headerColumns}
+${separator}
+${rows}
+</pre>
+
+</div>
+
+</body>
+</html>
+`
+}

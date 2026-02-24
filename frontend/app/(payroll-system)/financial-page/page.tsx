@@ -6,6 +6,7 @@ import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
+import { printPayroll } from "@/app/utils/printPayrollUtils";
 import { useState } from "react";
 
 
@@ -19,6 +20,7 @@ export default function FinancialPage(){
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
       const [isModalOpen, setIsModalOpen] = useState(false);
+      const [loading, setLoading] = useState(false);
 
       const payCode = data?.data?.[0]?.PayCode ?? "-";
 
@@ -51,6 +53,22 @@ export default function FinancialPage(){
         pagibigEmployer: emp.pagibig_contrib_employer,
     
       }));
+
+        const handlePrint = async () => {
+          try {
+            setLoading(true);
+            await printPayroll(
+              rows
+            );
+          } catch (err) {
+            console.error(err);
+            alert("Failed to print payroll");
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+      
 
 
       const handleSave = () => {
@@ -131,6 +149,12 @@ export default function FinancialPage(){
                  onClick={openModal}
                  className="bg-blue-700 hover:bg-blue-500 hover:cursor-pointer text-white rounded-lg py-2 px-6 text-sm shadow disabled:opacity-50 disabled:hover:cursor-not-allowed">View Variance</button>
               </div>
+              <button
+                onClick={handlePrint}
+                disabled={loading}
+                className="rounded bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white disabled:opacity-50">
+                {loading ? "Generating PDF..." : "Print Payroll"}
+             </button>
               <div className="flex gap-x-4">
                 <button onClick={handleRecheck}
                         disabled={recheckPayroll.isPending || isLoading || isEmpty}
