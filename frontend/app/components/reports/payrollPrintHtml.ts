@@ -159,16 +159,15 @@ export function payrollPrintHtml(data: SpreadsheetRow[]) {
 @page { margin:0; }
 
 body {
-  font-family: "Courier New", monospace;
-  font-size: 12px;  
   margin: 0;
 }
 
 pre {
+font-family: "Courier New", monospace !important;
+  font-size: 12px !important;
   margin-left: 70px;
   margin-top: 40px;
   white-space: pre;
-  
 }
 </style>
 </head>

@@ -196,9 +196,47 @@ model totalPayroll{
   Total_Undertime  Decimal? @db.Decimal(10,2) @map("total_undertime")
 
  employee_archives EmployeePayrollArchive[]
+ total_payroll_by_company totalPayrollByCompany[]
 
   @@map("total_payroll")
 }
+
+
+model totalPayrollByCompany{
+  id Int @id @default(autoincrement())
+  PayCycle String @db.VarChar(20) @map("paycycle")
+  cycle_category  String? @db.VarChar(100) @map("cycle_category")
+  payroll_period String? @db.VarChar(100) @map("payroll_period")
+  Total_GrossPay Decimal? @db.Decimal(10,2) @map("total_grosspay")
+  Total_NetPay Decimal? @db.Decimal(10,2) @map("total_netpay")
+  createdAt DateTime?  @map("created_at")
+  Total_Late  Decimal? @db.Decimal(10,2) @map("total_late")
+  Total_Absent  Decimal? @db.Decimal(10,2) @map("total_absent")
+  Total_OverTimePay Decimal? @db.Decimal(10,2) @map("total_overtime")
+  Total_SSSContributionEmployee Decimal? @db.Decimal(10,2) @map("total_sss_contribution_employee")
+  Total_SSSContributionEmployer Decimal? @db.Decimal(10,2) @map("total_sss_contribution_employer")
+  Total_PagibigContributionEmployee  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution_employee")
+  Total_PagibigContributionEmployer  Decimal? @db.Decimal(10,2) @map("total_pagibig_contribution_employer")
+  Total_PhilhealthContributionEmployee Decimal? @db.Decimal(10,2)  @map("total_philhealth_employee")
+  Total_PhilhealthContributionEmployer Decimal? @db.Decimal(10,2)  @map("total_philhealth_employer")
+  total_wtax Decimal? @db.Decimal(10,2) @map("total_wtax")
+  total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
+  selected_payroll_date Json? @map("selected_payroll_date")
+  Total_Undertime  Decimal? @db.Decimal(10,2) @map("total_undertime")
+ 
+
+
+  total_payroll_id  Int  
+  total_payroll totalPayroll @relation(fields: [total_payroll_id], references: [id])
+
+  company_id  String  
+  company company_details @relation(fields: [company_id], references: [CompanyCode])
+
+
+
+  @@map("total_payroll_by_company")
+}
+
 
 model Employee_payroll{
   payroll_id Int @id @default(autoincrement())
@@ -305,6 +343,8 @@ model company_details{
     branch_code Branch[] @relation
 
     companyRules BonusRuleCompany[] @relation
+
+    total_payroll_by_company totalPayrollByCompany[]
 
     @@map("companydetails")
 }

@@ -31,7 +31,7 @@ export default function AllowancePage(){
             });
         const tableData: AllowanceProps[] = allowance_data?.data ?? [];
         
-        const { data: summary } = useAllowanceSummary(month);
+        //const { data: summary } = useAllowanceSummary(month);
 
         const handleSave = () => {
             SweetAlert.confirmationAlert(
@@ -49,7 +49,7 @@ export default function AllowancePage(){
             {
               header: "Employee",
               render: (row) => `${row.Lastname}, ${row.Firstname}`,
-              footer: "TOTAL",
+
             },
             {
               header: "EMPCODE",
@@ -62,21 +62,22 @@ export default function AllowancePage(){
             {
               header: "Cash Allowance",
               render: (row) => `${row.cash_assistance}`,
-              footer: `₱ ${(summary?.cash_allowance ?? 0).toFixed(2) ?? "0.00"}`,
+           
             },
             {
               header: "Ecola",
               render: (row) => `${row.ecola}`,
-              footer: `₱ ${(summary?.ecola ?? 0).toFixed(2) ?? "0.00"}`,
+      
+            },
+            {
+              header:"TOTAL DEDUCTION",
+              render: (row) => `${row.totalDeduction}`,
+           
             },
             {
               header: "TOTAL",
               accessor: (row) => row.total ?? '0',
-              footer: (
-                <span className="text-lg font-bold">
-                  ₱ {(summary?.total ?? 0).toFixed(2) ?? "0.00"}
-                </span>
-              ),
+            
             },
           ];
           

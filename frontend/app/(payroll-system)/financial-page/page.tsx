@@ -1,13 +1,13 @@
 "use client";
 import CompanyFilter from "@/app/components/CompanyFilter";
 import RequestModal from "@/app/components/Modal";
+import PayrollSpreadsheetPrint from "@/app/components/reports/PrintPayrollSpreadsheet";
 import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadSheet";
 import SweetAlert from "@/app/components/Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
-import { printPayroll } from "@/app/utils/printPayrollUtils";
 import { useState } from "react";
 
 
@@ -17,6 +17,7 @@ import { useState } from "react";
 export default function FinancialPage(){
 
       const { data, isLoading } = useDisplayForApprovalPayroll();
+      const [isPrinting, setIsPrinting] = useState(false);
       const isEmpty = !data || !data.data || data.data.length === 0;
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
@@ -62,20 +63,16 @@ export default function FinancialPage(){
     
       }));
 
-        const handlePrint = async () => {
-          try {
-            setLoading(true);
-            await printPayroll(
-              rows
-            );
-          } catch (err) {
-            console.error(err);
-            alert("Failed to print payroll");
-          } finally {
-            setLoading(false);
-          }
-        };
-        
+      const handlePrint = () => {
+        setIsPrinting(true);
+        setLoading(true);
+      
+        setTimeout(() => {
+          window.print();
+          setLoading(false);
+          setIsPrinting(false);
+        }, 300);
+      };
       
 
 
@@ -149,7 +146,8 @@ export default function FinancialPage(){
 
     return (
         <div className="py-8 px-4">
-            
+         
+         <PayrollSpreadsheetPrint data={rows} />
             <div className="flex justify-between px-4 gap-x-4">
               <div>
                 <button

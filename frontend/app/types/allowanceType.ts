@@ -6,7 +6,7 @@ export interface AllowanceProps {
     total:string | null;
     cash_assistance: string | null;
     ecola: string | null;
-  
+    totalDeduction:string | null;
   }
   
 
