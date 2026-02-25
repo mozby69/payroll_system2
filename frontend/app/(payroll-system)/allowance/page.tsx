@@ -56,8 +56,8 @@ export default function AllowancePage(){
               accessor: (row) => row.EmpCode,
             },
             {
-              header: "ABSENT",
-              accessor: (row) => row.totalAbsentHours ?? '0',
+              header: "DEDUCTIONS",
+              accessor: (row) => row.deduct ?? '0',
             },
             {
               header: "Cash Allowance",
@@ -67,6 +67,11 @@ export default function AllowancePage(){
             {
               header: "Ecola",
               render: (row) => `${row.ecola}`,
+      
+            },
+            {
+              header: "Loan",
+              render: (row) => `${row.loan ?? '0'}`,
       
             },
             {

@@ -8,19 +8,10 @@ import { FileText, Printer } from "lucide-react";
 import RequestModal from "../Modal";
 import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
 import { Pagination } from "../Pagination";
-import FilterBranchPrint from "@/app/ModalContent/Allowance/ViewPrint";
+
+import CompanyBranchSelector from "@/app/ModalContent/Allowance/ViewPrint";
 
 
-{/* <button
-onClick={() => {
-  window.open(
-    "http://localhost:5000/api/general/print?path=/print",
-    "_blank"
-  );
-}}
-className="px-3 py-2 text-sm bg-cyan-800 hover:bg-cyan-600 hover:cursor-pointer text-white rounded">
-<Printer/>
-</button> */}
 
 
 export default function AllowanceArchiveTab(){
@@ -31,6 +22,8 @@ export default function AllowanceArchiveTab(){
             const [isModalOpenPrint, setIsModalOpenPrint] = useState(false);
             const debouncedSearch = useDebounce(search, 400);
             const [selectedRow, setSelectedRow] = useState<AllowanceSummary | null>(null);
+       
+
             const { data: allowance_data } = useFetchAllowanceSummary({
                             page,
                             limit: 5,
@@ -73,7 +66,7 @@ export default function AllowanceArchiveTab(){
                                 </button>
 
                                 <button
-                                  onClick={() => {openModalPrint() }}
+                                  onClick={() => {openModalPrint(row) }}
                                   className="px-3 py-2 text-sm bg-cyan-800 hover:bg-cyan-600 hover:cursor-pointer text-white rounded">
                                  <Printer/>
                                 </button>
@@ -83,25 +76,26 @@ export default function AllowanceArchiveTab(){
                           
                        ];
                        
-        const openModal = (row: AllowanceSummary) => {
-          setSelectedRow(row);
-          setIsModalOpen(true);
-        };
+                  const openModal = (row: AllowanceSummary) => {
+                    setSelectedRow(row);
+                    setIsModalOpen(true);
+                  };
 
-        const closeModal = () => {
-          setIsModalOpen(false);
-          setSelectedRow(null);
-        };
+                  const closeModal = () => {
+                    setIsModalOpen(false);
+                    setSelectedRow(null);
+                  };
 
-        const openModalPrint = () => {
-          setIsModalOpenPrint(true);
-        };
-        
+                  const openModalPrint = (row:AllowanceSummary) => {
+                    setSelectedRow(row);
+                    setIsModalOpenPrint(true);
+                  };
+                  
 
-        const closeModalPrint = () => {
-          setIsModalOpenPrint(false);
-        };
-  
+                  const closeModalPrint = () => {
+                    setIsModalOpenPrint(false);
+                  };
+            
 
             return(
         
@@ -141,8 +135,8 @@ export default function AllowanceArchiveTab(){
 
 
           {isModalOpenPrint && (
-              <RequestModal size="xl" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
-                <FilterBranchPrint/>
+              <RequestModal size="sm" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
+                  <CompanyBranchSelector selectedMonth={selectedRow?.selectedMonth ?? ""}/>
               </RequestModal>
             )}
 

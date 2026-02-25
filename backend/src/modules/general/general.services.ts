@@ -96,7 +96,7 @@ export async function appendMissingBodEmployees(tx: Prisma.TransactionClient, em
 
 
 
-// FILTER COMPANY OR BY BRANCH FOR SPREADSHEET
+// FILTER COMPANY FOR SPREADSHEET
 
 export async function getCompaniesByCycle(cycle: string) {
   const companies = await prisma.company_details.findMany({
@@ -116,6 +116,8 @@ export async function getCompaniesByCycle(cycle: string) {
 
 
 
+
+ 
 
 
 

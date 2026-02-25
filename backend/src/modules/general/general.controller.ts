@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
-import puppeteer from "puppeteer";
+import {  getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import { getBrowser } from "../../utils/pdfBrowser";
 
 export async function getCompanyDetailsController(
    req: Request,
@@ -47,27 +47,33 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
         return res.status(400).send("Missing path parameter");
       }
   
-      const browser = await puppeteer.launch();
+      const browser = await getBrowser(); // reused
       const page = await browser.newPage();
   
       const fullUrl = `http://localhost:3000${path}`;
   
       await page.goto(fullUrl, {
-        waitUntil: "networkidle0",
+        waitUntil: "networkidle2",
+       // waitUntil: "domcontentloaded"
       });
-  
+
+   
       const pdf = await page.pdf({
         format: "A4",
         printBackground: true,
       });
   
-      await browser.close();
+      await page.close(); // close page only
   
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "inline");
       res.send(pdf);
+  
     } catch (error) {
       console.error(error);
       res.status(500).send("PDF generation failed");
     }
   };
+
+
+

@@ -7,17 +7,21 @@ export interface AllowanceProps {
     cash_assistance: string | null;
     ecola: string | null;
     totalDeduction:string | null;
-  }
+    loan: string | null;
+    deduct:string | null;
+}
   
 
-  export interface AllowanceMeta {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }
+export interface AllowanceMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
   
-  export interface AllowanceListResponse {
+
+
+export interface AllowanceListResponse {
     data: AllowanceProps[];
     meta: AllowanceMeta;
 }
@@ -40,7 +44,7 @@ export interface AllowanceSummaryResponse{
 
 
 export interface ArchiveAllowance {
-  EmpCode: string;
+  EmpCodeId: string;
   name: string;
   cash_allowance: number | null;
   ecola: number | null;
@@ -53,4 +57,32 @@ export interface ArchiveAllowance {
 
 export interface ArchiveAllowanceResponse {
   data: ArchiveAllowance[];
+}
+
+
+
+
+export interface Company {
+  CompanyCode: string;
+  CompanyName: string;
+  CompanyCycle: string | null;
+}
+
+export interface Branch {
+  branchCode: string;
+  Location: string | null;
+  company_id: string | null;
+}
+
+
+
+export interface PrintAllowanceRow {
+  EmpCodeId: string;
+  name: string;
+  cash_allowance: number | null;
+  ecola: number | null;
+  totalDeduction: number | null;
+  total: number | null;
+  deduct: number | null;
+  loan:number | null;
 }

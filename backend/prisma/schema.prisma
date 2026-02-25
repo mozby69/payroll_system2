@@ -125,6 +125,7 @@ model Employee {
   employee_bonues EmployeeBonus[] @relation()
   employee_salary_history EmployeeSalaryHistory[] @relation()
   bod_philhealth BodPhilhealtContrib[] @relation()
+  archive_allowance archive_allowance[] @relation()
   @@map("employee")
 }
 
@@ -599,21 +600,24 @@ model tax_table{
 model archive_allowance {
   id Int @id @default(autoincrement())
 
-  EmpCode String @db.VarChar(20) @map("EmpCodeId")
+  EmpCodeId String @db.VarChar(20) @map("EmpCodeId")
   name String @db.VarChar(200)
 
   cash_allowance Decimal? @db.Decimal(10,2)
   ecola Decimal? @db.Decimal(10,2)
-  absent Decimal? @db.Decimal(10,2)
+  absent_count Decimal? @db.Decimal(10,2)
+  deduct Decimal? @db.Decimal(10,2)
   total Decimal? @db.Decimal(10,2)
+  loan Decimal? @db.Decimal(10,2)
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
   createdAt DateTime @map("created_at")
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
 
   summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
-  @@unique([EmpCode, selectedMonth])
+  @@unique([EmpCodeId, selectedMonth])
   @@map("archive_allowance")
 }
 
@@ -626,6 +630,8 @@ model archive_allowance_summary {
   total_cash_allowance Decimal? @db.Decimal(10,2)
   total_ecola Decimal? @db.Decimal(10,2)
   grand_total Decimal? @db.Decimal(10,2)
+  totalAbsent Decimal? @db.Decimal(10,2)
+  totalLoan Decimal? @db.Decimal(10,2)
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
   createdAt DateTime @map("created_at")
 
