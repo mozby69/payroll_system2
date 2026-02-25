@@ -1,4 +1,6 @@
-import printer from "printer"
+import { writeFileSync, unlinkSync } from "fs"
+import { exec } from "child_process"
+import path from "path"
 
 function padRight(text: any, width: number) {
   return String(text ?? "").padEnd(width, " ").substring(0, width)
@@ -12,14 +14,13 @@ function format(num: number) {
   return Number(num || 0).toFixed(2)
 }
 
-export function generatePayrollRaw(rows: any[]) {
+function generatePayrollRaw(rows: any[]) {
 
   let output = ""
 
-  // ESC/P initialize
-  output += "\x1B\x40"     // reset
+  output += "\x1B\x40"     // Initialize
   output += "\x1B\x50"     // 10 CPI
-  output += "\x1B\x6C\x00" // left margin 0
+  output += "\x1B\x6C\x00" // Left margin 0
 
   const pageWidth = 132
   const linesPerPage = 55
@@ -96,11 +97,19 @@ export function printPayroll(rows: any[]) {
 
   const raw = generatePayrollRaw(rows)
 
-  printer.printDirect({
-    data: raw,
-    printer: "EPSON FX-2175II",
-    type: "RAW",
-    success: () => console.log("Payroll printed"),
-    error: err => console.error(err)
+  const tempPath = path.join(__dirname, "payroll_print.txt")
+
+  writeFileSync(tempPath, raw, { encoding: "ascii" })
+
+  const printerName = "EPSON FX-2175II"
+
+  exec(`print /D:"${printerName}" "${tempPath}"`, (error) => {
+    unlinkSync(tempPath)
+
+    if (error) {
+      console.error("Print error:", error)
+    } else {
+      console.log("Payroll printed successfully")
+    }
   })
 }

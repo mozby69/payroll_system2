@@ -8,7 +8,8 @@ import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useReactToPrint } from "react-to-print"
 
 
 
@@ -24,7 +25,9 @@ export default function FinancialPage(){
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading, setLoading] = useState(false);
       const [selectedCompany, setSelectedCompany] = useState("");
+      const printRef = useRef<HTMLDivElement>(null)
 
+   
 
       const payCode = data?.data?.[0]?.PayCode ?? "-";
       const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
@@ -144,10 +147,16 @@ export default function FinancialPage(){
           setIsModalOpen(false);
         };
 
-    return (
+
+        const handlePrint1 = useReactToPrint({
+          contentRef: printRef,
+          documentTitle: `Payroll-${payCode}`,
+        })
+
+    return ( 
         <div className="py-8 px-4">
          
-         <PayrollSpreadsheetPrint data={rows} />
+       
             <div className="flex justify-between px-4 gap-x-4">
               <div>
                 <button
@@ -156,7 +165,7 @@ export default function FinancialPage(){
                  className="bg-blue-700 hover:bg-blue-500 hover:cursor-pointer text-white rounded-lg py-2 px-6 text-sm shadow disabled:opacity-50 disabled:hover:cursor-not-allowed">View Variance</button>
               </div>
               <button
-                onClick={handlePrint}
+                onClick={handlePrint1}
                 disabled={loading}
                 className="rounded bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white disabled:opacity-50">
                 {loading ? "Generating PDF..." : "Print Payroll"}
@@ -199,7 +208,7 @@ export default function FinancialPage(){
                         </RequestModal>
                       )}
 
-
+<PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
         </div>
     );
 }

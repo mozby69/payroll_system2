@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import { getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import { string } from "zod";
 
 export async function getCompanyDetailsController(
    req: Request,
@@ -29,6 +30,22 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
       }
   
       const result = await getCompaniesByCycle(cycle);
+      return res.json({ success: true, data: result });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  }
+
+
+  
+export async function getCompaniesByCodeController(req: Request, res: Response) {
+    try {
+      const CompanyCode = req.params.CompanyCode
+      if(!CompanyCode || typeof CompanyCode !== "string"){
+          return res.status(400).json({message:"code is required"});
+      }
+      const result = await getCompaniesByCode(CompanyCode);
       return res.json({ success: true, data: result });
     } catch (err) {
       console.error(err);

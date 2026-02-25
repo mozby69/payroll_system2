@@ -52,5 +52,18 @@ export interface EmployeeSummary {
   };
 
 
+  export interface Company {
+    CompanyCode: string;
+    CompanyName: string | null;
+    CompanyCycle: string | null;
+  }
+  
+  export interface CompaniesResponse {
+    success: boolean;
+    data: Company[];
+  }
+  
+
+
 
   

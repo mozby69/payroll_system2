@@ -113,3 +113,22 @@ export async function getCompaniesByCycle(cycle: string) {
 
   return companies;
 }
+
+
+// FILTER COMPANY BY COMPANY CODE
+
+export async function getCompaniesByCode(CompanyCode: string) {
+  const companies = await prisma.company_details.findMany({
+    where: {
+      CompanyCode: CompanyCode, 
+    },
+    select: {
+      CompanyCode: true,
+      CompanyName: true,
+      CompanyCycle: true,
+    },
+    orderBy: { CompanyCode: "asc" },
+  });
+
+  return companies;
+}

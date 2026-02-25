@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCompanyDetailsServices } from "../services/general.services";
-import { CompanyDetailsType } from "../types/generalTypes";
+import { getCompanyDetailsByCodeServices, getCompanyDetailsServices } from "../services/general.services";
+import { CompaniesResponse, CompanyDetailsType } from "../types/generalTypes";
 import api from "../services/axios";
 
 
@@ -14,16 +14,6 @@ export function useGetCompanyDetails(){
 }
 
 
-interface Company {
-    CompanyCode: string;
-    CompanyName: string | null;
-    CompanyCycle: string | null;
-  }
-  
-  interface CompaniesResponse {
-    success: boolean;
-    data: Company[];
-  }
   
   export function useCompaniesByCycle(cycle: string) {
     return useQuery<CompaniesResponse>({
@@ -36,4 +26,13 @@ interface Company {
       },
         enabled: !!cycle,
     });
+  }
+
+
+  export function useGetCompanyByCode(companyCode: string) {
+    return useQuery({
+      queryKey: ["companies-by-code", companyCode],
+      queryFn: () => getCompanyDetailsByCodeServices(companyCode),
+      enabled: !!companyCode,
+    })
   }

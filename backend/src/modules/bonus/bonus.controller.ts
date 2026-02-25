@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
-import { approveBonusService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService } from "./bonus.services"
-import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema } from "./bonus.schema"
-import { json } from "zod";
+import { approveBonusService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
+import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema, updateBonusSchema } from "./bonus.schema"
+import z, { json } from "zod";
 
 
 
@@ -462,6 +462,61 @@ export async function getEmployeesByBonusSummaryController(
         employees: [],
       },
       message: error.message,
+    })
+  }
+}
+
+
+export async function updateBonusController(
+  req: Request,
+  res: Response
+) {
+  try {
+    // Validate request body
+    const validated = updateBonusSchema.parse({
+      id: Number(req.params.id),
+      bonusAmount: Number(req.body.bonusAmount)
+    })
+
+    // Ensure authenticated user exists
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      })
+    }
+
+    const result = await updateBonusService(
+      validated.id,
+      validated.bonusAmount,
+      req.user.id
+    )
+    return res.status(200).json({
+      success: true,
+      message: "Bonus updated successfully",
+      data: result
+    })
+
+  } catch (error: any) {
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: error.issues
+      })
+    }
+    if (error.message === "Bonus not found") {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      })
+    }
+    console.error("Update Bonus Error:", error)
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
     })
   }
 }

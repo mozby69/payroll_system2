@@ -83,6 +83,7 @@ export default function EditBonusModal({ bonus, onClose }: Props) {
           </label>
           <input
             type="number"
+            disabled
             value={loan}
             onChange={(e) => setLoan(Number(e.target.value))}
             className="w-full border rounded-md px-3 py-2"
