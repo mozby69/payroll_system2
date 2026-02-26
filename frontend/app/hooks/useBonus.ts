@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BonusRule, CreateBonusRuleCompanyForm, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
-import { approveBonusService, createBonusCompanyRulesServices, createBonusrules, deleteBonusCompanyBonusServices, deleteBonusRuleServices, generateBonus, getAllBonusRules, getBonusCompanyRulesServices, getBonusSummaryService, getEmployeeBonus, getEmployeeGeneratedBonusService, resetBonusService, submitBonusService, updateBonusRuleServices } from "../services/bonus.services";
+import { approveBonusService, createBonusCompanyRulesServices, createBonusrules, deleteBonusCompanyBonusServices, deleteBonusRuleServices, generateBonus, getAllBonusRules, getBonusCompanyRulesServices, getBonusSummaryService, getEmployeeBonus, getEmployeeGeneratedBonusService, resetBonusService, submitBonusService, updateBonusRuleServices, updateBonusService } from "../services/bonus.services";
 import { BonusCompanyRule, BonusSummaryType, EmployeeBonus, EmployeeGenerateBonusResponse } from "../types/bonusType";
 
 export function useGetAllBonusRules(){
@@ -184,3 +184,18 @@ export function useGetEmployeeGeneratedBonus(
     })
   }
   
+
+  export function useUpdateBonus(){
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            id, bonusAmount
+        }: {
+            id: number,
+            bonusAmount: number
+        }) => updateBonusService(id, bonusAmount),
+        onSuccess:  () => {
+            queryClient.invalidateQueries({queryKey: ["generated-bonus"]})
+        }
+    })
+  }

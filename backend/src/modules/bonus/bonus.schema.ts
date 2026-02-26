@@ -46,3 +46,9 @@ export const updateBonusRuleSchema = z.object({
 
   export type CreateBonusRuleCompanyInput = z.infer<typeof createBonusRuleCompanySchema>
 
+
+  export const updateBonusSchema = z.object({
+    id: z.number().int().positive(),
+    bonusAmount: z.number().min(0)
+  })
+

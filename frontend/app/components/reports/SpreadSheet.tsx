@@ -46,7 +46,7 @@ interface Props {
 
 export default function SpreadSheet({ data,totals }: Props) {
   return (
-    <div className="print-area w-full p-4">
+    <div className="print-area1 w-full p-4">
       <table className="w-full border-collapse text-[9pt] table-auto">
         <thead>
           <tr className="border border-gray-300">

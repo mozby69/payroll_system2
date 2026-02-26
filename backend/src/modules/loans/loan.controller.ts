@@ -2,10 +2,20 @@ import { Request, Response } from "express";
 import { saveEmployeeLoan } from "../loans/loan.service";
 import * as loanService from "../loans/loan.service"
 import { LOAN_ACTION_TYPES, LoanActionType } from "./loan.types";
+import { LoanLimitError } from "./loan.error";
 
 export const addEmployeeLoanController = async (req: Request, res: Response) => {
   try {
-    const { empCode,loan_type,principal,term_value,term_unit,start_date, deduct_allowance, others_type } = req.body;
+    const {
+      empCode,
+      loan_type,
+      principal,
+      term_value,
+      term_unit,
+      start_date,
+      deduct_allowance,
+      others_type,
+    } = req.body;
 
     if (!empCode || !loan_type || !principal || !term_value || !term_unit || !start_date) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -19,17 +29,43 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
       term_unit,
       start_date: new Date(start_date),
       deduct_allowance: Boolean(deduct_allowance),
-      others_type
+      others_type,
     });
 
     return res.status(201).json(loan);
+
   } catch (error: any) {
+
+  
+    if (error instanceof LoanLimitError) {
+      return res.status(400).json({
+        code: "LOAN_LIMIT_EXCEEDED",
+        message: error.message,
+        details: error.details,
+      });
+    }
+
+ 
+    if (error.message === "You have Existing Active Loan") {
+      return res.status(400).json({
+        code: "DUPLICATE_LOAN",
+        message: error.message,
+      });
+    }
+
+    if (error.message === "Enter Employee Basic Salary First.") {
+      return res.status(400).json({
+        code: "MISSING_SALARY",
+        message: error.message,
+      });
+    }
+
+
     return res.status(500).json({
-      message: error.message ?? "Loan creation failed",
+      message: "Loan creation failed",
     });
   }
 };
-
 
 const normalizeArray = (value: unknown): string[] | undefined => {
   if (value === undefined) return undefined;

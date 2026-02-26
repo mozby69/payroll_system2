@@ -40,19 +40,7 @@ export default function StepReviewSave({ onBack }: Props) {
 
   
 
-  const handlePrint = async () => {
-    try {
-      setLoading(true);
-      await printPayroll(
-    dummySummary
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to print payroll");
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const rows: SpreadsheetRow[] = (data?.data ?? [])
   .filter((emp) => {
@@ -71,7 +59,7 @@ export default function StepReviewSave({ onBack }: Props) {
     sss: emp.sss_contrib_employee,
     philhealth: emp.philhealth_contrib_employee,
     pagibig: emp.pagibig_contrib_employee,
-    arE: 0,
+    arE: emp.are_loan,
     rfc:emp.rfc_loan,
     fch: emp.fch_loan,
     salaryLoan: emp.sss_loan,
@@ -82,7 +70,12 @@ export default function StepReviewSave({ onBack }: Props) {
     philEmployer: emp.philhealth_contrib_employer,
     pagibigEmployer: emp.pagibig_contrib_employer,
 
+    
+
   }));
+
+
+
 
   
 
@@ -121,6 +114,20 @@ export default function StepReviewSave({ onBack }: Props) {
       pagibigEmployer: 0,
     }
   );
+
+  const handlePrint = async () => {
+    try {
+      setLoading(true);
+      await printPayroll(
+        rows
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to print payroll");
+    } finally {
+      setLoading(false);
+    }
+  };
   
 
   return (

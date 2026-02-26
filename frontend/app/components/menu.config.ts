@@ -61,12 +61,7 @@ import {
           icon: User,
           permission: "BONUS_GENERATE"
         },
-        {
-          label: "Employees Payslip",
-          path: "/payslip",
-          icon: Receipt,
-          permission: "BONUS_GENERATE"
-        }
+     
       ]
     },
     {

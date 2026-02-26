@@ -966,5 +966,54 @@ export async function getEmployeesByBonusSummarySerive(
 }
 
 
+export async function updateBonusService(
+  id: number,
+  bonusAmount: number,
+  performedById: number,
+) {
+  return prisma.$transaction(async (tx) => {
+
+    const existing = await tx.employeeBonus.findUnique({
+      where: { id }
+    })
+
+    if (!existing) {
+      throw new Error("Bonus not found")
+    }
+
+    const loanDeduction = existing.loanDeduction?.toNumber() ?? 0
+
+    const netAmount = bonusAmount - loanDeduction
+
+    const updated = await tx.employeeBonus.update({
+      where: { id },
+      data: {
+        amount: bonusAmount,
+        netAmount,
+        updatedAt: new Date() // also fix field name if typo
+      }
+    })
+
+    await tx.auditLog.create({
+      data: {
+        module: "BONUS",
+        action: "UPDATE",
+        referenceId: id,
+        referenceCode: existing.employeeCode ?? null,
+        description: `Updated bonus amount from ${existing.amount} to ${bonusAmount}`,
+        metadata: {
+          oldAmount: existing.amount,
+          newAmount: bonusAmount,
+          loanDeduction,
+          netAmount
+        },
+        performedById,
+      }
+    })
+
+    return updated
+  })
+}
+
 
 

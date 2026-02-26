@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import {  getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import { getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
 
 export async function getCompanyDetailsController(
@@ -38,6 +39,20 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
   }
 
 
+  
+export async function getCompaniesByCodeController(req: Request, res: Response) {
+    try {
+      const CompanyCode = req.params.CompanyCode
+      if(!CompanyCode || typeof CompanyCode !== "string"){
+          return res.status(400).json({message:"code is required"});
+      }
+      const result = await getCompaniesByCode(CompanyCode);
+      return res.json({ success: true, data: result });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  }
 
   export const generatePdfController = async (req: Request, res: Response) => {
     try {

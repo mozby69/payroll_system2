@@ -16,6 +16,8 @@ import allowanceRoutes from "../modules/allowance/allowance.routes";
 import varianceRoutes from '../modules/variance/variance.routes';
 import statutoryRoutes from '../modules/statutory_deductions/statutory.routes';
 import disburseRoutes from '../modules/Disburse/disburse.routes';
+import printeRoutes from '../modules/print/print.routes';
+
 const router = Router();
 
 
@@ -50,6 +52,9 @@ router.use("/loans", addLoanRoutes);
 router.use("/Disburse", disburseRoutes);
 // Disburse code ↑
 
+
+//Print
+router.use("/print", printeRoutes)
 
 
 

@@ -469,6 +469,8 @@ model EmployeeBonus {
   netAmount         Decimal      @db.Decimal(12, 2)
   paidAt            DateTime?
   resetAt     DateTime?
+  updatedAt     DateTime?
+
 
   employee          Employee?     @relation(fields: [employeeCode], references: [EmpCode])
   bonusRule         BonusRule?    @relation(fields: [bonusRuleId], references: [id])

@@ -77,7 +77,7 @@ export const getEmployeeByEmpCode = async (
 export const updateEmployeePayrollByEmpCode = async (req:Request, res:Response) =>{
     try{
         const {empCode} = req.params;
-        const {basicSalary,cashAssistance,ecola} = req.body;
+        const {basicSalary,cashAssistance,ecola,pagibigEmployeeShare} = req.body;
 
         if (!empCode){
           return res.status(400).json({message: "Employee code is required" });
@@ -89,6 +89,7 @@ export const updateEmployeePayrollByEmpCode = async (req:Request, res:Response) 
             basicSalary: Number(basicSalary),
             cashAssistance: Number(cashAssistance),
             ecola: Number(ecola),
+            pagibigEmployeeShare: Number(pagibigEmployeeShare)
           }
         );
 

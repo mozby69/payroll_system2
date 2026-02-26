@@ -76,10 +76,13 @@ export function useUpdateEmployeePayroll() {
     mutationFn: (payload: UpdateEmployeePayrollPayload) =>
       updateEmployeePayroll(payload),
 
-    onSuccess: () => {
+    onSuccess: (_,variables) => {
       // 🔄 Refetch employees list after update
       queryClient.invalidateQueries({
         queryKey: ["employees"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["employee-profile", variables.empCode],
       });
     },
   });

@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { EmployeeSummaryTypes } from "../api/api.types";
 import { nowPH } from "../../utils/timezone";
-import puppeteer from "puppeteer";
 
 
 export async function getCompanyDetailsServices() {
@@ -115,6 +114,23 @@ export async function getCompaniesByCycle(cycle: string) {
 }
 
 
+// FILTER COMPANY BY COMPANY CODE
+
+export async function getCompaniesByCode(CompanyCode: string) {
+  const companies = await prisma.company_details.findMany({
+    where: {
+      CompanyCode: CompanyCode, 
+    },
+    select: {
+      CompanyCode: true,
+      CompanyName: true,
+      CompanyCycle: true,
+    },
+    orderBy: { CompanyCode: "asc" },
+  });
+
+  return companies;
+}
 
 
  
