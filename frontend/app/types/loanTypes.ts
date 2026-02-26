@@ -191,3 +191,30 @@ export type EmployeeSearchItem = {
   Firstname: string;
   Lastname: string;
 };
+
+
+export interface LoanLimitDetails {
+  employee: {
+    empCode?: string;
+    employmentStatus?: string;
+  };
+  salary: {
+    netPerPayroll: number;
+    maxAllowedLoanDeduction: number;
+  };
+  loans: {
+    existingLoans: Array<{
+      per_payroll_deduct: number;
+    }>;
+    totalExistingLoanDeduction: number;
+    newLoanDeduction: number;
+    totalWithNewLoan: number;
+    excessAmount: number;
+  };
+}
+
+export interface ApiErrorResponse {
+  code?: string;
+  message?: string;
+  details?: LoanLimitDetails;
+}

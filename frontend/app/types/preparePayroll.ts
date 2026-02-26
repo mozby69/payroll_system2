@@ -177,5 +177,6 @@ export interface PayrollEmployee {
   fch_loan:number;
   pagibig_loan:number;
   sss_loan:number;
+  are_loan:number;
   // Loan Code ↑
 }

@@ -163,6 +163,35 @@
   }
 }
 
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+    padding-inline: 1rem;
+  }
+
+  .print-container {
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  table {
+    border-collapse: collapse;
+  }
+}
+
+.print-only {
+  display: none;
+}
+
 /* @container (min-width: 40rem) {
   .card {
     background: var(--color-primary);

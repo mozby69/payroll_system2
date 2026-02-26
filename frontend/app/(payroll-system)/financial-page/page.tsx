@@ -49,7 +49,7 @@ export default function FinancialPage(){
         sss: emp.sss_contrib_employee,
         philhealth: emp.philhealth_contrib_employee,
         pagibig: emp.pagibig_contrib_employee,
-        arE: 0,
+        arE: emp.are_loan,
 
         // Loan Code ↓
         rfc: emp.rfc_loan,

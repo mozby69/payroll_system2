@@ -36,17 +36,20 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
     basicSalary: "",
     cashAssistance: "",
     ecola: "",
+    pagibigEmployeeShare: "",
   });
 
   const [originalValues, setOriginalValues] = useState({
     basicSalary: "",
     cashAssistance: "",
     ecola: "",
+    pagibigEmployeeShare: "",
   });
   const isDirty =
   formValues.basicSalary !== originalValues.basicSalary ||
   formValues.cashAssistance !== originalValues.cashAssistance ||
-  formValues.ecola !== originalValues.ecola;
+  formValues.ecola !== originalValues.ecola ||
+  formValues.pagibigEmployeeShare !== originalValues.pagibigEmployeeShare;
 
   const details = data?.employeepr?.[0] ?? null;
   const payInfo = data?.employeepayroll;
@@ -92,6 +95,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       basicSalary: String(payInfo.BasicSalary ?? ""),
       cashAssistance: String(payInfo.CashAssistance ?? ""),
       ecola: String(payInfo.Ecola ?? ""),
+      pagibigEmployeeShare: String(payInfo.pagibigEmployeeShare ?? ""),
     };
 
     setFormValues(initial);
@@ -178,8 +182,9 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
         basicSalary: Number(formValues.basicSalary),
         cashAssistance: Number(formValues.cashAssistance),
         ecola: Number(formValues.ecola),
+        pagibigEmployeeShare: Number(formValues.pagibigEmployeeShare),
       });
-
+      SweetAlert.successAlert("Saved Changes Successfully");
       setOriginalValues(formValues);
 
     } catch (error) {
@@ -474,7 +479,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                           <span className="text-sm text-gray-500">SSS Contribution</span>
                           <input
                             type="text"
-                            value={payInfo?.Ecola || "None"}
+                            value={payInfo?.sssContribEmployee || "None"}
                             readOnly
                             className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
                           />
@@ -482,10 +487,15 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
 
                         <div className="flex flex-col gap-y-1 col-span-2">
                           <span className="text-sm text-gray-500">Pag-ibig Contribution</span>
-                          <input
-                            type="text"
-                            value={payInfo?.Ecola || "None"}
-                            readOnly
+                            <input
+                              type="number"
+                              value={formValues.pagibigEmployeeShare}
+                              onChange={(e) =>
+                                setFormValues(prev => ({
+                                  ...prev,
+                                  pagibigEmployeeShare: e.target.value
+                                }))
+                              }
                             className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
                           />
                         </div>
@@ -498,7 +508,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                           <span className="text-sm text-gray-500">Phil-Health Contribution</span>
                           <input
                             type="text"
-                            value={payInfo?.Ecola || "None"}
+                            value={payInfo?.philhealthRateEmployee || "None"}
                             readOnly
                             className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
                           />
@@ -587,6 +597,16 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                       <p className="font-semibold">
                         {loan.deduct_allowance ? "Yes" : "No"}
                       </p>
+                    </div>
+
+                    <div className="inline-flex items-end">
+                        <span
+                          className={`text-sm font-medium px-2 py-1 rounded ${
+                            loan.status === "ACTIVE" ? "bg-positive" : "bg-negative"
+                          } text-white`}
+                          >
+                          {loan.status}
+                        </span>
                     </div>
                   </div>
                 ))}

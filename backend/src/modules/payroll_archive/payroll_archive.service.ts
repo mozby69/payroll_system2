@@ -130,14 +130,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
     const payrollCycle = payCycle.split("-")[0];
 
-    console.log("=== PAYROLL CONTEXT ===");
-    console.log(empCodes)
-    console.log({
-      payrollPeriod,
-      payYear,
-      payMonth,
-      payrollCycle,
-    });
+    // console.log("=== PAYROLL CONTEXT ===");
+    // console.log(empCodes)
+    // console.log({
+    //   payrollPeriod,
+    //   payYear,
+    //   payMonth,
+    //   payrollCycle,
+    // });
 
 
     const loans = await prisma.loan_details.findMany({
@@ -145,7 +145,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         EmpCodeId: { in: empCodes },
         status: "ACTIVE",
         loan_type: {
-          in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN"],
+          in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"],
         },
       },
       select: {
@@ -156,15 +156,15 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       },
     });
 
-    console.log("=== ACTIVE LOANS ===");
-    console.table(
-      loans.map(l => ({
-        loan_id: l.loan_id,
-        emp: l.EmpCodeId,
-        type: l.loan_type,
-        amount: Number(l.per_payroll_deduct),
-      }))
-    );
+    // console.log("=== ACTIVE LOANS ===");
+    // console.table(
+    //   loans.map(l => ({
+    //     loan_id: l.loan_id,
+    //     emp: l.EmpCodeId,
+    //     type: l.loan_type,
+    //     amount: Number(l.per_payroll_deduct),
+    //   }))
+    // );
 
 
     const loanIds = loans.map(l => l.loan_id);
@@ -181,14 +181,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       }
     }
 
-    console.log("=== LATEST LEDGER PER LOAN ===");
-    for (const [loanId, ledger] of latestLedger.entries()) {
-      console.log({
-        loan_id: loanId,
-        transaction_date: ledger.transaction_date,
-        payroll_cycle: ledger.payroll_cycle,
-      });
-    }
+    // console.log("=== LATEST LEDGER PER LOAN ===");
+    // for (const [loanId, ledger] of latestLedger.entries()) {
+    //   console.log({
+    //     loan_id: loanId,
+    //     transaction_date: ledger.transaction_date,
+    //     payroll_cycle: ledger.payroll_cycle,
+    //   });
+    // }
 
 
     const loanByEmp: Record<string, any> = {};
@@ -205,16 +205,16 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           ledger.payroll_cycle === payrollCycle;
       }
       
-      console.log("=== LOAN CHECK ===");
-      console.log({
-        loan_id: loan.loan_id,
-        emp: loan.EmpCodeId,
-        type: loan.loan_type,
-        amount: Number(loan.per_payroll_deduct),
-        ledger_date: ledger?.transaction_date,
-        ledger_cycle: ledger?.payroll_cycle,
-        alreadyDeducted,
-      });
+      // console.log("=== LOAN CHECK ===");
+      // console.log({
+      //   loan_id: loan.loan_id,
+      //   emp: loan.EmpCodeId,
+      //   type: loan.loan_type,
+      //   amount: Number(loan.per_payroll_deduct),
+      //   ledger_date: ledger?.transaction_date,
+      //   ledger_cycle: ledger?.payroll_cycle,
+      //   alreadyDeducted,
+      // });
       if (!loanByEmp[loan.EmpCodeId]) {
         loanByEmp[loan.EmpCodeId] = {};
       }
@@ -283,9 +283,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         const sss_loan = loanDeduct(loans.SSS_LOAN);
         const pagibig_loan = loanDeduct(loans.PAGIBIG_LOAN);
         const rfc_loan = loanDeduct(loans.RFC_LOAN);
+        const are_loan = loanDeduct(loans.ARE_LOAN);
         // Loan Code ↑
 
-        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan;
+        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan;
 
 
         const overTime = computeOvertime(basicSalary, {
@@ -314,6 +315,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           sss_loan,
           pagibig_loan,
           rfc_loan,
+          are_loan,
           // Loan Code ↑
 
           sss_contrib_employee:sssContribEmployee,
@@ -399,7 +401,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       where: {
         EmpCodeId: { in: empCodes },
         status: "ACTIVE",
-        loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN"] },
+        loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"] },
       },
       select: {
         loan_id: true,
@@ -638,6 +640,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           sss_loan: loanDeduct(empLoans.SSS_LOAN),
           pagibig_loan: loanDeduct(empLoans.PAGIBIG_LOAN),
           rfc_loan: loanDeduct(empLoans.RFC_LOAN),
+          ar_e: loanDeduct(empLoans.ARE_LOAN),
           // Loan Code ↑
 
           isNewEmployee:emp.EmpCode.isNewEmployee,

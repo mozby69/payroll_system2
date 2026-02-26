@@ -15,7 +15,8 @@ import ActiveFilters from "@/app/components/FilterObject";
 import FilterModal from "@/app/components/Filter";
 import LoanCard from "@/app/components/loans/loanCard";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
-import { AreType, EmployeeSearchItem, LoanType, TermUnit } from "@/app/types/loanTypes";
+import { ApiErrorResponse, AreType, EmployeeSearchItem, LoanType, TermUnit } from "@/app/types/loanTypes";
+import { AxiosError } from "axios";
 
 
 type TabKey = "apply"| "are" | "loan-list" ;
@@ -63,25 +64,30 @@ function LoanApplyContent() {
     const [startDate, setStartDate] = useState("");
     const [deductAllowance, setDeductAllowance] = useState(false);
     const [selectedBonus, setSelectedBonus] = useState("");
+    const [calamity, setCalamity] = useState("");
 
 
-     const resetApplyForm = () => {
-    setSelectedEmp(null);
-    setSearch("");
-    setLoanType("FCH_LOAN");
-    setPrincipal("");
-    setTermValue(1);
-    setTermUnit("MONTHS");
-    setStartDate("");
-    setDeductAllowance(false);
-    setSelectedBonus("");
-  };
+    const resetApplyForm = () => {
+      setSelectedEmp(null);
+      setSearch("");
+      setLoanType("FCH_LOAN");
+      setPrincipal("");
+      setTermValue(1);
+      setTermUnit("MONTHS");
+      setStartDate("");
+      setDeductAllowance(false);
+      setSelectedBonus("");
+      setCalamity("");
+    };
+  
+
 
   const handleSave = async () => {
     if (!selectedEmp || !principal || !startDate)
       return;
 
     try {
+      
       const result =
         await addLoan.mutateAsync({
           empCode: selectedEmp.EmpCode,
@@ -91,7 +97,12 @@ function LoanApplyContent() {
           term_unit: termUnit,
           start_date: startDate,
           deduct_allowance: deductAllowance,
-          others_type: selectedBonus
+          others_type:
+          loanType === "OTHERS"
+            ? selectedBonus
+            : ["SSS_LOAN", "PAGIBIG_LOAN"].includes(loanType)
+              ? calamity
+              : "",
         });
 
       if (!result?.loan_id)
@@ -99,17 +110,41 @@ function LoanApplyContent() {
 
       SweetAlert.successAlert("Loan added");
       resetApplyForm();
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Contact MIS for Configuration.";
+        } catch (error: unknown) {
 
-        SweetAlert.warningAlert(
-          "Loan Application Failed",
-          message
-        ).then(() => resetApplyForm());
-      }
+          if (error instanceof AxiosError) {
+
+            const response = error.response?.data as ApiErrorResponse | undefined;
+
+            if (response?.code === "LOAN_LIMIT_EXCEEDED") {
+                SweetAlert.warningAlert(
+                    "Loan Application Failed",
+                    `
+                      Net Salary (Per Payroll): ${response.details?.salary.netPerPayroll.toFixed(2)}
+                      Max Allowed (50%): ${response.details?.salary.maxAllowedLoanDeduction.toFixed(2)}
+
+                      Existing Loan Total: ${response.details?.loans.totalExistingLoanDeduction.toFixed(2)}
+                      New Loan Deduction: ${response.details?.loans.newLoanDeduction.toFixed(2)}
+
+                      Total With New Loan: ${response.details?.loans.totalWithNewLoan.toFixed(2)}
+                      Excess Amount: ${response.details?.loans.excessAmount.toFixed(2)}
+                    `
+                  );
+              return;
+            }
+
+            SweetAlert.warningAlert(
+              "Loan Application Failed",
+              response?.message || "Loan creation failed."
+            );
+            return;
+          }
+
+          SweetAlert.warningAlert(
+            "Loan Application Failed",
+            "Unexpected error occurred."
+          );
+        }
   };
 
 
@@ -268,6 +303,25 @@ function LoanApplyContent() {
                                 ))}
                             </select>
                         </div>
+                        )}
+
+                        {["SSS_LOAN", "PAGIBIG_LOAN"].includes(loanType)&&(
+                          <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold">
+                                Type of Loan
+                            </label>
+
+                            <select
+                                value={calamity}
+                                onChange={(e) => setCalamity(e.target.value)}
+                            
+                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                            >
+                                <option value="">Optional Selection</option>
+
+                                <option value="Calamity">Calamity</option>
+                            </select>
+                          </div>
                         )}
 
                         { ["FCH_LOAN", "RFC_LOAN"].includes(loanType) &&(

@@ -57,6 +57,7 @@ export type EmployeeLoan = {
   loan_type: string;
   term_value: number;
   term_unit: string;
+  status: string;
   start_date: string;
   deduct_allowance: boolean;
   per_payroll_deduct: number;
@@ -68,6 +69,9 @@ export type EmpPayrollInfo = {
   CashAssistance: number,
   Ecola: number, 
   TotalSalary:number,
+  sssContribEmployee: number,
+  philhealthRateEmployee:number,
+  pagibigEmployeeShare:number,
 }
 
 export type CompanyInfo = {
@@ -108,5 +112,6 @@ export type UpdateEmployeePayrollPayload = {
   basicSalary: number;
   cashAssistance: number;
   ecola: number;
+  pagibigEmployeeShare: number;
 };
 

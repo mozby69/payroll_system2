@@ -3,12 +3,13 @@
 import GenButton from "@/app/components/Buttons";
 import { useClosedLoan, useLoanDetails } from "../../hooks/useLoans";
 import RequestModal from "../Modal";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ModifyLoan from "./loanModal";
 import SweetAlert from "../Swal";
 import EarlyPayModal from "./earlyPayModal";
 import SkipPayModal from "./skipPayModal";
 import { InfoProps, LoanLedgerItem } from "@/app/types/loanTypes";
+import { useReactToPrint } from "react-to-print";
 
 type LoanCardProps = {
   loan: {
@@ -40,6 +41,7 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
   const [skipPay, setSkipPay] = useState<LoanContext | null> (null);
   const [openMenu, setOpenMenu] = useState(false);
 
+  const ledgerRef = useRef<HTMLDivElement>(null);
 
   const { data: details, isLoading } = useLoanDetails(
     loan.loan_id,
@@ -72,6 +74,10 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
   };
 
 
+  const handlePrintLedger = useReactToPrint({
+    contentRef: ledgerRef,
+    documentTitle: `Loan Ledger -${loan.loan_id}`,
+  })
 
 
   return (
@@ -199,24 +205,40 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
           ${isOpen ? "max-h-150 opacity-100 mt-2" : "max-h-0 opacity-0"}
         `}
       >
-        <div className="border rounded-lg p-4 space-y-3 bg-mainNeutral">
+        <div ref={ledgerRef} className="print-container border rounded-lg p-4 space-y-3 bg-mainNeutral">
           {isLoading || !details ? (
             <p className="text-sm text-mainGray">Loading ledger...</p>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex justify-end no-print">
+                  <GenButton variant="primary" onClick={handlePrintLedger}>
+                    Print Loan Ledger
+                  </GenButton>
+              </div>
+
+              <div className="print-only mb-6 flex flex-col justify-start items-start w-full gap-4">
+                <div className="flex justify-between items-center py-4 px-6 bg-mainNeutral mb-6 rounded-sm">
+                  <h1 className="text-xl font-bold">Employee Loan Ledger</h1>
+                  <h2 className="text-md"><strong>Loan ID: </strong>{loan.loan_id}</h2>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p><strong>Creditor: </strong>{loan.fullname}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm border px-4 py-4 rounded-sm">
                 <p>
-                  <strong>Start Date:</strong>{" "}
+                  <strong>Start Date: </strong>{" "}
                   {new Date(details.start_date).toLocaleDateString()}
                 </p>
                 <p>
-                  <strong>Principal:</strong> {details.principal}
+                  <strong>Principal: </strong> {details.principal}
                 </p>
                 <p>
-                  <strong>Total Paid:</strong> {details.totalPaid}
+                  <strong>Total Paid: </strong> {details.totalPaid}
                 </p>
                 <p>
-                  <strong>Remaining Balance:</strong>{" "}
+                  <strong>Remaining Balance: </strong>{" "}
                   {details.remainingBalance}
                 </p>
               </div>
@@ -230,7 +252,7 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
                         </li>
                     ) : (
                         <>
-                        <li className="grid grid-cols-5 text-xs font-semibold text-mainGray border-b pb-2">
+                        <li className="grid grid-cols-5 text-xs font-semibold text-mainGray border-b border-mainGray px-2 pb-2">
                             <span>Date Paid</span>
                             <span>Transaction</span>
                             <span className="text-right">Credit</span>
@@ -267,8 +289,13 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
 
             </>
           )}
+
+
         </div>
       </div>
+
+
+
         {editContext && (
           <RequestModal
             size="xl"

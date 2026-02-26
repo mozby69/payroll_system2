@@ -39,11 +39,6 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
 
 
   const [showAddBasicSalary, setShowAddBasicSalary] = useState(false);
-  // const [fchLoan, setFchLoan] = useState(employeeSummary.fch_loan ?? 0);
-  // const [sssLoan, setSssLoan] = useState(employeeSummary.sss_loan ?? 0);
-  // const [rfcLoan, setRfcLoan] = useState(employeeSummary.rfc_loan ?? 0)
-  // const [pagibigLoan, setPagibigLoan] = useState(employeeSummary.pagibig_loan ?? 0);
-
 
 
 
@@ -83,42 +78,14 @@ const pagibigLoan =
     : data.PAGIBIG_LOAN.hasLedgerForCurrentCycle
       ? 0
       : data.PAGIBIG_LOAN.per_payroll_deduct;
-
-  // useEffect(() => {
-  //   if (isLoading) {
-  //     setFchLoan(0);
-  //     setSssLoan(0);
-  //     setPagibigLoan(0);
-  //     setRfcLoan(0);
-  //   }
-  // }, [isLoading]);
-
-
-  // loans display use effect and query here ↑
-
+const areloan =
+  isLoading || !data?.ARE_LOAN
+    ? 0
+    : data.ARE_LOAN.hasLedgerForCurrentCycle
+      ? 0
+      : data.ARE_LOAN.per_payroll_deduct;
 
   
-
-  // const onAddBasicSalary = () => {
-  //   setShowAddBasicSalary(true);
-  // };
-
-
-
-  // useEffect(() => {
-  //   setBasicSalary(employeeSummary.basic_salary ?? 0);
-  //   setCashAssistance(employeeSummary.cash_assistance != null ? employeeSummary.cash_assistance.toString() : "");
-  //   setPagibigEmployeeShare(employeeSummary.pagibig_employee_share != null ? employeeSummary.pagibig_employee_share.toString() : "");
-    
-  //   setPagibigEmployerShare(employeeSummary.pagibig_employer_share ?? 0);
-  //   setSSS(Number(employeeSummary.sss_contrib ?? 0));
-  //   setPhilHealth(Number(employeeSummary.phil_rate ?? 0));
-  
-  //   setHasBasicSalary((employeeSummary.basic_salary ?? 0) > 0);
-  //   setHasPagibig(employeeSummary.pagibig_id !== "N/A");
-  // }, [employeeSummary]);
-  
-
   
   return (
     <div className="bg-white rounded-lg pb-4 space-y-4 px-2 py-4">
@@ -247,6 +214,16 @@ const pagibigLoan =
           />
         </div>
 
+        <div className="grid gap-y-1">
+          <label className="font-bold">ARE LOAN</label>
+          <input
+            type="number"
+            value={areloan}
+            readOnly
+            className="border py-2 px-2 rounded-lg bg-gray-100"
+          />
+        </div>
+
         {/* Loan Code ↑ */}
 
       </div>
@@ -269,32 +246,6 @@ const pagibigLoan =
         Update
       </button>
       </div>
-
-{/* 
-      {showAddPagibig && (
-            <RequestModal
-              size="sm"
-              nested
-              title="Add Pag-IBIG"
-              onClose={() => setShowAddPagibig(false)}>
-              <AddPagibigModal
-            onSave={async (payload) => {
-              await onQuickSave({
-                pagibig_employee_share: payload.pagibig_employee_share,
-                pagibig_employer_share: payload.pagibig_employer_share,
-              });
-
-              setPagibigEmployeeShare(payload.pagibig_employee_share.toString());
-              setPagibigEmployerShare(payload.pagibig_employer_share);
-              setHasPagibig(true);
-
-              SweetAlert.successAlert("Pag-IBIG added");
-              setShowAddPagibig(false);
-            }}
-            onClose={() => setShowAddPagibig(false)}
-          />
-            </RequestModal>
-          )} */}
 
 
 
