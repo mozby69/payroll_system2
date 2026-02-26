@@ -1,5 +1,8 @@
+import { useUpdateBonus } from "@/app/hooks/useBonus"
 import { EmployeBonusType } from "@/app/types/bonusType"
+import { handleApiError } from "@/app/utils/handleApiError"
 import { useState } from "react"
+import toast from "react-hot-toast"
 
 type Props = {
   bonus: EmployeBonusType 
@@ -11,17 +14,29 @@ export default function EditBonusModal({ bonus, onClose }: Props) {
   const [bonusAmount, setBonusAmount] = useState<number>(bonus.bonusAmount)
   const [loan, setLoan] = useState<number>(bonus.fchLoan)
 
+  const {mutate: updateBonus, isPending} = useUpdateBonus();
+
   const netAmount = bonusAmount - loan
 
   const handleSave = () => {
-    console.log("Updated Bonus:", {
-      bonusId: bonus.bonusId,
-      bonusAmount,
-      loan,
-      netAmount,
-    })
-
-    onClose()
+    if (isPending) return
+    if (!bonus.bonusId) return
+    updateBonus(
+      {
+        id: bonus.bonusId,
+        bonusAmount: bonusAmount,
+      },
+      {
+        onSuccess: (data) => {
+          toast.success(data.message)
+          onClose()   
+        },
+        onError: (error: unknown) => {
+          const message = handleApiError(error)
+          toast.error(message)
+        },
+      }
+    )
   }
 
   return (
@@ -112,11 +127,16 @@ export default function EditBonusModal({ bonus, onClose }: Props) {
         </button>
 
         <button
-          onClick={handleSave}
-          className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm"
-        >
-          Save Changes
-        </button>
+  onClick={handleSave}
+  disabled={isPending}
+  className={`px-4 py-2 rounded-md text-sm text-white ${
+    isPending
+      ? "bg-blue-400 cursor-not-allowed"
+      : "bg-blue-600 hover:bg-blue-700"
+  }`}
+>
+  {isPending ? "Saving..." : "Save Changes"}
+</button>
       </div>
 
     </div>
