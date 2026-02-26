@@ -1,4 +1,5 @@
-import { FormulaType } from "@prisma/client"
+import { BonusType, FormulaType } from "@prisma/client"
+import { formatDateOnly } from "../../utils/formatDateOnly"
 
 export function getTenureInMonths(hireDate: Date, asOf: Date): number {
     return (
@@ -33,3 +34,36 @@ export function calculateBonusAmount(
       return 0
   }
 }
+
+export function getBonusStartAndEndDate(
+  eligibleMonth: number,
+  bonusType: BonusType,
+  asOfDate: Date
+) {
+  const year = asOfDate.getFullYear()
+
+  let monthsBack = 0
+
+  switch (bonusType) {
+    case "QUARTERLY":
+      monthsBack = 2
+      break
+    case "MIDYEAR":
+      monthsBack = 5
+      break
+    case "ANNUAL":
+      monthsBack = 11
+      break
+  }
+
+  const bonusEnd = new Date(year, eligibleMonth, 0)
+  const bonusStart = new Date(bonusEnd)
+  bonusStart.setMonth(bonusStart.getMonth() - monthsBack)
+  bonusStart.setDate(1)
+
+  return {
+    bonusStart: formatDateOnly(bonusStart),
+    bonusEnd: formatDateOnly(bonusEnd)
+  }
+}
+

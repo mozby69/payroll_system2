@@ -126,6 +126,8 @@ model Employee {
   employee_salary_history EmployeeSalaryHistory[] @relation()
   bod_philhealth BodPhilhealtContrib[] @relation()
   archive_allowance archive_allowance[] @relation()
+
+   specialLeaves SpecialLeaves[]
   @@map("employee")
 }
 
@@ -698,4 +700,32 @@ model emp_disburse {
   mainDisburse    main_disburse @relation(fields: [mainDisburseId], references: [mainDisburseID], onDelete: Cascade)
 
   @@unique([empArchiveId])
+}
+
+enum LeaveStatus {
+  Active
+  Completed
+  Expected
+}
+
+enum LeaveName {
+  Maternity
+  Paternity
+  Health
+}
+
+model SpecialLeaves {
+    id                   Int     @id @default(autoincrement())
+    leaveName            LeaveName
+    start                DateTime? @db.Date
+    end                  DateTime? @db.Date
+    expectedStart        DateTime? @db.Date
+    expectedEnd          DateTime? @db.Date
+    status               LeaveStatus
+    createdAt            DateTime   @default(now())
+    empCodeId            String
+
+    employee            Employee  @relation(fields: [empCodeId], references: [EmpCode])        
+    @@index([empCodeId])
+
 }

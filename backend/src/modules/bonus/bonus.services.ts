@@ -1,7 +1,7 @@
 import { AuditAction, AuditModule, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, getTenureInMonths, getTenureInYears } from "./bonus.utils"
+import { calculateBonusAmount, getBonusStartAndEndDate, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
 
@@ -191,6 +191,10 @@ export async function generateBonusForAllEmployees({
       throw new Error("Bonus rule not found")
     }
 
+    const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
+
+
+
     const pendingChecker = await tx.employeeBonus.findMany({
         where: {
           status: "GENERATED"
@@ -268,9 +272,6 @@ export async function generateBonusForAllEmployees({
          }
     })
 
-
-console.log("wow")
-
     const invalidEmployees: Array<{
       empCode: string
       name: string | null
@@ -347,6 +348,36 @@ console.log("wow")
       existingBonuses.map(b => b.employeeCode)
     )
 
+    const employeesWithLeave = await tx.employee.findMany({
+      where: {
+        specialLeaves: {
+          some: {
+            start: { not: null, lte: new Date(startAndEnd.bonusEnd) },
+            end:   { not: null, gte: new Date(startAndEnd.bonusStart) }
+          }
+        }
+      },
+      include: {
+        specialLeaves: {
+          where: {
+            start: { not: null, lte: new Date(startAndEnd.bonusEnd) },
+            end:   { not: null, gte: new Date(startAndEnd.bonusStart) }
+          }
+        }
+      }
+    })
+
+    const leaveMap = new Map(
+      employeesWithLeave.map(emp => [
+        emp.EmpCode,
+        emp.specialLeaves
+      ])
+    )
+
+
+    console.log(leaveMap)
+
+
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
     
 
@@ -361,11 +392,24 @@ console.log("wow")
       if (!payroll?.basic_salary) continue
     
       if (existingEmployeeCodes.has(emp.EmpCode)) continue
-    
+
+      const employeeLeaves = leaveMap.get(emp.EmpCode)
+
+      if (employeeLeaves) {
+        console.log("Employee has leave")
+        employeeLeaves.forEach(leave => {
+          console.log("Leave Name:", leave.leaveName)
+          console.log("Start:", leave.start)
+          console.log("End:", leave.end)
+        })
+      }
+
       const amount = calculateBonusAmount(
         rule.formulaType,
         Number(payroll.basic_salary)
       )
+
+
       
       // Find matching active loans
       const matchingLoans = emp.loan_details.filter(
