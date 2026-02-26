@@ -61,6 +61,10 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
       const pdf = await page.pdf({
         format: "A4",
         printBackground: true,
+        margin:{
+          top:"2mm",
+          bottom:"2mm",
+        },
       });
   
       await page.close(); // close page only
