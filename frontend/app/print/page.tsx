@@ -68,12 +68,12 @@ export default function AllowancePrintPage() {
   
               <div className="text-right">
                 <h2>{row.name}</h2>
-                <h2 className="mt-4">{formatMonthYear(month)}</h2>
+                <h2 className="mt-4 font-semibold">{formatMonthYear(month)}</h2>
                 <h2 className="mt-3">{row.cash_allowance}</h2>
                 <h2 className="mt-3">{row.ecola}</h2>
                 <h2 className="mt-2">-{row.deduct}</h2>
                 <h2 className="mt-2">-{row.loan}</h2>
-                <h2 className="mt-2">{row.total}</h2>
+                <h2 className="mt-2 font-semibold">{row.total}</h2>
                 <h2 className="mt-2 border-b w-40"><span className="invisible">s</span></h2>
                 <h2 className="mt-2 border-b w-40"><span className="invisible">s</span></h2>
               </div>
