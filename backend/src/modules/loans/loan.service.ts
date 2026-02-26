@@ -1,10 +1,20 @@
 import { prisma } from "../../config/prismaClient";
+import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import {  CYCLE_RULES, CycleCategory, DEFAULT_CYCLE_CATEGORY, LOAN_ACTION_TYPES, LoanActionType, loanProps, LoanResult, PayCyclePeriod, PayrollCycle, updateLoanProps } from "../loans/loan.types";
+import { computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution } from "../prepare_payroll/prepare_payroll.computation";
+import { LoanLimitError } from "./loan.error";
 
 export async function saveEmployeeLoan(data: loanProps){
 
   const totalTerms = 
     data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
+  
+  const sssTable = await getSSSContributions();
+
+    // Phil health code ↓
+  const bodPhil = await getBodPhilhealth();
+  const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
+    // Phil health code ↑
 
   if (totalTerms <= 0) {
     throw new Error("Invalid loan terms");
@@ -20,7 +30,7 @@ export async function saveEmployeeLoan(data: loanProps){
 
   return await prisma.$transaction(async (tx) =>{
 
-      const existingLoan = await tx.loan_details.findFirst({
+      const existingLoan = await tx.loan_details.findMany({
         where:{
           EmpCodeId:data.empCode,
           status:"ACTIVE",
@@ -34,15 +44,10 @@ export async function saveEmployeeLoan(data: loanProps){
           term_unit: true,
           start_date: true,
           deduct_allowance: true,
-         
+          per_payroll_deduct:true,
         },
         
     });
-
-    if (existingLoan) {
-      throw new Error("You have Existing Active Loan");
-    }
-
  
 
       const existingEmp = await tx.employee.findUnique({
@@ -50,6 +55,10 @@ export async function saveEmployeeLoan(data: loanProps){
           EmpCode:data.empCode
         },
         select:{
+          EmpCode:true,
+          EmploymentStatus:true,
+          isNewEmployee:true,
+          bod_member:true,
           BranchCode:{
             select:{
               CompanyCode:{
@@ -63,16 +72,94 @@ export async function saveEmployeeLoan(data: loanProps){
             select:{
               basic_salary:true
             }
+          },
+          pagibig_list:{
+            select:{
+              pagibig_id:true,
+              pagibig_employee_share:true,
+              pagibig_employer_share:true,
+            }
           }
         }
       })
+
+      const isNewProbi = existingEmp?.EmploymentStatus === "Probationary" && existingEmp?.isNewEmployee;
       const basicSalary =
         existingEmp?.employeepayroll?.basic_salary?.toNumber() ?? 0;
+      
 
       if (basicSalary <= 0) { 
         throw new Error("Enter Employee Basic Salary First.");
       }
 
+
+      // Phil health code ↓
+      const semiMonthly =  computeSemiMonthlySalary(basicSalary);
+      const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
+      const isBod = existingEmp?.bod_member?.trim().toLowerCase() === "bod1";
+
+      const bodMap = new Map(
+          bodPhil.map((b) => [
+            b.EmpCodeId.trim().toUpperCase(),
+            b.employee_share?.toNumber() ?? 0,
+          ])
+        );
+        
+      const normalizedId = data.empCode.trim().toUpperCase();
+      const bodShare = bodMap.get(normalizedId) ?? 0;
+      // Phil health code ↑
+
+      // Pag ibig code ↓
+      const rawPagibigEmployee = existingEmp?.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
+      // Pag ibig code ↑
+
+      const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi));
+      
+      const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi);
+      
+      const pagibigEmployeeShare = computePagibig(rawPagibigEmployee);
+
+      const totalGovernmentDeductions =
+        sssContribEmployee +
+        philhealthRateEmployee +
+        pagibigEmployeeShare;
+
+      const netPerPayroll =
+        semiMonthly - totalGovernmentDeductions;
+
+
+      const totalExistingLoanDeduction = existingLoan.reduce(
+        (sum, loan) => sum + Number(loan.per_payroll_deduct),
+        0
+      );
+
+      const totalLoanDeductionWithNew =
+        totalExistingLoanDeduction + perPayroll;
+
+      const maxAllowedLoanDeduction = netPerPayroll * 0.5;
+
+      const excessAmount =
+       totalLoanDeductionWithNew - maxAllowedLoanDeduction;
+
+    if (totalLoanDeductionWithNew > maxAllowedLoanDeduction) {
+      throw new LoanLimitError({
+        employee: {
+          empCode: existingEmp?.EmpCode,
+          employmentStatus: existingEmp?.EmploymentStatus,
+        },
+        salary: {
+          netPerPayroll,
+          maxAllowedLoanDeduction,
+        },
+        loans: {
+          existingLoan,
+          totalExistingLoanDeduction,
+          newLoanDeduction: perPayroll,
+          totalWithNewLoan: totalLoanDeductionWithNew,
+          excessAmount,
+        },
+      });
+    }
 
       const loan = await tx.loan_details.create({
         data: {

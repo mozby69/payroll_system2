@@ -39,7 +39,7 @@ export const fetchEmployeeProfile = async (
 export const updateEmployeePayroll = async (
   payload: UpdateEmployeePayrollPayload
 ) => {
-  const { empCode, basicSalary, cashAssistance, ecola } = payload;
+  const { empCode, basicSalary, cashAssistance, ecola, pagibigEmployeeShare } = payload;
 
   const { data } = await api.put(
     `/list/employee/${empCode}/payroll`,
@@ -47,6 +47,7 @@ export const updateEmployeePayroll = async (
       basicSalary,
       cashAssistance,
       ecola,
+      pagibigEmployeeShare,
     }
   );
 

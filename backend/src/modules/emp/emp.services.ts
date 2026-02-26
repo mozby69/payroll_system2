@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prismaClient";
-import { computePhilRate, computeSSSContribution, computeSSSContributionEmployer } from "../prepare_payroll/prepare_payroll.computation";
+import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
+import { computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution } from "../prepare_payroll/prepare_payroll.computation";
 import { UpdateTypesByEmpCode } from "./emp.types";
 
 type EmployeeFilterParams = {
@@ -81,18 +82,12 @@ export const countEmployees = async (filters: EmployeeFilterParams) => {
 
 export const getEmployeeByEmpCode = async (empCode: string) => {
   
-  const sssTable = await prisma.sSS_Contributions.findMany({
-    select: {
-      start_range: true,
-      end_range: true,
-      employee_share: true,
-      employer_share:true,
-    },
-    orderBy: {
-      start_range: "asc",
-    },
-  });
+  const sssTable = await getSSSContributions();
 
+  // Phil health code ↓
+  const bodPhil = await getBodPhilhealth();
+  const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
+  // Phil health code ↑
 
   const employee = await prisma.employee.findUnique({
     where: { EmpCode: empCode },
@@ -105,7 +100,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       EmploymentStatus: true,
       Position: true,
       BranchCodeId: true,
-
+      isNewEmployee: true,
+      bod_member:true,
       employeepr: {
         select: {
           EmpTin: true,
@@ -128,7 +124,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           start_date: true,
           deduct_allowance: true,
           per_payroll_deduct: true,
-
+          status:true,
         }
       },
 
@@ -153,6 +149,13 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           },
         },
       },
+      pagibig_list :{
+        select:{
+              pagibig_id:true,
+              pagibig_employee_share:true,
+              pagibig_employer_share:true,
+            }
+      }
     },
   });
 
@@ -166,8 +169,34 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
 
   const totalSalary = basicSalary + cashAssistance + ecola;
 
+  const isNewProbi = employee.EmploymentStatus === "Probationary" && employee?.isNewEmployee;
+
+  // Phil health code ↓
+  const semiMonthly =  computeSemiMonthlySalary(basicSalary);
+  const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
+  const isBod = employee.bod_member?.trim().toLowerCase() === "bod1";
+  const bodMap = new Map(
+      bodPhil.map((b) => [
+        b.EmpCodeId.trim().toUpperCase(),
+        b.employee_share?.toNumber() ?? 0,
+      ])
+    );
+       
+  const normalizedId = empCode.trim().toUpperCase();
+  const bodShare = bodMap.get(normalizedId) ?? 0;
+  // Phil health code ↑
   
-  const ssscontrib = computeSSSContribution(basicSalary,sssTable);
+  // Pag ibig code ↓
+  const rawPagibigEmployee = employee.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
+  // Pag ibig code ↑
+
+  const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi));
+
+  const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi);
+
+  const pagibigEmployeeShare = computePagibig(rawPagibigEmployee);
+
+  console.log("this is the sss result", sssContribEmployee)
 
   return {
     ...employee,
@@ -178,7 +207,10 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           CashAssistance: cashAssistance,
           Ecola: ecola,
           TotalSalary: totalSalary,
-          ssscontrib: ssscontrib,
+          sssContribEmployee: sssContribEmployee,
+          philhealthRateEmployee: philhealthRateEmployee,
+          pagibigEmployeeShare: pagibigEmployeeShare,
+
           
         }
       : null,
@@ -198,7 +230,18 @@ export const updateEmployeePayroll = async (empCode: string, payLoad:UpdateTypes
               cash_assistance:payLoad.cashAssistance,
               ecola:payLoad.ecola
           }
+        
+        },
+      pagibig_list: {
+        update: {
+          where: {
+            EmpCodeId: empCode
+          },
+          data: {
+            pagibig_employee_share: payLoad.pagibigEmployeeShare
+          }
         }
+      }
       }
 
     });

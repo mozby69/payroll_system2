@@ -1,6 +1,6 @@
   export interface loanProps{
     empCode: string;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN";
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN";
     principal: number;
     term_value: number;
     term_unit: "MONTHS" | "YEARS";
@@ -11,7 +11,7 @@
 
 export interface updateLoanProps{
     loan_id: number;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN";
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN";
     principal: number;
     term_value: number;
     term_unit: "MONTHS" | "YEARS";
