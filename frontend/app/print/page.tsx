@@ -66,7 +66,7 @@ export default function AllowancePrintPage() {
                 <h2 className="mt-2">DATE</h2>
               </div>
   
-              <div className="text-right">
+              <div className="text-right uppercase">
                 <h2>{row.name}</h2>
                 <h2 className="mt-4">{formatMonthYear(month)}</h2>
                 <h2 className="mt-3">{row.cash_allowance}</h2>
