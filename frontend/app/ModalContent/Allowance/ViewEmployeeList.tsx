@@ -42,8 +42,8 @@ export const ViewEmployeeListAllowance:React.FC<ViewEmployeeListAllowanceProps> 
             </thead>
             <tbody>
               {list.map((row) => (
-                <tr key={`${row.EmpCode}-${row.createdAt}`}>
-                  <td className="p-2">{row.EmpCode}</td>
+                <tr key={`${row.EmpCodeId}`}>
+                  <td className="p-2">{row.EmpCodeId}</td>
                   <td className="p-2">{row.name}</td>
                   <td className="p-2 text-right">{row.cash_allowance ?? 0}</td>
                   <td className="p-2 text-right">{row.ecola ?? 0}</td>

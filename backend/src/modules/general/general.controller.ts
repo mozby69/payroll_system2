@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
 import { string } from "zod";
+import { getBrowser } from "../../utils/pdfBrowser";
 
 export async function getCompanyDetailsController(
    req: Request,
@@ -52,3 +53,46 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
       res.status(500).json({ message: "Failed to fetch companies" });
     }
   }
+
+  export const generatePdfController = async (req: Request, res: Response) => {
+    try {
+      const { path } = req.query;
+  
+      if (!path || typeof path !== "string") {
+        return res.status(400).send("Missing path parameter");
+      }
+  
+      const browser = await getBrowser(); // reused
+      const page = await browser.newPage();
+  
+      const fullUrl = `http://localhost:3000${path}`;
+  
+      await page.goto(fullUrl, {
+        waitUntil: "networkidle2",
+       // waitUntil: "domcontentloaded"
+      });
+
+   
+      const pdf = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin:{
+          top:"2mm",
+          bottom:"2mm",
+        },
+      });
+  
+      await page.close(); // close page only
+  
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.send(pdf);
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("PDF generation failed");
+    }
+  };
+
+
+

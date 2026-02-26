@@ -95,9 +95,10 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
     
       const totalEcola = hasEcola ? ecola - (ecolaDailyRate * totalAbsentHours) : 0;
       
-      const total = totalCashAllowance + totalEcola;
+      const total = (totalCashAllowance + totalEcola).toFixed(2);
+      const finalTotal = Number(total);
       
-      const totalDeduction = (cashDailyRate * totalAbsentHours) + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
+      const totalDeductions = (cashDailyRate * totalAbsentHours) + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
 
       // const cashDailyRate = cashAssistance / daysInPrevMonth;
       // const ecolaDailyRate = ecola / daysInPrevMonth;
@@ -110,11 +111,12 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         EmpCode: emp.EmpCode,
         Firstname: emp.Firstname,
         Lastname: emp.Lastname,
-        cash_assistance: cashAssistance,   
+        cash_assistance: totalCashAllowance,   
         ecola: totalEcola,                      
-        totalAbsentHours,
-        total: total,                     
-        totalDeduction: totalDeduction,   
+        deduct:totalDeductions,
+        total: finalTotal,          
+        loan:0,           
+        totalDeduction: totalDeductions,   
       };
     });
 
@@ -189,6 +191,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
 
           normalized[i] = {
             ...row,
+            loan: loanAmount,
             total: row.total - loanAmount,
             totalDeduction: row.totalDeduction + loanAmount,
           };
@@ -203,7 +206,15 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
     const total = await prisma.employee.count({ where: employeeWhere });
   
     return {
-      data: normalized,
+      data: normalized.map((row) => ({
+        ...row,
+        cash_assistance: row.cash_assistance.toFixed(2),
+        ecola: row.ecola.toFixed(2),
+        total: row.total.toFixed(2),
+        loan: row.loan.toFixed(2),
+        deduct: row.deduct.toFixed(2),
+        totalDeduction: row.totalDeduction.toFixed(2),
+      })),
       meta: {
         total,
         page,
@@ -296,22 +307,13 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
       const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
     
-      const totalEcola = hasEcola
-        ? ecola - (ecolaDailyRate * totalAbsentHours)
-        : 0;
+      const totalEcola = hasEcola? ecola - (ecolaDailyRate * totalAbsentHours): 0;
       
-      const total =
-        totalCashAllowance + totalEcola;
+      const total = totalCashAllowance + totalEcola;
+
       
-      const totalDeduction =
-        (cashDailyRate * totalAbsentHours) +
-        (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
+      const totalDeduction = (cashDailyRate * totalAbsentHours) + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
 
-
-      // const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
-      // const totalEcola = ecola - (ecolaDailyRate * totalAbsentHours);
-      // const total = totalCashAllowance + totalEcola;
-      // const totalDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
 
 
       // loan code ↓
@@ -327,7 +329,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         absent: totalAbsentHours,
         total,
         selectedMonth,
+        deduct:totalDeduction,
         totalDeduction,
+       
         // loan code ↓
         fch_rfc_deducted
         // loan code ↑
@@ -439,6 +443,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         acc.ecola += row.computed_ecola;
         acc.total += row.total;
         acc.totalDeduction += row.totalDeduction;
+        acc.deduct += row.deduct;
+        acc.fch_rfc_deducted += row.fch_rfc_deducted;
         return acc;
       },
       {
@@ -446,6 +452,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         ecola: 0,
         total: 0,
         totalDeduction: 0,
+        deduct:0,
+        fch_rfc_deducted:0,
       }
     );
   
@@ -487,6 +495,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           total_ecola: summary.ecola,
           grand_total: summary.total,
           totalDeduction: summary.totalDeduction,
+          totalAbsent:summary.deduct,
+          totalLoan:summary.fch_rfc_deducted,
           createdAt: nowPH(),
         },
       });
@@ -494,14 +504,17 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       // B. Save DETAIL rows
       await tx.archive_allowance.createMany({
         data: rows.map((emp) => ({
-          EmpCode: emp.EmpCode,
+          EmpCodeId: emp.EmpCode,
           name: emp.name,
           cash_allowance: emp.cash_allowance,
           ecola: emp.computed_ecola,
-          absent: emp.absent,
+          absent_count: emp.absent,
+          deduct:emp.deduct,
           total: emp.total,
-          totalDeduction: emp.totalDeduction,
+          totalDeduction:emp.deduct + emp.fch_rfc_deducted,
+         // totalAbsentHours: emp.totalDeduction,
           selectedMonth, // FK
+          loan:emp.fch_rfc_deducted,
           createdAt: nowPH(),
         })),
         
@@ -609,17 +622,92 @@ export async function getArchiveAllowanceByMonth(selectedMonth: string) {
       selectedMonth,
     },
     select: {
-      EmpCode: true,
+      EmpCodeId: true,
       name: true,
       cash_allowance: true,
       ecola: true,
-      absent: true,
+      absent_count: true,
       total: true,
       totalDeduction: true,
       createdAt: true,
     },
     orderBy: {
-      EmpCode: 'asc',
+      EmpCodeId: 'asc',
+    },
+  });
+}
+
+
+
+
+
+
+export async function getBranchesByCompany(companyCode: string) {
+  const branches = await prisma.branch.findMany({
+    where: {
+      company_id: companyCode,
+    },
+    select: {
+      branchCode: true,
+      Location: true,
+      company_id: true,
+    },
+    orderBy: {
+      branchCode: "asc",
+    },
+  });
+
+  return branches;
+}
+
+
+
+
+export async function getArchiveAllowanceByCompanyBranch({
+  selectedMonth,
+  company,
+  branch,
+}: {
+  selectedMonth: string;
+  company: string;
+  branch: string;
+}) {
+  return await prisma.archive_allowance.findMany({
+    where: {
+      selectedMonth,
+      EmpCode: {
+        BranchCode: {
+          branchCode: branch,
+          company_id: company,
+        },
+      },
+    },
+    select: {
+      EmpCodeId: true,
+      name: true,
+      cash_allowance: true,
+      ecola: true,
+      totalDeduction: true,
+      deduct:true,
+      loan:true,
+      total: true,
+      EmpCode: {
+        select: {
+          Firstname: true,
+          Lastname: true,
+          BranchCode: {
+            select: {
+              Location: true,
+              company_id: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      EmpCode:{
+        Lastname:"asc"
+      }
     },
   });
 }

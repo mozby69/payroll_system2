@@ -4,7 +4,6 @@ import { EmployeeSummaryTypes } from "../api/api.types";
 import { nowPH } from "../../utils/timezone";
 
 
-
 export async function getCompanyDetailsServices() {
     return prisma.company_details.findMany({
         orderBy: {
@@ -96,7 +95,7 @@ export async function appendMissingBodEmployees(tx: Prisma.TransactionClient, em
 
 
 
-// FILTER COMPANY OR BY BRANCH FOR SPREADSHEET
+// FILTER COMPANY FOR SPREADSHEET
 
 export async function getCompaniesByCycle(cycle: string) {
   const companies = await prisma.company_details.findMany({
@@ -132,3 +131,10 @@ export async function getCompaniesByCode(CompanyCode: string) {
 
   return companies;
 }
+
+
+ 
+
+
+
+

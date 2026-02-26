@@ -1,4 +1,4 @@
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByMonth, saveAllowanceArchive } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, saveAllowanceArchive } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -115,3 +115,81 @@ export async function fetchArchiveAllowanceByMonthController(req: Request, res: 
 
   return res.json({ data });
 }
+
+
+
+
+
+
+export async function getBranchesByCompanyController(req: Request,res: Response) {
+  try {
+    const { companyCode } = req.query;
+
+    if (!companyCode || typeof companyCode !== "string") {
+      return res.status(400).json({ message: "companyCode is required" });
+    }
+
+    const result = await getBranchesByCompany(companyCode);
+
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to fetch branches" });
+  }
+}
+
+
+export const allowancePrintController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { month, company, branch } = req.query;
+
+    if (!month || !company || !branch) {
+      return res.status(400).send("Missing parameters");
+    }
+
+    // Build frontend route
+    const frontendPath = `/print?month=${month}&company=${company}&branch=${branch}`;
+
+    // Redirect to reusable PDF generator
+    return res.redirect(
+      `/api/general/print?path=${encodeURIComponent(frontendPath)}`
+    );
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("PDF generation failed");
+  }
+};
+
+
+export const fetchAllowancePrintDataController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { month, company, branch } = req.query;
+
+    if (!month || !company || !branch) {
+      return res.status(400).json({ message: "Missing parameters" });
+    }
+
+    const result = await getArchiveAllowanceByCompanyBranch({
+      selectedMonth: month as string,
+      company: company as string,
+      branch: branch as string,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to fetch print data",
+    });
+  }
+};

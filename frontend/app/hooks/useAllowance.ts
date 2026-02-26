@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceProps, AllowanceSummary, AllowanceSummaryResponse, ArchiveAllowance, ArchiveAllowanceResponse } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
@@ -136,5 +136,49 @@ export function useFetchArchiveAllowanceModal(selectedMonth: string | null) {
       return response.data;
     },
     enabled: Boolean(selectedMonth),
+  });
+}
+
+
+
+export function useFetchCompanies() {
+  return useQuery({
+    queryKey: ["companies"],
+    queryFn: async () => {
+      const res = await api.get("/general/company-details");
+      return res.data as Company[];
+    },
+  });
+}
+
+
+export function useFetchBranchesByCompany(companyCode: string) {
+  return useQuery({
+    queryKey: ["branches-by-company", companyCode],
+    queryFn: async () => {
+      const res = await api.get("/allowance/branches-by-company", {
+        params: { companyCode },
+      });
+
+      return res.data.data as Branch[];
+    },
+    enabled: !!companyCode,
+  });
+}
+
+
+export function usePrintBranch(month: string | null,company: string | null,branch: string | null) {
+  return useQuery<{
+    success: boolean;
+    data: PrintAllowanceRow[];
+  }>({
+    queryKey: ["print-branch", month, company, branch],
+    queryFn: async () => {
+      const res = await api.get("/allowance/print-data", {
+        params: { month, company, branch },
+      });
+      return res.data;
+    },
+    enabled: !!month && !!company && !!branch,
   });
 }
