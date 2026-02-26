@@ -3,7 +3,8 @@ import { authenticateToken } from "../../middleware/authMiddleware";
 import { fetchAllowanceController, saveAllowanceController,fetchAllowanceSummaryController,fetchAllowanceSummary2Controller,
 fetchArchiveAllowanceByMonthController, allowancePrintController, 
 getBranchesByCompanyController,
-fetchAllowancePrintDataController} from "./allowance.controller";
+fetchAllowancePrintDataController,
+fetchViewAllListController} from "./allowance.controller";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.get('/archive-allowance/:selectedMonth',fetchArchiveAllowanceByMonthContr
 router.get('/print-branch',allowancePrintController);
 router.get("/branches-by-company",getBranchesByCompanyController);
 router.get("/print-data", fetchAllowancePrintDataController);
-
+router.get("/view-all",fetchViewAllListController);
 
 
 export default router;

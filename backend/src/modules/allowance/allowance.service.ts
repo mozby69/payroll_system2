@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { allowanceprops, SummaryAllowanceProps } from "./allowance.types";
+import { allowanceprops, AllowanceRow, SummaryAllowanceProps } from "./allowance.types";
 import {  formatAllowanceMonth, getDaysInMonth, getPreviousMonth } from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 
@@ -22,7 +22,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
             },
             {
               bod_member: {
-                in: ["bod1", "bod2"],
+                in: ["bod1", "bod2","bod3"],
               },
             },
           ],
@@ -238,6 +238,22 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
 export async function computeAllowanceForMonth(selectedMonth: string) {
     const [year, month] = selectedMonth.split("-").map(Number);
@@ -260,7 +276,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           },
           {
             bod_member: {
-              in: ["bod1", "bod2"],
+              in: ["bod1", "bod2","bod3"],
             },
           },
         ],
@@ -272,6 +288,13 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         EmpCode: true,
         Firstname: true,
         Lastname: true,
+        bod_member:true,
+        Position:true,
+        BranchCode:{
+          select:{
+            branchCode:true,
+          }
+        },
         employeepayroll: {
           select: {
             cash_assistance: true,
@@ -292,6 +315,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           },
         },
       },
+      orderBy:{
+        Lastname:"asc",
+      }
     });
   
     //return employees.map((emp) => {
@@ -300,6 +326,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
       const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
       const hasEcola = emp.employeepayroll?.with_ecola === true;
+      const branchCode = emp.BranchCode?.branchCode;
+      const bodMember = emp.bod_member;
+      const manCom = emp.Position;
 
       const ecola = emp.employeepayroll?.ecola?.toNumber() ?? 0;
       const cashDailyRate = cashAssistance / daysInPrevMonth;
@@ -311,9 +340,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       
       const total = totalCashAllowance + totalEcola;
 
-      
       const totalDeduction = (cashDailyRate * totalAbsentHours) + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
-
 
 
       // loan code ↓
@@ -322,8 +349,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
       return {
+     
         EmpCode: emp.EmpCode,
-        name: `${emp.Firstname ?? ""} ${emp.Lastname ?? ""}`.trim(),
+        name: `${emp.Lastname ?? ""} ${emp.Firstname ?? ""}`.trim(),
         cash_allowance: totalCashAllowance,
         computed_ecola: totalEcola,
         absent: totalAbsentHours,
@@ -331,7 +359,10 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         selectedMonth,
         deduct:totalDeduction,
         totalDeduction,
-       
+        branch_code:branchCode ?? "NO_BRANCH",
+        bod_member:bodMember,
+        position:manCom,
+     
         // loan code ↓
         fch_rfc_deducted
         // loan code ↑
@@ -428,11 +459,16 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             ...row,
           
             totalDeduction: totalLoanDeduction + row.totalDeduction,
-            total: row.total - row.totalDeduction - totalLoanDeduction,
+            total: row.total  - totalLoanDeduction,
             fch_rfc_deducted: totalLoanDeduction,
           };
         }
       }
+
+      // ...row,
+      // loan: loanAmount,
+      // total: row.total - loanAmount,
+      // totalDeduction: row.totalDeduction + loanAmount,
 
     // loan Code ↑ 
     
@@ -710,4 +746,55 @@ export async function getArchiveAllowanceByCompanyBranch({
       }
     },
   });
+}
+
+
+
+
+export async function ViewAllList(selectedMonth: string) {
+  try {
+    const { rows } = await computeAllowanceForMonth(selectedMonth);
+
+    // 1️⃣ BOARD MEMBERS
+    const boardMembers = rows.filter(
+      (row) => row.bod_member === "bod1" || row.bod_member === "bod3"
+    );
+
+    // 2️⃣ Exclude board members first
+    const nonBoard = rows.filter(
+      (row) => row.bod_member !== "bod1" && row.bod_member !== "bod3"
+    );
+
+    // 3️⃣ MANCOM (Senior_Manager only, excluding board)
+    const mancom = nonBoard.filter(
+      (row) => row.position === "Senior_Manager"
+    );
+
+    // 4️⃣ Remaining employees (exclude MANCOM also)
+    const regularEmployees = nonBoard.filter(
+      (row) => row.position !== "Senior_Manager"
+    );
+
+    // 5️⃣ Group remaining by branch
+    const branches: Record<string, AllowanceRow[]> = {};
+
+    for (const employee of regularEmployees) {
+      const branch = employee.branch_code ?? "NO_BRANCH";
+
+      if (!branches[branch]) {
+        branches[branch] = [];
+      }
+
+      branches[branch].push(employee);
+    }
+
+    return {
+      BOARD_MEMBER: boardMembers,
+      MANCOM: mancom,
+      BRANCHES: branches,
+    };
+  } catch (error) {
+    console.error("Error Occured", error);
+    throw error;
+  }
 }

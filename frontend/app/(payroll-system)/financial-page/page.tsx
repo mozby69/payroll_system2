@@ -208,7 +208,7 @@ export default function FinancialPage(){
                         </RequestModal>
                       )}
 
-<PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
+        <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
         </div>
     );
 }

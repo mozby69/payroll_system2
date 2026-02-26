@@ -9,6 +9,8 @@ import { Pagination } from "@/app/components/Pagination";
 import SweetAlert from "@/app/components/Swal";
 import AllowanceArchiveTab from "@/app/components/allowance/archiveTab";
 import { TabItem, Tabs } from "@/app/components/Tab";
+import RequestModal from "@/app/components/Modal";
+import ViewAllList from "@/app/ModalContent/Allowance/ViewAllList";
 
 
 
@@ -23,6 +25,7 @@ export default function AllowancePage(){
         const debouncedSearch = useDebounce(search, 400);
         const [month, setMonth] = useState("");
         const saveAllowance = useSaveAllowance(month);
+        const [isModalOpen, setIsModalOpen] = useState(false);
         const { data: allowance_data } = useFetchAllowance({
                 page,
                 limit: 10,
@@ -30,8 +33,12 @@ export default function AllowancePage(){
                 month,
             });
         const tableData: AllowanceProps[] = allowance_data?.data ?? [];
+
+      
         
         //const { data: summary } = useAllowanceSummary(month);
+
+      
 
         const handleSave = () => {
             SweetAlert.confirmationAlert(
@@ -97,6 +104,16 @@ export default function AllowancePage(){
             setPage(1);
           };
 
+
+
+          const openModal = () => {
+              setIsModalOpen(true);
+            };
+          
+            const closeModal = () => {
+              setIsModalOpen(false);
+            };
+
       
     return(
         <>
@@ -133,12 +150,18 @@ export default function AllowancePage(){
                           }}
                           className="bg-gray-500 text-white py-2 px-4 rounded-lg shadow-lg"/>
                     </div>
-                    <div>
+
+                    <div className="flex gap-x-2">
+                      <button onClick={openModal} disabled={!month}
+                       className="bg-cyan-800 hover:bg-cyan-600 text-white py-2.5 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        View
+                      </button>
                       <button onClick={handleSave} disabled={!month}
                           className="bg-sky-700 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed py-2.5 px-4 rounded-lg text-white shadow cursor-pointer">
                           Save Allowance
                       </button>
                     </div>
+
                   </div>
 
                 
@@ -160,6 +183,15 @@ export default function AllowancePage(){
               {activeTab === "archive" && (
                 <AllowanceArchiveTab/>
               )}
+              
+
+                {isModalOpen && (
+                            <RequestModal size="xxxl" title={`VIEW ALL`} onClose={closeModal}>
+                                <ViewAllList selectedMonth={month}/>
+                            </RequestModal>
+                          )}
+
+
                   
            </div>
         </>

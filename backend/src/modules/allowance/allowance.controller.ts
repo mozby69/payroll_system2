@@ -1,4 +1,4 @@
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, saveAllowanceArchive } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, saveAllowanceArchive, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -139,10 +139,7 @@ export async function getBranchesByCompanyController(req: Request,res: Response)
 }
 
 
-export const allowancePrintController = async (
-  req: Request,
-  res: Response
-) => {
+export const allowancePrintController = async (req: Request,res: Response) => {
   try {
     const { month, company, branch } = req.query;
 
@@ -165,10 +162,7 @@ export const allowancePrintController = async (
 };
 
 
-export const fetchAllowancePrintDataController = async (
-  req: Request,
-  res: Response
-) => {
+export const fetchAllowancePrintDataController = async (req: Request,res: Response) => {
   try {
     const { month, company, branch } = req.query;
 
@@ -193,3 +187,19 @@ export const fetchAllowancePrintDataController = async (
     });
   }
 };
+
+
+
+
+export const fetchViewAllListController = async (req: Request, res: Response) => {
+  const selectedMonth = req.query.month as string;
+
+  if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+    return res.status(400).json({ message: "Invalid month" });
+  }
+
+  const data = await ViewAllList(selectedMonth);
+
+  res.json(data);
+};
+
