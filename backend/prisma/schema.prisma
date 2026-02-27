@@ -245,6 +245,7 @@ model Employee_payroll{
   cash_assistance Decimal? @db.Decimal(10,2)
   ecola Decimal? @default(500) @db.Decimal(10,2)
   with_ecola Boolean? @default(true)
+  bank_account String? @db.VarChar(200)
 
   EmpCodeId String @unique @db.VarChar(20)
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -252,6 +253,17 @@ model Employee_payroll{
   @@map("employee_payroll")
 
 }
+
+model BankAccountAdmin{
+  id Int @id @default(autoincrement())
+  funding_account String @db.VarChar(200)
+  company_code String? @db.VarChar(100)
+  batch String? @db.VarChar(50)
+  bank_name String @db.VarChar(50)
+
+  @@map("bank_account_admin")
+}
+
 
 
 model PagIbig_List{

@@ -755,27 +755,22 @@ export async function ViewAllList(selectedMonth: string) {
   try {
     const { rows } = await computeAllowanceForMonth(selectedMonth);
 
-    // 1️⃣ BOARD MEMBERS
-    const boardMembers = rows.filter(
+    const excludedEmpCodes = ["EMB10356","EMB10346","EMB10634","EMB10631"];
+
+    const filteredRows = rows.filter((row) => !excludedEmpCodes.includes(row.EmpCode));
+
+    const boardMembers = filteredRows.filter(
       (row) => row.bod_member === "bod1" || row.bod_member === "bod3"
     );
-
     // 2️⃣ Exclude board members first
-    const nonBoard = rows.filter(
-      (row) => row.bod_member !== "bod1" && row.bod_member !== "bod3"
-    );
+    const nonBoard = filteredRows.filter((row) => row.bod_member !== "bod1" && row.bod_member !== "bod3");
 
     // 3️⃣ MANCOM (Senior_Manager only, excluding board)
-    const mancom = nonBoard.filter(
-      (row) => row.position === "Senior_Manager"
-    );
+    const mancom = nonBoard.filter((row) => row.position === "Senior_Manager");
 
-    // 4️⃣ Remaining employees (exclude MANCOM also)
-    const regularEmployees = nonBoard.filter(
-      (row) => row.position !== "Senior_Manager"
-    );
+    // 4️⃣ Remaining employees (exclude MANCOM & BOARD)
+    const regularEmployees = nonBoard.filter((row) => row.position !== "Senior_Manager");
 
-    // 5️⃣ Group remaining by branch
     const branches: Record<string, AllowanceRow[]> = {};
 
     for (const employee of regularEmployees) {
@@ -784,7 +779,6 @@ export async function ViewAllList(selectedMonth: string) {
       if (!branches[branch]) {
         branches[branch] = [];
       }
-
       branches[branch].push(employee);
     }
 

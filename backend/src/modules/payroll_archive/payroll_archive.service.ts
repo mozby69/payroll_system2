@@ -3,8 +3,8 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePa
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
-import { isPayrollDateRange } from "./payroll_archive.helper";
-import { convertPayrollLabelToPeriod } from "./payroll_archive.types";
+import { groupByCompany, isPayrollDateRange } from "./payroll_archive.helper";
+import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow } from "./payroll_archive.types";
 import { Console } from "console";
 import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 
@@ -87,6 +87,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
               EmploymentStatus:true,
               isNewEmployee:true,
               bod_member:true,
+              Taxable:true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -245,6 +246,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         const Paycodes = emp.PayCode;
         const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
         const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
+        const isTaxable = emp.EmpCode.Taxable;
 
         const bodMap = new Map(
           bodPhil.map((b) => [
@@ -298,7 +300,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     
         const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction);
-        const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,Paycodes);
+        const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
         const companyId = emp.EmpCode.BranchCode?.company_id;
    
         return {
@@ -973,3 +975,56 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
   }
   
+
+
+
+
+  export async function ViewEmployeeBankAccounts({PayCode,cycle_category}: EmployeeBankAccountsParams) {
+    try {
+      const employeeList = await prisma.employeePayrollArchive.findMany({
+        where: {
+          PayCode,
+          cycle_category,
+        },
+        select: {
+          id:true,
+          PayCode: true,
+          cycle_category: true,
+          Netpay: true,
+          EmpCode: {
+            select: {
+              Firstname: true,
+              Lastname: true,
+              BranchCodeId:true,
+              BranchCode: {
+                select: {
+                  company_id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+  
+
+      const normalized: PayrollRow[] = employeeList.map((row) => ({
+        id:row.id,
+        PayCode: row.PayCode,
+        cycle_category: row.cycle_category,
+        Netpay: row.Netpay?.toNumber() ?? 0,
+        BranchCodeId:row.EmpCode.BranchCodeId,
+        EmpCode: {
+          Firstname: row.EmpCode.Firstname,
+          Lastname: row.EmpCode.Lastname,
+          BranchCode: row.EmpCode.BranchCode,
+        },
+      }));
+  
+      const grouped = groupByCompany(normalized);
+  
+      return grouped;
+    } catch (error) {
+      console.error("Error occured", error);
+      throw error;
+    }
+  }

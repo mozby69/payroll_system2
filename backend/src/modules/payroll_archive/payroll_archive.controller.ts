@@ -1,4 +1,4 @@
-import {  displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll } from "./payroll_archive.service";
+import {  displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 
 
@@ -116,6 +116,34 @@ export async function getEmployeeArchivedController(
     return res.status(500).json({
       message: "Failed to fetch employee archived",
     })
+  }
+
+}
+
+
+
+
+export async function ViewEmployeeBankAccountsController(req:Request,res:Response){
+
+  try{
+    const cycle = req.query.cycle_category as "10-25-Cycle" | "15-30-Cycle" | undefined;
+    const paycode = req.query.PayCode as string | undefined;
+
+    if (!paycode || !cycle) {
+      return res.status(500).json({message:"no paycode or cycle"});
+    }
+
+    const data = await ViewEmployeeBankAccounts({
+      PayCode:paycode,
+       cycle_category:cycle
+      });
+
+    return res.status(200).json(data);
+  }
+
+  catch(error){
+    console.error("Error Occured",error);
+    res.status(500).json({message:'failed to fetch data'})
   }
 
 }

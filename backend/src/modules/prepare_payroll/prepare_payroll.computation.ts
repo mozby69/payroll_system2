@@ -123,8 +123,9 @@ export const computePagibig = (pagibigContrib:number | null, payCode?: string | 
 
 
 
-export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[], payCode?: string | null): number => {
+export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[],taxable:boolean, payCode?: string | null): number => {
   if (!taxFields.length) return 0;
+  if (!taxable) return 0;
 
   if (payCode) {
     const parts = payCode.split("-");

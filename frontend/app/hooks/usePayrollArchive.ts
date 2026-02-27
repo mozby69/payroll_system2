@@ -3,7 +3,7 @@ import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
 import { getEmployeeArchivedService, getTotalPayrollRequest } from "../services/archive.services";
-import { GetEmployeeArchivedParams } from "../types/totalPayroll";
+import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 
 
 
@@ -178,4 +178,27 @@ export function useGetEmployeeArchived(
       placeholderData: (previousData) => previousData,
       enabled: !!params.totalPayrollId,
     })
+}
+
+
+
+
+
+
+
+
+export function useFetchBank(PayCode: string | null,cycle_category:string | null) {
+  return useQuery<BankResponse>({
+    queryKey: ['fetch-bank-list', PayCode,cycle_category],
+    queryFn: async () => {
+
+      if (!PayCode || !cycle_category) {
+        throw new Error('PayCode is required');
+      }
+
+      const response = await api.get<BankResponse>(`/payroll-archive/employee-bank-list?PayCode=${PayCode}&cycle_category=${cycle_category}`);
+      return response.data;
+    },
+    enabled: Boolean(PayCode && cycle_category), 
+  });
 }
