@@ -749,11 +749,41 @@ export async function getArchiveAllowanceByCompanyBranch({
 }
 
 
+export async function getLoanFor() {
+  try {
+    const data = await prisma.loan_details.findMany({
+      where: {
+        deduct_allowance: true,
+        status: "ACTIVE",
+      },
+      select: {
+        EmpCode: {
+          select: {
+            EmpCode: true, // 🔥 include this if needed
+            Firstname: true,
+            Lastname: true,
+          },
+        },
+        per_payroll_deduct: true,
+      },
+    });
 
+    return data.map((loan) => ({
+      EmpCode: loan.EmpCode.EmpCode,
+      Firstname: loan.EmpCode.Firstname,
+      Lastname: loan.EmpCode.Lastname,
+      per_payroll_deduct: loan.per_payroll_deduct?.toNumber() ?? 0,
+    }));
+  } catch (error) {
+    console.error("Error occured", error);
+    throw error;
+  }
+}
 
 export async function ViewAllList(selectedMonth: string) {
   try {
     const { rows } = await computeAllowanceForMonth(selectedMonth);
+    const loan_list = await getLoanFor();
 
     const excludedEmpCodes = ["EMB10356","EMB10346","EMB10634","EMB10631"];
 
@@ -786,6 +816,7 @@ export async function ViewAllList(selectedMonth: string) {
       BOARD_MEMBER: boardMembers,
       MANCOM: mancom,
       BRANCHES: branches,
+      LOANS: loan_list ?? [],
     };
   } catch (error) {
     console.error("Error Occured", error);

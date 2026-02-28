@@ -60,3 +60,9 @@ export interface PayrollRow {
     } | null;
   };
 }
+
+
+export interface BankFileRow {
+  bankAccount: string;
+  amount: number;
+}

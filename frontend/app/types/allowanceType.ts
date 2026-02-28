@@ -104,11 +104,17 @@ export interface ViewAllItem {
   fch_rfc_deducted: number;
   cash_assitance_deduct:number;
   ecola_deduct:number;
-  
+}
+export interface LoanItem{
+  EmpCode:string;
+  Firstname:string;
+  Lastname:string;
+  per_payroll_deduct:number;
 }
 
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
   BRANCHES: Record<string, ViewAllItem[]>;
+  LOANS: LoanItem[];
 }

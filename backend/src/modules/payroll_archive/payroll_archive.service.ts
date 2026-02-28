@@ -876,7 +876,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       prisma.totalPayroll.findMany({
         where,
         orderBy: {
-          PayCycle: "asc",
+          PayCycle: "desc",
         },
         skip,
         take: pageSize,
@@ -976,7 +976,19 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
   }
   
 
-
+export async function displayBankAdminBDO(){
+  try{
+    const data = await prisma.bankAccountAdmin.findMany({
+      where:{
+        bank_name:"BDO"
+      }
+    });
+    return data;
+  }
+  catch(error){
+    console.error("Error occured",error);
+  }
+}
 
 
   export async function ViewEmployeeBankAccounts({PayCode,cycle_category}: EmployeeBankAccountsParams) {
@@ -985,6 +997,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         where: {
           PayCode,
           cycle_category,
+          EmpCode: {
+            Disbursing: {
+              not: true,
+            },
+          },
         },
         select: {
           id:true,
@@ -996,18 +1013,32 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
               Firstname: true,
               Lastname: true,
               BranchCodeId:true,
+              Disbursing:true,
+              employeepayroll:{
+                select:{
+                  bank_account:true,
+                }
+              },
               BranchCode: {
                 select: {
                   company_id: true,
                 },
               },
             },
+            
           },
+          
         },
+        orderBy:{
+          EmpCode:{
+            Lastname:"asc",
+          }
+        }
       });
   
 
       const normalized: PayrollRow[] = employeeList.map((row) => ({
+
         id:row.id,
         PayCode: row.PayCode,
         cycle_category: row.cycle_category,
@@ -1017,6 +1048,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Firstname: row.EmpCode.Firstname,
           Lastname: row.EmpCode.Lastname,
           BranchCode: row.EmpCode.BranchCode,
+          bank_account: row.EmpCode.employeepayroll?.bank_account,
+        
         },
       }));
   

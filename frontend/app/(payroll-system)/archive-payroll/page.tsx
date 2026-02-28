@@ -207,7 +207,7 @@ const closeModal = () => {
 
         {isModalOpen && (
             <RequestModal size="xxxl" title={`VIEW BANK RELEASE`} onClose={closeModal}>
-                <ViewBank BDOList={bdo_data} PNBList={pnb_data}/>
+                <ViewBank BDOList={bdo_data} PNBList={pnb_data}   cycleCategory={selectedCycle}/>
             </RequestModal>
           )}
 

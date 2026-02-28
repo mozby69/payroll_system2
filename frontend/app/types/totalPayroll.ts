@@ -95,6 +95,7 @@ export interface BankProps {
     BranchCode:{
       company_id:string;
     }
+    bank_account:string;
   }
   
 }

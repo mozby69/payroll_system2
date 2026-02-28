@@ -11,6 +11,7 @@ import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 
 
 
+
 export function useDisplayPayroll() {
   return useQuery<PayrollResponse>({
     queryKey: ["payroll-display"],
@@ -201,4 +202,47 @@ export function useFetchBank(PayCode: string | null,cycle_category:string | null
     },
     enabled: Boolean(PayCode && cycle_category), 
   });
+}
+
+
+
+// interface BankFileRow {
+//   bankAccount: string;
+//   amount: number;
+// }
+export function useGenerateBankFile() {
+  const generate = async (
+    bank: "BDO" | "PNB",
+    rows: { bankAccount: string; amount: number }[]
+  ) => {
+    const response = await api.post(
+      `/payroll-archive/generate-bank-file?bank=${bank}`,
+      rows
+    );
+
+    const { filename, file, mime } = response.data;
+
+    const byteCharacters = atob(file);
+    const byteNumbers = new Array(byteCharacters.length);
+
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: mime });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename; 
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
+  };
+
+  return { generate };
 }
