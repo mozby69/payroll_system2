@@ -9,7 +9,8 @@ import {
     ShieldCheck,
     HandCoins,
     PhilippinePeso,
-    CreditCard
+    CreditCard,
+    ChartColumnDecreasingIcon,
   } from "lucide-react"
 
   
@@ -94,6 +95,12 @@ import {
           label: "Employees Allowance",
           path: "/allowance",
           icon: PhilippinePeso,
+          permission: "BONUS_GENERATE"
+        },
+         {
+          label: "Employees Conversion",
+          path: "/conversion",
+          icon: ChartColumnDecreasingIcon,
           permission: "BONUS_GENERATE"
         },
       ]

@@ -126,6 +126,7 @@ model Employee {
   employee_salary_history EmployeeSalaryHistory[] @relation()
   bod_philhealth BodPhilhealtContrib[] @relation()
   archive_allowance archive_allowance[] @relation()
+  attendance_count AttendanceCount[] @relation()
   @@map("employee")
 }
 
@@ -710,4 +711,16 @@ model emp_disburse {
   mainDisburse    main_disburse @relation(fields: [mainDisburseId], references: [mainDisburseID], onDelete: Cascade)
 
   @@unique([empArchiveId])
+}
+
+
+
+model AttendanceCount{
+  ID Int @id @default(autoincrement())
+  Vacation Decimal @db.Decimal(10,2)
+  Sick Decimal @db.Decimal(10,2)
+
+
+  EmpCodeId String @db.VarChar(20) @map("EmpCodeId")
+   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 }

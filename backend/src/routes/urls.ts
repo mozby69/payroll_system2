@@ -17,6 +17,8 @@ import varianceRoutes from '../modules/variance/variance.routes';
 import statutoryRoutes from '../modules/statutory_deductions/statutory.routes';
 import disburseRoutes from '../modules/Disburse/disburse.routes';
 import printeRoutes from '../modules/print/print.routes';
+import conversionRouites from '../modules/conversion/conversion.routes';
+
 
 const router = Router();
 
@@ -57,5 +59,7 @@ router.use("/Disburse", disburseRoutes);
 router.use("/print", printeRoutes)
 
 
+
+router.use("/conversion", conversionRouites)
 
 export default router;
