@@ -484,7 +484,7 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
       absence_count:absent,
       overtime:overTime,
       undertime:undertimeCount,
-      gross_pay:computeGrossPay(overTime,semiMonthlyRate,lateCount,absent),
+      gross_pay:computeGrossPay(overTime,semiMonthlyRate,lateCount,totalUndertimeCount,absent),
     };
   });
 

@@ -13,6 +13,8 @@ import { EmployeeArchivedType } from "@/app/types/totalPayroll"
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { useFetchBranchesByCompany, useFetchCompanies } from "@/app/hooks/useAllowance"
 import { printEmployeeArchivedService } from "@/app/services/archive.services"
+import RequestModal from "../Modal"
+import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
 
 type PayslipProps = {
   totalPayrollId: number
@@ -26,7 +28,8 @@ export default function GeneratePayslipModal({
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
   const debouncedSearch = useDebounce(search, 400)
- 
+  const [isModalViewOpen, setIsModalViewOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeArchivedType | null>(null);
 
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [selectedBranch, setSelectedBranch] = useState<string>("");
@@ -129,8 +132,17 @@ export default function GeneratePayslipModal({
   }
 
   const handleView = (row: EmployeeArchivedType) => {
-    console.log("View payslip:", row.id)
-  }
+    setSelectedEmployee(row);
+    setIsModalViewOpen(true);
+  };
+
+
+
+
+  const closeModal2 = () => {
+    setIsModalViewOpen(false);
+    setSelectedEmployee(null);
+  };
 
   const columns: Column<EmployeeArchivedType>[] = [
     {
@@ -298,6 +310,14 @@ export default function GeneratePayslipModal({
           </div>
         )}
       </div>
+
+
+      {isModalViewOpen && selectedEmployee && (
+            <RequestModal size="xl" title={`VIEW EMPLOYEE`} onClose={closeModal2}>
+                <ViewEmployeeList employee={selectedEmployee}/>
+            </RequestModal>
+          )}
+
   
     </div>
   );

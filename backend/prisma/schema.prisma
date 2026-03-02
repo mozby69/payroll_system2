@@ -762,6 +762,7 @@ model AttendanceCount {
   ID Int @id @default(autoincrement())
   Vacation Decimal @db.Decimal(10,2)
   Sick Decimal @db.Decimal(10,2)
+  leave_convert Boolean @default(false)
 
   EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])

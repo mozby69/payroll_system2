@@ -41,12 +41,12 @@ export const computeLate = (lateCount:number | null, basicSalary:number | null):
 
 
 
-export const computeGrossPay = (overtime:number | null,basicPay:number | null,lateCount:number | null, absentCount:number | null ):number => {
-  if ( overtime == null || basicPay == null || lateCount == null || absentCount == null)
+export const computeGrossPay = (overtime:number | null,basicPay:number | null,lateCount:number | null,undertimeCount:number, absentCount:number | null ):number => {
+  if ( overtime == null || basicPay == null || lateCount == null || absentCount == null || undertimeCount == null)
      return 0;
 
     const ot_bp = overtime + basicPay;
-    const deduct = absentCount + lateCount;
+    const deduct = absentCount + lateCount + undertimeCount;
     const res = ot_bp - deduct;
     return Number(res.toFixed(2));
 }

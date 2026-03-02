@@ -9,6 +9,7 @@ export interface conversionProps {
     lastname: string;
     EmpCode:string;
     total:number;
+    leave_convert:boolean;
   }
   
   

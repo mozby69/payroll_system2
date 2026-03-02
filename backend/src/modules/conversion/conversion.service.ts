@@ -57,6 +57,7 @@ export default async function getAttendanceCount({page,limit,search}: Conversion
               Vacation: true,
               Sick: true,
               EmpCodeId:true,
+              leave_convert:true,
               EmpCode:{
                 select:{
                   Lastname:true,
@@ -82,8 +83,20 @@ export default async function getAttendanceCount({page,limit,search}: Conversion
           const formattedData = data.map(item => {
           
             const basic = item.EmpCode.employeepayroll?.basic_salary?.toNumber() ?? 0;
-            const data = computeDailyRate(basic);
-            const amount = data * item.Sick?.toNumber();
+            const leave_convert = item.leave_convert;
+            const dailyRate = computeDailyRate(basic);
+            var total_amount = 0;
+
+        
+          if (leave_convert === true) {
+            const sick_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
+            const leave_amount = dailyRate * (item.Vacation?.toNumber() ?? 0);
+            total_amount = sick_amount + leave_amount;
+          } else {
+            total_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
+          }
+
+
 
             return {
               id: item.ID,
@@ -92,7 +105,8 @@ export default async function getAttendanceCount({page,limit,search}: Conversion
               firstname:item.EmpCode.Firstname,
               lastname:item.EmpCode.Lastname,
               EmpCode:item.EmpCodeId,
-              total:amount.toFixed(2),
+              total:total_amount.toFixed(2),
+              leave_convert:item.leave_convert,
             };
 
           });
@@ -113,4 +127,20 @@ export default async function getAttendanceCount({page,limit,search}: Conversion
     console.error("Error occurred", error);
     throw error;
   }
+}
+
+
+
+
+export async function updateVacationLeave(
+  ID: number,
+  data: { leave_convert: boolean; Vacation: number }
+) {
+  return prisma.attendanceCount.update({
+    where: { ID },
+    data: {
+      leave_convert: data.leave_convert,
+      Vacation: data.Vacation, 
+    },
+  });
 }
