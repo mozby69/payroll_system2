@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticateToken } from "../../../src/middleware/authMiddleware";
 import { getEmployees,getEmployeeByEmpCode, updateEmployeePayrollByEmpCode, getCompanies, getEmployeesByCompany, bulkIncreaseEmployeeSalary } from "./emp.controller";
 
 const router = Router();
@@ -15,7 +16,7 @@ router.get(
 );
 
 router.put(
-  "/employees/bulk-increase",
+  "/employees/bulk-increase",authenticateToken,
   bulkIncreaseEmployeeSalary
 );
 

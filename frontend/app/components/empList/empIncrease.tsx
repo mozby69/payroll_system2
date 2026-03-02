@@ -5,12 +5,14 @@ import { EmployeeIncreaseItem } from "@/app/types/empTypes";
 import SweetAlert from "../Swal";
 import GenButton from "../Buttons";
 
+
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
 export default function EmpIncrease({ open, onClose }: Props) {
+
     const bulkIncreaseMutation = useBulkIncreaseSalary();
     const { data: companies } = useCompanies();
     const [selectedCompany, setSelectedCompany] = useState<string>("");
@@ -41,7 +43,6 @@ export default function EmpIncrease({ open, onClose }: Props) {
     const grouped = useMemo(() => {
     if (!employees) return {};
 
-    // Apply branch filter first
     const filteredEmployees = selectedBranch
         ? employees.filter(
             (e) =>
@@ -156,7 +157,7 @@ export default function EmpIncrease({ open, onClose }: Props) {
       />
 
       <div
-        className="absolute top-0 right-4 bottom-0 w-full max-w-2xl
+        className="absolute top-0 right-4 bottom-0 w-full max-w-xl
         bg-mainLight shadow p-6 overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
@@ -206,12 +207,11 @@ export default function EmpIncrease({ open, onClose }: Props) {
         </div>
 
           <div className="inline-flex w-full justify-end pb-6">
-              <GenButton variant="primary" className="w-[30%]" onClick={handlIncrease}>
-                    Salary Increase
+              <GenButton variant="primary" className="w-[40%] inline-flex items-center justify-center" onClick={handlIncrease}>
+                    Saved Salary Increase
                 </GenButton>
           </div>
 
-        {/* Grouped by Branch */}
         {Object.entries(grouped).map(([branch, emps]) => {
           const branchAllSelected = emps.every((e) =>
             selectedEmployees.has(e.EmpCode)
@@ -222,8 +222,7 @@ export default function EmpIncrease({ open, onClose }: Props) {
               key={branch}
               className="mb-6 bg-mainLight px-6 py-4 drop-shadow-xl/25 rounded-md"
             >
-              {/* Branch Header */}
-              <div className="flex justify-between items-center bg-mainhighlight text-mainLight px-3 py-2 rounded-md">
+              <div className="flex justify-between items-center bg-mainBg text-mainLight px-3 py-2 rounded-md">
                 <h3 className="font-bold">
                   Branch: {branch}
                 </h3>
@@ -238,7 +237,6 @@ export default function EmpIncrease({ open, onClose }: Props) {
                 </button>
               </div>
 
-              {/* Column Header */}
               <div className="grid grid-cols-3 font-semibold px-3 py-2 mt-3">
                 <span>Select</span>
                 <span>Employee</span>
@@ -247,7 +245,6 @@ export default function EmpIncrease({ open, onClose }: Props) {
                 </span>
               </div>
 
-              {/* Employee Rows */}
               <div className="space-y-2">
                 {emps.map((emp) => {
                   const fullName = [
@@ -260,30 +257,21 @@ export default function EmpIncrease({ open, onClose }: Props) {
 
                   return (
                     <div
-                      key={emp.EmpCode}
-                      className="grid grid-cols-3 items-center border px-3 py-2 rounded-md"
+                    key={emp.EmpCode}
+                    className="grid grid-cols-[60px_1fr_120px] items-center border px-3 py-2 rounded-md"
                     >
-                      {/* Checkbox */}
-                      <input
+                    <input
                         type="checkbox"
-                        checked={selectedEmployees.has(
-                          emp.EmpCode
-                        )}
-                        onChange={() =>
-                          toggleEmployee(emp.EmpCode)
-                        }
-                        className="w-4 h-4"
-                      />
+                        checked={selectedEmployees.has(emp.EmpCode)}
+                        onChange={() => toggleEmployee(emp.EmpCode)}
+                        className="scale-150"
+                    />
 
-                      {/* Name */}
-                      <span>{fullName}</span>
+                    <span className="truncate">{fullName}</span>
 
-                      {/* Salary */}
-                      <span className="text-right">
-                        ₱{" "}
-                        {emp.employeepayroll
-                          ?.basic_salary ?? 0}
-                      </span>
+                    <span className="text-right">
+                        ₱ {emp.employeepayroll?.basic_salary ?? 0}
+                    </span>
                     </div>
                   );
                 })}

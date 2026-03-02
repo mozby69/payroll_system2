@@ -10,12 +10,15 @@ import { useState } from "react";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
 import EmpIncrease from "@/app/components/empList/empIncrease";
 
+
 const FILTER_KEYS = ["department", "company", "status"] as const;
 
 function EmployeeListContent() {
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { filters } = useFilters();
+ 
 
   const search = searchParams.get("search") ?? "";
   const page = Number(searchParams.get("page") ?? 1);
