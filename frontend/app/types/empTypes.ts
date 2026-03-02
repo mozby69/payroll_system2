@@ -108,7 +108,8 @@ export type EmployeeProfile = {
   Address?: string | null;
 
   WithAtm: boolean;         
-  Disbursing: boolean;      
+  Disbursing: boolean;     
+  Taxable: boolean; 
   BranchCode?: BranchInfo | null;
   employeepr: EmpDetails[];
   employeepayroll: EmpPayrollInfo | null;
@@ -122,6 +123,7 @@ export type UpdateEmployeePayrollPayload = {
   pagibigEmployeeShare: number;
   WithAtm: boolean;
   Disbursing: boolean;
+  Taxable: boolean;
   remarks?:string;
 };
 
@@ -132,6 +134,7 @@ export type PayrollFormState = {
   pagibigEmployeeShare: string;
   WithAtm: boolean;
   Disbursing: boolean;
+  Taxable: boolean;
 };
 
 

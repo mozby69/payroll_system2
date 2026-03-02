@@ -108,6 +108,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       isNewEmployee: true,
       bod_member:true,
       Disbursing:true,
+      Taxable:true,
       WithAtm:true,
       employeepr: {
         select: {
@@ -292,7 +293,7 @@ export const updateEmployeePayroll = async (
         data: {
           WithAtm: payLoad.WithAtm,
           Disbursing: payLoad.Disbursing,
-
+          Taxable:payLoad.Taxable,
           employeepayroll: {
             upsert: {
               update: {

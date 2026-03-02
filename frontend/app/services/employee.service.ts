@@ -46,6 +46,7 @@ export const updateEmployeePayroll = async (
     pagibigEmployeeShare,
     WithAtm,
     Disbursing,
+    Taxable,
     remarks,
   } = payload;
 
@@ -58,6 +59,7 @@ export const updateEmployeePayroll = async (
       pagibigEmployeeShare,
       WithAtm,
       Disbursing,
+      Taxable,
       ...(remarks ? { remarks } : {}),
     }
   );

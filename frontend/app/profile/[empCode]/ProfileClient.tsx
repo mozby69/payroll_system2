@@ -46,6 +46,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       pagibigEmployeeShare: String(payInfo?.pagibigEmployeeShare ?? ""),
       WithAtm: Boolean(data?.WithAtm ?? false),
       Disbursing: Boolean(data?.Disbursing ?? false),
+      Taxable: Boolean(data?.Taxable ?? false),
     };
   }, [payInfo, data]);
 
@@ -220,6 +221,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       pagibigEmployeeShare: Number(formValues.pagibigEmployeeShare),
       WithAtm: formValues.WithAtm,
       Disbursing: formValues.Disbursing,
+      Taxable: formValues.Taxable
     };
 
     try {
@@ -474,6 +476,22 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                       />
                       <span className="text-sm text-gray-700 font-medium">
                         Disbursing
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-x-3 col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={formValues.Taxable}
+                        onChange={(e) =>
+                          setFormValues(prev => ({
+                            ...prev,
+                            Taxable: e.target.checked
+                          }))
+                        }
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">
+                        Taxable
                       </span>
                     </div>
                 </div>

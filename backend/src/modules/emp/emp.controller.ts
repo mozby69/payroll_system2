@@ -93,6 +93,7 @@ export const updateEmployeePayrollByEmpCode = async (
       pagibigEmployeeShare,
       WithAtm,
       Disbursing,
+      Taxable,
       remarks,
     } = req.body;
 
@@ -108,6 +109,7 @@ export const updateEmployeePayrollByEmpCode = async (
         pagibigEmployeeShare: Number(pagibigEmployeeShare),
         WithAtm: Boolean(WithAtm),
         Disbursing: Boolean(Disbursing),
+        Taxable:Boolean(Taxable),
         remarks: remarks ? String(remarks) : undefined, 
       },
       changedBy 

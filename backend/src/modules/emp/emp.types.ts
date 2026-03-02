@@ -5,5 +5,6 @@ export type UpdateTypesByEmpCode ={
     pagibigEmployeeShare: number;
     WithAtm:boolean;
     Disbursing:boolean;
+    Taxable:boolean;
     remarks?:string;
 }
