@@ -207,8 +207,8 @@ export default function EmpIncrease({ open, onClose }: Props) {
         </div>
 
           <div className="inline-flex w-full justify-end pb-6">
-              <GenButton variant="primary" className="w-[30%]" onClick={handlIncrease}>
-                    Salary Increase
+              <GenButton variant="primary" className="w-[40%] inline-flex items-center justify-center" onClick={handlIncrease}>
+                    Saved Salary Increase
                 </GenButton>
           </div>
 
@@ -222,7 +222,7 @@ export default function EmpIncrease({ open, onClose }: Props) {
               key={branch}
               className="mb-6 bg-mainLight px-6 py-4 drop-shadow-xl/25 rounded-md"
             >
-              <div className="flex justify-between items-center bg-mainhighlight text-mainLight px-3 py-2 rounded-md">
+              <div className="flex justify-between items-center bg-mainBg text-mainLight px-3 py-2 rounded-md">
                 <h3 className="font-bold">
                   Branch: {branch}
                 </h3>
