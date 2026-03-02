@@ -27,12 +27,13 @@ export default function ConversionPage(){
         const [search, setSearch] = useState("");
         const debouncedSearch = useDebounce(search, 400);
         const [isModalOpen, setIsModalOpen] = useState(false);
-        const [hasGenerated, setHasGenerated] = useState(false);
-        const {data: pagibig_data,} = useFetchConversion({page,limit: 10,search: debouncedSearch},hasGenerated);
+        //const [hasGenerated, setHasGenerated] = useState(false);
+        const {data: conversion_data,} = useFetchConversion({page,limit: 10,search: debouncedSearch});
     
         const {mutate: generateAttendance,isPending} = useImportAttendanceCount();
+        const [selectedRow, setSelectedRow] = useState<conversionProps | null>(null);
 
-        const tableData: conversionProps[] = pagibig_data?.data ?? []; 
+        const tableData: conversionProps[] = conversion_data?.data ?? []; 
 
         const handleGenerate = () => {
             SweetAlert.loadingAlert(
@@ -43,12 +44,12 @@ export default function ConversionPage(){
             generateAttendance(undefined, {
               onSuccess: () => {
                 Swal.close();
-                setHasGenerated(true);
+                // setHasGenerated(true);
           
                 Swal.fire({
                   icon: "success",
                   title: "Success",
-                  text: "Conversion generated successfully.",
+                  text: "Update data successfully.",
                 });
               },
               onError: (err) => {
@@ -85,10 +86,10 @@ export default function ConversionPage(){
                 },
               {
                     header:"Actions",
-                    render: () => (
+                    render: (row) => (
                       <div className="flex gap-2">
                         <button
-                        onClick={() => openModal()}
+                         onClick={() => openModal(row)}
                         className="px-3 py-2.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
                         <Pencil/>
                         </button>
@@ -97,17 +98,16 @@ export default function ConversionPage(){
                   }
                 ];
 
-        const handleSearchChange = (value: string) => {
-                  setSearch(value);
-                  setPage(1);
-                };
-
-
-
+          const handleSearchChange = (value: string) => {
+                setSearch(value);
+                setPage(1);
+            };
                 
-          const openModal = () => {
-            setIsModalOpen(true);
-          };
+            const openModal = (row: conversionProps) => {
+              console.log("ROW DATA:", row)
+              setSelectedRow(row);
+              setIsModalOpen(true);
+            };
         
           const closeModal = () => {
             setIsModalOpen(false);
@@ -143,31 +143,31 @@ export default function ConversionPage(){
                         </div>
                                
              
-                        {!hasGenerated ? (
+                        {/* {!hasGenerated ? (
                         <div className="p-10 text-center text-gray-500 border border-gray-300 rounded-lg bg-gray-50">
                             Click <span className="font-semibold">Generate</span> to load conversion data.
                         </div>
-                        ) : (
+                        ) : ( */}
                         <>
                             <Datatable columns={columns} data={tableData} />
                             <Pagination
                             page={page}
-                            totalPages={pagibig_data?.meta.totalPages ?? 1}
-                            totalItems={pagibig_data?.meta.total ?? 0}
+                            totalPages={conversion_data?.meta.totalPages ?? 1}
+                            totalItems={conversion_data?.meta.total ?? 0}
                             pageSize={PAGE_SIZE}
                             onPageChange={setPage}
                             />
                         </>
+                        {/* )} */}
+
+
+
+
+                        {isModalOpen && selectedRow && (
+                          <RequestModal size="lg" title="EDIT LEAVE" onClose={closeModal}>
+                            <EditLeave     key={selectedRow.id} data={selectedRow} onClose={closeModal} />
+                          </RequestModal>
                         )}
-
-
-
-
-                {isModalOpen && (
-                    <RequestModal size="xxl" title={`EDIT LEAVE`} onClose={closeModal}>
-                        <EditLeave/>
-                    </RequestModal>
-                    )}
 
    
    

@@ -11,6 +11,8 @@ import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
+import RequestModal from "../Modal"
+import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
 
 type PayslipProps = {
   totalPayrollId: number
@@ -24,6 +26,8 @@ export default function GeneratePayslipModal({
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
   const debouncedSearch = useDebounce(search, 400)
+  const [isModalViewOpen, setIsModalViewOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeArchivedType | null>(null);
   const { data, isFetching } = useGetEmployeeArchived({
     page,
     pageSize: PAGE_SIZE,
@@ -99,8 +103,17 @@ export default function GeneratePayslipModal({
   }
 
   const handleView = (row: EmployeeArchivedType) => {
-    console.log("View payslip:", row.id)
-  }
+    setSelectedEmployee(row);
+    setIsModalViewOpen(true);
+  };
+
+
+
+
+  const closeModal2 = () => {
+    setIsModalViewOpen(false);
+    setSelectedEmployee(null);
+  };
 
   const columns: Column<EmployeeArchivedType>[] = [
     {
@@ -209,6 +222,14 @@ export default function GeneratePayslipModal({
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
+
+
+
+      {isModalViewOpen && selectedEmployee && (
+            <RequestModal size="xl" title={`VIEW EMPLOYEE`} onClose={closeModal2}>
+                <ViewEmployeeList employee={selectedEmployee}/>
+            </RequestModal>
+          )}
 
     </div>
   )

@@ -298,7 +298,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           nightShiftOt: emp.NightShiftOtAtt,
         });
     
-        const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,absent);
+        const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,undertimeCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction);
         const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
         const companyId = emp.EmpCode.BranchCode?.company_id;
@@ -977,7 +977,20 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
   
 
 
-  //XYRYL
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //XYRYL CODE ***********************************************************************
 
 export async function displayBankAdminBDO(){
   try{

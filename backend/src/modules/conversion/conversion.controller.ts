@@ -1,4 +1,4 @@
-import getAttendanceCount from "./conversion.service";
+import getAttendanceCount, { updateVacationLeave } from "./conversion.service";
 import { Request,Response } from "express";
 
 
@@ -21,3 +21,15 @@ export const getAttendanceCountController = async (req: Request, res: Response) 
     });
   }
 };
+
+
+export const updateVacationLeaveController = async (req: Request, res:Response) => {
+  try{
+    const id = Number(req.params.id);
+    const updated = await updateVacationLeave(id, req.body);
+    return res.status(200).json(updated);
+  }
+  catch(error){
+    return res.status(500).json({ message: `SERVER ERROR ${error}`})
+  }
+}

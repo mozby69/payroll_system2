@@ -13,6 +13,7 @@ import RequestModal from "@/app/components/Modal"
 import GeneratePayslipModal from "@/app/components/archive/GeneratePayslipModal"
 import ViewBank from "@/app/ModalContent/ArchivePayroll/BankRelease/ViewBank"
 
+
 export default function ArchivePayroll() {
   const PAGE_SIZE = 7
 
@@ -60,9 +61,6 @@ export default function ArchivePayroll() {
     setPage(1)
   }
 
-  const handleView = (data: TotalPayroll) => {
-      console.log("id: ", data);
-  }
 
   const handleGeneratePayslip = (data: TotalPayroll) => {
     setTotalPayrollId(data.id)
@@ -70,11 +68,12 @@ export default function ArchivePayroll() {
 }
 
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
 
 
-const closeModal = () => {
-  setIsModalOpen(false);
-};
+  
 
   const columns: Column<TotalPayroll>[] = [
     {
@@ -105,7 +104,7 @@ const closeModal = () => {
         <div className="flex items-center gap-2">
 
         <button
-          onClick={() => handleView(row)}
+     
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
                      text-blue-700 bg-blue-50 hover:bg-blue-100 
                      border border-blue-200 rounded-md 
@@ -211,6 +210,8 @@ const closeModal = () => {
             </RequestModal>
           )}
 
+
+    
 
 
     </div>
