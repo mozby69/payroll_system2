@@ -12,7 +12,7 @@ type LoanModal = {
 };
 
 type LoanForm = {
-  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS";
+  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
   principal: number;
   start_date: string;
   term_value: number;

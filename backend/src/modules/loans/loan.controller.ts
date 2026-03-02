@@ -391,3 +391,13 @@ export const getBonusRules = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+
+export const searchEmployeeController = async (req: Request, res: Response) => {
+  const q = req.query.q?.toString() ?? "";
+  const data = await loanService.searchEmployees(q);
+  res.json(data);
+};
+

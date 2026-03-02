@@ -179,6 +179,7 @@ export type EmpLoansByCycleResponse = {
 export type BonusRules = {
   code: string;
   name:string;
+  formulaType:string;
 }
 
 export type InfoProps = {
@@ -186,11 +187,6 @@ export type InfoProps = {
   value: string | number | null | undefined;
 };
 
-export type EmployeeSearchItem = {
-  EmpCode: string;
-  Firstname: string;
-  Lastname: string;
-};
 
 
 export interface LoanLimitDetails {
@@ -218,3 +214,10 @@ export interface ApiErrorResponse {
   message?: string;
   details?: LoanLimitDetails;
 }
+
+export type EmployeeSearchItem = {
+  EmpCode: string;
+  Firstname: string;
+  Lastname: string;
+  basic_salary: number;
+};

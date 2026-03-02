@@ -4,10 +4,12 @@ import GenButton from "@/app/components/Buttons";
 import SweetAlert from "@/app/components/Swal";
 import { useEmployeeProfile } from "@/app/hooks/employees";
 import { useUpdateEmployeePayroll } from "@/app/hooks/employees";
+import { PayrollFormState } from "@/app/types/empTypes";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef} from "react";
+
 
 type ProfileClientProps = {
   empCode: string;
@@ -26,60 +28,95 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
   const searchParams = useSearchParams();
 
   const { data, isLoading, isError } = useEmployeeProfile(empCode);
+
+  const salaryPrompted = useRef(false);
   
   const updatePayroll = useUpdateEmployeePayroll();
-
-  const [active, setActive] = useState<TabKey>("personal");
-  const [loanPage, setLoanPage] = useState(1);
-
-  const [formValues, setFormValues] = useState({
-    basicSalary: "",
-    cashAssistance: "",
-    ecola: "",
-    pagibigEmployeeShare: "",
-  });
-
-  const [originalValues, setOriginalValues] = useState({
-    basicSalary: "",
-    cashAssistance: "",
-    ecola: "",
-    pagibigEmployeeShare: "",
-  });
-  const isDirty =
-  formValues.basicSalary !== originalValues.basicSalary ||
-  formValues.cashAssistance !== originalValues.cashAssistance ||
-  formValues.ecola !== originalValues.ecola ||
-  formValues.pagibigEmployeeShare !== originalValues.pagibigEmployeeShare;
-
+  
   const details = data?.employeepr?.[0] ?? null;
   const payInfo = data?.employeepayroll;
   const loans = data?.loan_details ?? [];
 
 
+  const initialValues = useMemo<PayrollFormState>(() => {
+    return {
+      basicSalary: String(payInfo?.BasicSalary ?? ""),
+      cashAssistance: String(payInfo?.CashAssistance ?? ""),
+      ecola: String(payInfo?.Ecola ?? ""),
+      pagibigEmployeeShare: String(payInfo?.pagibigEmployeeShare ?? ""),
+      WithAtm: Boolean(data?.WithAtm ?? false),
+      Disbursing: Boolean(data?.Disbursing ?? false),
+    };
+  }, [payInfo, data]);
+
+  const [formValues, setFormValues] = useState<PayrollFormState>(initialValues);
+
+    
+  const initialTab =
+  (searchParams.get("tab") as TabKey) ?? "personal";
+
+  const initialPage =
+    Number(searchParams.get("page")) || 1;
+
+  const [active, setActive] = useState<TabKey>(initialTab);
+  const [loanPage, setLoanPage] = useState(initialPage);
+
+
   useEffect(() => {
-    const tab = searchParams.get("tab") as TabKey | null;
-    const page = Number(searchParams.get("page"));
+    setFormValues(initialValues);
+  }, [initialValues]);
 
-    if (tab && TABS.some(t => t.key === tab)) {
-      setActive(tab);
+
+  useEffect(() => {
+    if (!payInfo) return;
+
+    const basicSalaryValue = Number(initialValues.basicSalary);
+
+    const isSalaryEmpty =
+      !initialValues.basicSalary ||
+      basicSalaryValue === 0 ||
+      isNaN(basicSalaryValue);
+
+    if (isSalaryEmpty && !salaryPrompted.current) {
+      salaryPrompted.current = true;
+      setActive("job-pay");
+
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "job-pay");
+      params.delete("page");
+
+      router.replace(`?${params.toString()}`, { scroll: false });
+
+      SweetAlert.warningAlert(
+        "Missing Salary",
+        "Basic salary is not set. Please update the salary information."
+      );
     }
+  }, [payInfo, initialValues, router, searchParams]);
 
-    if (Number.isInteger(page) && page > 0) {
-      setLoanPage(page);
-    }
-  }, [searchParams]);
+  const isDirty =
+    initialValues &&
+    formValues &&
+    JSON.stringify(initialValues) !== JSON.stringify(formValues);
 
 
+  
   useEffect(() => {
     if (active !== "loans") return;
+
+    const currentTab = searchParams.get("tab");
+    const currentPage = searchParams.get("page");
+
+    if (currentTab === "loans" && currentPage === String(loanPage)) {
+      return; 
+    }
 
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "loans");
     params.set("page", String(loanPage));
 
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [active, loanPage]);
-
+  }, [active, loanPage, searchParams, router]);
 
   useEffect(() => {
     if (!empCode || isError) {
@@ -88,19 +125,6 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
   }, [empCode, isError, router]);
 
 
-  useEffect(() => {
-    if (!payInfo) return;
-
-    const initial = {
-      basicSalary: String(payInfo.BasicSalary ?? ""),
-      cashAssistance: String(payInfo.CashAssistance ?? ""),
-      ecola: String(payInfo.Ecola ?? ""),
-      pagibigEmployeeShare: String(payInfo.pagibigEmployeeShare ?? ""),
-    };
-
-    setFormValues(initial);
-    setOriginalValues(initial);
-  }, [payInfo]);
 
   if (isLoading) {
     return <div className="p-6">Loading employee profile…</div>;
@@ -174,24 +198,62 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
   };
 
 
-
   const handleSave = async () => {
-    try {
-      await updatePayroll.mutateAsync({
-        empCode,
-        basicSalary: Number(formValues.basicSalary),
-        cashAssistance: Number(formValues.cashAssistance),
-        ecola: Number(formValues.ecola),
-        pagibigEmployeeShare: Number(formValues.pagibigEmployeeShare),
-      });
-      SweetAlert.successAlert("Saved Changes Successfully");
-      setOriginalValues(formValues);
+    if (!formValues) return;
 
+    const basicChanged =
+      Number(formValues.basicSalary) !== Number(initialValues.basicSalary);
+
+    const cashChanged =
+      Number(formValues.cashAssistance) !== Number(initialValues.cashAssistance);
+
+    const ecolaChanged =
+      Number(formValues.ecola) !== Number(initialValues.ecola);
+
+    const shouldRequireRemarks = basicChanged || cashChanged || ecolaChanged;
+
+    const payload = {
+      empCode,
+      basicSalary: Number(formValues.basicSalary),
+      cashAssistance: Number(formValues.cashAssistance),
+      ecola: Number(formValues.ecola),
+      pagibigEmployeeShare: Number(formValues.pagibigEmployeeShare),
+      WithAtm: formValues.WithAtm,
+      Disbursing: formValues.Disbursing,
+    };
+
+    try {
+      if (shouldRequireRemarks) {
+        SweetAlert.remarksConfirmationAlertDropdown(
+          "Salary Adjustment",
+          "Please select the reason for modifying salary components.",
+          [
+            { value: "Salary Increase", label: "Salary Increase" },
+            { value: "Goverment Increase", label: "Goverment Increase" },
+            { value: "Merit Increase", label: "Merit Increase" },
+            { value: "Transfer Salary", label: "Salary Mod (Transfered Emp)" },
+          ],
+          async (remarks: string) => {
+            await updatePayroll.mutateAsync({
+              ...payload,
+              remarks,
+            });
+
+            SweetAlert.successAlert("Saved Changes Successfully");
+          }
+        );
+      } else {
+        await updatePayroll.mutateAsync(payload);
+        SweetAlert.successAlert("Saved Changes Successfully");
+      }
     } catch (error) {
       console.error("Failed to update payroll", error);
     }
   };
 
+  if (!formValues) {
+  return <div className="p-6">Loading employee profile…</div>;
+}
 
 
   return (
@@ -379,6 +441,43 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
 
                     </div>
 
+                  <div className="inline-flex gap-x-8 justify-start items-center">
+                  
+                    <div className="flex items-center gap-x-3 col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={formValues.WithAtm}
+                        onChange={(e) =>
+                          setFormValues(prev => ({
+                            ...prev,
+                            WithAtm: e.target.checked
+                          }))
+                        }
+
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">
+                        With ATM
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-x-3 col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={formValues.Disbursing}
+                        onChange={(e) =>
+                          setFormValues(prev => ({
+                            ...prev,
+                            Disbursing: e.target.checked
+                          }))
+                        }
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">
+                        Disbursing
+                      </span>
+                    </div>
+                </div>
+
                   </div>
                   
                   <div className="border-b border-mainNeutral"></div>
@@ -445,11 +544,11 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                       </div>
 
                       <div className="flex flex-col gap-y-1 col-span-2">
-                        <span className="text-sm text-gray-500">E-share Deductions</span>
+                        <span className="text-sm text-gray-500">Total E-share Deductions</span>
                  
                         <input
                           type="text"
-                          value={details?.EmpSSSNo?.trim() || "None"}
+                          value={payInfo?.totalEdeduction || "None"}
                           readOnly
                           className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
                         />
@@ -514,16 +613,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                           />
                         </div>
 
-                        <div className="flex flex-col gap-y-1 col-span-2">
-                          <span className="text-sm text-gray-500">Witholding Tax</span>
-                          <input
-                            type="text"
-                            value={payInfo?.Ecola || "None"}
-                            readOnly
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
-                          />
-                        </div>
-
+                  
                       </div>
 
                   </div>

@@ -131,16 +131,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
     const payrollCycle = payCycle.split("-")[0];
 
-    // console.log("=== PAYROLL CONTEXT ===");
-    // console.log(empCodes)
-    // console.log({
-    //   payrollPeriod,
-    //   payYear,
-    //   payMonth,
-    //   payrollCycle,
-    // });
-
-
     const loans = await prisma.loan_details.findMany({
       where: {
         EmpCodeId: { in: empCodes },
@@ -157,17 +147,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       },
     });
 
-    // console.log("=== ACTIVE LOANS ===");
-    // console.table(
-    //   loans.map(l => ({
-    //     loan_id: l.loan_id,
-    //     emp: l.EmpCodeId,
-    //     type: l.loan_type,
-    //     amount: Number(l.per_payroll_deduct),
-    //   }))
-    // );
-
-
     const loanIds = loans.map(l => l.loan_id);
 
     const ledgers = await prisma.loan_ledger.findMany({
@@ -181,16 +160,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         latestLedger.set(l.loan_id, l);
       }
     }
-
-    // console.log("=== LATEST LEDGER PER LOAN ===");
-    // for (const [loanId, ledger] of latestLedger.entries()) {
-    //   console.log({
-    //     loan_id: loanId,
-    //     transaction_date: ledger.transaction_date,
-    //     payroll_cycle: ledger.payroll_cycle,
-    //   });
-    // }
-
 
     const loanByEmp: Record<string, any> = {};
 
@@ -206,16 +175,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           ledger.payroll_cycle === payrollCycle;
       }
       
-      // console.log("=== LOAN CHECK ===");
-      // console.log({
-      //   loan_id: loan.loan_id,
-      //   emp: loan.EmpCodeId,
-      //   type: loan.loan_type,
-      //   amount: Number(loan.per_payroll_deduct),
-      //   ledger_date: ledger?.transaction_date,
-      //   ledger_cycle: ledger?.payroll_cycle,
-      //   alreadyDeducted,
-      // });
       if (!loanByEmp[loan.EmpCodeId]) {
         loanByEmp[loan.EmpCodeId] = {};
       }

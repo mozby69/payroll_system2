@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as employeeService from "./emp.services";
+import { boolean } from "zod";
 
 const normalizeArray = (value: unknown): string[] | undefined => {
   if (value === undefined) return undefined;
@@ -74,29 +75,126 @@ export const getEmployeeByEmpCode = async (
   }
 };
 
-export const updateEmployeePayrollByEmpCode = async (req:Request, res:Response) =>{
-    try{
-        const {empCode} = req.params;
-        const {basicSalary,cashAssistance,ecola,pagibigEmployeeShare} = req.body;
+export const updateEmployeePayrollByEmpCode = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { empCode } = req.params;
 
-        if (!empCode){
-          return res.status(400).json({message: "Employee code is required" });
-        }
-
-        const updated = await employeeService.updateEmployeePayroll(
-          empCode,
-          {
-            basicSalary: Number(basicSalary),
-            cashAssistance: Number(cashAssistance),
-            ecola: Number(ecola),
-            pagibigEmployeeShare: Number(pagibigEmployeeShare)
-          }
-        );
-
-        return res.json(updated);
-
-    }catch(err){
-      console.error(err);
-      res.status(500).json({ message: "Failed to update payroll" });
+    if (!empCode) {
+      return res.status(400).json({ message: "Employee code is required" });
     }
-}
+
+    const {
+      basicSalary,
+      cashAssistance,
+      ecola,
+      pagibigEmployeeShare,
+      WithAtm,
+      Disbursing,
+      remarks,
+    } = req.body;
+
+
+    const changedBy = (req as any).user?.username || "SYSTEM";
+
+    const updated = await employeeService.updateEmployeePayroll(
+      empCode,
+      {
+        basicSalary: Number(basicSalary),
+        cashAssistance: Number(cashAssistance),
+        ecola: Number(ecola),
+        pagibigEmployeeShare: Number(pagibigEmployeeShare),
+        WithAtm: Boolean(WithAtm),
+        Disbursing: Boolean(Disbursing),
+        remarks: remarks ? String(remarks) : undefined, 
+      },
+      changedBy 
+    );
+
+    return res.json(updated);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Failed to update payroll" });
+  }
+};
+
+export const getCompanies = async (_req: Request, res: Response) => {
+  try {
+    const companies = await employeeService.getAllCompanies();
+
+    return res.json({
+      data: companies,
+    });
+  } catch (error) {
+    console.error("Failed to fetch companies:", error);
+    return res.status(500).json({
+      message: "Failed to fetch companies",
+    });
+  }
+};
+
+export const getEmployeesByCompany = async (req: Request, res: Response) => {
+  try {
+    const { companyCode } = req.params;
+
+    if (!companyCode) {
+      return res.status(400).json({ message: "Company code required" });
+    }
+
+    const employees =
+      await employeeService.getEmployeesByCompanyGrouped(companyCode);
+
+    return res.json({ data: employees });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to fetch employees by company",
+    });
+  }
+};
+export const bulkIncreaseEmployeeSalary = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { empCodes, amount, reason } = req.body;
+
+    if (!Array.isArray(empCodes) || empCodes.length === 0) {
+      return res.status(400).json({
+        message: "No employees selected",
+      });
+    }
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({
+        message: "Invalid amount",
+      });
+    }
+
+    if (!reason) {
+      return res.status(400).json({
+        message: "Reason is required",
+      });
+    }
+
+    const changedBy =
+      (req as any).user?.username || "SYSTEM";
+
+    const result = await employeeService.bulkIncreaseSalary(
+      empCodes,
+      Number(amount),
+      String(reason),
+      changedBy
+    );
+
+    return res.json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to increase salaries",
+    });
+  }
+};

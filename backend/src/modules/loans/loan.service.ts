@@ -966,10 +966,43 @@ export const fetchBonusRule = async () =>{
       select:{
         code:true,
         name:true,
+        formulaType:true,
       },
       orderBy:{
         code:"asc"
       }
 
     })
+}
+
+
+
+export async function searchEmployees(keyword: string) {
+  const employees = await prisma.employee.findMany({
+    where: {
+      OR: [
+        { Firstname: { contains: keyword } },
+        { Lastname: { contains: keyword } },
+        { EmpCode: { contains: keyword } },
+      ],
+    },
+    take: 10,
+    select: {
+      EmpCode: true,
+      Firstname: true,
+      Lastname: true,
+      employeepayroll: {
+        select: {
+          basic_salary: true,
+        }
+      }
+    },
+  });
+
+  return employees.map(emp => ({
+    EmpCode: emp.EmpCode,
+    Firstname: emp.Firstname,
+    Lastname: emp.Lastname,
+    basic_salary: emp.employeepayroll?.basic_salary ?? 0
+  }));
 }

@@ -212,23 +212,6 @@ const bodMap = new Map(
 
 
 
-    
-  // const currentMonth = toMonth(new Date());
-  
-  // emp.loan_details.forEach(loan => {
-  //   if (!loan.loan_type || !loan.per_payroll_deduct) return;
-  //   if (!loan.start_date || !loan.end_date) return;
-  
-  //   const startMonth = toMonth(new Date(loan.start_date));
-  //   const endMonth = toMonth(new Date(loan.end_date));
-  //   const isActive = currentMonth >= startMonth && currentMonth <= endMonth;
-  
-  //   if (isActive) {
-  //     loanMap[loan.loan_type as keyof typeof loanMap] = loan.per_payroll_deduct.toNumber();
-  //   }
-  // });
-
-
   return {
     ...emp,
     basic_salary: basicSalary,
@@ -289,19 +272,20 @@ export async function updateEmployeeSalary({
   cash_assistance: number;
 }) {
   return await prisma.$transaction(async (tx) => {
-    // 1️⃣ Save history
+
     await tx.employeeSalaryHistory.create({
       data: {
         EmpCodeId: empCode,
         old_salary,
         new_salary,
         remarks,
+        salary_type: "Basic",
         changed_by,
         createdAt: nowPH(),
       },
     });
 
-    // 2️⃣ Update payroll table
+
     await tx.employee_payroll.update({
       where: { EmpCodeId: empCode },
       data: {
@@ -325,7 +309,7 @@ export async function updateEmployeePayrollFields({
   pagibig_employee_share?: number;
 }) {
   return await prisma.$transaction(async (tx) => {
-    // 1️⃣ Update employee_payroll table
+
     if (
       basic_salary !== undefined ||
       cash_assistance !== undefined
@@ -339,7 +323,6 @@ export async function updateEmployeePayrollFields({
       });
     }
 
-    // 2️⃣ Update pagibig_list table (employee share only)
     if (pagibig_employee_share !== undefined) {
       await tx.pagIbig_List.upsert({
         where: { EmpCodeId: empCode },
@@ -376,6 +359,11 @@ export async function searchEmployees(keyword: string) {
       EmpCode: true,
       Firstname: true,
       Lastname: true,
+      employeepayroll:{
+        select:{
+        basic_salary:true,
+        }
+      }
     },
   });
 }

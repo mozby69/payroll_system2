@@ -1,6 +1,6 @@
 import { useQueryClient, useMutation, useQuery,keepPreviousData} from "@tanstack/react-query";
-import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
-import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules } from "../types/loanTypes";
+import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, loanSearchEmployees, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
+import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem } from "../types/loanTypes";
 
 
 
@@ -145,3 +145,13 @@ export const useBonusRules = () => {
     queryFn: fetchBonusRules,
   });
 };
+
+
+export function useEmployeeSearch(keyword: string) {
+  return useQuery<EmployeeSearchItem[]>({
+    queryKey: ["employee-search", keyword],
+    queryFn: () =>
+      loanSearchEmployees(keyword).then(res => res.data),
+    enabled: keyword.length >= 2,
+  });
+}
