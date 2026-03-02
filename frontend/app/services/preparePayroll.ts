@@ -1,6 +1,6 @@
 import api from "./axios";
 import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
-import { ImportResponse } from "../hooks/usePreparePayroll";
+import { ImportAttendanceResponse, ImportResponse } from "../hooks/usePreparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
 
@@ -12,6 +12,13 @@ import { DateRange } from "../types/utilsTypes";
 //   });
 //   return response.data;
 // }
+
+
+
+export const importAttendanceCount = async (): Promise<ImportAttendanceResponse> => {
+  const { data } = await api.post<ImportAttendanceResponse>("/import/attendance-count");
+  return data;
+};
 
 
 
