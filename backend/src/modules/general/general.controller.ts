@@ -56,21 +56,24 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
 
   export const generatePdfController = async (req: Request, res: Response) => {
     try {
-      const { path } = req.query;
+      const { path, download } = req.query;
   
       if (!path || typeof path !== "string") {
         return res.status(400).send("Missing path parameter");
       }
   
-      const browser = await getBrowser(); // reused
+      const browser = await getBrowser(); 
       const page = await browser.newPage();
   
-      const fullUrl = `http://localhost:3000${path}`;
+      //const fullUrl = `http://localhost:3000${path}`;
+      const fullUrl = `${process.env.FRONTEND_URL}${path}`;
   
       await page.goto(fullUrl, {
-        waitUntil: "networkidle2",
-       // waitUntil: "domcontentloaded"
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
       });
+      
+      await page.waitForSelector("#pdf-ready");
 
    
       const pdf = await page.pdf({
@@ -85,7 +88,15 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
       await page.close(); // close page only
   
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", "inline");
+      if (download === "true") {
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="Allowance.pdf"`
+        );
+      } else {
+        res.setHeader("Content-Disposition", "inline");
+      }
+  
       res.send(pdf);
   
     } catch (error) {

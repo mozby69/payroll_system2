@@ -1,6 +1,6 @@
 "use client";
-import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
-import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importAttendanceCount, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
 import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
@@ -34,6 +34,33 @@ export const useImportBranches = () => {
   });
 };
 
+
+
+
+export type ImportAttendanceResult = {
+  branches: number;
+  employees: number;
+  employeeDetails:number;
+  companyDetails:number;
+};
+
+export type ImportAttendanceResponse = {
+  message: string;
+  inserted: ImportResult;
+};
+
+export const useImportAttendanceCount = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<ImportAttendanceResponse, Error>({
+    mutationFn: importAttendanceCount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["conversion-list"],
+      });
+    },
+  });
+};
 
 export function useEmployeesByCycle(
   params: {

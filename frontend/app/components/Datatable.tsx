@@ -32,42 +32,40 @@ export default function Datatable<T>({
         </thead>
 
         <tbody className="divide-y divide-slate-200">
-  {loading ? (
-    <tr>
-      <td
-        colSpan={columns.length}
-        className="py-6 text-center text-slate-500"
-      >
-        Loading...
-      </td>
-    </tr>
-  ) : data.length === 0 ? (
-    <tr>
-      <td
-        colSpan={columns.length}
-        className="py-6 text-center text-slate-500"
-      >
-        No data available
-      </td>
-    </tr>
-  ) : (
-    data.map((row, rowIndex) => (
-      <tr
-        key={rowIndex}
-        className="hover:bg-slate-50 transition-colors duration-150 border border-blue-100"
-      >
-        {columns.map((col, colIndex) => (
+        {loading ? (
+          <tr>
+                <td colSpan={columns.length}
+                  className="py-6 text-center text-slate-500">
+                  Loading...
+                </td>
+              </tr>
+            ) : data.length === 0 ? (
+        <tr>
           <td
-            key={colIndex}
-            className="px-6 py-4 text-sm text-slate-700 whitespace-nowrap"
+            colSpan={columns.length}
+            className="py-6 text-center text-slate-500"
           >
-            {col.render ? col.render(row) : col.accessor?.(row)}
+            No data available
           </td>
-        ))}
-      </tr>
-    ))
-  )}
-</tbody>
+        </tr>
+      ) : (
+        data.map((row, rowIndex) => (
+          <tr
+            key={rowIndex}
+            className="hover:bg-slate-50 transition-colors duration-150 border border-blue-100"
+          >
+            {columns.map((col, colIndex) => (
+              <td
+                key={colIndex}
+                className="px-6 py-4 text-sm text-slate-700 whitespace-nowrap"
+              >
+                {col.render ? col.render(row) : col.accessor?.(row)}
+              </td>
+            ))}
+          </tr>
+        ))
+      )}
+    </tbody>
 
 
         {hasFooter && (

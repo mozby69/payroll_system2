@@ -6,11 +6,12 @@ import { Pagination } from "../../components/Pagination"
 import { useDebounce } from "../../utils/useDebounce"
 import { generatePayCodeOptions } from "../../utils/payCode"
 import { TotalPayroll } from "@/app/types/totalPayroll"
-import { useTotalPayroll } from "@/app/hooks/usePayrollArchive"
+import { useFetchBank, useTotalPayroll } from "@/app/hooks/usePayrollArchive"
 import { Column } from "@/app/types/preparePayroll"
-import { BookOpenCheck, Eye } from "lucide-react"
+import { BanknoteArrowDown, BookOpenCheck, Eye } from "lucide-react"
 import RequestModal from "@/app/components/Modal"
 import GeneratePayslipModal from "@/app/components/archive/GeneratePayslipModal"
+import ViewBank from "@/app/ModalContent/ArchivePayroll/BankRelease/ViewBank"
 
 export default function ArchivePayroll() {
   const PAGE_SIZE = 7
@@ -20,6 +21,9 @@ export default function ArchivePayroll() {
   const [payCycle, setPayCycle] = useState("")
   const [payslipModal, setPayslipModal] = useState(false)
   const [totalPayrollId, setTotalPayrollId] = useState(0)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPayCode, setSelectedPayCode] = useState<string | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search, 400)
 
@@ -32,6 +36,20 @@ export default function ArchivePayroll() {
     payCycle || undefined
   )
 
+  // const paycycle = data?.data?.[0]?.PayCycle ?? "";
+  // const cycleCategory = data?.data?.[0]?.cycle_category ?? "";
+
+  const { data: bank_data } = useFetchBank(selectedPayCode,selectedCycle);
+
+  
+  const bdo_data = bank_data?.BDO ?? [];
+  const pnb_data = bank_data?.PNB ?? [];
+
+ 
+
+
+
+
   const handleSearchChange = (value: string) => {
     setSearch(value)
     setPage(1) // reset immediately when typing
@@ -43,13 +61,20 @@ export default function ArchivePayroll() {
   }
 
   const handleView = (data: TotalPayroll) => {
-      console.log("id: ", data)
+      console.log("id: ", data);
   }
 
   const handleGeneratePayslip = (data: TotalPayroll) => {
     setTotalPayrollId(data.id)
     setPayslipModal(true)
 }
+
+
+
+
+const closeModal = () => {
+  setIsModalOpen(false);
+};
 
   const columns: Column<TotalPayroll>[] = [
     {
@@ -99,6 +124,20 @@ export default function ArchivePayroll() {
         >
           <BookOpenCheck size={15} />
           Payslip
+        </button>
+
+        <button
+          onClick={() => {
+            setSelectedPayCode(row.PayCycle);
+            setSelectedCycle(row.cycle_category);
+            setIsModalOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+          text-cyan-700 bg-cyan-50 hover:bg-cyan-100 
+          border border-cyan-200 rounded-md 
+          transition-colors duration-200"
+        >
+          <BanknoteArrowDown size={15}/>Bank
         </button>
       
       </div>
@@ -151,19 +190,29 @@ export default function ArchivePayroll() {
         onPageChange={setPage}
       />
 
-{payslipModal && (
-        <RequestModal 
-          size="xxl" 
-          title="Generate Payslip"
-          onClose={()=>{
-            setPayslipModal(false); 
-            setTotalPayrollId(0)}
-          }>
-             <GeneratePayslipModal totalPayrollId={totalPayrollId} />
-        </RequestModal>
-      )
+    {payslipModal && (
+            <RequestModal 
+              size="xxl" 
+              title="Generate Payslip"
+              onClose={()=>{
+                setPayslipModal(false); 
+                setTotalPayrollId(0)}
+              }>
+                <GeneratePayslipModal totalPayrollId={totalPayrollId} />
+            </RequestModal>
+          )
+          }
 
-      }
+
+
+        {isModalOpen && (
+            <RequestModal size="xxxl" title={`VIEW BANK RELEASE`} onClose={closeModal}>
+                <ViewBank BDOList={bdo_data} PNBList={pnb_data}   cycleCategory={selectedCycle}/>
+            </RequestModal>
+          )}
+
+
+
     </div>
   )
 }

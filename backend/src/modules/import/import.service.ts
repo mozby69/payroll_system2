@@ -1,7 +1,7 @@
 // modules/import/import.service.ts
 import axios from "axios";
 import { prisma } from "../../config/prismaClient";
-import { BranchDTO, CompanyDTO, DjangoExportResponse, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
 import { Prisma } from "@prisma/client";
 
 
@@ -234,3 +234,70 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
     };
   };
   
+
+
+
+
+
+
+
+ //insert attendance count
+
+
+
+  export const fetchAttendanceCountFromDjango = async (): Promise<DjangoExportResponse2> => {
+    const { data } = await axios.get<DjangoExportResponse2>(
+      `${DJANGO_BASE_URL}/api/export/attendance-count/`,
+      {
+        headers: {
+          "X-PAYROLL-TOKEN": DJANGO_EXPORT_API_KEY,
+        },
+      }
+    );
+  
+    return data;
+  };
+
+
+  export const saveAttendanceCount = async (
+    records: attendance_countDTO[]
+  ): Promise<number> => {
+    if (!Array.isArray(records)) {
+      throw new Error("Invalid new table payload");
+    }
+  
+    await prisma.$transaction(
+      records.map((r) =>
+        prisma.attendanceCount.upsert({
+          where: { ID: r.ID },
+          create: {
+            ID: r.ID,
+            Vacation: new Prisma.Decimal(r.Vacation),
+            Sick: new Prisma.Decimal(r.Sick),
+            EmpCodeId: r.EmpCode__EmpCode, // ✅ FIXED
+          },
+          update: {
+            Vacation: new Prisma.Decimal(r.Vacation),
+            Sick: new Prisma.Decimal(r.Sick),
+          },
+        })
+      )
+    );
+  
+    return records.length;
+  };
+
+
+  export const importAttendanceCountService = async () => {
+    const { attendance_count } = await fetchAttendanceCountFromDjango();
+  
+    if (!Array.isArray(attendance_count)) {
+      throw new Error("attendance_count payload is invalid");
+    }
+  
+    const count = await saveAttendanceCount(attendance_count);
+  
+    return {
+      attendanceCount: count,
+    };
+  };

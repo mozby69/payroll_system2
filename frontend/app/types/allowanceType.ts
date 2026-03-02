@@ -86,3 +86,35 @@ export interface PrintAllowanceRow {
   deduct: number | null;
   loan:number | null;
 }
+
+
+export interface ViewAllItem {
+  EmpCode: string;
+  name: string;
+  cash_allowance: number;
+  computed_ecola: number;
+  absent: number;
+  total: number;
+  selectedMonth: string;
+  deduct: number;
+  totalDeduction: number;
+  branch_code: string;
+  bod_member: string | null;
+  position: string | null;
+  fch_rfc_deducted: number;
+  cash_assitance_deduct:number;
+  ecola_deduct:number;
+}
+export interface LoanItem{
+  EmpCode:string;
+  Firstname:string;
+  Lastname:string;
+  per_payroll_deduct:number;
+}
+
+export interface ViewAllResponse {
+  BOARD_MEMBER: ViewAllItem[];
+  MANCOM: ViewAllItem[];
+  BRANCHES: Record<string, ViewAllItem[]>;
+  LOANS: LoanItem[];
+}

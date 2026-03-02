@@ -76,3 +76,31 @@ export type TotalPayroll = {
   }
   
   
+
+
+
+
+
+
+//BANK TYPES
+export interface BankProps {
+  id:number;
+  PayCode:string;
+  cycle_category:"10-25-Cycle" | "15-30-Cycle";
+  Netpay:number;
+  BranchCodeId:string;
+  EmpCode:{
+    Firstname:string;
+    Lastname:string;
+    BranchCode:{
+      company_id:string;
+    }
+    bank_account:string;
+  }
+  
+}
+
+export interface BankResponse {
+  BDO: BankProps[];
+  PNB: BankProps[];
+}

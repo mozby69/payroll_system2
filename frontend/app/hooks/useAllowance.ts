@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, ViewAllResponse } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
@@ -180,5 +180,23 @@ export function usePrintBranch(month: string | null,company: string | null,branc
       return res.data;
     },
     enabled: !!month && !!company && !!branch,
+  });
+}
+
+
+
+
+
+export function useFetchViewAll(selectedMonth: string | null) {
+  return useQuery<ViewAllResponse>({
+    queryKey: ['fetch-view-all', selectedMonth],
+    queryFn: async () => {
+      if (!selectedMonth) {
+        throw new Error('selectedMonth is required');
+      }
+      const response = await api.get<ViewAllResponse>(`/allowance/view-all?month=${selectedMonth}`);
+      return response.data;
+    },
+    enabled: Boolean(selectedMonth),
   });
 }

@@ -37,3 +37,32 @@ export function convertPayrollLabelToPeriod(
 
 
 //  Loan Type Code ↑
+
+
+
+
+export interface EmployeeBankAccountsParams{
+  PayCode:string;
+  cycle_category: "10-25-Cycle" | "15-30-Cycle" | undefined;
+  
+}
+
+export interface PayrollRow {
+  PayCode: string;
+  cycle_category: string | null;
+  Netpay: number; // ✅ number, not string
+  BranchCodeId:string | null;
+  EmpCode: {
+    Firstname: string | null;
+    Lastname: string | null;
+    BranchCode: {
+      company_id: string | null;
+    } | null;
+  };
+}
+
+
+export interface BankFileRow {
+  bankAccount: string;
+  amount: number;
+}
