@@ -256,12 +256,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           nightShift: emp.NightShiftAtt,
           nightShiftOt: emp.NightShiftOtAtt,
         });
-    
-        const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,undertimeCount,absent);
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction);
         const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+        const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,undertimeCount,absent);
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + TaxList);
+    
         const companyId = emp.EmpCode.BranchCode?.company_id;
-   
+      
         return {
           ...emp,
           semi_monthly:semiMonthly.toFixed(2),
@@ -899,7 +899,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         total,
         page,
         pageSize,
-        totalPage: Math.ceil(total / pageSize)
+        totalPages: Math.ceil(total / pageSize)
       }
     };
   }

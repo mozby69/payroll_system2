@@ -156,9 +156,11 @@ export async function POST(req: Request) {
       printBackground: true,
       preferCSSPageSize: true,
     });
-
-    return new Response(pdf, {
-      headers: { "Content-Type": "application/pdf" },
+    
+    return new Response(Buffer.from(pdf), {
+      headers: {
+        "Content-Type": "application/pdf",
+      },
     });
   } finally {
     await browser.close();

@@ -72,7 +72,7 @@ export type Column<T> = {
       total: number;
       page: number;
       limit: number;
-      totalPage: number;
+      totalPages: number;
       zeroSalaryCount:number;
     };
   };

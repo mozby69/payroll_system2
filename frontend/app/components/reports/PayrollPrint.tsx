@@ -1,9 +1,9 @@
-import SpreadSheet from "./SpreadSheet";
+// import SpreadSheet from "./SpreadSheet";
 
 export default function PayrollPrint() {
   return (
     <div>
-      <SpreadSheet />
+      {/* <SpreadSheet /> */}
     </div>
   );
 }

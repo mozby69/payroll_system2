@@ -298,11 +298,11 @@ export default function GeneratePayslipModal({
           loading={isFetching}
         />
   
-        {data && data.meta.totalPage > 0 && (
+        {data && data.meta.totalPages > 0 && (
           <div className="mt-6">
             <Pagination
               page={page}
-              totalPages={data.meta.totalPage}
+              totalPages={data.meta.totalPages}
               totalItems={data.meta.total}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}

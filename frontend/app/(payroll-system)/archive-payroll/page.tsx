@@ -172,7 +172,7 @@ export default function ArchivePayroll() {
 
       <Pagination
         page={page}
-        totalPages={data?.meta.totalPage ?? 0}
+        totalPages={data?.meta.totalPages ?? 0}
         totalItems={data?.meta.total ?? 0}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}

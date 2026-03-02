@@ -1,4 +1,5 @@
 "use client";
+import GenButton from "@/app/components/Buttons";
 import CompanyFilter from "@/app/components/CompanyFilter";
 import RequestModal from "@/app/components/Modal";
 import PayrollSpreadsheetPrint from "@/app/components/reports/PrintPayrollSpreadsheet";
@@ -147,29 +148,34 @@ export default function FinancialPage(){
          
        
             <div className="flex justify-between px-4 gap-x-4">
-              <div>
-                <button
+              <div className="inline-flex justify-start items-center gap-8">
+                <GenButton
+                variant="primary"
                  disabled={isLoading || isEmpty}
                  onClick={openModal}
-                 className="bg-blue-700 hover:bg-blue-500 hover:cursor-pointer text-white rounded-lg py-2 px-6 text-sm shadow disabled:opacity-50 disabled:hover:cursor-not-allowed">View Variance</button>
+                 >View Variance</GenButton>
+                 <GenButton
+                    variant="main"
+                    onClick={handlePrint1}
+                    disabled={loading}
+                    >
+                    {loading ? "Generating PDF..." : "Print Payroll"}
+                </GenButton>
               </div>
-              <button
-                onClick={handlePrint1}
-                disabled={loading}
-                className="rounded bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white disabled:opacity-50">
-                {loading ? "Generating PDF..." : "Print Payroll"}
-             </button>
+             
               <div className="flex gap-x-4">
-                <button onClick={handleRecheck}
+                <GenButton onClick={handleRecheck}
+                        variant="edit"
                         disabled={recheckPayroll.isPending || isLoading || isEmpty}
-                        className="rounded-lg bg-yellow-600 hover:bg-yellow-500 px-6 py-2 text-sm text-white disabled:opacity-50">
+                        >
                         {recheckPayroll.isPending ? "Saving..." : "Reopen Payroll"}
-                </button>
-                <button onClick={handleSave}
+                </GenButton>
+                <GenButton onClick={handleSave}
+                        variant="positive"
                         disabled={savePayroll.isPending || isLoading || isEmpty}
-                        className="rounded-lg bg-green-600 hover:bg-green-500 px-6 py-2 text-sm text-white disabled:opacity-50">
+                        >
                         {savePayroll.isPending ? "Saving..." : "Save Payroll"}
-                </button>
+                </GenButton>
               </div>
             </div>
         
