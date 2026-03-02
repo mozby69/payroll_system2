@@ -1,9 +1,10 @@
 import { AuditAction, AuditModule, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, getBonusStartAndEndDate, getTenureInMonths, getTenureInYears } from "./bonus.utils"
+import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
+import { formatDateToMMDDYY } from "../../utils/formatDateToMMDDYY"
 
 //Bonus Rules
 export async function createBonusRuleService(data: CreateBonusRuleInput) {
@@ -165,7 +166,7 @@ export async function getBonusCompanyRuleServices(bonusRuleId: number) {
         })
     }
 
-
+//GENERATE BONUS
 export async function generateBonusForAllEmployees({
   bonusRuleId,
   releasePeriod,
@@ -190,9 +191,7 @@ export async function generateBonusForAllEmployees({
     if (!rule) {
       throw new Error("Bonus rule not found")
     }
-
     const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
-
 
 
     const pendingChecker = await tx.employeeBonus.findMany({
@@ -200,7 +199,6 @@ export async function generateBonusForAllEmployees({
           status: "GENERATED"
         }
     })
-
     const blockingSummary = await tx.bonusSummary.findFirst({
       where: {
         bonusRuleId,
@@ -210,7 +208,6 @@ export async function generateBonusForAllEmployees({
         }
       }
     })
-
     if (blockingSummary?.status === "RELEASED") {
       throw {
         code: "PENDING_BONUS",  
@@ -227,14 +224,12 @@ export async function generateBonusForAllEmployees({
       }
     }
 
-
     if(pendingChecker.length > 0 || blockingSummary){
       throw {
         code: "PENDING_BONUS",
         status: 409,
         message: "A bonus generation is already pending. Please complete or cancel the existing process before generating a new bonus."
       }
-      
     } 
  
     const companies = await tx.bonusRuleCompany.findMany({
@@ -253,14 +248,24 @@ export async function generateBonusForAllEmployees({
  
     const employees = await tx.employee.findMany({
       where: {
-        EmployeeStatus: "Active",
-         BranchCode: {
-          CompanyCode: {
-            CompanyCode: {
-              in: companyCodes
-            }
-          }
-         },
+        AND: [
+          {
+            BranchCode: {
+              CompanyCode: {
+                CompanyCode: {
+                  in: companyCodes,
+                },
+              },
+            },
+          },
+          {
+            OR: [
+              { EmployeeStatus: "Active" },
+              { bod_member: "bod1" },
+              { bod_member: "bod2" },
+            ],
+          },
+        ],
       },
       include: { 
         employeepayroll: true,
@@ -271,6 +276,9 @@ export async function generateBonusForAllEmployees({
          }
          }
     })
+
+
+    console.log(employees)
 
     const invalidEmployees: Array<{
       empCode: string
@@ -348,20 +356,46 @@ export async function generateBonusForAllEmployees({
       existingBonuses.map(b => b.employeeCode)
     )
 
+    const bonusStart = new Date(startAndEnd.bonusStart)
+    const bonusEnd   = new Date(startAndEnd.bonusEnd)
+    
     const employeesWithLeave = await tx.employee.findMany({
       where: {
         specialLeaves: {
           some: {
-            start: { not: null, lte: new Date(startAndEnd.bonusEnd) },
-            end:   { not: null, gte: new Date(startAndEnd.bonusStart) }
+            OR: [
+              // Normal leave (Active, etc.)
+              {
+                status: { not: "Expected" },
+                start: { not: null, lte: bonusEnd },
+                end:   { not: null, gte: bonusStart }
+              },
+    
+              // Expected leave
+              {
+                status: "Expected",
+                expectedStart: { not: null, lte: bonusEnd },
+                expectedEnd:   { not: null, gte: bonusStart }
+              }
+            ]
           }
         }
       },
       include: {
         specialLeaves: {
           where: {
-            start: { not: null, lte: new Date(startAndEnd.bonusEnd) },
-            end:   { not: null, gte: new Date(startAndEnd.bonusStart) }
+            OR: [
+              {
+                status: { not: "Expected" },
+                start: { not: null, lte: bonusEnd },
+                end:   { not: null, gte: bonusStart }
+              },
+              {
+                status: "Expected",
+                expectedStart: { not: null, lte: bonusEnd },
+                expectedEnd:   { not: null, gte: bonusStart }
+              }
+            ]
           }
         }
       }
@@ -375,12 +409,12 @@ export async function generateBonusForAllEmployees({
     )
 
 
-    console.log(leaveMap)
 
 
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
     
-
+    let remarks = ""
+    let hasLeave = false
 
     for (const emp of employees) {
       if (!emp.EmployementDate) continue
@@ -395,22 +429,52 @@ export async function generateBonusForAllEmployees({
 
       const employeeLeaves = leaveMap.get(emp.EmpCode)
 
-      if (employeeLeaves) {
-        console.log("Employee has leave")
-        employeeLeaves.forEach(leave => {
-          console.log("Leave Name:", leave.leaveName)
-          console.log("Start:", leave.start)
-          console.log("End:", leave.end)
+      let amount = 0
+      
+      if (employeeLeaves && employeeLeaves.length > 0) {
+          employeeLeaves.forEach(leave => {
+            if (!leave.start && !leave.expectedStart) return
+            if (!leave.end && !leave.expectedEnd) return
+
+            const leaveStart =
+              leave.status === "Expected" && leave.expectedStart
+                ? new Date(leave.expectedStart)
+                : leave.start
+                  ? new Date(leave.start)
+                  : null
+              
+            const leaveEnd =
+              leave.status === "Expected" && leave.expectedEnd
+                ? new Date(leave.expectedEnd)
+                : leave.end
+                  ? new Date(leave.end)
+                  : null
+
+              const  eligibleMonth = countEligibleMonthsWithHalfRule(
+                    bonusStart,
+                    bonusEnd,
+                    leaveStart,
+                    leaveEnd
+                  )
+                  hasLeave= true
+
+                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(payroll.basic_salary))
+                  amount = res.amount
+
+                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(payroll.basic_salary) / 2} X ${eligibleMonth} / ${res.count})` 
         })
+      
+      } else {
+        amount = calculateBonusAmount(
+          rule.formulaType,
+          Number(payroll.basic_salary)
+        )
+
+        remarks = ""
+        hasLeave= false
       }
 
-      const amount = calculateBonusAmount(
-        rule.formulaType,
-        Number(payroll.basic_salary)
-      )
 
-
-      
       // Find matching active loans
       const matchingLoans = emp.loan_details.filter(
         loan =>
@@ -443,7 +507,9 @@ export async function generateBonusForAllEmployees({
         loanDeduction: totalPrincipal,
         netAmount: finalAmount,
         releasePeriod,
-        status: "GENERATED"
+        status: "GENERATED",
+        hasLeave,
+        remarks
       })
     
       totalEmployees++
@@ -907,6 +973,7 @@ export async function getEmployeesByBonusSummarySerive(
         bonusRule: {
           select: { code: true, name: true, bonusType: true,  }
         }
+
       },
       where: id 
       ? {id}
@@ -941,15 +1008,39 @@ export async function getEmployeesByBonusSummarySerive(
 
     const selectedCompanyCode =
     companyCode ?? allowedCompanies[0].companyCode
+
+
+
+    const test = await prisma.$transaction(async (tx) => {
+      return await reconcileEmployeePayrollBonus(
+        tx,
+        selectedCompanyCode,
+        summary
+      )
+    })
+
+    console.log("test: ", test)
   
   const employees = await tx.employee.findMany({
     where: {
-      EmployeeStatus: "Active",
-      BranchCode: {
-        CompanyCode: {
-          CompanyCode: selectedCompanyCode,
+      AND: [
+        {
+          BranchCode: {
+            CompanyCode: {
+              CompanyCode: selectedCompanyCode
+            },
+          },
         },
-      },
+
+
+        {
+          OR: [
+            { EmployeeStatus: "Active" },
+            { bod_member: "bod1" },
+            { bod_member: "bod2" },
+          ],
+        },
+      ],
     },
     include: {
       employeepayroll: true,
@@ -998,6 +1089,9 @@ export async function getEmployeesByBonusSummarySerive(
         bonusId: bonus?.id ?? null,
         fchLoan: bonus?.loanDeduction ?? 0,
         netAmount: bonus?.netAmount ?? 0,
+        hasLeave: bonus?.hasLeave ?? false,
+        remarks: bonus?.remarks ?? null,
+        notes: bonus?.notes ?? null,
       }
     })
 
@@ -1059,5 +1153,215 @@ export async function updateBonusService(
   })
 }
 
+
+export async function checkPayrollService() {
+  const totalResult = await prisma.employeePayrollArchive.aggregate({
+    _sum: { Basic_salary: true },
+    where: {
+      EmpCode: {
+        BranchCode: {
+          company_id: "EMB",
+        },
+      },
+    },
+  })
+
+  const employees = await prisma.employeePayrollArchive.findMany({
+    where: {
+      EmpCode: {
+        BranchCode: {
+          company_id: "EMB",
+        },
+      },
+    },
+    select: {
+      Basic_salary: true,
+      EmpCode: {
+        select: {
+          Lastname: true,
+        },
+      },
+    },
+    orderBy: {
+      EmpCode:{
+        Lastname: "asc"
+      }
+    }
+  })
+
+  return {
+    totalBasicSalary: totalResult._sum.Basic_salary ?? 0,
+    employees,
+  }
+}
+
+
+export async function getEmployeesWithVarianceService(companyCodes: string) {
+  const [archiveData, currentData] = await prisma.$transaction([
+    // Archive salaries
+    prisma.employeePayrollArchive.findMany({
+      where: {
+        EmpCode: {
+          BranchCode: {
+            company_id:  companyCodes ,
+          },
+        },
+      },
+      select: {
+        EmpCodeId: true,
+        Basic_salary: true,
+      },
+    }),
+
+    // Current salaries
+    prisma.employee.findMany({
+      where: {
+        BranchCode: {
+          CompanyCode: {
+            CompanyCode:  companyCodes ,
+          },
+        },
+        OR: [
+          { EmployeeStatus: "Active" },
+          { bod_member: { in: ["bod1", "bod2"] } },
+        ],
+      },
+      select: {
+        EmpCode: true,
+        employeepayroll: {
+          select: {
+            basic_salary: true
+          }
+        },
+        Lastname: true,
+        Firstname: true,
+      },
+    }),
+  ])
+
+  // Convert archive to map for fast lookup
+  const archiveMap = new Map<string, number>()
+
+archiveData.forEach(a => {
+  archiveMap.set(a.EmpCodeId, Number(a.Basic_salary || 0))
+})
+
+const employeesWithVariance = currentData
+  .map(emp => {
+    const archiveSalary = archiveMap.get(emp.EmpCode) ?? 0
+    const currentSalary = Number(emp.employeepayroll?.basic_salary || 0)
+    const variance = currentSalary - archiveSalary
+
+    return {
+      EmpCode: emp.EmpCode,
+      name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+      archiveSalary,
+      currentSalary,
+      variance,
+    }
+  })
+  .filter(emp => emp.variance !== 0)
+
+  return employeesWithVariance
+}
+
+type SummaryInput = {
+  id: number
+  bonusRule: {
+    code: string
+  }
+}
+
+
+export async function reconcileEmployeePayrollBonus(
+  tx: Prisma.TransactionClient,
+  selectedCompanyCode: string,
+  summary: SummaryInput
+) {
+  // 1️⃣ Employees
+  const employees = await tx.employee.findMany({
+    where: {
+      AND: [
+        {
+          BranchCode: {
+            CompanyCode: {
+              CompanyCode: selectedCompanyCode,
+            },
+          },
+        },
+        {
+          OR: [
+            { EmployeeStatus: "Active" },
+            { EmployeeStatus: "Probationary" },
+            { bod_member: "bod1" },
+            { bod_member: "bod2" },
+          ],
+        },
+      ],
+    },
+    select: {
+      EmpCode: true,
+      Firstname: true,
+      Lastname: true,
+    },
+  })
+
+  // 2️⃣ Payroll Archive
+  const payrollArchive = await tx.employeePayrollArchive.findMany({
+    where: {
+      EmpCode: {
+        BranchCode: {
+          company_id: selectedCompanyCode,
+        },
+      },
+    },
+    select: {
+      EmpCodeId: true,
+    },
+  })
+
+  // 3️⃣ Bonus Records (this summary only)
+  const bonusRecords = await tx.employeeBonus.findMany({
+    where: {
+      bonusSummaryId: summary.id,
+    },
+    select: {
+      employeeCode: true,
+      amount: true, // important
+    },
+  })
+
+  // =============================
+  // Build Sets
+  // =============================
+
+  const archiveSet = new Set<string>(
+    payrollArchive.map(p => p.EmpCodeId)
+  )
+
+  const bonusSet = new Set<string>(
+    bonusRecords.map(b => b.employeeCode)
+  )
+
+  // =============================
+  // 🎯 CORE VARIANCE LOGIC
+  // =============================
+
+  const varianceEmployees = employees
+    .filter(emp =>
+      bonusSet.has(emp.EmpCode) && // has bonus (even zero)
+      !archiveSet.has(emp.EmpCode) // but no payroll archive
+    )
+    .map(emp => ({
+      EmpCode: emp.EmpCode,
+      name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+    }))
+
+  return {
+    totalEmployees: employees.length,
+    varianceCount: varianceEmployees.length,
+    varianceEmployees,
+  }
+}
 
 

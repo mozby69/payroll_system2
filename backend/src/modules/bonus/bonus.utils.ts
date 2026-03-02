@@ -67,3 +67,73 @@ export function getBonusStartAndEndDate(
   }
 }
 
+
+export function calculateBonusAmountWithLeave(
+  bonusType: string,
+  eligibleMonth: number,
+  basic_salary: number,
+) {
+  let count = 0
+  let salary = 0
+
+  if (bonusType === "QUARTERLY") {
+    salary = basic_salary / 2
+    count = 3
+  } else if (bonusType === "MIDYEAR") {
+    salary = basic_salary / 2
+    count = 6
+  }
+
+  const amount = (salary / count) * eligibleMonth
+
+  return {
+    amount,
+    count,
+  }
+}
+
+
+export function countEligibleMonthsWithHalfRule(
+  bonusStart: Date,
+  bonusEnd: Date,
+  leaveStart: Date | null,
+  leaveEnd: Date | null
+): number {
+
+  let total = 0
+  const current = new Date(bonusStart)
+
+  while (current <= bonusEnd) {
+
+    const monthStart = new Date(current.getFullYear(), current.getMonth(), 1)
+    const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0)
+
+    const overlapsLeave =
+      leaveStart &&
+      leaveEnd &&
+      monthStart <= leaveEnd &&
+      monthEnd >= leaveStart
+
+    if (!overlapsLeave) {
+      total += 1
+    } else {
+      // Check if employee returns inside this month
+      if (leaveEnd &&
+          leaveEnd >= monthStart &&
+          leaveEnd <= monthEnd) {
+
+        const returnDay = leaveEnd.getDate()
+
+        if (returnDay >= 1 && returnDay <= 15) {
+          total += 0.5
+        }
+        // 16+ → add 0
+      }
+      // If fully covered whole month → add 0
+    }
+
+    current.setMonth(current.getMonth() + 1)
+  }
+
+  return total
+}

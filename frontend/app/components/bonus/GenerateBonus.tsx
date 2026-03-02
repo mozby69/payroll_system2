@@ -198,12 +198,12 @@ export default function GenerateBonusPage() {
       {/* Table */}
       <div className="bg-white border rounded-xl shadow-sm flex flex-col h-150">
         <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-sm border-collapse table-fixed" >
 
             <thead className="bg-gray-50 border-b sticky top-0 z-20">
               <tr className="text-gray-600">
                 <th className="px-4 py-3 text-left w-12">#</th>
-                <th className="px-4 py-3 text-left">Employee</th>
+                <th className="px-4 py-3 text-left w-24 md:w-60">Employee</th>
                 <th className="px-4 py-3 text-center">Date Hired</th>
                 <th className="px-4 py-3 text-center">Tenure</th>
                 <th className="px-4 py-3 text-right">Monthly Basic</th>
@@ -211,6 +211,7 @@ export default function GenerateBonusPage() {
                 <th className="px-4 py-3 text-right">Bonus Amount</th>
                 <th className="px-4 py-3 text-right">FCH Loan</th>
                 <th className="px-4 py-3 text-right">Net Bonus</th>
+                <th className="px-4 py-3 text-right">Remarks</th>
               </tr>
             </thead>
 
@@ -226,7 +227,9 @@ export default function GenerateBonusPage() {
               {employees.map((bonus, index) => (
                 <tr
                   key={bonus.employeeCode}
-                  className="border-t hover:bg-gray-50 transition-colors cursor-pointer"
+                  className={`border-t hover:bg-gray-50 transition-colors cursor-pointer ${
+                    bonus.hasLeave  ? "bg-red-100 hover:bg-red-50" : ""
+                  }`}
                   onDoubleClick={()=>handleEditBonus(bonus)}
                 >
                   <td className="px-4 py-3">{index + 1}</td>
@@ -256,6 +259,12 @@ export default function GenerateBonusPage() {
                   <td className="px-4 py-3 text-right font-semibold text-green-600">
                     ₱{Number(bonus.netAmount).toLocaleString()}
                   </td>
+                  <td
+  className="px-4 py-3 font-medium max-w-sm truncate text-left"
+  title={bonus.remarks ?? ""}
+>
+  {bonus.remarks}
+</td>
                 </tr>
               ))}
             </tbody>
@@ -286,6 +295,7 @@ export default function GenerateBonusPage() {
                 <td className="px-4 py-3 text-right text-green-700">
                   ₱{totals.netAmount.toLocaleString()}
                 </td>
+                <td></td>
               </tr>
             </tfoot>
           )}

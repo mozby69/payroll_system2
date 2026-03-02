@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { approveBonusService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
+import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema, updateBonusSchema } from "./bonus.schema"
 import z, { json } from "zod";
 
@@ -521,6 +521,11 @@ export async function updateBonusController(
   }
 }
 
+
+export async function checkPayroll(req: Request, res: Response) {
+      const data = await checkPayrollService();
+      return res.status(200).json(data)
+}
 
 
 

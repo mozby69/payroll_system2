@@ -52,3 +52,11 @@ export const updateBonusRuleSchema = z.object({
     bonusAmount: z.number().min(0)
   })
 
+
+  export type CalculateLeaveType = {
+    bonusType: string,
+    bonusStart: Date,
+    bonusEnd: Date,
+    leaveStart: Date | null,
+    leaveEnd?: Date  | null,
+  }

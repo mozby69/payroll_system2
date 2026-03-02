@@ -90,6 +90,10 @@ export type InvalidEmployees = {
     bonusId?: number | null
     fchLoan: number
     netAmount: number
+    hasLeave?: boolean
+    remarks?: string | null
+    notes?: string | null
+
   }
 
   export type EmployeeGenerateBonusResponse = {

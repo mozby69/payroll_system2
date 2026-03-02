@@ -470,6 +470,11 @@ model EmployeeBonus {
   loanDeduction     Decimal      @db.Decimal(12, 2)
   netAmount         Decimal      @db.Decimal(12, 2)
   paidAt            DateTime?
+
+  hasLeave          Boolean      @default(false)  
+  remarks           String?
+  notes             String?
+
   resetAt     DateTime?
   updatedAt     DateTime?
 
