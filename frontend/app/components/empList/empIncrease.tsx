@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { EmployeeIncreaseItem } from "@/app/types/empTypes";
 import SweetAlert from "../Swal";
 import GenButton from "../Buttons";
-import { useAuth } from "../UserContext";
-import { redirect } from "next/navigation";
 
 
 type Props = {
@@ -266,7 +264,7 @@ export default function EmpIncrease({ open, onClose }: Props) {
                         type="checkbox"
                         checked={selectedEmployees.has(emp.EmpCode)}
                         onChange={() => toggleEmployee(emp.EmpCode)}
-                        className="scale-75"
+                        className="scale-150"
                     />
 
                     <span className="truncate">{fullName}</span>
