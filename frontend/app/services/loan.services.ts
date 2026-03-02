@@ -85,3 +85,9 @@ export const fetchBonusRules = async () => {
   console.log("BONUS RULE RESPONSE:", response.data);
   return response.data;
 };
+
+
+
+export function loanSearchEmployees(q: string) {
+  return api.get("/loans/employees/search", { params: { q } });
+}

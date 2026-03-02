@@ -1,7 +1,7 @@
 "use client";
 
 import "flatpickr/dist/flatpickr.min.css";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DateRange } from "../../types/utilsTypes";
 import { useFetchApiAttendance } from "../../hooks/useApiProcess";
 import { ProcessingOverlay } from "../../ui/loader/ProcessingOverlay";
@@ -32,7 +32,6 @@ export default function PreparePayroll() {
   const debouncedSearch = useDebounce(search, 400);
   const [range, setDateRange] = useState<DateRange | null>(null);
   const [branchCycle, setBranchCycle] = useState("");
-  //const [showProcessing, setShowProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
   const { mutate, isPending} = useImportBranches();
   const queryClient = useQueryClient();
@@ -48,20 +47,7 @@ export default function PreparePayroll() {
   // Disburse Code ↓
   const [shouldCheckModal, setShouldCheckModal] = useState(false);
   const [editedEmployees, setEditedEmployees] = useState<Record<string,SetupState>>({});
-  const [originalEmployees, setOriginalEmployees] = useState<Record<string,SetupState>>({});
-  // Disburse Code ↑
 
-
-
-
-  const { data: employee } = useEmployeesByCycle({
-    cycle: branchCycle,
-    page,
-    limit: 6,
-    search: debouncedSearch,
-  });
-
-  // Disburse Code ↓
   const { data: newEmployee, isFetching: isFetchingNew } = useEmployeesByCycle({
     cycle: branchCycle,
     page,
@@ -78,9 +64,43 @@ export default function PreparePayroll() {
     onlyMissingSetup: true,
   });
 
+  const originalEmployees = useMemo<Record<string, SetupState>>(() => {
+    const combined = [
+      ...(newEmployee?.data ?? []),
+      ...(setupEmployee?.data ?? []),
+    ];
+
+    const map: Record<string, SetupState> = {};
+
+    combined.forEach(emp => {
+      map[emp.EmpCode] = {
+        EmpCode: emp.EmpCode,
+        Disbursing: emp.Disbursing,
+        WithAtm: emp.WithAtm,
+        Taxable: emp.Taxable,
+      };
+    });
+
+    return map;
+  }, [newEmployee?.data, setupEmployee?.data]);
+
+
+  useEffect(() => {
+    setEditedEmployees(originalEmployees);
+  }, [originalEmployees]);
+
+  // Disburse Code ↑
+
+  const { data: employee } = useEmployeesByCycle({
+    cycle: branchCycle,
+    page,
+    limit: 6,
+    search: debouncedSearch,
+  });
+
+  // Disburse Code ↓
+
   const {mutateAsync:saveSetup} = useUpdateEmployeeSetup();
-
-
 
   const handleCycleChanges = (cycle: string) => {
     if (isPending) return;
@@ -101,8 +121,6 @@ export default function PreparePayroll() {
     });
   };
 
-
-
   // Disburse Code ↑
 
 
@@ -121,48 +139,24 @@ export default function PreparePayroll() {
   // Disburse Code ↓
   useEffect(() => {
     if (!shouldCheckModal) return;
-
-
     if (isFetchingNew || isFetchingSetup) return;
 
-    if (
-      newEmployee?.data?.length ||
-      setupEmployee?.data?.length
-    ) {
-      setOpen(true);
+    const hasEmployees =
+      (newEmployee?.data?.length ?? 0) > 0 ||
+      (setupEmployee?.data?.length ?? 0) > 0;
+
+    if (hasEmployees) {
+      queueMicrotask(() => setOpen(true));
     }
 
-    setShouldCheckModal(false);
+    queueMicrotask(() => setShouldCheckModal(false));
   }, [
     shouldCheckModal,
     isFetchingNew,
     isFetchingSetup,
-    newEmployee,
-    setupEmployee,
+    newEmployee?.data,
+    setupEmployee?.data,
   ]);
-
-  useEffect(() => {
-    const combined = [
-      ...(newEmployee?.data ?? []),
-      ...(setupEmployee?.data ?? [])
-    ];
-
-    if (combined.length === 0) return;
-
-    const initial: Record<string, SetupState> = {};
-
-    combined.forEach(emp => {
-      initial[emp.EmpCode] = {
-        EmpCode: emp.EmpCode,
-        Disbursing: emp.Disbursing,
-        WithAtm: emp.WithAtm,
-        Taxable: emp.Taxable,
-      };
-    });
-
-    setEditedEmployees(initial);
-    setOriginalEmployees(initial);
-  }, [newEmployee, setupEmployee]);
 
 
   // Disburse Code ↑
@@ -187,8 +181,6 @@ export default function PreparePayroll() {
   
   }, [error, range]);
 
- 
-
   useEffect(() => {
     if (isSuccess) {
       queryClient.invalidateQueries({
@@ -197,21 +189,6 @@ export default function PreparePayroll() {
     }
   }, [isSuccess, queryClient]);
   
-  // useEffect(() => {
-  //   if (!isFetching && showProcessing) {
-  //     const timer = setTimeout(() => {
-  //       setShowProcessing(false);
-  
-  //       if (isSuccess) {
-  //         queryClient.invalidateQueries({
-  //           queryKey: ["employees-computed"],
-  //         });
-  //       }
-  //     }, 800);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [isFetching, showProcessing, isSuccess, queryClient]);
-
 
   const steps: Step[] = [
     {
@@ -242,13 +219,6 @@ export default function PreparePayroll() {
       return;
     }
 
-    // if ((employee?.meta?.zeroSalaryCount ?? 0) > 0) {
-    //   SweetAlert.warningAlert(
-    //     "Invalid Basic Salary",
-    //     "There are employees with 0 basic salary. Please update before proceeding."
-    //   );
-    //   return;
-    // }
   
     setCurrentStep(2);
   };
@@ -282,27 +252,22 @@ export default function PreparePayroll() {
       })),
     });
 
-    setOriginalEmployees(prev => ({
-      ...prev,
-      ...editedEmployees,
-    }));
-
+   
     SweetAlert.successAlert("Employee Setup Updated Successfully")
   };
 
-
   const isDirty = Object.keys(editedEmployees).some(code => {
-      const edited = editedEmployees[code];
-      const original = originalEmployees[code];
+    const edited = editedEmployees[code];
+    const original = originalEmployees[code];
 
-      if (!original) return false;
+    if (!original) return false;
 
-      return (
-        edited.Disbursing !== original.Disbursing ||
-        edited.WithAtm !== original.WithAtm ||
-        edited.Taxable !== original.Taxable
-      );
-    });
+    return (
+      edited.Disbursing !== original.Disbursing ||
+      edited.WithAtm !== original.WithAtm ||
+      edited.Taxable !== original.Taxable
+    );
+  });
 
   // Disburse code ↑
 

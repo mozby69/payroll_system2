@@ -5,15 +5,15 @@ import {
     CircleDollarSign,
     BookMarked,
     User,
-    Receipt,
     ShieldCheck,
     HandCoins,
     PhilippinePeso,
     CreditCard
   } from "lucide-react"
-
+import { MenuSection } from "../types/sideTypes"
   
-  export const MENU_SECTIONS = [
+export const MENU_SECTIONS: MenuSection[] = [
+
     {
       title: "General",
       items: [

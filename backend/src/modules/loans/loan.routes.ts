@@ -7,7 +7,8 @@ import { addEmployeeLoanController,
     closedEmployeeLoanController, 
     payEmployeeLoanController,
     getLoansByEmpCodeController,
-    getBonusRules
+    getBonusRules,
+    searchEmployeeController
     } from "./loan.controller";
 
 
@@ -28,6 +29,7 @@ router.patch("/emp-loan/:loan_id", closedEmployeeLoanController);
 
 router.post("/loans/:loan_id/pay", payEmployeeLoanController);
 
+router.get('/employees/search',searchEmployeeController);
 
 router.post("/by-empcode", getLoansByEmpCodeController);
 router.get("/bonus-rules", getBonusRules);

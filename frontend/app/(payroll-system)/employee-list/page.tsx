@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, View } from "lucide-react";
+import { Filter, IndentIncreaseIcon, View } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEmployees } from "../../hooks/employees";
 import FilterModal from "../../components/Filter";
@@ -8,6 +8,7 @@ import ActiveFilters from "@/app/components/FilterObject";
 import GenButton from "@/app/components/Buttons";
 import { useState } from "react";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
+import EmpIncrease from "@/app/components/empList/empIncrease";
 
 const FILTER_KEYS = ["department", "company", "status"] as const;
 
@@ -28,6 +29,7 @@ function EmployeeListContent() {
   );
 
   const [open, setOpen] = useState(false);
+  const [openSalary, setOpenSalary] = useState(false);
 
   const updateParams = (fn: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -76,6 +78,12 @@ function EmployeeListContent() {
             <GenButton variant="primary" onClick={() => setOpen(true)}>
               <Filter size={16} /> Filter
             </GenButton>
+
+            <div className="w-full inline-flex justify-end">
+              <GenButton variant="main" className="w-full" onClick={()=>setOpenSalary(true)}>
+                <IndentIncreaseIcon size={16}/> Salary Increase
+              </GenButton>
+            </div>
           </div>
         </div>
 
@@ -89,7 +97,9 @@ function EmployeeListContent() {
               <th className="p-4 text-left">Branch</th>
               <th className="p-4 text-left">Department</th>
               <th className="p-4 text-left">Status</th>
+              <th className="p-4 text-left">Basic Salary</th>
               <th className="p-4 text-left">Actions</th>
+              
             </tr>
           </thead>
 
@@ -124,6 +134,14 @@ function EmployeeListContent() {
                   <td className="p-4">{emp.BranchCode ?? "-"}</td>
                   <td className="p-4">{emp.Department ?? "-"}</td>
                   <td className="p-4">{emp.EmploymentStatus}</td>
+                  <td className="p-4">
+                    {emp.employeepayroll?.basic_salary
+                      ? new Intl.NumberFormat("en-PH", {
+                          style: "currency",
+                          currency: "PHP",
+                        }).format(emp.employeepayroll.basic_salary)
+                      : "-"}
+                  </td>
                   <td className="p-4">
                     <GenButton
                       variant="outline"
@@ -167,6 +185,8 @@ function EmployeeListContent() {
       </div>
 
       <FilterModal open={open} onClose={() => setOpen(false)} />
+
+      <EmpIncrease open={openSalary} onClose={() => setOpenSalary(false)} />
     </div>
   );
 }

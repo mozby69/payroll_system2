@@ -643,6 +643,12 @@ model archive_allowance_summary {
   @@map("archive_allowance_summary")
 }
 
+enum SalaryType {
+  Basic
+  Allowance
+  Ecola
+}
+
 
 
 model EmployeeSalaryHistory {
@@ -651,6 +657,7 @@ model EmployeeSalaryHistory {
   old_salary    Decimal  @db.Decimal(10,2)
   new_salary    Decimal  @db.Decimal(10,2)
   remarks       String   @db.VarChar(255)
+  salary_type   SalaryType
   changed_by    String
   createdAt DateTime @map("created_at")
 

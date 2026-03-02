@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   useAddLoan,
   useBonusRules,
   useLoans
 } from "../../hooks/useLoans";
-import { useEmployeeSearch } from "../../hooks/usePreparePayroll";
+import { useEmployeeSearch } from "../../hooks/useLoans";
 import SweetAlert from "../../components/Swal";
 import GenButton from "@/app/components/Buttons";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -44,6 +44,7 @@ function LoanApplyContent() {
       EmpCode: string;
       Firstname: string;
       Lastname: string;
+      basic_salary:number
     } | null>(null);
 
 
@@ -54,7 +55,7 @@ function LoanApplyContent() {
     } = useBonusRules();
 
     const [searchloan, setSearch] = useState("");
-
+    
     const { data: employees } = useEmployeeSearch(searchloan);
 
     const [loanType, setLoanType] = useState<LoanType>("FCH_LOAN");
@@ -65,6 +66,8 @@ function LoanApplyContent() {
     const [deductAllowance, setDeductAllowance] = useState(false);
     const [selectedBonus, setSelectedBonus] = useState("");
     const [calamity, setCalamity] = useState("");
+
+    const [maxBonusPrincipal, setMaxBonusPrincipal] = useState<number | null>(null);
 
 
     const resetApplyForm = () => {
@@ -147,7 +150,54 @@ function LoanApplyContent() {
         }
   };
 
+  const getBonusPrincipal = (
+      e: React.ChangeEvent<HTMLSelectElement>
+    ) => {
+      const code = e.target.value;
+      setSelectedBonus(code);
 
+      if (!selectedEmp || !bonusRules) return;
+
+      const selectedRule = bonusRules.find(
+        (rule) => rule.code === code
+      );
+
+      if (!selectedRule) return;
+
+      let computedPrincipal = selectedEmp.basic_salary;
+
+      if (selectedRule.formulaType === "BASIC_DIV_2") {
+        computedPrincipal = selectedEmp.basic_salary / 2;
+      }
+      else if (selectedRule.formulaType === "BASIC_DIV_1") {
+        computedPrincipal = selectedEmp.basic_salary
+      }
+
+      setPrincipal(computedPrincipal);
+      setMaxBonusPrincipal(computedPrincipal);
+  };
+
+  const editPrincipalBonus = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value =
+      e.target.value === "" ? "" : Number(e.target.value);
+
+    if (
+      loanType === "OTHERS" &&
+      typeof value === "number" &&
+      maxBonusPrincipal !== null &&
+      value > maxBonusPrincipal
+    ) {
+      SweetAlert.warningAlert(
+        "Invalid Amount",
+        `Maximum allowed amount is ${maxBonusPrincipal.toFixed(2)}`
+      );
+      return;
+    }
+
+    setPrincipal(value);
+  };
     return(
         <div className="flex flex-col gap-y-8">
 
@@ -166,9 +216,9 @@ function LoanApplyContent() {
                         className="w-full border border-gray-300 px-4 py-2.5 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                         />
 
-                        {!selectedEmp && employees?.length > 0 && (
+                        {!selectedEmp && employees && employees.length > 0 && (
                         <div className="absolute z-10 bg-mainNeutral border border-gray-200 w-full rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                            {employees.map((emp:EmployeeSearchItem ) => (
+                            {employees.map((emp) => (
                             <div
                                 key={emp.EmpCode}
                                 onClick={() => {
@@ -231,13 +281,13 @@ function LoanApplyContent() {
                             <label className="text-sm font-semibold">
                                 Principal Amount
                             </label>
-                            <input
+                              <input
                                 type="number"
                                 placeholder="Enter amount"
                                 value={principal}
-                                onChange={e => setPrincipal(e.target.value === "" ? "" : Number(e.target.value))}
+                                onChange={editPrincipalBonus}
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                            />
+                              />
                         </div>
 
                         <div className="flex flex-col gap-2">
@@ -290,7 +340,7 @@ function LoanApplyContent() {
 
                             <select
                                 value={selectedBonus}
-                                onChange={(e) => setSelectedBonus(e.target.value)}
+                                onChange={getBonusPrincipal}
                                 disabled={bonusLoading || bonusError}
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                             >
@@ -361,6 +411,7 @@ function AreApplyContent(){
       EmpCode: string;
       Firstname: string;
       Lastname: string;
+      basic_salary:number;
     } | null>(null);
 
     
@@ -443,7 +494,7 @@ function AreApplyContent(){
                 className="w-full border border-gray-300 px-4 py-2.5 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                 />
 
-                {!selectedEmpAre && employeesAre?.length > 0 && (
+                {!selectedEmpAre && employeesAre && employeesAre.length > 0 && (
                 <div className="absolute z-10 bg-mainNeutral border border-gray-200 w-full rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
                     {employeesAre.map((emp:EmployeeSearchItem ) => (
                     <div

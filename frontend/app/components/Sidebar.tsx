@@ -103,14 +103,14 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
               <ul className="flex flex-col gap-y-2 w-full text-mainLight font-semibold">
                 {visibleItems.map((item) => {
-                  const { label, icon: Icon, path, children } = item as any
+                  const { label, icon: Icon, path, children } = item
                   const isExpandable = Array.isArray(children) && children.length > 0
                   const isExpanded = expanded[label]
                   const isActive = path && pathname === path
 
                   if (isExpandable) {
                     const isChildActive = children.some(
-                      (child: any) => child.path === pathname
+                      (child) => child.path === pathname
                     )
 
                     return (
@@ -144,7 +144,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
                         {isExpanded && isOpen && (
                           <ul className="ml-6 mt-2 flex flex-col gap-2">
-                            {children.map((child: any) => {
+                            {children.map((child) => {
                               const ChildIcon = child.icon
                               const isChildActive = pathname === child.path
 
@@ -172,19 +172,22 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
                   return (
                     <li key={label}>
-                      <Link
-                        href={path}
-                        className={`
-                          ${menuItemClass}
-                          ${isOpen ? "px-3" : "justify-center"}
-                          ${isActive ? "bg-mainLight text-mainDark" : ""}
-                        `}
-                      >
-                        <Icon className="text-mainhighlight shrink-0 w-5" />
-                        {isOpen && <span>{label}</span>}
-                      </Link>
+                      {path && (
+                        <Link
+                          href={path}
+                          className={`
+                            ${menuItemClass}
+                            ${isOpen ? "px-3" : "justify-center"}
+                            ${isActive ? "bg-mainLight text-mainDark" : ""}
+                          `}
+                        >
+                          <Icon className="text-mainhighlight shrink-0 w-5" />
+                          {isOpen && <span>{label}</span>}
+                        </Link>
+                      )}
                     </li>
                   )
+
                 })}
               </ul>
             </div>

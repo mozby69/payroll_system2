@@ -1,5 +1,5 @@
 import api from "./axios"; 
-import { EmployeeFilters, EmployeeProfile } from "../types/empTypes";
+import { BulkIncreasePayload, EmployeeFilters, EmployeeProfile } from "../types/empTypes";
 import { UpdateEmployeePayrollPayload } from "../types/empTypes";
 
 export const fetchEmployees = async (
@@ -35,11 +35,19 @@ export const fetchEmployeeProfile = async (
 };
 
 
-
 export const updateEmployeePayroll = async (
   payload: UpdateEmployeePayrollPayload
 ) => {
-  const { empCode, basicSalary, cashAssistance, ecola, pagibigEmployeeShare } = payload;
+  const {
+    empCode,
+    basicSalary,
+    cashAssistance,
+    ecola,
+    pagibigEmployeeShare,
+    WithAtm,
+    Disbursing,
+    remarks,
+  } = payload;
 
   const { data } = await api.put(
     `/list/employee/${empCode}/payroll`,
@@ -48,7 +56,36 @@ export const updateEmployeePayroll = async (
       cashAssistance,
       ecola,
       pagibigEmployeeShare,
+      WithAtm,
+      Disbursing,
+      ...(remarks ? { remarks } : {}),
     }
+  );
+
+  return data;
+};
+
+export const fetchCompanies = async () => {
+  const { data } = await api.get("/list/companies");
+  return data.data;
+};
+
+
+export const fetchEmployeesByCompany = async (
+  companyCode: string
+) => {
+  const { data } = await api.get(
+    `/list/employees/company/${companyCode}`
+  );
+  return data.data;
+};
+
+export const bulkIncreaseSalary = async (
+  payload: BulkIncreasePayload
+) => {
+  const { data } = await api.put(
+    "/list/employees/bulk-increase",
+    payload
   );
 
   return data;
