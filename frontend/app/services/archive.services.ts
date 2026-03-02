@@ -29,3 +29,15 @@ export async function getTotalPayrollRequest(
       })
       return response.data
     } 
+
+
+    export async function printEmployeeArchivedService(
+      params: Omit<GetEmployeeArchivedParams, "page" | "pageSize">
+    ): Promise<EmployeeArchivedType[]> {
+      const response = await api.get(
+        "/payroll-archive/employee-archived/print",
+        { params }
+      );
+    
+      return response.data;
+    }

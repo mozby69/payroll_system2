@@ -73,7 +73,9 @@ export type TotalPayroll = {
     page?: number
     pageSize?: number
     search?: string
-    totalPayrollId: number
+    totalPayrollId: number,
+    selectedCompany?: string,
+    selectedBranch?: string
   }
   
   

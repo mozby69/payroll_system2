@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
-import { getEmployeeArchivedService, getTotalPayrollRequest } from "../services/archive.services";
+import { getEmployeeArchivedService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
 import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 
 
@@ -168,17 +168,37 @@ export function useGetEmployeeArchived(
  params: GetEmployeeArchivedParams
 ){
     return useQuery({
-      queryKey: ["employee-archived", params.page, params.pageSize, params.search, params.totalPayrollId],
+      queryKey: ["employee-archived", 
+        params.page, 
+        params.pageSize,
+        params.search,
+        params.totalPayrollId ,
+        params.selectedCompany,
+        params.selectedBranch
+      ],
       queryFn: () =>
         getEmployeeArchivedService({
           page: params.page,
           pageSize: params.pageSize,
           search: params.search,
           totalPayrollId: params.totalPayrollId,
+          selectedCompany: params.selectedCompany,
+          selectedBranch: params.selectedBranch
         }),
       placeholderData: (previousData) => previousData,
       enabled: !!params.totalPayrollId,
     })
+}
+
+
+export function usePrintEmployeeArchived(
+  params: Omit<GetEmployeeArchivedParams, "page" | "pageSize">
+) {
+  return useQuery({
+    queryKey: ["employee-archived-print", params],
+    queryFn: () => printEmployeeArchivedService(params),
+    enabled: !!params.totalPayrollId,
+  });
 }
 
 

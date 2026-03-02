@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {  displayCompletePayrollController, savePayrollController,saveComputedFinalPayrollController,displayForApprovalController,reCheckPayrollController, getTotalPayrollController, getEmployeeArchivedController, ViewEmployeeBankAccountsController, GenerateBankFileController } from "./payroll_archive.controller";
+import {  displayCompletePayrollController, savePayrollController,saveComputedFinalPayrollController,displayForApprovalController,reCheckPayrollController, getTotalPayrollController, getEmployeeArchivedController, ViewEmployeeBankAccountsController, GenerateBankFileController, printEmployeeArchivedController } from "./payroll_archive.controller";
 
 const router = Router();
 
@@ -13,6 +13,7 @@ router.get("/total-payroll", getTotalPayrollController)
 router.get("/employee-archived", getEmployeeArchivedController)
 router.get("/employee-bank-list",ViewEmployeeBankAccountsController);
 router.post("/generate-bank-file",GenerateBankFileController);
+router.get("/employee-archived/print", printEmployeeArchivedController);
 
 
 export default router;

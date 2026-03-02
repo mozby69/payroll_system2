@@ -859,79 +859,108 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     pageSize?: number
     search?: string
     totalPayrollId: number
+    selectedCompany?: string
+    selectedBranch?: string
   }
 
-  export async function getEmployeeArchivedService({
-    page = 1,
-    pageSize = 10,
-    search,
-    totalPayrollId
-  } : GetEmployeeArchivedParams) {
-      const skip = (page - 1) * pageSize
-      const where: any = {
-        totalPayrollId, 
-      }
+  export async function getEmployeeArchivedService(params: GetEmployeeArchivedParams) {
 
-      if (search && search.trim() !== "") {
-        where.OR = [
-          {
-            EmpCodeId: {
-              contains: search,
-            },
-          },
-          {
-            EmpCode: {
-              Firstname: {
-                contains: search,
-              },
-            },
-          },
-          {
-            EmpCode: {
-              Lastname: {
-                contains: search,
-              },
-            },
-          },
-        ]
+    const { page = 1, pageSize = 10 } = params;
+  
+    const skip = (page - 1) * pageSize;
+  
+    const where = buildEmployeeArchivedWhere(params);
+  
+    const [data, total] = await Promise.all([
+      prisma.employeePayrollArchive.findMany({
+        where,
+        include: {
+          EmpCode: {
+            select: {
+              Firstname: true,
+              Middlename: true,
+              Lastname: true,
+              BranchCodeId: true
+            }
+          }
+        },
+        orderBy: {
+          EmpCode: { Lastname: "asc" }
+        },
+        skip,
+        take: pageSize
+      }),
+      prisma.employeePayrollArchive.count({ where })
+    ]);
+  
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPage: Math.ceil(total / pageSize)
       }
-      
-      const [data, total] = await Promise.all([
-        prisma.employeePayrollArchive.findMany({
-          where,
-          include: {
-            EmpCode:{
-              select: {
-                Firstname: true,
-                Middlename: true,
-                Lastname: true,
-                BranchCodeId: true 
-              }
-            }
-          },
-          orderBy: {
-            EmpCode: {
-              Lastname: "asc"
-            }
-          },
-          skip,
-          take: pageSize
-        }),
-        prisma.employeePayrollArchive.count({
-          where
-        })
-      ])
-      
-      return {
-        data,
-        meta: {
-          total,
-          page,
-          pageSize,
-          totalPage: Math.ceil(total / pageSize)
+    };
+  }
+
+  function buildEmployeeArchivedWhere({
+    totalPayrollId,
+    selectedCompany,
+    selectedBranch,
+    search
+  }: {
+    totalPayrollId: number
+    selectedCompany?: string
+    selectedBranch?: string
+    search?: string
+  }) {
+  
+    const where: any = {
+      totalPayrollId,
+    };
+  
+    if (selectedCompany || selectedBranch) {
+      where.EmpCode = {
+        BranchCode: {
+          ...(selectedCompany && { company_id: selectedCompany }),
+          ...(selectedBranch && { branchCode: selectedBranch }),
+        },
+      };
+    }
+  
+    if (search && search.trim() !== "") {
+      where.OR = [
+        { EmpCodeId: { contains: search } },
+        { EmpCode: { Firstname: { contains: search } } },
+        { EmpCode: { Lastname: { contains: search } } },
+      ];
+    }
+  
+    return where;
+  }
+
+
+  export async function printEmployeeArchivedService(params: GetEmployeeArchivedParams) {
+
+    const where = buildEmployeeArchivedWhere(params);
+    const data = await prisma.employeePayrollArchive.findMany({
+      where,
+      include: {
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Middlename: true,
+            Lastname: true,
+            BranchCodeId: true
+          }
         }
+      },
+      orderBy: {
+        EmpCode: { Lastname: "asc" }
       }
-
+    });
+    return data;
   }
   
 

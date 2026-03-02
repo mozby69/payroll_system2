@@ -18,12 +18,11 @@ import { useReactToPrint } from "react-to-print"
 export default function FinancialPage(){
 
       const { data, isLoading } = useDisplayForApprovalPayroll();
-      const [isPrinting, setIsPrinting] = useState(false);
       const isEmpty = !data || !data.data || data.data.length === 0;
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
       const [isModalOpen, setIsModalOpen] = useState(false);
-      const [loading, setLoading] = useState(false);
+      const [loading] = useState(false);
       const [selectedCompany, setSelectedCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
@@ -66,16 +65,6 @@ export default function FinancialPage(){
     
       }));
 
-      const handlePrint = () => {
-        setIsPrinting(true);
-        setLoading(true);
-      
-        setTimeout(() => {
-          window.print();
-          setLoading(false);
-          setIsPrinting(false);
-        }, 300);
-      };
       
 
 
@@ -207,8 +196,9 @@ export default function FinancialPage(){
                           <FinancialVarianceModal/>
                         </RequestModal>
                       )}
-
-        <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
+            <div className="hidden print:block">
+                <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
+            </div>
         </div>
     );
 }

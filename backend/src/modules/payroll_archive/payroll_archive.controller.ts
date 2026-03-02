@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -106,12 +106,16 @@ export async function getEmployeeArchivedController(
       const pageSize = Number(req.query.pageSize) || 10
       const search = req.query.search as string | undefined
       const totalPayrollId = Number(req.query.totalPayrollId) || 0
+      const selectedCompany = req.query.selectedCompany as string | undefined;
+      const selectedBranch = req.query.selectedBranch as string | undefined;
 
       const archived = await getEmployeeArchivedService({
         page,
         pageSize,
         search,
-        totalPayrollId
+        totalPayrollId,
+        selectedCompany,
+        selectedBranch
       })
 
       return res.status(200).json(archived)
@@ -121,6 +125,32 @@ export async function getEmployeeArchivedController(
     })
   }
 
+}
+
+export async function printEmployeeArchivedController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const search = req.query.search as string | undefined;
+    const totalPayrollId = Number(req.query.totalPayrollId) || 0;
+    const selectedCompany = req.query.selectedCompany as string | undefined;
+    const selectedBranch = req.query.selectedBranch as string | undefined;
+
+    const data = await printEmployeeArchivedService({
+      totalPayrollId,
+      search,
+      selectedCompany,
+      selectedBranch
+    });
+
+    return res.status(200).json(data);
+
+  } catch {
+    return res.status(500).json({
+      message: "Failed to print employee archived",
+    });
+  }
 }
 
 
