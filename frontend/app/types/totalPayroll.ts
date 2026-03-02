@@ -53,6 +53,7 @@ export type TotalPayroll = {
     philhealth_employer_share: string
     ar_e: string
     fch_loan: string
+    rfc_loan: string
     pagibig_loan: string
     sss_loan: string
     sss_calamity_loan: string

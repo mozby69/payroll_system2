@@ -722,7 +722,6 @@ model emp_disburse {
 }
 
 
-
 enum LeaveStatus {
   Active
   Completed

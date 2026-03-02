@@ -184,7 +184,7 @@ const closeModal = () => {
 
       <Pagination
         page={page}
-        totalPages={data?.meta.totalPages ?? 0}
+        totalPages={data?.meta.totalPage ?? 0}
         totalItems={data?.meta.total ?? 0}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
@@ -203,7 +203,7 @@ const closeModal = () => {
           )
           }
 
-
+ 
 
         {isModalOpen && (
             <RequestModal size="xxxl" title={`VIEW BANK RELEASE`} onClose={closeModal}>

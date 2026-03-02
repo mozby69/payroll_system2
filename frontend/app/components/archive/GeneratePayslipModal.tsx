@@ -11,6 +11,7 @@ import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
+import { useGetCompanyDetails } from "@/app/hooks/useGeneral"
 
 type PayslipProps = {
   totalPayrollId: number
@@ -30,6 +31,10 @@ export default function GeneratePayslipModal({
     search: debouncedSearch || undefined,
     totalPayrollId,
   })
+
+  const { data: companyDetails } = useGetCompanyDetails()
+  console.log("data: ", data?.meta)
+
   const handlePrint = async () => {
     if (!data?.data || data.data.length === 0) return
     try {
@@ -185,6 +190,30 @@ export default function GeneratePayslipModal({
                        bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Company
+            </label>
+  
+            <select
+              name="companyCode"
+              className="w-full rounded-md border px-3 py-2 text-sm
+                  border-gray-300 focus:ring-blue-500
+                focus:outline-none focus:ring-2"
+            >
+              <option value="">Select Company</option>
+  
+              {companyDetails?.map(company => (
+                <option
+                  key={company.CompanyCode}
+                  value={company.CompanyCode}
+                >
+                  {company.CompanyCode} — {company.CompanyName}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <GenButton
             variant="positive"
             onClick={handlePrint}
@@ -201,14 +230,16 @@ export default function GeneratePayslipModal({
         loading={isFetching}
       />
 
-      {/* Pagination */}
-      <Pagination
-        page={page}
-        totalPages={data?.meta.totalPages ?? 0}
-        totalItems={data?.meta.total ?? 0}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-      />
+
+{data && data.meta.totalPage > 0 && (
+  <Pagination
+    page={page}
+    totalPages={data.meta.totalPage}
+    totalItems={data.meta.total}
+    pageSize={PAGE_SIZE}
+    onPageChange={setPage}
+  />
+)}
 
     </div>
   )

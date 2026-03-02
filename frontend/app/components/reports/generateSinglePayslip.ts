@@ -1,16 +1,16 @@
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
 import { numberToPesoWords } from "@/app/utils/numberToWords"
+import { parsePayCode } from "@/app/utils/parsePaycode"
 
 export function generateSinglePayslip(item: EmployeeArchivedType) {
 
-    const gross = Number(item.Grosspay || 0)
-    const net = Number(item.Netpay || 0)
-  
     const totalDeductions =
       Number(item.w_tax || 0) +
       Number(item.sss_loan || 0) +
       Number(item.pagibig_loan || 0) +
       Number(item.sss_calamity_loan || 0)
+
+      const payrollPeriod = parsePayCode(item.PayCode)
   
     return `
       <div class="payslip">
@@ -25,8 +25,8 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                             <p>Name: ${item.EmpCode.Lastname ?? ""} ,  ${item.EmpCode.Firstname ?? ""} </p> 
                         </div>
                         <div class="payslip-details2">
-                            <p>Payroll Period: ${item.PayCode ?? ""}</p> 
-                            <p>To  ${item.PayCode ?? ""}</p> 
+                            <p>Payroll Period: ${payrollPeriod?.from ?? ""}</p> 
+                            <p>To  ${payrollPeriod?.to ?? ""}</p> 
                         </div>
                 </div>
                 <div class="payslip-table">
@@ -49,7 +49,12 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                                         }
                                     </div>
                                      <div>
-                                        Undertime : ${item.undertime ?? "0.00"}
+                                        Undertime : 
+                                         ${
+                                            Number(item.undertime) === 0
+                                            ? "0.00"
+                                            : Number(item.undertime).toFixed(2)
+                                        }
                                     </div>
                                     <div>
                                         Absence : 
@@ -93,46 +98,106 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                     </div>
                       <div class="flex justify-between" style="border-right: none;"> 
                         <div>    AR/E: </div>
-                        <div>  ${item.ar_e ?? "0.00"}</div>
+                        <div>
+                            ${
+                                Number(item.ar_e) === 0
+                                ? "0.00"
+                                : Number(item.ar_e).toFixed(2)
+                            }
+                          
+                          </div>
                     </div>
                     <div class="flex justify-between" style="border-inline: none;border-top: none;"> 
                         <div>    FCH Ln: </div>
-                        <div>  ${item.fch_loan ?? "0.00"} </div>
+                        <div>  
+                           ${
+                                Number(item.fch_loan) === 0
+                                ? "0.00"
+                                : Number(item.fch_loan).toFixed(2)
+                            }
+                        </div>
                     </div>
                      <div class="flex justify-between" style="border-top: none;"> 
                         <div>    Phl. Hlt : </div>
-                        <div>  ${item.philhealth_employee_share ?? "0.00"} </div>
+                        <div> 
+                           ${
+                                Number(item.philhealth_employee_share) === 0
+                                ? "0.00"
+                                : Number(item.philhealth_employee_share).toFixed(2)
+                            }
+                         
+                         </div>
                     </div>
                       <div class="flex justify-between" style="border-inline: none;border-top: none;"> 
                         <div>     P. Sal. Ln : </div>
-                        <div>  ${item.pagibig_loan ?? "0.00"} </div>
+                        <div> 
+                          ${
+                                Number(item.pagibig_loan) === 0
+                                ? "0.00"
+                                : Number(item.pagibig_loan).toFixed(2)
+                            }
+                         
+                         </div>
                     </div>
                     <div style="border-top: none; border-right: none; text-align: center"> 
                         OTHER LOANS
                     </div>
                     <div class="flex justify-between" style="border: none;"> 
                         <div>     Salary : </div>
-                        <div>  ${item.sss_loan ?? "0.00"} </div>
+                        <div>  
+                            ${
+                                Number(item.sss_loan) === 0
+                                ? "0.00"
+                                : Number(item.sss_loan).toFixed(2)
+                            }
+                        </div>
                     </div>
                     
                             <div class="flex justify-between"" style="border: none;"> 
                                 <div>     Calamity : </div>
-                                <div>  ${item.sss_calamity_loan ?? "0.00"} </div>
+                                <div> 
+                                     ${
+                                        Number(item.sss_calamity_loan) === 0
+                                        ? "0.00"
+                                        : Number(item.sss_calamity_loan).toFixed(2)
+                                      }
+                                 </div>
                             </div>
                             <div class="flex justify-between"" style="border: none;"> 
                                 <div>      Housing : </div>
-                                <div>  ${item.sss_calamity_loan ?? "0.00"} </div>
+                                <div> 
+                                   ${
+                                        Number(item.rfc_loan) === 0
+                                        ? "0.00"
+                                        : Number(item.rfc_loan).toFixed(2)
+                                      }
+                                 
+                                 </div>
                             </div>
                     
                     <div  style="grid-column: 1 / span 4; border-inline: none;border-bottom: none;">
                         <div  style="display:flex; align-items: center; gap:8rem;">
                                 <div class="flex justify-between" style="width: 50%" > 
                                     <div>      TOTAL DEDUCTIONS : </div>
-                                    <div>  ${item.sss_calamity_loan ?? "0.00"} </div>
+                                    <div> 
+                                    ${
+                                        Number(totalDeductions) === 0
+                                        ? "0.00"
+                                        : Number(totalDeductions).toFixed(2)
+                                      }
+                                     
+                                     </div>
                                 </div>
                               <div class="flex justify-between" style="width: 50%" > 
                                 <div>      NET PAYABLE : </div>
-                                <div>  131321 </div>
+                                <div> 
+                                  ${
+                                        Number(item.Netpay) === 0
+                                        ? "0.00"
+                                        : Number(item.Netpay).toFixed(2)
+                                      }
+                                 
+                                 </div>
                             </div>
                         </div>  
                     </div>  
