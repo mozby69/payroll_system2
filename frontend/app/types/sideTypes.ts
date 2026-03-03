@@ -7,15 +7,21 @@ export type MenuChild = {
   permission?: string
 }
 
-export type MenuItem = {
+
+
+
+
+
+export interface MenuItem {
   label: string
-  icon: LucideIcon
   path?: string
+  icon: LucideIcon
   permission?: string
-  children?: MenuChild[]
+  children?: MenuItem[]
 }
 
-export type MenuSection = {
+export interface MenuSection {
   title: string
   items: MenuItem[]
 }
+

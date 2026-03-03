@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation"
 import { MENU_SECTIONS } from "./menu.config"
 import { useAuth } from "./UserContext"
 import { useRef, useState, useEffect } from "react"
+import { MenuItem, MenuSection } from "../types/sideTypes"
 
 const menuItemClass =
   "flex items-center text-sm gap-x-2 py-2 rounded-md w-full " +
@@ -81,119 +82,153 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         </button>
       </div>
 
-      {/* Menu */}
-      <div
-        ref={scrollRef}
-        className="relative flex flex-col gap-y-4 items-start w-full overflow-y-auto scrollbar-hide"
-      >
-        {MENU_SECTIONS.map(section => {
-          const visibleItems = section.items.filter(
-            item => !item.permission || hasPermission(item.permission)
+{/* Menu */}
+<div
+  ref={scrollRef}
+  className="relative flex flex-col gap-y-4 items-start w-full overflow-y-auto scrollbar-hide"
+>
+  {MENU_SECTIONS.map((section: MenuSection) => {
+    const visibleItems: MenuItem[] = section.items
+      .map((item: MenuItem): MenuItem | null => {
+        // If item has children
+        if (item.children && item.children.length > 0) {
+          const visibleChildren: MenuItem[] = item.children.filter(
+            (child: MenuItem) =>
+              !child.permission || hasPermission(child.permission)
           )
 
-          if (visibleItems.length === 0) return null
+          // Keep parent if:
+          // - Parent allowed
+          // OR
+          // - At least one child allowed
+          if (
+            (!item.permission || hasPermission(item.permission)) ||
+            visibleChildren.length > 0
+          ) {
+            return {
+              ...item,
+              children: visibleChildren
+            }
+          }
 
-          return (
-            <div key={section.title} className="w-full">
-              {isOpen && (
-                <h6 className="text-sm text-mainNeutral mb-1 py-2">
-                  {section.title}
-                </h6>
-              )}
+          return null
+        }
 
-              <ul className="flex flex-col gap-y-2 w-full text-mainLight font-semibold">
-                {visibleItems.map((item) => {
-                  const { label, icon: Icon, path, children } = item
-                  const isExpandable = Array.isArray(children) && children.length > 0
-                  const isExpanded = expanded[label]
-                  const isActive = path && pathname === path
+        // No children
+        return (!item.permission || hasPermission(item.permission))
+          ? item
+          : null
+      })
+      .filter((item): item is MenuItem => item !== null)
 
-                  if (isExpandable) {
-                    const isChildActive = children.some(
-                      (child) => child.path === pathname
-                    )
+    if (visibleItems.length === 0) return null
 
-                    return (
-                      <li key={label} className="w-full">
-                        <button
-                          onClick={() =>
-                            setExpanded(prev => ({
-                              ...prev,
-                              [label]: !prev[label]
-                            }))
-                          }
-                          className={`
-                            ${menuItemClass}
-                            ${isOpen ? "px-3 justify-between" : "justify-center"}
-                            ${isChildActive ? "bg-mainLight text-mainDark" : ""}
-                          `}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon className="text-mainhighlight shrink-0 w-5" />
-                            {isOpen && <span>{label}</span>}
-                          </div>
+    return (
+      <div key={section.title} className="w-full">
+        {isOpen && (
+          <h6 className="text-sm text-mainNeutral mb-1 py-2">
+            {section.title}
+          </h6>
+        )}
 
-                          {isOpen && (
-                            <ChevronDown
-                              className={`w-4 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
-                          )}
-                        </button>
+        <ul className="flex flex-col gap-y-2 w-full text-mainLight font-semibold">
+          {visibleItems.map((item: MenuItem) => {
+            const { label, icon: Icon, path, children } = item
+            const isExpandable =
+              Array.isArray(children) && children.length > 0
+            const isExpanded = expanded[label]
+            const isActive = Boolean(path && pathname === path)
 
-                        {isExpanded && isOpen && (
-                          <ul className="ml-6 mt-2 flex flex-col gap-2">
-                            {children.map((child) => {
-                              const ChildIcon = child.icon
-                              const isChildActive = pathname === child.path
+            if (isExpandable && children) {
+              const isChildActive = children.some(
+                (child: MenuItem) => child.path === pathname
+              )
 
-                              return (
-                                <li key={child.label}>
-                                  <Link
-                                    href={child.path}
-                                    className={`
-                                      ${menuItemClass}
-                                      px-3
-                                      ${isChildActive ? "bg-mainLight text-mainDark" : ""}
-                                    `}
-                                  >
-                                    <ChildIcon className="w-4 shrink-0" />
-                                    <span>{child.label}</span>
-                                  </Link>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        )}
-                      </li>
-                    )
-                  }
+              return (
+                <li key={label} className="w-full">
+                  <button
+                    onClick={() =>
+                      setExpanded(prev => ({
+                        ...prev,
+                        [label]: !prev[label]
+                      }))
+                    }
+                    className={`
+                      ${menuItemClass}
+                      ${isOpen ? "px-3 justify-between" : "justify-center"}
+                      ${isChildActive ? "bg-mainLight text-mainDark" : ""}
+                    `}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="text-mainhighlight shrink-0 w-5" />
+                      {isOpen && <span>{label}</span>}
+                    </div>
 
-                  return (
-                    <li key={label}>
-                      {path && (
-                        <Link
-                          href={path}
-                          className={`
-                            ${menuItemClass}
-                            ${isOpen ? "px-3" : "justify-center"}
-                            ${isActive ? "bg-mainLight text-mainDark" : ""}
-                          `}
-                        >
-                          <Icon className="text-mainhighlight shrink-0 w-5" />
-                          {isOpen && <span>{label}</span>}
-                        </Link>
-                      )}
-                    </li>
-                  )
+                    {isOpen && (
+                      <ChevronDown
+                        className={`w-4 transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    )}
+                  </button>
 
-                })}
-              </ul>
-            </div>
-          )
-        })}
+                  {isExpanded && isOpen && (
+                    <ul className="ml-6 mt-2 flex flex-col gap-2">
+                      {children.map((child: MenuItem) => {
+                        const ChildIcon = child.icon
+                        const isChildActive =
+                          child.path === pathname
+
+                        if (!child.path) return null
+
+                        return (
+                          <li key={child.label}>
+                            <Link
+                              href={child.path}
+                              className={`
+                                ${menuItemClass}
+                                px-3
+                                ${isChildActive
+                                  ? "bg-mainLight text-mainDark"
+                                  : ""}
+                              `}
+                            >
+                              <ChildIcon className="w-4 shrink-0" />
+                              <span>{child.label}</span>
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </li>
+              )
+            }
+
+            if (!path) return null
+
+            return (
+              <li key={label}>
+                <Link
+                  href={path}
+                  className={`
+                    ${menuItemClass}
+                    ${isOpen ? "px-3" : "justify-center"}
+                    ${isActive ? "bg-mainLight text-mainDark" : ""}
+                  `}
+                >
+                  <Icon className="text-mainhighlight shrink-0 w-5" />
+                  {isOpen && <span>{label}</span>}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
       </div>
+    )
+  })}
+</div>
 
     
       {showArrow && (

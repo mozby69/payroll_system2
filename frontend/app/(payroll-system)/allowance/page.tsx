@@ -186,10 +186,10 @@ export default function AllowancePage(){
               
 
                 {isModalOpen && (
-                            <RequestModal size="xxl" title={`VIEW ALL`} onClose={closeModal}>
-                                <ViewAllList selectedMonth={month}/>
-                            </RequestModal>
-                          )}
+                    <RequestModal size="xxl" title={`VIEW ALL`} onClose={closeModal}>
+                        <ViewAllList selectedMonth={month}/>
+                    </RequestModal>
+                  )}
 
 
                   
