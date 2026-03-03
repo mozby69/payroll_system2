@@ -1,0 +1,92 @@
+import { prisma } from "../../config/prismaClient";
+export async function saveEmployeeSetup(employees) {
+    return await prisma.$transaction(employees.map(emp => prisma.employee.update({
+        where: {
+            EmpCode: emp.empCode
+        },
+        data: {
+            Disbursing: emp.Disbursing,
+            WithAtm: emp.WithAtm,
+            Taxable: emp.Taxable
+        }
+    })));
+}
+;
+export async function getFilteredMainDisburse({ payrollPeriod, status, page = 1, limit = 10, }) {
+    const skip = (page - 1) * limit;
+    let whereClause = {};
+    if (payrollPeriod) {
+        const [year, month] = payrollPeriod.split("-");
+        const monthName = new Date(Number(year), Number(month) - 1).toLocaleString("en-US", { month: "long" });
+        whereClause.AND = [
+            { payrollPeriod: { startsWith: monthName } },
+            { payrollPeriod: { endsWith: year } },
+        ];
+    }
+    if (status) {
+        whereClause.status = status;
+    }
+    const [data, total] = await prisma.$transaction([
+        prisma.main_disburse.findMany({
+            where: whereClause,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+            include: {
+                _count: {
+                    select: { empDisburses: true },
+                },
+            },
+        }),
+        prisma.main_disburse.count({
+            where: whereClause,
+        }),
+    ]);
+    return {
+        data,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+    };
+}
+export async function approveDisburse(main_disbure_id) {
+    return await prisma.main_disburse.update({
+        where: {
+            mainDisburseID: main_disbure_id
+        },
+        data: {
+            status: "APPROVED"
+        }
+    });
+}
+export async function getMainDisburseDetails(mainDisburseID) {
+    return await prisma.emp_disburse.findMany({
+        where: {
+            mainDisburseId: mainDisburseID,
+        },
+        select: {
+            disburseID: true,
+            empArchive: {
+                select: {
+                    Netpay: true,
+                    EmpCode: {
+                        select: {
+                            EmpCode: true,
+                            BranchCode: {
+                                select: {
+                                    branchCode: true,
+                                    Company: true,
+                                    Location: true,
+                                },
+                            },
+                            Firstname: true,
+                            Lastname: true,
+                            Position: true,
+                            Department: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+}

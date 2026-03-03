@@ -1,0 +1,200 @@
+// modules/import/import.service.ts
+import axios from "axios";
+import { prisma } from "../../config/prismaClient";
+import { Prisma } from "@prisma/client";
+const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
+const DJANGO_EXPORT_API_KEY = process.env.DJANGO_EXPORT_API_KEY;
+export const fetchFromDjango = async () => {
+    const { data } = await axios.get(`${DJANGO_BASE_URL}/api/export/emp/`, {
+        headers: {
+            "X-PAYROLL-TOKEN": DJANGO_EXPORT_API_KEY,
+        },
+    });
+    return data;
+};
+export const saveCompany = async (company) => {
+    if (!Array.isArray(company)) {
+        throw new Error("saveBranches received invalid data");
+    }
+    await prisma.$transaction(company.map((b) => prisma.company_details.upsert({
+        where: { CompanyCode: b.CompanyCode },
+        create: {
+            CompanyCode: b.CompanyCode,
+            CompanyCycle: b.CompanyCycle,
+            CompanyName: b.CompanyName,
+        },
+        update: {
+            CompanyCycle: b.CompanyCycle,
+            CompanyName: b.CompanyName,
+        },
+    })));
+    return company.length;
+};
+export const saveBranches = async (branches) => {
+    if (!Array.isArray(branches)) {
+        throw new Error("saveBranches received invalid data");
+    }
+    await prisma.$transaction(branches.map((b) => prisma.branch.upsert({
+        where: { branchCode: b.BranchCode },
+        create: {
+            branchCode: b.BranchCode,
+            Company: b.Company,
+            Location: b.Location,
+            Employees: b.Employees,
+            company_id: b.company__CompanyCode ?? null,
+        },
+        update: {
+            Company: b.Company,
+            Location: b.Location,
+            Employees: b.Employees,
+            company_id: b.company__CompanyCode ?? null,
+        },
+    })));
+    return branches.length;
+};
+const toDateOrNull = (value) => {
+    if (!value)
+        return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+};
+export const saveEmployees = async (employees) => {
+    const validEmployees = employees.filter(e => e.BranchCode__BranchCode !== null);
+    const chunkSize = 50; // process 50 employees at a time
+    for (let i = 0; i < validEmployees.length; i += chunkSize) {
+        const chunk = validEmployees.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (e) => {
+            await prisma.employee.upsert({
+                where: { EmpCode: e.EmpCode },
+                create: {
+                    EmpCode: e.EmpCode,
+                    Firstname: e.Firstname,
+                    Middlename: e.Middlename,
+                    BranchCodeId: e.BranchCode__BranchCode,
+                    Lastname: e.Lastname,
+                    DateofBirth: toDateOrNull(e.DateofBirth),
+                    EmployementDate: toDateOrNull(e.EmployementDate),
+                    EmploymentStatus: e.EmploymentStatus,
+                    EmployeeStatus: e.EmployeeStatus,
+                    isNewEmployee: true,
+                },
+                update: {
+                    Firstname: e.Firstname,
+                    Middlename: e.Middlename,
+                    BranchCodeId: e.BranchCode__BranchCode,
+                    Lastname: e.Lastname,
+                    DateofBirth: toDateOrNull(e.DateofBirth),
+                    EmployementDate: toDateOrNull(e.EmployementDate),
+                    EmploymentStatus: e.EmploymentStatus,
+                    EmployeeStatus: e.EmployeeStatus,
+                },
+            });
+            await prisma.employee_payroll.upsert({
+                where: { EmpCodeId: e.EmpCode },
+                create: {
+                    EmpCodeId: e.EmpCode,
+                    basic_salary: new Prisma.Decimal(0),
+                    cash_assistance: new Prisma.Decimal(0),
+                },
+                update: {},
+            });
+            await prisma.pagIbig_List.upsert({
+                where: { EmpCodeId: e.EmpCode },
+                create: {
+                    EmpCodeId: e.EmpCode,
+                    pagibig_employee_share: new Prisma.Decimal(0),
+                    pagibig_employer_share: new Prisma.Decimal(0),
+                },
+                update: {},
+            });
+        }));
+    }
+    return validEmployees.length;
+};
+export const saveEmployeeDetails = async (details) => {
+    if (!Array.isArray(details) || details.length === 0)
+        return 0;
+    await prisma.$transaction(details.map((d) => prisma.empDetails.upsert({
+        where: {
+            EmpCodeId: d.EmpCode__EmpCode,
+        },
+        create: {
+            EmpCodeId: d.EmpCode__EmpCode,
+            EmpTin: d.EmpTin,
+            EmpSSSNo: d.EmpSSSNo,
+            EmpPhilhlthNo: d.EmpPhilhlthNo,
+            EmpPagibigNo: d.EmpPagibigNo,
+            EmpChildrenName: d.EmpCode__familybgrnd__empchildren__EmpChildrenName,
+            EmpChildrenBirthday: d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
+                ? new Date(d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday)
+                : null,
+            EmpChildrenBplace: d.EmpCode__familybgrnd__empchildren__EmpChildrenBplace,
+        },
+        update: {
+            EmpTin: d.EmpTin,
+            EmpSSSNo: d.EmpSSSNo,
+            EmpPhilhlthNo: d.EmpPhilhlthNo,
+            EmpPagibigNo: d.EmpPagibigNo,
+            EmpChildrenName: d.EmpCode__familybgrnd__empchildren__EmpChildrenName,
+            EmpChildrenBirthday: d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
+                ? new Date(d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday)
+                : null,
+            EmpChildrenBplace: d.EmpCode__familybgrnd__empchildren__EmpChildrenBplace,
+        },
+    })));
+    return details.length;
+};
+export const importBranchesService = async () => {
+    const { branches, employees, employees_details, company_details } = await fetchFromDjango();
+    if (!Array.isArray(branches)) {
+        throw new Error("Branches payload is invalid");
+    }
+    await saveCompany(company_details);
+    await saveBranches(branches);
+    const employeeCount = await saveEmployees(employees);
+    const detailsCount = await saveEmployeeDetails(employees_details);
+    return {
+        branches: branches.length,
+        employees: employeeCount,
+        employeeDetails: detailsCount,
+        companyDetails: company_details.length,
+    };
+};
+//insert attendance count
+export const fetchAttendanceCountFromDjango = async () => {
+    const { data } = await axios.get(`${DJANGO_BASE_URL}/api/export/attendance-count/`, {
+        headers: {
+            "X-PAYROLL-TOKEN": DJANGO_EXPORT_API_KEY,
+        },
+    });
+    return data;
+};
+export const saveAttendanceCount = async (records) => {
+    if (!Array.isArray(records)) {
+        throw new Error("Invalid new table payload");
+    }
+    await prisma.$transaction(records.map((r) => prisma.attendanceCount.upsert({
+        where: { ID: r.ID },
+        create: {
+            ID: r.ID,
+            Vacation: new Prisma.Decimal(r.Vacation),
+            Sick: new Prisma.Decimal(r.Sick),
+            EmpCodeId: r.EmpCode__EmpCode, // ✅ FIXED
+        },
+        update: {
+            Vacation: new Prisma.Decimal(r.Vacation),
+            Sick: new Prisma.Decimal(r.Sick),
+        },
+    })));
+    return records.length;
+};
+export const importAttendanceCountService = async () => {
+    const { attendance_count } = await fetchAttendanceCountFromDjango();
+    if (!Array.isArray(attendance_count)) {
+        throw new Error("attendance_count payload is invalid");
+    }
+    const count = await saveAttendanceCount(attendance_count);
+    return {
+        attendanceCount: count,
+    };
+};
