@@ -449,7 +449,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                         <span className="text-sm text-gray-500 ">Bank Account</span>
                           
                           <input
-                            type="number"
+                            type="text"
                             value={formValues.bankAccount}
                             onChange={(e) =>
                               setFormValues(prev => ({
