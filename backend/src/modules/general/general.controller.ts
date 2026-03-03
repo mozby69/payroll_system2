@@ -66,7 +66,7 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
       const page = await browser.newPage();
   
       //const fullUrl = `http://localhost:3000${path}`;
-      const fullUrl = `${process.env.FRONTEND_URL}${path}`;
+      const fullUrl = `${process.env.FRONTEND_LAN_URL}${path}`;
   
       await page.goto(fullUrl, {
         waitUntil: "domcontentloaded",
