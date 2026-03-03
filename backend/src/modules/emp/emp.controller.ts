@@ -94,6 +94,8 @@ export const updateEmployeePayrollByEmpCode = async (
       WithAtm,
       Disbursing,
       remarks,
+      Taxable,
+      bankAccount
     } = req.body;
 
 
@@ -109,6 +111,8 @@ export const updateEmployeePayrollByEmpCode = async (
         WithAtm: Boolean(WithAtm),
         Disbursing: Boolean(Disbursing),
         remarks: remarks ? String(remarks) : undefined, 
+        Taxable: Boolean(Taxable),
+        bankAccount:bankAccount ? String(bankAccount) : undefined,
       },
       changedBy 
     );

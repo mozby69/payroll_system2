@@ -109,6 +109,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       bod_member:true,
       Disbursing:true,
       WithAtm:true,
+      Taxable:true,
       employeepr: {
         select: {
           EmpTin: true,
@@ -140,6 +141,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           basic_salary: true,
           cash_assistance: true,
           ecola: true,
+          bank_account:true,
         },
       },
 
@@ -171,6 +173,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
   const payroll = employee.employeepayroll ?? null;
 
   const basicSalary = Number(payroll?.basic_salary ?? 0);
+  const bankAccount = String(payroll?.bank_account ?? 0);
   const cashAssistance = Number(payroll?.cash_assistance ?? 0);
   const ecola = Number(payroll?.ecola ?? 0);
 
@@ -214,6 +217,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           CashAssistance: cashAssistance,
           Ecola: ecola,
           TotalSalary: totalSalary,
+          bankAccount: bankAccount,
           sssContribEmployee: sssContribEmployee,
           philhealthRateEmployee: philhealthRateEmployee,
           pagibigEmployeeShare: pagibigEmployeeShare,
@@ -292,6 +296,7 @@ export const updateEmployeePayroll = async (
         data: {
           WithAtm: payLoad.WithAtm,
           Disbursing: payLoad.Disbursing,
+          Taxable: payLoad.Taxable,
 
           employeepayroll: {
             upsert: {
@@ -299,11 +304,13 @@ export const updateEmployeePayroll = async (
                 basic_salary: payLoad.basicSalary,
                 cash_assistance: payLoad.cashAssistance,
                 ecola: payLoad.ecola,
+                bank_account: payLoad.bankAccount,
               },
               create: {
                 basic_salary: payLoad.basicSalary,
                 cash_assistance: payLoad.cashAssistance,
                 ecola: payLoad.ecola,
+                bank_account: payLoad.bankAccount
               },
             },
           },

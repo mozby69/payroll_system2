@@ -26,22 +26,24 @@ export const MENU_SECTIONS: MenuSection[] = [
         {
           label: "Payroll",
           icon: Calculator,
-          permission: "BONUS_GENERATE",
           children: [
             {
               label: "Run Payroll",
               path: "/main-payroll",
               icon: Calculator,
+              permission:"PAYROLL_RUN"
             },
             {
               label: "Payroll Archive",
               path: "/archive-payroll",
               icon: Archive,
+              permission:"PAYROLL_ARCHIVE"
             },
             {
               label: "Payroll List",
               path: "/financial-page",
               icon: BookMarked,
+              permission:"PAYROLL_LIST"
             }
           ]
         },
@@ -95,7 +97,7 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees Allowance",
           path: "/allowance",
           icon: PhilippinePeso,
-          permission: "BONUS_GENERATE"
+          permission: "PAYROLL_LIST"
         },
         {
           label: "Employees Conversion",

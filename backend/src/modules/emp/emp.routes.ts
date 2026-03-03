@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authenticateToken } from "../../../src/middleware/authMiddleware";
+//import { authenticateToken } from "../../../src/middleware/authMiddleware";
+import { authenticateToken } from "../auth/auth.middleware";
 import { getEmployees,getEmployeeByEmpCode, updateEmployeePayrollByEmpCode, getCompanies, getEmployeesByCompany, bulkIncreaseEmployeeSalary } from "./emp.controller";
 
 const router = Router();

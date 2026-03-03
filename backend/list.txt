@@ -982,3 +982,11 @@ export const importSQLService = async (filePath:string | undefined, originalFile
     }
 
   };
+
+
+
+    "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc"
+  },
