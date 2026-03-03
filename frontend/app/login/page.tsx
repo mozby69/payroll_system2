@@ -21,9 +21,9 @@ import { useAuth } from "../components/UserContext";
 export default function Login() {
     const router = useRouter();
     const { mutateAsync } = useLogin();
-    const { setUser } = useAuth();
+    const { refreshUser } = useAuth();
 
-    const { mutate, isPending, error } = useLogin();
+    const { isPending, error } = useLogin();
 
 
     const methods = useForm<LoginSchema>({
@@ -34,12 +34,11 @@ export default function Login() {
         }
     });
 
-
     const onSubmit = async (data: LoginParams) => {
-    const res = await mutateAsync(data);
-    setUser(res.user);
-    router.replace("/");
-    };
+        await mutateAsync(data);
+        await refreshUser();
+        router.replace("/");
+      };
 
     return (
         <FormProvider {...methods}>

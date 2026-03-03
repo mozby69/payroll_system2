@@ -26,9 +26,10 @@ type SelectFieldProps = {
     label: string
     options: readonly string[]
     error?: string
+    placeholder?: string
   } & SelectHTMLAttributes<HTMLSelectElement>
   
-  export function SelectField({ label, options, error, ...props }: SelectFieldProps) {
+  export function SelectField({ label, placeholder="Select", options, error, ...props }: SelectFieldProps) {
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -38,7 +39,7 @@ type SelectFieldProps = {
           {...props}
           className="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Select</option>
+          <option value="">{placeholder}</option>
           {options.map((o: string) => (
             <option key={o} value={o}>{o}</option>
           ))}

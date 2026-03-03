@@ -14,6 +14,9 @@ import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { delay } from "@/app/helper/delay"
 import { useCreateBonusRules, useUpdateBonusRules } from "@/app/hooks/useBonus"
 import { InputField, SelectField } from "../../FormInputs"
+import toast from "react-hot-toast"
+import RequestModal from "../../Modal"
+import BonusRuleCompanyModal from "./BonusRuleCompanyModal"
 
 type BonusRuleModalProps = {
   mode: "create" | "edit"
@@ -21,10 +24,19 @@ type BonusRuleModalProps = {
   initialData?: CreateBonusRuleForm & {id?: number}
 }
 
+type BonusRule = {
+  id?: number
+  name?: string
+}
+
 export default function CreateBonusRulesModal({ mode, onClose, initialData }: BonusRuleModalProps) {
   const createBonusRuleMutation = useCreateBonusRules()
   const updateBonusRuleMutation = useUpdateBonusRules()
   const [showProcessing, setShowProcessing] = useState(false)
+  const [isOpenAddModal ,setIsOpenAddModal] = useState(false)
+  const [selectedRule, setSelectedRule] =
+  useState<BonusRule | undefined>()
+  
 
   const isEdit = mode === "edit"
 
@@ -33,7 +45,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
     name: initialData?.name ?? "",
     bonusType: initialData?.bonusType ?? null,
     eligibleMonth: initialData?.eligibleMonth ?? 1,
-    minTenureMonths: initialData?.minTenureMonths ?? 0,
+    minTenureYear: initialData?.minTenureYear ?? 0,
     formulaType: initialData?.formulaType ?? null,
     taxable: initialData?.taxable ?? false
   })
@@ -80,7 +92,11 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
             },
             {
               onSuccess: async () => {
+             
                 await delay(800)
+                toast.success("Bonus rule updated successfully", {
+                  position: "top-center",
+                });
                 setShowProcessing(false)
                 onClose()
               },
@@ -93,10 +109,14 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
         } else {
           // 🟢 CREATE
           createBonusRuleMutation.mutate(result.data, {
-            onSuccess: async () => {
+            onSuccess: async (data) => {
               await delay(800)
+              toast.success("Bonus rule added successfully", {
+                position: "top-center",
+              });
               setShowProcessing(false)
-              onClose()
+              setSelectedRule(data.data.initialData)
+              setIsOpenAddModal(true)
             },
             onError: async () => {
               await delay(800)
@@ -125,6 +145,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
         {/* Code */}
         <InputField
           label="Rule Code"
+          placeholder="Enter bonus code"
           name="code"
           value={form.code}
           error={errors?.code?._errors?.[0]}
@@ -134,6 +155,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
         {/* Name */}
         <InputField
           label="Rule Name"
+          placeholder="Enter bonus name"
           name="name"
           value={form.name}
           error={errors?.name?._errors?.[0]}
@@ -144,6 +166,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
         <SelectField
           label="Bonus Type"
           name="bonusType"
+          placeholder="Select bonus type"
           value={form.bonusType ?? ""}
           error={errors?.bonusType?._errors?.[0]}
           onChange={handleChange}
@@ -154,6 +177,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
         <SelectField
           label="Formula"
           name="formulaType"
+          placeholder="Select formula type"
           value={form.formulaType ?? ""}
           error={errors?.formulaType?._errors?.[0]}
           onChange={handleChange}
@@ -172,11 +196,11 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           />
 
           <InputField
-            label="Min Tenure (Months)"
-            name="minTenureMonths"
+            label="Min Tenure (Years)"
+            name="minTenureYear"
             type="number"
-            value={form.minTenureMonths}
-            error={errors?.minTenureMonths?._errors?.[0]}
+            value={form.minTenureYear}
+            error={errors?.minTenureYear?._errors?.[0]}
             onChange={handleChange}
           />
         </div>
@@ -211,6 +235,21 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           </button>
         </div>
       </div>
+
+          {isOpenAddModal && (
+              <RequestModal 
+                title="Configure Company Bonus Rules" 
+                size="md"
+                nested = {true}
+                onClose={() => {
+                  setIsOpenAddModal(false)
+                  onClose()
+                }}>
+                   <BonusRuleCompanyModal  initialData={selectedRule ?? undefined} />
+                 
+                </RequestModal>
+      
+            )}
     </div>
   )
 }

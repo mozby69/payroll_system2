@@ -20,6 +20,7 @@ const formatPHDate = (date: Date) =>
 interface DateRangePickerProps {
   value?: Date[];
   onChange?: (range: DateRange) => void;
+  disabledRanges?: { from: Date; to: Date }[];
   placeholder?: string;
   className?: string;
 }
@@ -29,6 +30,7 @@ export default function DateRangePicker({
   onChange,
   placeholder = "Select date range",
   className = "",
+  disabledRanges = [],
 }: DateRangePickerProps) {
   const [range, setRange] = useState<Date[]>(value);
   const [open, setOpen] = useState(false);
@@ -55,7 +57,7 @@ export default function DateRangePicker({
 
 
   return (
-    <div ref={containerRef} className={`relative w-8/12 ${className}`}>
+    <div ref={containerRef} className={`relative w-4/12 ${className}`}>
       {/* Input */}
       <input
         readOnly
@@ -94,6 +96,7 @@ export default function DateRangePicker({
               dateFormat: "Y-m-d",
               showMonths: 2,
               inline: true,
+              disable: disabledRanges,
             }}
           />
         </div>

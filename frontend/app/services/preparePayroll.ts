@@ -1,6 +1,6 @@
 import api from "./axios";
-import { EmployeeRow, PaginatedResponse, PayrollSummary } from "../types/preparePayroll";
-import { ImportResponse } from "../hooks/usePreparePayroll";
+import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
+import { ImportAttendanceResponse, ImportResponse } from "../hooks/usePreparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
 
@@ -12,6 +12,13 @@ import { DateRange } from "../types/utilsTypes";
 //   });
 //   return response.data;
 // }
+
+
+
+export const importAttendanceCount = async (): Promise<ImportAttendanceResponse> => {
+  const { data } = await api.post<ImportAttendanceResponse>("/import/attendance-count");
+  return data;
+};
 
 
 
@@ -31,6 +38,8 @@ export const fetchEmployeesByCycle = async (
     page: number;
     limit: number;
     search?: string;
+    onlyNew?:boolean;
+    onlyMissingSetup?:boolean;
   }
 ): Promise<PaginatedResponse<EmployeeRow>> => {
   const res = await api.get("/prepare-payroll/employee-category-cycle", {
@@ -61,23 +70,6 @@ export const updateEmployeePayroll = async (
 
 
 
-export type AddLoanPayload = {
-  empCode: string;
-  loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN";
-  principal: number;
-  term_value: number;
-  term_unit: "MONTHS" | "YEARS";
-  start_date: string;
-};
-
-
-export const addEmployeeLoan = async (payload: AddLoanPayload) => {
-  const res = await api.post("/prepare-payroll/loans-add", payload);
-  return res.data;
-};
-
-
-
 export function searchEmployees(q: string) {
   return api.get("/prepare-payroll/employees/search", { params: { q } });
 }
@@ -94,6 +86,7 @@ export interface ComputedProps{
   absence_count:number;
   overtime:number;
   gross_pay:number;
+  undertime:number;
   EmpCode:{
     Firstname:string;
     Lastname:string;
@@ -101,6 +94,7 @@ export interface ComputedProps{
 }
 
 export const fetchComputedPayroll = async (params: {
+  cycle: string;
   page: number;
   limit: number;
   search?: string;

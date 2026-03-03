@@ -1,7 +1,9 @@
 // modules/import/import.service.ts
 import axios from "axios";
 import { prisma } from "../../config/prismaClient";
-import { BranchDTO, CompanyDTO, DjangoExportResponse, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { Prisma } from "@prisma/client";
+
 
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
 const DJANGO_EXPORT_API_KEY = process.env.DJANGO_EXPORT_API_KEY;
@@ -86,45 +88,76 @@ const toDateOrNull = (value?: string | null): Date | null => {
 
 
 
-  export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> => {
+export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> => {
+  const validEmployees = employees.filter(e => e.BranchCode__BranchCode !== null);
 
-    const validEmployees = employees.filter(
-      (e) => e.BranchCode__BranchCode !== null
-    );
-  
-    await prisma.$transaction(
-      validEmployees.map((e) =>
-        prisma.employee.upsert({
+  const chunkSize = 50; // process 50 employees at a time
+  for (let i = 0; i < validEmployees.length; i += chunkSize) {
+    const chunk = validEmployees.slice(i, i + chunkSize);
+
+    
+    await Promise.all(
+      chunk.map(async (e) => {
+ 
+        await prisma.employee.upsert({
           where: { EmpCode: e.EmpCode },
           create: {
             EmpCode: e.EmpCode,
             Firstname: e.Firstname,
             Middlename: e.Middlename,
             BranchCodeId: e.BranchCode__BranchCode!,
-            Lastname:e.Lastname,
+            Lastname: e.Lastname,
             DateofBirth: toDateOrNull(e.DateofBirth),
             EmployementDate: toDateOrNull(e.EmployementDate),
-            EmploymentStatus:e.EmploymentStatus,
-            EmployeeStatus:e.EmployeeStatus,
+            EmploymentStatus: e.EmploymentStatus,
+            EmployeeStatus: e.EmployeeStatus,
+            isNewEmployee: true,
           },
           update: {
             Firstname: e.Firstname,
             Middlename: e.Middlename,
             BranchCodeId: e.BranchCode__BranchCode!,
-            Lastname:e.Lastname,
-            DateofBirth:toDateOrNull(e.DateofBirth),
-            EmployementDate:toDateOrNull(e.EmployementDate),
-            EmploymentStatus:e.EmploymentStatus,
-            EmployeeStatus:e.EmployeeStatus,
+            Lastname: e.Lastname,
+            DateofBirth: toDateOrNull(e.DateofBirth),
+            EmployementDate: toDateOrNull(e.EmployementDate),
+            EmploymentStatus: e.EmploymentStatus,
+            EmployeeStatus: e.EmployeeStatus,
           },
-        })
-      )
+        });
+
+      
+        await prisma.employee_payroll.upsert({
+          where: { EmpCodeId: e.EmpCode },
+          create: {
+            EmpCodeId: e.EmpCode,
+            basic_salary: new Prisma.Decimal(0),
+            cash_assistance: new Prisma.Decimal(0),
+          },
+          update: {},
+        });
+
+
+        await prisma.pagIbig_List.upsert({
+          where: { EmpCodeId: e.EmpCode },
+          create: {
+            EmpCodeId: e.EmpCode,
+            pagibig_employee_share: new Prisma.Decimal(0),
+            pagibig_employer_share: new Prisma.Decimal(0),
+          },
+          update: {},
+        });
+      })
     );
+  }
+
+  return validEmployees.length;
+};
   
-    return validEmployees.length;
-  };
-  
-  
+
+
+
+
+
 
   export const saveEmployeeDetails = async (details: EmployeeDetailsDTO[]): Promise<number> => {
     if (!Array.isArray(details) || details.length === 0) return 0;
@@ -201,3 +234,70 @@ const toDateOrNull = (value?: string | null): Date | null => {
     };
   };
   
+
+
+
+
+
+
+
+ //insert attendance count
+
+
+
+  export const fetchAttendanceCountFromDjango = async (): Promise<DjangoExportResponse2> => {
+    const { data } = await axios.get<DjangoExportResponse2>(
+      `${DJANGO_BASE_URL}/api/export/attendance-count/`,
+      {
+        headers: {
+          "X-PAYROLL-TOKEN": DJANGO_EXPORT_API_KEY,
+        },
+      }
+    );
+  
+    return data;
+  };
+
+
+  export const saveAttendanceCount = async (
+    records: attendance_countDTO[]
+  ): Promise<number> => {
+    if (!Array.isArray(records)) {
+      throw new Error("Invalid new table payload");
+    }
+  
+    await prisma.$transaction(
+      records.map((r) =>
+        prisma.attendanceCount.upsert({
+          where: { ID: r.ID },
+          create: {
+            ID: r.ID,
+            Vacation: new Prisma.Decimal(r.Vacation),
+            Sick: new Prisma.Decimal(r.Sick),
+            EmpCodeId: r.EmpCode__EmpCode, // ✅ FIXED
+          },
+          update: {
+            Vacation: new Prisma.Decimal(r.Vacation),
+            Sick: new Prisma.Decimal(r.Sick),
+          },
+        })
+      )
+    );
+  
+    return records.length;
+  };
+
+
+  export const importAttendanceCountService = async () => {
+    const { attendance_count } = await fetchAttendanceCountFromDjango();
+  
+    if (!Array.isArray(attendance_count)) {
+      throw new Error("attendance_count payload is invalid");
+    }
+  
+    const count = await saveAttendanceCount(attendance_count);
+  
+    return {
+      attendanceCount: count,
+    };
+  };

@@ -1,5 +1,6 @@
 import { Router} from 'express';
 import preparePayrollRoutes from '../modules/prepare_payroll/prepare_payroll.routes';
+import addLoanRoutes from "../modules/loans/loan.routes";
 import importRoutes from '../modules/import/import.routes';
 
 import apiRoutes from '../modules/api/api.routes';
@@ -10,6 +11,13 @@ import employeeRoutes from "../modules/emp/emp.routes";
 import bonusRoutes from "../modules/bonus/bonus.routes";
 import payrollArchiveRoutes from "../modules/payroll_archive/payroll_archive.routes";
 import filterRoutes from "../modules/filters/filter.routes";
+import generalRoutes from "../modules/general/general.routes";
+import allowanceRoutes from "../modules/allowance/allowance.routes";
+import varianceRoutes from '../modules/variance/variance.routes';
+import statutoryRoutes from '../modules/statutory_deductions/statutory.routes';
+import disburseRoutes from '../modules/Disburse/disburse.routes';
+import printeRoutes from '../modules/print/print.routes';
+import conversionRouites from '../modules/conversion/conversion.routes';
 
 
 const router = Router();
@@ -31,9 +39,26 @@ router.use("/payroll-archive", payrollArchiveRoutes);
 
 router.use("/opt", filterRoutes);
 
+router.use("/general", generalRoutes)
+router.use("/allowance",allowanceRoutes);
+router.use("/statutory",statutoryRoutes);
+
+router.use("/variance",varianceRoutes);
 
 
+// loan code ↓
+router.use("/loans", addLoanRoutes);
+// loan code ↑
+
+// Disburse code ↓
+router.use("/Disburse", disburseRoutes);
+// Disburse code ↑
 
 
+//Print
+router.use("/print", printeRoutes)
+
+
+router.use("/conversion", conversionRouites)
 
 export default router;

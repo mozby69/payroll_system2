@@ -11,3 +11,15 @@ export interface LoginResponse {
     role: string;
   };
 }
+
+
+export interface CreateUserInput {
+  email?: string
+  username: string
+  password: string
+  roleIds: number[]  
+}
+
+
+
+

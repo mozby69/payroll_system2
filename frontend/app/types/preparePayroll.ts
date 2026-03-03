@@ -4,6 +4,7 @@ export type Column<T> = {
     header: string;
     accessor?: (row: T) => string | number;
     render?: (row: T) => React.ReactNode;
+    footer?: React.ReactNode | (() => React.ReactNode);
   };
  
 
@@ -38,10 +39,21 @@ export type Column<T> = {
     pagibig_employee_share: number;
     pagibig_employer_share: number;
     cash_assistance?:number;
+    WithAtm:boolean;
+    Disbursing:boolean;
+    Taxable:boolean;
+    
+    // Loan Code ↓
     fch_loan: number;
     sss_loan: number;
     pagibig_loan: number;
-    pagibig_id:string;  
+    rfc_loan:number;
+    are_loan:number;
+    // Loan Code ↑
+    
+    pagibig_id:string; 
+    next_payroll:string; 
+    month_pay:string,
     BranchCode?: {
       branchCode: string;
       Location: string | null;
@@ -56,10 +68,12 @@ export type Column<T> = {
   export type PaginatedResponse<T> = {
     data: T[];
     meta: {
+      cycle: string;
       total: number;
       page: number;
       limit: number;
       totalPages: number;
+      zeroSalaryCount:number;
     };
   };
 
@@ -113,4 +127,56 @@ export interface EmployeeSummaryTypes {
   philEmpShare: number;
   pagEmpShare: number;
   
+}
+
+
+export interface PayrollResponse {
+  status: "SUCCESS";
+  data: PayrollEmployee[];
+}
+
+
+
+export interface PayrollEmployee {
+  PayCode: string;
+  CycleCategory: string;
+  PayrollPeriod: string;
+  LateCount: number;
+  TotalAbsentHours: string;
+  TotalOvertime: string;
+  TotalUndertime: number;
+  RegularAtt: Record<string, string>;
+  OvertimeAtt: Record<string, string>;
+  NightShiftAtt: Record<string, string>;
+  NightShiftOtAtt: Record<string, string>;
+  EmpCodeId: string;
+  EmpCode: {
+    Firstname: string;
+    Lastname: string;
+    BranchCode:{
+      company_id:string;
+    }
+  };
+  semi_monthly:number;
+  overtime:number;
+  late_count:number;
+  undertime:number;
+  absence:number;
+  gross_pay:number;
+  sss_contrib_employee:number;
+  sss_contrib_employer:number;
+  pagibig_contrib_employee:number;
+  pagibig_contrib_employer:number,
+  philhealth_contrib_employee:number;
+  philhealth_contrib_employer:number;
+  net_pay:number;
+  wtax:number;
+
+  // Loan Code ↓
+  rfc_loan:number;
+  fch_loan:number;
+  pagibig_loan:number;
+  sss_loan:number;
+  are_loan:number;
+  // Loan Code ↑
 }

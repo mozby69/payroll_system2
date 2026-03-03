@@ -1,0 +1,27 @@
+/* Remove blur / opacity */
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.flatpickr-disabled:hover {
+  opacity: 1 !important;
+  filter: none !important;
+  cursor: not-allowed;
+}
+
+/* Professional disabled date style */
+.flatpickr-day.flatpickr-disabled {
+  background-color: #fee2e2 !important; /* light red */
+  color: #991b1b !important;            /* dark red text */
+  border-radius: 0.375rem;
+}
+
+/* Optional: subtle strike */
+.flatpickr-day.flatpickr-disabled::after {
+  content: "";
+  position: absolute;
+  inset: 45% 10%;
+  height: 1px;
+  background-color: #991b1b;
+  opacity: 0.5;
+}
+
+
+

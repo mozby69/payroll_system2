@@ -24,8 +24,8 @@ const SweetAlert = {
       title,
       text,
       icon: "success",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#3085d6",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
     });
   },
 
@@ -34,8 +34,8 @@ const SweetAlert = {
       title,
       text,
       icon: "success",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#3085d6",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
     }).then((result) => {
         if (result.isConfirmed && typeof runFuction === "function" || result.isDismissed) {
             runFuction();
@@ -50,9 +50,9 @@ const SweetAlert = {
       text,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "OK",
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
+      cancelButtonColor: "#464646",
     });
   },
 
@@ -61,8 +61,8 @@ const SweetAlert = {
       title,
       text,
       icon: "error",
-      confirmButtonText: "OK",
-      confirmButtonColor: "#d33",
+      confirmButtonText: "Confirm",
+      confirmButtonColor: "#6CCC84",
     });
   },
 
@@ -71,25 +71,189 @@ const SweetAlert = {
   confirmationAlert: (
     title: string = "Are you sure?",
     text: string = "",
-    onConfirm: () => void
+    onConfirm?: () => void,
+    onCancel?: () => void
   ) => {
     return Swal.fire({
       title,
       text,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes",
-      cancelButtonText: "No",
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
+      confirmButtonText: "Confirm",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#6CCC84",
+      cancelButtonColor: "#464646",
     }).then((result) => {
       if (result.isConfirmed && typeof onConfirm === "function") {
         onConfirm();
-        
+      }
+
+      if (result.isDismissed && typeof onCancel === "function") {
+        onCancel();
       }
     });
   },
+
+    remarksConfirmationAlert: (
+    title: string = "Are you sure?",
+    text: string = "",
+    placeholder: string = "Enter remarks",
+    onConfirm: (remarks: string) => void
+  ) => {
+    return Swal.fire({
+      title,
+      text,
+      icon: "warning",
+      input: "textarea",
+      inputPlaceholder: placeholder,
+      inputAttributes: {
+        rows: "4",
+      },
+      showCancelButton: true,
+      confirmButtonText: "Confirm",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#6CCC84",
+      cancelButtonColor: "#464646",
+      preConfirm: (value) => {
+        if (!value || !value.trim()) {
+          Swal.showValidationMessage("Remarks are required");
+          return false;
+        }
+        return value;
+      },
+    }).then((result) => {
+      if (result.isConfirmed && typeof onConfirm === "function") {
+        onConfirm(result.value);
+      }
+    });
+  },
+
+  
+remarksConfirmationAlertandDropdown: (
+   title: string,
+  text: string,
+  options: { value: string; label: string }[],
+  onConfirm: (data: { reason: string; amount: number }) => void
+) => {
+  return Swal.fire({
+    title,
+    text,
+    icon: "warning",
+
+    width: 500, // control popup width
+    customClass: {
+      popup: "swal-no-scroll",
+    },
+
+    html: `
+      <div style="display:flex; flex-direction:column; gap:16px; margin-top:10px; width:100%;">
+        
+        <select id="swal-reason"
+          style="
+            width:100%;
+            padding:10px;
+            border:1px solid #d1d5db;
+            border-radius:6px;
+            font-size:14px;
+          ">
+          <option value="">Select reason</option>
+          ${options
+            .map(
+              (opt) =>
+                `<option value="${opt.value}">${opt.label}</option>`
+            )
+            .join("")}
+        </select>
+
+        <input 
+          type="number" 
+          id="swal-amount"
+          placeholder="Enter increase amount"
+          style="
+            width:100%;
+            padding:10px;
+            border:1px solid #d1d5db;
+            border-radius:6px;
+            font-size:14px;
+            box-sizing:border-box;
+          "
+        />
+      </div>
+    `,
+
+    showCancelButton: true,
+    confirmButtonText: "Confirm",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#6CCC84",
+    cancelButtonColor: "#464646",
+
+    preConfirm: () => {
+      const reason = (
+        document.getElementById("swal-reason") as HTMLSelectElement
+      )?.value;
+
+      const amountValue = (
+        document.getElementById("swal-amount") as HTMLInputElement
+      )?.value;
+
+      const amount = Number(amountValue);
+
+      if (!reason) {
+        Swal.showValidationMessage("Please select a reason");
+        return false;
+      }
+
+      if (!amountValue || amount <= 0) {
+        Swal.showValidationMessage("Please enter a valid amount");
+        return false;
+      }
+
+      return { reason, amount };
+    },
+  }).then((result) => {
+    if (result.isConfirmed && result.value) {
+      onConfirm(result.value);
+    }
+  });
+},
+
+  remarksConfirmationAlertDropdown: (
+  title: string = "Are you sure?",
+  text: string = "",
+  options: { value: string; label: string }[],
+  onConfirm: (remarks: string) => void
+) => {
+  return Swal.fire({
+    title,
+    text,
+    icon: "warning",
+    input: "select",
+    inputOptions: options.reduce((acc, curr) => {
+      acc[curr.value] = curr.label;
+      return acc;
+    }, {} as Record<string, string>),
+    inputPlaceholder: "Select reason",
+    showCancelButton: true,
+    confirmButtonText: "Confirm",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#6CCC84",
+    cancelButtonColor: "#464646",
+    preConfirm: (value) => {
+      if (!value) {
+        Swal.showValidationMessage("Please select a reason");
+        return false;
+      }
+      return value;
+    },
+  }).then((result) => {
+    if (result.isConfirmed && typeof onConfirm === "function") {
+      onConfirm(result.value);
+    }
+  });
+},
 };
+
+
 
 
 

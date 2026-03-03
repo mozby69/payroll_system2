@@ -2,6 +2,11 @@ import { Prisma } from "@prisma/client";
 import { JsonField } from "../../types/utilsTypes";
 
    
+export type PayrollDateRange = {
+    start_date: string;
+    end_date: string;
+  };
+
 
 export type EmployeeSummaryTypes = {
     EmpCode_id: string;
@@ -17,4 +22,5 @@ export type EmployeeSummaryTypes = {
     NightShiftAtt: Prisma.InputJsonValue;
     NightShiftOtAtt: Prisma.InputJsonValue;
     createdAt:string;
+    selected_payroll_date?: PayrollDateRange;
 } 

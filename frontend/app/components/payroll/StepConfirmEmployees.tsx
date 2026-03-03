@@ -1,14 +1,13 @@
 import { Column, EmployeeRow } from "@/app/types/preparePayroll";
 import Datatable from "../Datatable";
 import { Pagination } from "../Pagination";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {  useState } from "react";
 import { FileText } from "lucide-react";
 import RequestModal from "../Modal";
 import { PayrollSavePayload, ViewEmployeePayroll } from "@/app/ModalContent/main_payroll";
 import { useUpdateEmployeePayroll } from "@/app/hooks/usePreparePayroll";
 import SweetAlert from "../Swal";
 import { useQueryClient } from "@tanstack/react-query";
-import { AddLoanModal } from "@/app/ModalContent/AddLoan";
 
 
 interface Props {
@@ -32,18 +31,14 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
   const PAGE_SIZE = 6;
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isModalOpen2, setIsModalOpen2] = useState(false);
   const [selectedRow, setSelectedRow] = useState<EmployeeRow | null>(null);
   const updatePayrollMutation = useUpdateEmployeePayroll();
-  const [rows, setRows] = useState<EmployeeRow[]>(data);
+  
+  //const [rows, setRows] = useState<EmployeeRow[]>(data);
 
-  const openModal2 = () => {;
-    setIsModalOpen2(true);
-  };
+  
 
-  const closeModal2 = () => {;
-    setIsModalOpen2(false);
-  };
+ 
   const openModal = (row: EmployeeRow) => {
     setSelectedRow(row);
     setIsModalOpen(true);
@@ -54,18 +49,22 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     setSelectedRow(null);
   };
   
-  useEffect(() => {
-    setRows(data);
-  }, [data]);
+  // useEffect(() => {
+  //   setRows(data);
+  // }, [data]);
 
-  useEffect(() => {
-    if (!selectedRow) return;
+  // useEffect(() => {
+  //   if (!selectedRow) return;
   
-    const fresh = rows.find(r => r.EmpCode === selectedRow.EmpCode);
-    if (fresh) {
-      setSelectedRow(fresh);
-    }
-  }, [rows]);
+  //   const fresh = rows.find(r => r.EmpCode === selectedRow.EmpCode);
+  //   if (fresh) {
+  //     setSelectedRow(fresh);
+  //   }
+  // }, [rows]);
+
+  const currentSelectedRow = selectedRow
+  ? data.find(r => r.EmpCode === selectedRow.EmpCode) ?? selectedRow
+  : null;
   
 
     
@@ -122,6 +121,10 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     await queryClient.invalidateQueries({
       queryKey: ["employees"],
     });
+
+    await queryClient.invalidateQueries({
+      queryKey: ["employees-computed"],
+    });
   };
 
   const handleSavePayroll = async (payload: PayrollSavePayload) => {
@@ -148,15 +151,10 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
         onChange={(e) => onSearchChange(e.target.value)}
         className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
       />   
-       <div>
-        <button 
-        onClick={() => openModal2()}
-        className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded shadow-lg text-white cursor-pointer">Add Loan</button>
-      </div>
+     
       </div>
 
-      <Datatable columns={columns} data={data} />
-
+        <Datatable columns={columns} data={data} />
 
         <Pagination
           page={page}
@@ -178,10 +176,11 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
 
 
-     {isModalOpen && selectedRow && (
-      <RequestModal size="xxxl" title={`Employee:${selectedRow.Firstname}, ${selectedRow.Lastname}`} onClose={closeModal}>
+     {isModalOpen && currentSelectedRow && (
+      <RequestModal size="xxxl" title={`Employee:${currentSelectedRow.Firstname}, ${currentSelectedRow.Lastname}`} onClose={closeModal}>
         <ViewEmployeePayroll
-          employeeSummary={selectedRow}
+           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.basic_salary}`}
+          employeeSummary={currentSelectedRow}
           onFinalSave={handleSavePayroll}
           onQuickSave={savePayrollSilently}
           onClose={closeModal}
@@ -190,11 +189,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     )}
 
 
-      {isModalOpen2 && (
-          <RequestModal size="xxl" title="ADD LOAN" onClose={closeModal2}>
-            <AddLoanModal onClose={closeModal2}/>
-          </RequestModal>
-        )}
+     
 
       
 

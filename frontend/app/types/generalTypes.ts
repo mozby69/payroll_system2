@@ -29,4 +29,41 @@ export interface EmployeeSummary {
     status: "SUCCESS";
     message: string;
   }
+
+
+  export interface CompanyDetailsType {
+    CompanyCode: string;
+    CompanyCycle: string;
+    CompanyName: string;
+  }
+  
+
+ export type AuthUser = {
+    id: number;
+    username: string;
+    role: string;
+  };
+  
+
+
+  export type PayrollDateRange = {
+    start_date: string;
+    end_date: string;
+  };
+
+
+  export interface Company {
+    CompanyCode: string;
+    CompanyName: string | null;
+    CompanyCycle: string | null;
+  }
+  
+  export interface CompaniesResponse {
+    success: boolean;
+    data: Company[];
+  }
+  
+
+
+
   

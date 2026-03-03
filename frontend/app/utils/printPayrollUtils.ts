@@ -1,6 +1,6 @@
-import { EmployeeSummaryTypes } from "../types/preparePayroll";
+import { SpreadsheetRow } from "../components/reports/SpreadSheet";
 
-export async function printPayroll(data: EmployeeSummaryTypes[]) {
+export async function printPayroll(data: SpreadsheetRow[]) {
   const res = await fetch("/api/print/payroll", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -19,7 +19,13 @@ export interface EmployeeList{
     Department:string;
     BranchCode:string;
     EmploymentStatus: string;
+
+    employeepayroll?: {
+    basic_salary: number;
+  } | null;
 }
+
+
 
 
 export interface EmployeeResponse {
@@ -33,11 +39,11 @@ export interface EmployeeResponse {
 }
 
 
-export type EmployeeFilters = {
-  department: string[];
-  company: string[];
-  status: string[];
-};
+import { FilterKey } from "./FilterTypes";
+
+export type EmployeeFilters = Partial<
+  Record<FilterKey, string[]>
+>;
 
 
 export type EmpDetails = {
@@ -57,6 +63,7 @@ export type EmployeeLoan = {
   loan_type: string;
   term_value: number;
   term_unit: string;
+  status: string;
   start_date: string;
   deduct_allowance: boolean;
   per_payroll_deduct: number;
@@ -64,11 +71,16 @@ export type EmployeeLoan = {
 
 
 export type EmpPayrollInfo = {
-  BasicSalary:number,
-  CashAssistance: number,
-  Ecola: number, 
-  TotalSalary:number,
-}
+  BasicSalary: number;
+  CashAssistance: number;
+  Ecola: number;
+  TotalSalary: number;
+  sssContribEmployee: number;
+  philhealthRateEmployee: number;
+  pagibigEmployeeShare: number;
+  totalEdeduction:number;
+};
+
 
 export type CompanyInfo = {
   CompanyName?: string | null;
@@ -85,7 +97,6 @@ export type BranchInfo = {
   } | null;
 };
 
-
 export type EmployeeProfile = {
   EmpCode: string;
   Firstname?: string | null;
@@ -96,8 +107,54 @@ export type EmployeeProfile = {
   EmploymentStatus?: string | null;
   Address?: string | null;
 
+  WithAtm: boolean;         
+  Disbursing: boolean;      
   BranchCode?: BranchInfo | null;
   employeepr: EmpDetails[];
   employeepayroll: EmpPayrollInfo | null;
   loan_details: EmployeeLoan[];
+};
+export type UpdateEmployeePayrollPayload = {
+  empCode: string;
+  basicSalary: number;
+  cashAssistance: number;
+  ecola: number;
+  pagibigEmployeeShare: number;
+  WithAtm: boolean;
+  Disbursing: boolean;
+  remarks?:string;
+};
+
+export type PayrollFormState = {
+  basicSalary: string;
+  cashAssistance: string;
+  ecola: string;
+  pagibigEmployeeShare: string;
+  WithAtm: boolean;
+  Disbursing: boolean;
+};
+
+
+export type Company = {
+  CompanyCode: string;
+  CompanyName: string;
+};
+
+export type EmployeeIncreaseItem = {
+  EmpCode: string;
+  Firstname: string;
+  Middlename: string;
+  Lastname: string;
+  BranchCode: {
+    branchCode: string;
+  };
+  employeepayroll?: {
+    basic_salary: number;
+  } | null;
+};
+
+export type BulkIncreasePayload = {
+  empCodes: string[];
+  amount: number;
+  reason: string;
 };

@@ -46,3 +46,20 @@ export type DjangoExportResponse = {
     employees_details: EmployeeDetailsDTO[];
     company_details:CompanyDTO[];
   };
+
+
+
+
+export type attendance_countDTO = {
+  ID:number;
+  EmpCode__EmpCode: string;
+  Vacation: string;
+  Sick:string;
+}
+
+  export type DjangoExportResponse2 = {
+    attendance_count: attendance_countDTO[];
+  };
+
+
+

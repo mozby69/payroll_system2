@@ -10,3 +10,66 @@ export interface LoginResponse {
   };
  
 }
+
+
+// types/auth.ts
+
+
+
+
+export interface PermissionType {
+  id: number;
+  code: string
+  name: string
+}
+
+export type UserPermission = {
+  id: number
+  code: string
+  name: string
+}
+
+export type UserRole = {
+  id: number
+  name: string
+  permissions: {
+    permission: UserPermission
+  }[]
+}
+
+export type User = {
+  id: number
+  username: string
+  name: string
+  email?: string
+  isActive: boolean
+  createdAt: string
+  roles: {
+    role: UserRole
+  }[]
+}
+
+
+//roles
+
+export type Permission = {
+  id: number
+  code: string
+  name: string
+}
+
+export type RolePermission = {
+  permission: {
+    code: string
+  }
+}
+
+export type Role = {
+  id: number
+  name: string
+  description?: string | null
+  permissions: RolePermission[]
+}
+
+
+

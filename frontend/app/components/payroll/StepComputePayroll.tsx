@@ -1,6 +1,6 @@
 import DateRangePicker from "@/app/ui/DateRangePicker";
 import SweetAlert from "../Swal";
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import { DateRange } from "@/app/types/utilsTypes";
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay";
 import { Column } from "@/app/types/preparePayroll";
@@ -9,8 +9,9 @@ import { useComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
-import {  useArchivePayroll } from "@/app/hooks/usePayrollArchive";
-import { AxiosError } from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
+import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 
 
 interface Props {
@@ -29,12 +30,17 @@ interface Props {
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");
       const debouncedSearch = useDebounce(search, 400);
-      const [showProcessing, setShowProcessing] = useState(false);
-      const archiveMutation = useArchivePayroll();
-      const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
+      const [showProcessing] = useState(false);
 
+      //const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
+      const queryClient = useQueryClient();
+      const { data: disabledRanges = [] } = useDisabledPayrollDates(cycle);
+
+     
+      const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
 
       const { data: employee_payroll } = useComputedPayroll({
+          cycle,
           page,
           limit: 6,
           search: debouncedSearch,
@@ -70,6 +76,10 @@ interface Props {
           accessor: (row) => row.overtime,
         },
         {
+          header:"UNDERTIME",
+          accessor: (row) => row.undertime,
+        },
+        {
           header:"GROSS PAY",
           accessor: (row) => row.gross_pay,
         }
@@ -77,72 +87,19 @@ interface Props {
       
       ] 
 
-      useEffect(() => {
+      // useEffect(() => {
+      //   setPage(1);
+      // }, [range]);
+
+
+      const handleSearchChange = (value: string) => {
+        setSearch(value);
         setPage(1);
-      }, [range]);
-
-
-
-      const handleContinue = () => {
-        if (!cycle) {
-          SweetAlert.warningAlert(
-            "Payroll Cycle Required",
-            "Please select a payroll cycle before continuing."
-          );
-          return;
-        }
-      
-        if (!range) {
-          SweetAlert.warningAlert(
-            "Payroll Period Required",
-            "Please select a payroll period."
-          );
-          return;
-        }
-      
-        SweetAlert.confirmationAlert(
-          "Confirm Payroll Save",
-          "Are you sure you want to save this payroll?",
-          () => {
-            archiveMutation.mutate(
-              {
-                cycle,
-                payrollPeriod: `${range.startDate} to ${range.endDate}`,
-              },
-              {
-                onError: (error) => {
-                  if (error.response?.status === 409) {
-                    SweetAlert.warningAlert(
-                      "Already Archived",
-                      error.response.data?.message ?? "Payroll already saved."
-                    );
-                    return;
-                  }
-            
-                  SweetAlert.errorAlert(
-                    "Archiving Failed",
-                    "Something went wrong while saving the payroll."
-                  );
-                },
-            
-                onSuccess: (data) => {
-                  SweetAlert.successAlert(
-                    "Payroll Archived",
-                    data.message
-                  );
-                  onNext();
-                },
-              }
-            );
-            
-          }
-        );
       };
-      
-      
 
     
-    
+      
+ 
     return (
       <div className="space-y-4">
         {showProcessing && (
@@ -156,15 +113,13 @@ interface Props {
      
         <div className="flex justify-between gap-x-8">
 
-        <div className="flex gap-x-4">
-
-      
             <DateRangePicker
                   value={
                     range
                       ? [new Date(range.startDate), new Date(range.endDate)]
                       : undefined
                   }
+                  disabledRanges={flatpickrDisabled}
                   onChange={(newRange) => {
                     SweetAlert.confirmationAlert(
                       "Confirm Payroll Period",
@@ -178,57 +133,55 @@ interface Props {
                   }}
                 />
 
-          <div className="">
-            <button onClick={handleContinue} disabled={archiveMutation.isPending} className="bg-sky-600 hover:bg-sky-500 px-8 text-white py-2.5 rounded">
-            {archiveMutation.isPending ? "Archiving…" : "Save"}
-              </button>
-          </div>
-
-        </div>
-
-
-              
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-        />   
+                    
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              />   
 
 
 
-        </div>
+              </div>
 
 
-              
-       <Datatable columns={columns} data={tableData} />
-       
-           <Pagination
-                 page={page}
-                 totalPages={employee_payroll?.meta.totalPages ?? 1}
-                 totalItems={employee_payroll?.meta.total ?? 0}
-                 pageSize={PAGE_SIZE}
-                 onPageChange={setPage}
-               />
+                    
+            <Datatable columns={columns} data={tableData} />
+            
+                <Pagination
+                      page={page}
+                      totalPages={employee_payroll?.meta.totalPages ?? 1}
+                      totalItems={employee_payroll?.meta.total ?? 0}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setPage}
+                    />
 
 
-  
-        <div className="flex justify-between pt-4">
+        
+              <div className="flex justify-between pt-4">
 
-          <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">
-            Back
-          </button>
+                <button onClick={onBack} className="rounded-lg border px-5 py-2 text-sm">
+                  Back
+                </button>
 
-          <button onClick={onNext} className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white disabled:opacity-50">
-          Continue
-          </button>
+                <button onClick={async () => {
+                    await queryClient.refetchQueries({
+                      queryKey: ["payroll-display"],
+                      exact: true,
+                    });
+                    onNext();
+                  }}
+                  className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">
+                  Continue
+                </button>
 
-        </div>
+              </div>
 
 
 
-      </div>
+            </div>
     );
   }
   

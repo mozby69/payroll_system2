@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./provider";
+import { Toaster } from "react-hot-toast";
+import '@/public/styles/flatPicker.css';
 
 
 export const metadata: Metadata = {
@@ -21,6 +23,8 @@ export default function RootLayout({
       </head>
       <body className="antialiased font-payroll">
         <Providers>{children}</Providers>
+        <Toaster position="top-center" />
+
       </body>
     </html>
   );
