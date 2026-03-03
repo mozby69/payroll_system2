@@ -46,6 +46,8 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       pagibigEmployeeShare: String(payInfo?.pagibigEmployeeShare ?? ""),
       WithAtm: Boolean(data?.WithAtm ?? false),
       Disbursing: Boolean(data?.Disbursing ?? false),
+      Taxable:Boolean(data?.Taxable ?? false),
+      bankAccount: String(payInfo?.bankAccount ?? ""),
     };
   }, [payInfo, data]);
 
@@ -210,6 +212,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
     const ecolaChanged =
       Number(formValues.ecola) !== Number(initialValues.ecola);
 
+
     const shouldRequireRemarks = basicChanged || cashChanged || ecolaChanged;
 
     const payload = {
@@ -220,6 +223,8 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       pagibigEmployeeShare: Number(formValues.pagibigEmployeeShare),
       WithAtm: formValues.WithAtm,
       Disbursing: formValues.Disbursing,
+      Taxable:formValues.Taxable,
+      bankAccount: String(formValues.bankAccount),
     };
 
     try {
@@ -427,7 +432,8 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                         <h1 className="font-bold text-lg">Employee Identification</h1>
                     </div>
 
-                    <div className="grid grid-cols-4">
+                    <div className="grid grid-cols-4 gap-y-4">
+                     
                       
                       <div className="flex flex-col gap-y-1 col-span-2">
                         <span className="text-sm text-gray-500">Salary Structure Alloted</span>
@@ -437,6 +443,23 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                       <div className="flex flex-col gap-y-1 col-span-2">
                         <span className="text-sm text-gray-500">Cost To Company</span>
                         <p className="font-semibold">{payInfo?.TotalSalary || "None"}</p>
+                      </div>
+
+                       <div className="flex flex-col gap-y-1 col-span-3">
+                        <span className="text-sm text-gray-500 ">Bank Account</span>
+                          
+                          <input
+                            type="number"
+                            value={formValues.bankAccount}
+                            onChange={(e) =>
+                              setFormValues(prev => ({
+                                ...prev,
+                                bankAccount: e.target.value
+                              }))
+                            }
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                          />
+
                       </div>
 
                     </div>
@@ -474,6 +497,22 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                       />
                       <span className="text-sm text-gray-700 font-medium">
                         Disbursing
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-x-3 col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={formValues.Taxable}
+                        onChange={(e) =>
+                          setFormValues(prev => ({
+                            ...prev,
+                            Taxable: e.target.checked
+                          }))
+                        }
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">
+                        Taxable
                       </span>
                     </div>
                 </div>
