@@ -3,8 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import './cron/yearlySave.cron';
-import routes from '../src/routes/urls';
+import routes from './routes/urls';
 import { Server } from "socket.io";
 import http from "http";
 
