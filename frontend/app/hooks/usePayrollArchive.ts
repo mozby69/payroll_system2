@@ -98,6 +98,10 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
         queryKey: ["disabled-payroll-dates"],
       });
 
+      await queryClient.invalidateQueries({
+        queryKey:["totalPayroll"],
+      });
+
       
       onSuccess?.();
     },
