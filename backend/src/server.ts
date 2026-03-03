@@ -6,8 +6,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import http from "http";
 import { Server } from "socket.io";
-import routes from "../src/routes/urls";
-import "./cron/yearlySave.cron";
+import routes from './routes/urls';
 
 dotenv.config();
 
