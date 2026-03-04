@@ -167,7 +167,11 @@ export default function AccountConfigurationModal({ onClose}: Props) {
         <RequestModal
           title="Register New User"
           size="md"
-          onClose={() => setOpenCreate(false)}
+          onClose={() => {
+            setOpenCreate(false)
+            setSelectedUser(null)
+           }
+          }
         >
           <CreateUserModal onClose={() => setOpenCreate(false)} initialData={selectedUser ?? undefined} mode={mode} />
         </RequestModal>

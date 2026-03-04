@@ -7,15 +7,28 @@ import { EmployeeSummaryTypes } from "./api.types";
 import { generatePayCode } from "./api.utils";
 import { io } from "../../server";
 import { appendMissingBodEmployees } from "../general/general.services";
+import { totalmem } from "os";
 
 export async function fetchHrAttendance(params: ApiParams){
     const {startDate, endDate, branchCycle} = params;
+
+
+    const totatPayroll = await prisma.totalPayroll.findFirst({
+      where: {
+        cycle_category: branchCycle
+      },
+      orderBy: {
+        id: "desc"
+      }
+    })
+   const  prevPeriod = totatPayroll?.payroll_period ?? "";
 
     const response = await hrApi.get("/attendance/summary/", {
         params: {
             startDate,
             endDate,
-            branchCycle
+            branchCycle,
+            prevPeriod
         },
     });
 
@@ -30,7 +43,6 @@ export function transformAttendanceData(
     const cyclePay = hrData.CyclePay;   
     const referenceDate = params.endDate;
     const payCode = generatePayCode(cyclePay, referenceDate);
-
   
     return (hrData.data ?? []).map((emp: any) => ({
       EmpCode_id: emp.EmpCode_id,
