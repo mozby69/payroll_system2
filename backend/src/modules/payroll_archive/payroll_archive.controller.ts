@@ -1,18 +1,38 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
 
 
 
+export async function saveWtaxOverrideController(req: Request, res: Response) {
+  const {
+    PayCode,
+    EmpCodeId,
+    PayrollPeriod,
+    computedWtax,
+    editedValue
+  } = req.body;
+
+  await saveWtaxOverrideService({
+    PayCode,
+    EmpCodeId,
+    PayrollPeriod,
+    computedWtax,
+    editedValue
+  });
+
+  res.json({ success: true });
+}
+
 
 
 export const displayCompletePayrollController = async (req: Request, res: Response) => {
   try{
     const res1 = await displayCompletePayroll(['PENDING']);
-    const res2 = await employeeProbationary();
-    return res.status(200).json({ status: "SUCCESS", data:res1, xxx:res2 });
+   
+    return res.status(200).json({ status: "SUCCESS", data:res1});
   }
   catch(error){
     res.status(500).json({message:`SERVER ERROR: ${error}`})

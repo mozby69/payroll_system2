@@ -171,6 +171,8 @@ export interface PayrollEmployee {
   philhealth_contrib_employer:number;
   net_pay:number;
   wtax:number;
+  computedWtax:number;
+
 
   // Loan Code ↓
   rfc_loan:number;

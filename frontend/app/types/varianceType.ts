@@ -42,18 +42,27 @@ export interface Variance {
   }
 
   
-export interface VarianceRow {
+  export interface VarianceRow {
+    id: number;
+    cycle_category: string;
     PayCycle: string;
-    basic: number;
-    sssEmployee: number;
-    sssEmployer: number;
-    phil: number;
-}
+    payroll_period: string;
+  
+    total_basic_salary: string;
+    Total_SSSContributionEmployee: string;
+    Total_SSSContributionEmployer: string;
+  
+    Total_PhilhealthContributionEmployee: string;
+    Total_PhilhealthContributionEmployer: string;
+  
+    Total_PagibigContributionEmployee: string;
+    Total_PagibigContributionEmployer: string;
+  
+    total_wtax: string;
+  }
+  
+  export interface VarianceResponse {
+    total_variance: VarianceRow[];
+  }
 
 
-export interface VarianceResponse {
-  success: boolean;
-  current_period: {
-    rows: VarianceRow[];
-  };
-}

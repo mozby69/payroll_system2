@@ -1,15 +1,19 @@
 import { useDisplayVariance } from "@/app/hooks/useVariance";
 
 
-export default function FinancialVarianceModal() {
+interface props{
+  paycode:string;
+}
+
+export default function FinancialVarianceModal({paycode}:props) {
     const { data, isLoading } = useDisplayVariance();
   
-    if (isLoading || !data?.current_period?.rows) {
+    if (isLoading || !data?.total_variance) {
         return <div className="p-4 text-sm text-gray-500">Loading...</div>;
       }
       
   
-    const rows = data.current_period.rows;
+      const rows = data.total_variance;
 
   
     const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -29,8 +33,9 @@ export default function FinancialVarianceModal() {
   
     return (
       <div className="p-6">
+        
         <h2 className="text-lg font-semibold mb-4">
-          FOR THE PERIOD: {rows[rows.length - 2]?.PayCycle ?? ""}
+          FOR THE PERIOD: {paycode}
         </h2>
   
         <table className="w-full border-collapse text-sm">
@@ -46,15 +51,13 @@ export default function FinancialVarianceModal() {
           </thead>
   
           <tbody className="text-center">
-            {rows.map((row) => {
-              const isVariance = row.PayCycle === "VARIANCE";
-              const isCurrent =
-                row.PayCycle !== "VARIANCE" &&
-                row === rows[rows.length - 2];
+          {rows.map((row, index) => {
+    const isVariance = row.PayCycle === "VARIANCE";
+    const isCurrent = index === rows.length - 1;
   
               return (
                 <tr
-                  key={row.PayCycle}
+                key={row.id}
                   className={`border border-slate-300 ${
                     isVariance
                       ? "border-t-2 border-slate-300 font-bold bg-gray-100"
@@ -65,30 +68,24 @@ export default function FinancialVarianceModal() {
                 >
                   <td className="border border-slate-300 p-2">{row.PayCycle}</td>
                   <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.basic)
-                      : formatCurrency(row.basic)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.sssEmployee)
-                      : formatCurrency(row.sssEmployee)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.sssEmployer)
-                      : formatCurrency(row.sssEmployer)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.phil)
-                      : formatCurrency(row.phil)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.phil)
-                      : formatCurrency(row.phil)}
-                  </td>
+                      {formatCurrency(Number(row.total_basic_salary))}
+                    </td>
+
+                    <td className="border border-slate-300 p-2">
+                      {formatCurrency(Number(row.Total_SSSContributionEmployee))}
+                    </td>
+
+                    <td className="border border-slate-300 p-2">
+                      {formatCurrency(Number(row.Total_SSSContributionEmployer))}
+                    </td>
+
+                    <td className="border border-slate-300 p-2">
+                      {formatCurrency(Number(row.Total_PhilhealthContributionEmployee))}
+                    </td>
+
+                    <td className="border border-slate-300 p-2">
+                      {formatCurrency(Number(row.Total_PhilhealthContributionEmployer))}
+                    </td>
                 </tr>
               );
             })}

@@ -9,6 +9,21 @@ import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 
 
 
+export function useSaveWtaxOverride() {
+  return useMutation({
+    mutationFn: async (payload: {
+      PayCode: string;
+      EmpCodeId: string;
+      PayrollPeriod: string;
+      computedWtax: number;
+      editedValue: number;
+    }) => {
+      await api.post("/payroll-archive/wtax-override", payload);
+    }
+  });
+}
+
+
 
 
 

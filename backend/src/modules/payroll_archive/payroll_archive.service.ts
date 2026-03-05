@@ -35,6 +35,23 @@ export async function employeeProbationary(){
 }
 
 
+
+export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId: string; PayrollPeriod: string; computedWtax: number; editedValue: number}) {
+  const {PayCode,EmpCodeId, PayrollPeriod,computedWtax, editedValue} = data;
+
+  await prisma.payrollWtaxOverride.create({
+    data: {
+      PayCode,
+      EmpCodeId,
+      PayrollPeriod,
+      computed_value: computedWtax ?? 0,
+      edited_value: editedValue
+    }
+  });
+}
+
+
+
 export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL")[]) {
   
     try{
@@ -119,7 +136,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         }
       });
 
-
+      if (!employeeList || employeeList.length === 0) {
+        return [];
+      }
+      
 
 // loans fetch and query here ↓
 
@@ -193,6 +213,30 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 // loans fetch and query here ↑
 
 
+
+
+      //wtax override 
+      const overrides = await prisma.payrollWtaxOverride.findMany({
+        where: {
+          OR: employeeList.map((e) => ({
+            PayCode: e.PayCode,
+            EmpCodeId: e.EmpCodeId,
+            PayrollPeriod: e.PayrollPeriod
+          }))
+        },
+        orderBy: { created_at: "desc" }
+      });
+
+      const overrideMap = new Map<string, number>();
+
+      for (const o of overrides) {
+        const key = `${o.PayCode}_${o.EmpCodeId}_${o.PayrollPeriod}`;
+        if (!overrideMap.has(key)) {
+          overrideMap.set(key, Number(o.edited_value));
+        }
+      }
+      //wtax override
+
       const normalized = employeeList.map((emp) => {
         
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
@@ -256,9 +300,16 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           nightShift: emp.NightShiftAtt,
           nightShiftOt: emp.NightShiftOtAtt,
         });
-        const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+        const computedWtax  = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+
+        const key = `${emp.PayCode}_${emp.EmpCodeId}_${emp.PayrollPeriod}`;
+        const overrideValue = overrideMap.get(key);
+    
+        const finalWtax = overrideValue ?? computedWtax;
+
+
         const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,undertimeCount,absent);
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + TaxList);
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
       
@@ -285,8 +336,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           philhealth_contrib_employer:philhealthRateEmployer,
           pagibig_contrib_employee:pagibigEmployeeShare,
           pagibig_contrib_employer:pagibigEmployerShare,
-          net_pay:netPay.toFixed(2),
-          wtax:TaxList,
+          net_pay:netPay,
+          wtax: finalWtax,          
+          computedWtax: computedWtax,
           company_id:companyId,
       
         };

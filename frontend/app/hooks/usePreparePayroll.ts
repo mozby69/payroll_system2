@@ -140,5 +140,7 @@ export function useComputedPayroll(params: { cycle: string; page: number; limit:
     ],
     queryFn: () =>
       fetchComputedPayroll(params),
+
+    enabled: !!params.cycle, 
   });
 }

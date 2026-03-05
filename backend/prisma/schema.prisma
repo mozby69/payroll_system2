@@ -170,6 +170,9 @@ model EmployeeSummary{
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
+  
+  payroll_wtax_override PayrollWtaxOverride[] @relation()
+
   @@id([PayCode, EmpCodeId,PayrollPeriod])
   @@map("employee_summary")
   @@index([PayCode, EmpCodeId,PayrollPeriod])
@@ -768,4 +771,22 @@ model AttendanceCount {
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   @@map("myapp_attendancecount")
+}
+
+
+model PayrollWtaxOverride {
+  id              Int      @id @default(autoincrement())
+
+  PayCode         String   @db.VarChar(20)
+  EmpCodeId       String   @db.VarChar(20)
+  PayrollPeriod   String   @db.VarChar(50)
+
+  computed_value  Decimal  @db.Decimal(12,2)
+  edited_value    Decimal  @db.Decimal(12,2)
+
+  created_at      DateTime @default(now())
+
+  employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId, PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
+
+  @@index([PayCode, EmpCodeId, PayrollPeriod])
 }

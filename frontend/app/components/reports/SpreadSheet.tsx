@@ -1,50 +1,145 @@
-
+import { useState } from "react";
+import SweetAlert from "../Swal";
+import { useSaveWtaxOverride } from "@/app/hooks/usePayrollArchive";
 
 export interface SpreadsheetRow {
   name: string;
-  basicPay: number | string;
-  overtime: number | string;
-  late: number | string;
-  undertime: number | string;
-  absence: number | string;
-  gross: number | string;
-  wtax: number | string;
-  sss: number | string;
-  philhealth: number | string;
-  pagibig: number | string;
-  arE: number | string;
-  fch: number | string;
-  rfc: number | string;
-  salaryLoan: number | string;
-  calamityLoan: number | string;
-  pagibigSalaryLoan: number | string;
-  netPayable: number | string;
-  sssEmployer: number | string;
-  philEmployer: number | string;
-  pagibigEmployer: number | string;
+  basicPay: number;
+  overtime: number;
+  late: number;
+  undertime: number;
+  absence: number;
+  gross: number;
+  wtax: number;
+  sss: number;
+  philhealth: number;
+  pagibig: number;
+  arE: number;
+  fch: number;
+  rfc: number;
+  salaryLoan: number;
+  calamityLoan: number;
+  pagibigSalaryLoan: number;
+  netPayable: number;
+  sssEmployer: number;
+  philEmployer: number;
+  pagibigEmployer: number;
+
+  rowKey: string;
+  PayCode: string;
+  EmpCodeId: string;
+  PayrollPeriod: string;
+  computedWtax: number;
+}
+
+
+interface TotalsType{
+  basicPay: number;
+  overtime: number;
+  late: number;
+  undertime: number;
+  absence: number;
+  gross: number;
+  wtax: number;
+  sss: number;
+  philhealth: number;
+  pagibig: number;
+  netPayable: number;
+  sssEmployer: number;
+  philEmployer: number;
+  pagibigEmployer: number;
 }
 
 interface Props {
   data: SpreadsheetRow[];
-  totals: {
-    basicPay: number;
-    overtime: number;
-    late: number;
-    undertime: number;
-    absence: number;
-    gross: number;
-    wtax: number;
-    sss: number;
-    philhealth: number;
-    pagibig: number;
-    netPayable: number;
-    sssEmployer: number;
-    philEmployer: number;
-    pagibigEmployer: number;
-  };
+  totals: TotalsType;
+  onWtaxChange: (key: string, value: number) => void;
 }
 
-export default function SpreadSheet({ data,totals }: Props) {
+
+interface EditableProps {
+  value: number;
+  rowKey: string;
+  emp: {
+    PayCode: string;
+    EmpCodeId: string;
+    PayrollPeriod: string;
+    computedWtax: number;
+  };
+  onChange: (key: string, value: number) => void;
+}
+
+function EditableWtax({
+  value,
+  rowKey,
+  emp,
+  onChange
+}: EditableProps) {
+  const [editing, setEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const saveOverride = useSaveWtaxOverride();
+
+  const handleSave = async () => {
+    // 🚫 DO NOT SAVE if no change
+    if (value === emp.computedWtax) {
+      return;
+    }
+
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+
+      await saveOverride.mutateAsync({
+        PayCode: emp.PayCode,
+        EmpCodeId: emp.EmpCodeId,
+        PayrollPeriod: emp.PayrollPeriod,
+        computedWtax: emp.computedWtax,
+        editedValue: value
+      });
+
+      SweetAlert.successAlert("Saved successfully");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        type="number"
+        value={value}
+        autoFocus
+        onChange={(e) =>
+          onChange(rowKey, Number(e.target.value))
+        }
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setEditing(false);
+            handleSave();
+          }
+        }}
+        onBlur={() => {
+          setEditing(false);
+          handleSave();
+        }}
+        className="w-20 border px-1"
+      />
+    );
+  }
+
+
+
+  return (
+    <div onDoubleClick={() => setEditing(true)}>
+      {value.toFixed(2)}
+    </div>
+  );
+}
+
+export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
   return (
     <div className="print-area1 w-full p-4">
       <table className="w-full border-collapse text-[9pt] table-auto">
@@ -112,7 +207,19 @@ export default function SpreadSheet({ data,totals }: Props) {
                 <td className="py-2 text-center">{row.undertime}</td>
                 <td className="py-2 text-center">{row.absence}</td>
                 <td className="py-2 text-center">{row.gross}</td>
-                <td className="py-2 text-center">{row.wtax}</td>
+                <td>
+                  <EditableWtax
+                    value={row.wtax}
+                    rowKey={row.rowKey}
+                    emp={{
+                      PayCode: row.PayCode,
+                      EmpCodeId: row.EmpCodeId,
+                      PayrollPeriod: row.PayrollPeriod,
+                      computedWtax: row.computedWtax
+                    }}
+                    onChange={onWtaxChange}
+                  />
+                </td>
                 <td className="py-2 text-center">{row.sss}</td>
                 <td className="py-2 text-center">{row.philhealth}</td>
                 <td className="py-2 text-center">{row.pagibig}</td>
@@ -164,3 +271,7 @@ export default function SpreadSheet({ data,totals }: Props) {
     </div>
   );
 }
+
+
+
+
