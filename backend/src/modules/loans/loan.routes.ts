@@ -8,7 +8,8 @@ import { addEmployeeLoanController,
     payEmployeeLoanController,
     getLoansByEmpCodeController,
     getBonusRules,
-    searchEmployeeController
+    searchEmployeeController,
+    getLoanSummaryController
     } from "./loan.controller";
 
 
@@ -33,6 +34,7 @@ router.get('/employees/search',searchEmployeeController);
 
 router.post("/by-empcode", getLoansByEmpCodeController);
 router.get("/bonus-rules", getBonusRules);
+router.get("/get-loan-summary", getLoanSummaryController);
 
 
 export default router;

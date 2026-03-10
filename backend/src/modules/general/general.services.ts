@@ -132,8 +132,30 @@ export async function getCompaniesByCode(CompanyCode: string) {
   return companies;
 }
 
+export const getAllCompanies = async () => {
+  return prisma.company_details.findMany({
+    select: {
+      CompanyCode: true,
+      CompanyName: true,
+    },
+    orderBy: { CompanyName: "asc" },
+  });
+};
 
- 
+
+export const getUniqueLoan = async () => {
+  const loans = await prisma.loan_details.findMany({
+    select: {
+      loan_type: true
+    },
+    distinct: ["loan_type"],
+    orderBy: {
+      loan_type: "asc"
+    }
+  });
+
+  return loans.map(l => l.loan_type);
+};
 
 
 

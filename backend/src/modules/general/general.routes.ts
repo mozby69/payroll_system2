@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { generatePdfController, getCompaniesByCodeController, getCompaniesByCycleController, getCompanyDetailsController } from "./general.controller";
+import { generatePdfController, getCompaniesByCodeController,getCompaniesController, getCompaniesByCycleController, getCompanyDetailsController, getUniqueLoanController } from "./general.controller";
+
 
 
 const router = Router();
@@ -9,6 +10,8 @@ router.get("/company-details", getCompanyDetailsController)
 router.get("/companies-by-cycle", getCompaniesByCycleController);
 router.get("/companies-by-code/:CompanyCode", getCompaniesByCodeController);
 router.get("/print",generatePdfController);
+router.get("/companies", getCompaniesController);
+router.get("/loan-types", getUniqueLoanController);
 
 
 export default router;

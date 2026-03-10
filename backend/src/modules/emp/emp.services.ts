@@ -339,15 +339,7 @@ export const updateEmployeePayroll = async (
   }
 };
 
-export const getAllCompanies = async () => {
-  return prisma.company_details.findMany({
-    select: {
-      CompanyCode: true,
-      CompanyName: true,
-    },
-    orderBy: { CompanyName: "asc" },
-  });
-};
+
 
 export const getEmployeesByCompanyGrouped = async (companyCode: string) => {
   const employees = await prisma.employee.findMany({

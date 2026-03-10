@@ -125,21 +125,6 @@ export const updateEmployeePayrollByEmpCode = async (
   }
 };
 
-export const getCompanies = async (_req: Request, res: Response) => {
-  try {
-    const companies = await employeeService.getAllCompanies();
-
-    return res.json({
-      data: companies,
-    });
-  } catch (error) {
-    console.error("Failed to fetch companies:", error);
-    return res.status(500).json({
-      message: "Failed to fetch companies",
-    });
-  }
-};
-
 export const getEmployeesByCompany = async (req: Request, res: Response) => {
   try {
     const { companyCode } = req.params;

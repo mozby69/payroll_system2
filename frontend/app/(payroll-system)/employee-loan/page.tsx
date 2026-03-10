@@ -1,25 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   useAddLoan,
   useBonusRules,
   useLoans
 } from "../../hooks/useLoans";
-import { useEmployeeSearch } from "../../hooks/useLoans";
+import { useEmployeeSearch ,useLoanSummary } from "../../hooks/useLoans";
 import SweetAlert from "../../components/Swal";
 import GenButton from "@/app/components/Buttons";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Filter } from "lucide-react";
+import { BookOpen, Filter, Printer } from "lucide-react";
 import ActiveFilters from "@/app/components/FilterObject";
 import FilterModal from "@/app/components/Filter";
 import LoanCard from "@/app/components/loans/loanCard";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
 import { ApiErrorResponse, AreType, EmployeeSearchItem, LoanType, TermUnit } from "@/app/types/loanTypes";
 import { AxiosError } from "axios";
+import RequestModal from "@/app/components/Modal";
+import { useCompanies, useLoanTypes } from "@/app/hooks/useGeneral";
+import { useReactToPrint } from "react-to-print";
 
 
 type TabKey = "apply"| "are" | "loan-list" ;
+type SubTabKey = "monitoring"| "accounts";
 
 const FILTER_KEYS = [
   "department",
@@ -32,6 +36,11 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "apply", label: "Loan Application" },
   { key: "are", label: "ARE Application"},
   { key: "loan-list", label: "Loan Applicants" }
+];
+
+const SUBTABS: { key: SubTabKey; label: string }[] = [
+  { key: "monitoring", label: "LOAN MONITORING"},
+  { key: "accounts", label: "LOAN ACCOUNTS"},
 ];
 
 
@@ -543,6 +552,7 @@ function AreApplyContent(){
                         className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                     >
                         <option value="HOUSING">Housing Loan</option>
+                        <option value="CASH ADV.">Cash Advance</option>
                         <option value="OTHERS">Others...</option>
                     </select>
                 </div>
@@ -654,11 +664,37 @@ function AreApplyContent(){
 function LoanListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+ 
   const { filters } = useFilters();
+
+  const { data: companies } = useCompanies()
+  const { data: loanTypes = [] } = useLoanTypes();
 
   const search = searchParams.get("search") ?? "";
   const page = Number(searchParams.get("page") ?? 1);
   const limit = 3;
+
+    
+  const subtabParam = searchParams.get("subtab") as SubTabKey | null;
+
+  const activeSubTab =
+    subtabParam && SUBTABS.some(t => t.key === subtabParam)
+      ? subtabParam
+      : "monitoring";
+
+  const handleSubTabChange = (subtab: SubTabKey) => {
+    const params = new URLSearchParams(
+      searchParams.toString()
+    );
+
+    params.set("subtab", subtab);
+
+    router.replace(`?${params.toString()}`, {
+      scroll: false
+    });
+  };
+
 
   const { data, isLoading } = useLoans(
     page,
@@ -667,10 +703,85 @@ function LoanListContent() {
     filters,
     true
   );
-
+  const [company, setCompany] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
+  const [loanType, setLoanType] = useState("");
   const [open, setOpen] = useState(false);
+  const [openSummary, setOpenSummary]  = useState(false);
   const [expanded, setExpanded] =
     useState<Record<number, boolean>>({});
+
+
+  const summaryRef = useRef<HTMLDivElement>(null);
+
+  const getCurrentMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const [cycle, setCycle] = useState<"10-25" | "15-30">("10-25");
+  const [period, setPeriod] = useState<"10" | "25" | "15" | "30">("10");
+  const [month, setMonth] = useState(getCurrentMonth());
+
+  const formattedPeriod = (() => {
+    const date = new Date(`${month}-01`);
+    const year = date.getFullYear();
+
+    const monthName = date.toLocaleString("default", { month: "long" }).toUpperCase();
+
+    const endOfMonth = new Date(year, date.getMonth() + 1, 0).getDate();
+
+    if (cycle== "10-25"){
+      if (period === "10" || period === "15") {
+        return `${monthName} 01-15, ${year}`;
+      }
+      else{
+         return `${monthName} 16-${endOfMonth}, ${year}`;
+      }
+    }
+    else{
+      if (period === "15" || period === "30") {
+        return `${monthName} 01-15, ${year}`;
+      }
+      else{
+         return `${monthName} 16-${endOfMonth}, ${year}`;
+      }
+    }
+    
+
+   
+  })();
+
+  const handleCycleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as "10-25" | "15-30";
+
+    setCycle(value);
+
+    if (value === "10-25") {
+      setPeriod("10");
+    } else {
+      setPeriod("15");
+    }
+  };
+
+  const handlePeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPeriod(e.target.value as "10" | "25" | "15" | "30");
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMonth(e.target.value);
+  };
+
+ const {
+    data: loanSummary = [],
+    isLoading: summaryLoading
+  } = useLoanSummary(
+    month,
+    period,
+    company,
+    loanType,
+    Boolean(month && period)
+  );
 
   const toggleExpand = (id: number) => {
     setExpanded(prev => ({
@@ -678,7 +789,7 @@ function LoanListContent() {
       [id]: !prev[id]
     }));
   };
-
+  
   const updateParams = (fn: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(
       searchParams.toString()
@@ -707,6 +818,20 @@ function LoanListContent() {
     });
   };
 
+  const totalDeduction = loanSummary.reduce(
+    (sum, row) => sum + Number(row.deduction || 0),0
+  );
+
+  const overallDeduction = loanSummary.reduce(
+    (sum,row) => sum + Number(row.total_deduction || 0),0
+  );
+
+  const handlePrintSummary = useReactToPrint({
+      contentRef: summaryRef,
+      documentTitle: `Summary Ledger - ${formattedPeriod}`,
+    })
+  
+
   return (
     <>
       <div className="flex gap-3 w-full md:w-auto">
@@ -725,6 +850,15 @@ function LoanListContent() {
         >
           <Filter size={16} /> Filter
         </GenButton>
+
+        <GenButton
+          variant="main"
+          className="min-w-60 inline-flex items-center justify-center"
+          onClick={() => setOpenSummary(true)}
+        >
+          <BookOpen size={16} /> Open Loan Summary
+        </GenButton>
+
       </div>
 
       <ActiveFilters />
@@ -783,6 +917,247 @@ function LoanListContent() {
         open={open}
         onClose={() => setOpen(false)}
       />
+
+      {openSummary && (
+        <RequestModal
+          size="xxxl"
+          title={`Overall Loan Summary`}
+          onClose={() => setOpenSummary(false)}
+        >
+        <div className="">
+          <ul className="flex gap-x-4 bg-mainBg py-3 px-4 rounded-lg text-mainLight mt-2">
+            {SUBTABS.map(({ key, label }) => (
+              <li
+                key={key}
+                onClick={() =>
+                  handleSubTabChange(key)
+                }
+                className={`px-6 py-2 rounded-md font-semibold cursor-pointer text-sm ${
+                  activeSubTab === key
+                    ? "bg-mainLight text-mainBg"
+                    : "hover:bg-mainLight hover:text-mainBg"
+                }`}
+              >
+                {label}
+              </li>
+            ))}
+          </ul>
+
+            <div className="flex flex-col gap-4 bg-mainNeutral justify-center items-start px-6 py-4">
+            
+              <div className="flex flex-wrap gap-4 items-end w-full">
+
+                <div className="flex flex-col gap-2 flex-1 min-w-30">
+                  <label className="text-sm font-semibold">
+                    Select Company
+                  </label>
+                  <select
+                    value={company}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      const selectedCompany = companies?.find(
+                        (c) => c.CompanyCode === value
+                      );
+
+                      setCompany(value);
+                      setCompanyName(selectedCompany?.CompanyName || "");
+                    }}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
+                  >
+                    <option value="">All Companies</option>
+                    {companies?.map((c) => (
+                      <option key={c.CompanyCode} value={c.CompanyCode}>
+                        {c.CompanyName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2 flex-1 min-w-30">
+                  <label className="text-sm font-semibold">
+                    Select Loan Type
+                  </label>
+
+                  <select
+                    value={loanType}
+                    onChange={(e) => setLoanType(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
+                  >
+                    <option value="">All Loan Types</option>
+                    {loanTypes?.map((loan) => (
+                      <option key={loan} value={loan}>
+                        {loan}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2 flex-1 min-w-30">
+                  <label className="text-sm font-semibold">
+                    Select Cycle
+                  </label>
+                  <select
+                    value={cycle}
+                    onChange={handleCycleChange}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select Payroll Cycle</option>
+                    <option value="10-25">10-25 Cycle</option>
+                    <option value="15-30">15-30 Cycle</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <div className="flex flex-wrap gap-4 items-end w-full">
+              
+
+                  <div className="flex flex-wrap gap-4 items-end w-full">
+
+                      <div className="flex flex-col gap-2 flex-1 min-w-30">
+                          <label className="text-sm font-semibold">
+                              Select Month
+                          </label>
+                          <input
+                            type="month"
+                            value={month}
+                            onChange={handleMonthChange}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
+                          />
+                      </div>
+                           
+                    <div className="flex flex-col gap-2 flex-1 min-w-30">
+                        <label className="text-sm font-semibold">
+                            Select Period
+                        </label>
+                        {cycle === "10-25" && (
+                          <select
+                            value={period}
+                            onChange={handlePeriodChange}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
+                          >
+                            <option value="">Select Payroll Period</option>
+                            <option value="10">10 Period</option>
+                            <option value="25">25 Period</option>
+                          </select>
+                        )}
+                        {cycle === "15-30" && (
+                          <select
+                            value={period}
+                            onChange={handlePeriodChange}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
+                          >
+                            <option value="">Select Payroll Period</option>
+                            <option value="15">15 Period</option>
+                            <option value="30">30 Period</option>
+                          </select>
+                        )}
+                    </div>
+
+                      
+                    <div className="flex flex-col gap-2 flex-1 min-w-30">
+                      <GenButton
+                        variant="primary"
+                        className="w-full inline-flex items-center justify-center"
+                        onClick={handlePrintSummary}
+                      >
+                        <Printer size={16} /> Print Loan Summary
+                      </GenButton>
+                    </div>
+
+                  </div>
+                </div>
+            </div>
+            <div className="mb-6">
+            {activeSubTab === "monitoring" && (
+                <div className="mt-4">
+                  {!month || !period ? (
+                    <p className="text-gray-500">Select month and period to view summary.</p>
+                  ) : summaryLoading ? (
+                    <p className="text-gray-500">Loading loan summary...</p>
+                  ) : loanSummary?.length === 0 ? (
+                    <p className="text-gray-500">No records found.</p>
+                  ) : (
+                    <div ref={summaryRef} className="print-container">
+                      <div className="py-4 px-2 flex flex-col gap-2">
+                        <h1 className="text-lg font-bold  text-mainGray">{companyName}</h1>
+                        <h1 className="text-md font-semibold  text-mainGray">{loanType} <span>MONITORING</span></h1>
+                        <h1 className="text-md font-medium  text-mainGray"><span>PAYROLL</span> {formattedPeriod}</h1>
+                      </div>
+                     <table className="w-full border border-gray-200 table-fixed">
+                        <thead className="bg-mainBg text-mainLight">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs w-[18%] whitespace-nowrap">NAME</th>
+                            <th className="px-3 py-2 text-left text-xs w-[10%] whitespace-nowrap">TYPE</th>
+                            <th className="px-3 py-2 text-left text-xs w-[12%] whitespace-nowrap">DESCRIPTION</th>
+                            <th className="px-3 py-2 text-left text-xs w-[10%] whitespace-nowrap">START</th>
+                            <th className="px-3 py-2 text-left text-xs w-[10%] whitespace-nowrap">END</th>
+                            <th className="px-3 py-2 text-right text-xs w-[10%] whitespace-nowrap">PRINCIPAL</th>
+                            <th className="px-3 py-2 text-right text-xs w-[10%] whitespace-nowrap">DEDUCTION</th>
+                            <th className="px-3 py-2 text-right text-xs w-[12%]">
+                              TOTAL<br />DEDUCTION
+                            </th>
+
+                            <th className="px-3 py-2 text-right text-xs w-[12%]">
+                              RUNNING<br />BALANCE
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {loanSummary.map((row) => (
+                            <tr key={row.loan_id} className="border-t hover:bg-gray-50 odd:bg-mainLight even:bg-mainNeutral">
+                              <td className="px-4 py-2 text-xs">{row.name}</td>
+                              <td className="px-4 py-2 text-xs">{row.loan_type}</td>
+                              <td className="px-4 py-2 text-xs">{row.description}</td>
+                              <td className="px-4 py-2 text-xs">
+                                {new Date(row.start).toLocaleDateString()}
+                              </td>
+                              <td className="px-4 py-2 text-xs">
+                                {new Date(row.end).toLocaleDateString()}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-right">{row.principal}</td>
+                              <td className="px-3 py-2 text-xs text-right">{row.deduction}</td>
+                              <td className="px-3 py-2 text-xs text-right">{row.total_deduction}</td>
+                              <td className="px-3 py-2 text-xs text-right">{row.running_balance}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+
+                        <tfoot className="bg-mainLight font-semibold shadow-md shadow-gray-500/80">
+                          <tr>
+                            <td colSpan={6} className="px-4 py-2 text-left text-xs">
+                              TOTAL
+                            </td>
+
+                            <td className="px-4 py-2 text-xs text-right">
+                              {totalDeduction.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-2 text-xs text-right">
+                              {overallDeduction.toLocaleString()}
+                            </td>
+
+                            <td colSpan={1}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+              {activeSubTab == "accounts" &&(
+                <div>
+                  <h1>display accounts table here</h1>
+                </div>
+              )}
+            </div>
+        </div>
+
+        </RequestModal>
+      )}
+      
+
     </>
   );
 }
@@ -799,36 +1174,6 @@ function LoanListContent() {
 export default function EmployeeLoan() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-
-  // const [activeTab, setActiveTab] = useState<TabKey>("apply");
-
-  
-
-
-  // useEffect(() => {
-  //   const tab = searchParams.get(
-  //     "tab"
-  //   ) as TabKey | null;
-
-  //   if (tab && TABS.some(t => t.key === tab)) {
-  //     setActiveTab(tab);
-  //   }
-  // }, [searchParams]);
-
-  // const handleTabChange = (tab: TabKey) => {
-  //   setActiveTab(tab);
-
-  //   const params = new URLSearchParams(
-  //     searchParams.toString()
-  //   );
-
-  //   params.set("tab", tab);
-
-  //   router.replace(`?${params.toString()}`, {
-  //     scroll: false
-  //   });
-  // };
 
   
   const tabParam = searchParams.get("tab") as TabKey | null;
