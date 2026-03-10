@@ -17,6 +17,7 @@ export interface LoanList{
     loan_id: number;
     principal: number;
     loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
+    others_types: string;
     term_value: number;
     term_unit: "MONTHS" | "YEARS";
     start_date: string;
@@ -86,7 +87,7 @@ export type LoanLedgerItem = {
 
 
 export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
-export type AreType = "HOUSING" | "OTHERS";
+export type AreType = "HOUSING" | "CASH ADV." | "OTHERS";
 export type TermUnit = "MONTHS" | "YEARS";
 
 export type EmpLoanResponse = {
@@ -221,3 +222,42 @@ export type EmployeeSearchItem = {
   Lastname: string;
   basic_salary: number;
 };
+
+
+export type LoanSummaryParams = {
+  month: string;
+  period: "10" | "15" | "25" | "30";
+};
+
+export type LoanSummaryItem = {
+  loan_ledger_id: number
+  loan_id: number
+
+  EmpCode: string
+  Firstname: string
+  Lastname: string
+
+  loan_type: LoanType
+  principal: number
+  per_payroll_deduct: number
+
+  debit_amount: number
+  credit_amount: number
+
+  transaction_date: string
+  payroll_cycle: string
+}
+
+
+export type LoanMonitoringRow = {
+  loan_id: number
+  name: string
+  loan_type:string
+  description: string
+  principal: number
+  start: string
+  end: string
+  deduction: number
+  total_deduction: number
+  running_balance: number
+}

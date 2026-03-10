@@ -320,6 +320,7 @@ export const getAllLoans = async ({
       per_payroll_deduct: true,
       extended_term:true,
       status: true,
+      others_types: true,
       EmpCode: {
         select: {
           Firstname: true,
@@ -1006,3 +1007,105 @@ export async function searchEmployees(keyword: string) {
     basic_salary: emp.employeepayroll?.basic_salary ?? 0
   }));
 }
+
+
+export const getLoanSummary = async (
+  month: string,
+  period: string,
+  companyCode?: string,
+  loanType?:string
+) => {
+
+  const startDate = new Date(`${month}-01`);
+  const endDate = new Date(startDate);
+  endDate.setMonth(endDate.getMonth() + 1);
+
+  const loans = await prisma.loan_details.findMany({
+    where: {
+      loan_type: loanType || undefined,
+      EmpCode: {
+        BranchCode: {
+          company_id: companyCode || undefined
+        }
+      },
+
+      ledger: {
+        some: {
+          payroll_cycle: period,
+          transaction_date: {
+            gte: startDate,
+            lt: endDate
+          }
+        }
+      }
+    },
+
+    include: {
+      EmpCode: {
+        select: {
+          Firstname: true,
+          Lastname: true,
+          BranchCode: {
+            select: {
+              company_id: true
+            }
+          }
+        }
+      },
+
+      ledger: {
+        where: {
+          transaction_date: {
+            lt: endDate
+          }
+        },
+        select: {
+          credit_amount: true,
+          payroll_cycle: true,
+          transaction_date: true
+        }
+      }
+    }
+  });
+
+  return loans.map((loan) => {
+
+    const totalPaid = loan.ledger
+      .filter((l) => {
+        const txDate = new Date(l.transaction_date);
+
+        if (txDate < startDate) return true;
+
+        if (txDate >= startDate && txDate < endDate) {
+          return (
+            l.payroll_cycle !== null &&
+            Number(l.payroll_cycle) <= Number(period)
+          );
+        }
+
+        return false;
+      })
+      .reduce((sum, l) => sum + Number(l.credit_amount), 0);
+
+    const runningBalance = Number(loan.principal) - totalPaid;
+
+    const endDateComputed = new Date(loan.start_date);
+    endDateComputed.setMonth(
+      endDateComputed.getMonth() +
+      loan.term_value * (loan.term_unit === "YEARS" ? 12 : 1)
+    );
+
+    return {
+      loan_id: loan.loan_id,
+      name: `${loan.EmpCode?.Firstname} ${loan.EmpCode?.Lastname}`,
+      loan_type: loan.loan_type,
+      description: loan.others_types,
+      principal: loan.principal,
+      start: loan.start_date,
+      end: endDateComputed,
+      deduction: loan.per_payroll_deduct,
+      total_deduction: totalPaid,
+      running_balance: runningBalance
+    };
+  });
+};

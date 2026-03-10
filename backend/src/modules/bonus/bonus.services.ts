@@ -1011,15 +1011,8 @@ export async function getEmployeesByBonusSummarySerive(
 
 
 
-    const test = await prisma.$transaction(async (tx) => {
-      return await reconcileEmployeePayrollBonus(
-        tx,
-        selectedCompanyCode,
-        summary
-      )
-    })
+   
 
-    console.log("test: ", test)
   
   const employees = await tx.employee.findMany({
     where: {
@@ -1065,6 +1058,17 @@ export async function getEmployeesByBonusSummarySerive(
     },
     orderBy: { Lastname: "asc" },
   })
+
+    console.log("test: ", employees)
+
+     const test = await prisma.$transaction(async (tx) => {
+      return await reconcileEmployeePayrollBonus(
+        tx,
+        selectedCompanyCode,
+        summary
+      )
+    })
+
 
     const result = employees.map(emp => {
       const bonus = emp.employee_bonues[0]
@@ -1276,7 +1280,7 @@ type SummaryInput = {
 export async function reconcileEmployeePayrollBonus(
   tx: Prisma.TransactionClient,
   selectedCompanyCode: string,
-  summary: SummaryInput
+  summary: SummaryInput,
 ) {
   // 1️⃣ Employees
   const employees = await tx.employee.findMany({
@@ -1342,6 +1346,17 @@ export async function reconcileEmployeePayrollBonus(
   const bonusSet = new Set<string>(
     bonusRecords.map(b => b.employeeCode)
   )
+
+  const bonusSetEmployee = new Set<string>(
+    employees.map(b => b.EmpCode)
+  )
+
+
+
+  // console.log("Archive: ",  archiveSet)
+  console.log("Bonus: ",  bonusSetEmployee)
+
+
 
   // =============================
   // 🎯 CORE VARIANCE LOGIC

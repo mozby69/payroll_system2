@@ -1,7 +1,7 @@
 
 import { useQuery, keepPreviousData, useQueryClient, useMutation } from "@tanstack/react-query";
-import { fetchEmployees, fetchEmployeeProfile, updateEmployeePayroll, fetchCompanies, fetchEmployeesByCompany, bulkIncreaseSalary } from "../services/employee.service";
-import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload, Company, EmployeeIncreaseItem, BulkIncreasePayload } from "../types/empTypes";
+import { fetchEmployees, fetchEmployeeProfile, updateEmployeePayroll, fetchEmployeesByCompany, bulkIncreaseSalary } from "../services/employee.service";
+import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload, EmployeeIncreaseItem, BulkIncreasePayload } from "../types/empTypes";
 
 
 export const useEmployees = (
@@ -42,13 +42,13 @@ export const useUpdateEmployeePayroll = () => {
 };
 
 
-export const useCompanies = () => {
-  return useQuery<Company[], Error>({
-    queryKey: ["companies"],
-    queryFn: fetchCompanies,
-    staleTime: 1000 * 60 * 10,
-  });
-};
+// export const useCompanies = () => {
+//   return useQuery<Company[], Error>({
+//     queryKey: ["companies"],
+//     queryFn: fetchCompanies,
+//     staleTime: 1000 * 60 * 10,
+//   });
+// };
 
 
 

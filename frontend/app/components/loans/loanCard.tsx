@@ -21,6 +21,7 @@ type LoanCardProps = {
     term_unit: string;
     start_date: string;
     status: string;
+    others_types: string;
     per_payroll_deduct: number;
     deduct_allowance: boolean;
     extended_term: number;
@@ -40,6 +41,7 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
   const [earlyPay, setEarlyPay] = useState<LoanContext | null> (null);
   const [skipPay, setSkipPay] = useState<LoanContext | null> (null);
   const [openMenu, setOpenMenu] = useState(false);
+ 
 
   const ledgerRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +88,10 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
       <div className="grid grid-cols-4 gap-y-4 gap-x-6 p-6 border border-mainNeutral rounded-lg">
         <Info label="Fullname" value={loan.fullname} />
         <Info label="Loan Type" value={loan.loan_type} />
+        
+        {loan.others_types != "" && (
+           <Info label="Sub Type" value={loan.others_types} />
+        )}
         <Info label="Principal" value={loan.principal} />
         <Info label="Original Term" value={`${loan.term_value} ${loan.term_unit}`} />
         <Info
@@ -101,6 +107,8 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
           value={loan.deduct_allowance ? "Yes" : "No"}
         />
         <Info label="Extended Term" value={`${loan.extended_term} MONTHS`} />
+
+       
       </div>
 
 

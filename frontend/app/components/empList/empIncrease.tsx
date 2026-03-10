@@ -1,4 +1,5 @@
-import { useBulkIncreaseSalary, useCompanies, useEmployeesByCompany } from "@/app/hooks/employees";
+import { useBulkIncreaseSalary, useEmployeesByCompany } from "@/app/hooks/employees";
+import {useCompanies} from "@/app/hooks/useGeneral";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { EmployeeIncreaseItem } from "@/app/types/empTypes";

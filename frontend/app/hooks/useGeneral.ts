@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCompanyDetailsByCodeServices, getCompanyDetailsServices } from "../services/general.services";
-import { CompaniesResponse, CompanyDetailsType } from "../types/generalTypes";
+import { fetchCompanies, fetchLoanTypes, getCompanyDetailsByCodeServices, getCompanyDetailsServices } from "../services/general.services";
+import { CompaniesResponse, CompanyDetailsType, FecthCompany } from "../types/generalTypes";
 import api from "../services/axios";
 
 
@@ -36,3 +36,22 @@ export function useGetCompanyDetails(){
       enabled: !!companyCode,
     })
   }
+
+export const useCompanies = () => {
+  return useQuery<FecthCompany[], Error>({
+    queryKey: ["companies"],
+    queryFn: fetchCompanies,
+    staleTime: 1000 * 60 * 10,
+  });
+};
+
+
+export const useLoanTypes = () => {
+
+  return useQuery<string[], Error>({
+    queryKey: ["loan-types"],
+    queryFn: fetchLoanTypes,
+    staleTime: 1000 * 60 * 10
+  });
+
+};

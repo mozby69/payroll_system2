@@ -67,3 +67,9 @@ export interface EmployeeSummary {
 
 
   
+export type FecthCompany = {
+  CompanyCode: string;
+  CompanyName: string;
+};
+
+export type LoanTypeResponse = string[];

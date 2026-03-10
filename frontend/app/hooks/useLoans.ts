@@ -1,6 +1,6 @@
 import { useQueryClient, useMutation, useQuery,keepPreviousData} from "@tanstack/react-query";
-import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, loanSearchEmployees, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
-import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem } from "../types/loanTypes";
+import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, fetchLoanSummary, loanSearchEmployees, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
+import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem, LoanMonitoringRow } from "../types/loanTypes";
 
 
 
@@ -155,3 +155,21 @@ export function useEmployeeSearch(keyword: string) {
     enabled: keyword.length >= 2,
   });
 }
+
+
+
+export const useLoanSummary = (
+  month: string,
+  period: string,
+  companyCode?: string,
+  loanType?:string,
+  enabled = true
+) => {
+
+  return useQuery<LoanMonitoringRow[]>({
+    queryKey: ["loan-summary", month, period, companyCode, loanType],
+    queryFn: () => fetchLoanSummary(month, period, companyCode, loanType),
+    enabled
+  });
+
+};
