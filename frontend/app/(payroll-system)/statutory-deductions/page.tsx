@@ -33,7 +33,6 @@ export default function StatutoryDeductions(){
 
             {activeTab === "SSS" && (
               <SSSPage/>
-              
             )}
 
             {activeTab === "Pagibig" && (

@@ -171,6 +171,10 @@ interface Props {
                       queryKey: ["payroll-display"],
                       exact: true,
                     });
+                    await queryClient.refetchQueries({
+                      queryKey: ["variance-display"],
+                      exact: true,
+                    });
                     onNext();
                   }}
                   className="rounded-lg bg-blue-600 px-6 py-2 text-sm text-white">

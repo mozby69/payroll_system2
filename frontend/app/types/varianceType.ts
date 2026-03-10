@@ -32,37 +32,49 @@
 
 
 
-export interface Variance {
-    basic: number;
-    sssEmployee: number;
-    sssEmployer: number;
-    phil: number;
-    pagibigEmployee: number;
-    pagibigEmployer: number;
-  }
+  
+export interface VarianceRow {
+  rowKey?: string;
+  id?: number;
+  cycle_category?: string;
+  PayCycle: string;
+  payroll_period?: string;
 
-  
-  export interface VarianceRow {
-    id: number;
-    cycle_category: string;
-    PayCycle: string;
-    payroll_period: string;
-  
-    total_basic_salary: string;
-    Total_SSSContributionEmployee: string;
-    Total_SSSContributionEmployer: string;
-  
-    Total_PhilhealthContributionEmployee: string;
-    Total_PhilhealthContributionEmployer: string;
-  
-    Total_PagibigContributionEmployee: string;
-    Total_PagibigContributionEmployer: string;
-  
-    total_wtax: string;
-  }
-  
-  export interface VarianceResponse {
-    total_variance: VarianceRow[];
-  }
+  total_basic_salary: string | number;
+  Total_SSSContributionEmployee: string | number;
+  Total_SSSContributionEmployer: string | number;
 
+  Total_PhilhealthContributionEmployee: string | number;
+  Total_PhilhealthContributionEmployer: string | number;
 
+  Total_PagibigContributionEmployee?: string | number;
+  Total_PagibigContributionEmployer?: string | number;
+
+  total_wtax?: string | number;
+}
+
+export interface CompanyVarianceRow {
+  PayCycle: string;
+
+  total_basic_salary?: number;
+  Total_SSSContributionEmployee?: number;
+  Total_SSSContributionEmployer?: number;
+
+  Total_PhilhealthContributionEmployee?: number;
+  Total_PhilhealthContributionEmployer?: number;
+
+  Total_PagibigContributionEmployee?: number;
+  Total_PagibigContributionEmployer?: number;
+
+  total_wtax?: number;
+}
+
+export interface CompanyVariance {
+  company: string | null;
+  rows: CompanyVarianceRow[];
+}
+
+export interface VarianceResponse {
+  total_variance: VarianceRow[];
+  company_variance: CompanyVariance[];
+}

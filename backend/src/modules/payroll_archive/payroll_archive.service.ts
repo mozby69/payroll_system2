@@ -488,6 +488,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
         acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
         acc.philEmployee += Number(emp.philhealth_contrib_employee ?? 0);
+        acc.philEmployer += Number(emp.philhealth_contrib_employer ?? 0);
         acc.wtax += Number(emp.wtax ?? 0);
         acc.basic += Number(emp.semi_monthly ?? 0);
         return acc;
@@ -504,6 +505,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         pagibigEmployee: 0,
         pagibigEmployer: 0,
         philEmployee: 0,
+        philEmployer:0,
         wtax: 0,
         basic: 0,
       }
@@ -528,7 +530,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Total_PagibigContributionEmployee: totals.pagibigEmployee,
           Total_PagibigContributionEmployer: totals.pagibigEmployer,
           Total_PhilhealthContributionEmployee: totals.philEmployee,
-          Total_PhilhealthContributionEmployer: totals.philEmployee, // if same logic
+          Total_PhilhealthContributionEmployer: totals.philEmployer,
           total_wtax: totals.wtax,
           total_basic_salary: totals.basic,
           Total_Undertime:totals.undertime,
@@ -645,7 +647,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Pagibig_employer_share: emp.pagibig_contrib_employer,
       
           philhealth_employee_share: emp.philhealth_contrib_employee,
-          philhealth_employer_share: emp.philhealth_contrib_employee,
+          philhealth_employer_share: emp.philhealth_contrib_employer,
           
       
           // Loan Code ↓

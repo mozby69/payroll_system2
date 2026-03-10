@@ -20,5 +20,5 @@ export function useDisplayVariance() {
         return res.data;
       },
     });
-  }
+}
   

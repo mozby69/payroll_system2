@@ -31,6 +31,7 @@ export default function StepReviewSave({ onBack }: Props) {
   const payCode = data?.data?.[0]?.PayCode ?? "-";
 
   const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
+
   const [editedWtax, setEditedWtax] = useState<Record<string, number>>({});
 
   const buildKey = (
@@ -270,9 +271,9 @@ export default function StepReviewSave({ onBack }: Props) {
 
 
 
-    {isModalOpen && (
+        {isModalOpen && (
             <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
-              <FinancialVarianceModal paycode={payCode}/>
+              <FinancialVarianceModal paycode={payCode} cycle={currentCycle}/>
             </RequestModal>
           )}
 
