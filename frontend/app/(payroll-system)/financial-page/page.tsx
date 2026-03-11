@@ -244,11 +244,13 @@ export default function FinancialPage(){
                     />
 
 
-                 {isModalOpen && (
+                 {/* {isModalOpen && (
                         <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
                           <FinancialVarianceModal/>
                         </RequestModal>
-                      )}
+                      )} */}
+
+
             <div className="hidden print:block">
                 <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
             </div>

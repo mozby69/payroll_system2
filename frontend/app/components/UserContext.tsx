@@ -8,6 +8,7 @@ type User = {
   username: string
   roles: string[]
   permissions: string[]
+  company_id:string;
 }
 
 type AuthContextType = {

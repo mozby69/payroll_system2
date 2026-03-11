@@ -1,31 +1,22 @@
 import { Request, Response } from "express";
-import { ComputePayroll, fetchEmployeesByPayrollCycle, searchEmployees, updateEmployeePayrollFields, updateEmployeeSalary } from "./prepare_payroll.service";
+import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, updateEmployeePayrollFields, updateEmployeeSalary } from "./prepare_payroll.service";
 
 
 
 
 export const getEmployeesByCycle = async (req: Request,res: Response) => {
-  const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
+  const company_id = req.query.company_id as string;
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
-  const search =
-    typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
 
-  const onlyNew =
-    typeof req.query.onlyNew === "string"
-      ? req.query.onlyNew === "true"
-      : undefined;
-  const onlyMissingSetup  = 
-    typeof req.query.onlyMissingSetup  === "string"
-      ? req.query.onlyMissingSetup  === "true"
-      :undefined;
+  const onlyNew = typeof req.query.onlyNew === "string" ? req.query.onlyNew === "true" : undefined;
+  const onlyMissingSetup  = typeof req.query.onlyMissingSetup  === "string" ? req.query.onlyMissingSetup  === "true" : undefined;
 
-  if (!cycle) {
-    return res.status(400).json({ message: "cycle is required" });
-  }
+ 
 
   const result = await fetchEmployeesByPayrollCycle({
-    cycle,
+    company_id,
     page,
     limit,
     search,
@@ -112,6 +103,27 @@ export const searchEmployeeController = async (req: Request, res: Response) => {
 
 
 export const getComputedPayrollController = async (req: Request,res: Response) => {
+  const company_id = req.query.company_id as string;
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+
+
+
+  const result = await ComputePayroll({
+    company_id,
+    page,
+    limit,
+    search,
+  });
+
+  res.json(result);
+};
+
+
+
+
+export const InitializeComputePayrollController = async (req: Request,res: Response) => {
   const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
@@ -121,7 +133,7 @@ export const getComputedPayrollController = async (req: Request,res: Response) =
     return res.status(400).json({ message: "cycle is required" });
   }
 
-  const result = await ComputePayroll({
+  const result = await InitializeComputePayroll({
     cycle,
     page,
     limit,
@@ -131,3 +143,41 @@ export const getComputedPayrollController = async (req: Request,res: Response) =
   res.json(result);
 };
 
+
+
+
+
+
+// initialize payroll
+
+
+export const InitializeEmployeesbyCycleController = async (req: Request,res: Response) => {
+  const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+
+  const onlyNew =
+    typeof req.query.onlyNew === "string"
+      ? req.query.onlyNew === "true"
+      : undefined;
+  const onlyMissingSetup  = 
+    typeof req.query.onlyMissingSetup  === "string"
+      ? req.query.onlyMissingSetup  === "true"
+      :undefined;
+
+  if (!cycle) {
+    return res.status(400).json({ message: "cycle is required" });
+  }
+
+  const result = await InitializeEmployeesbyCycle({
+    cycle,
+    page,
+    limit,
+    search,
+    onlyNew,
+    onlyMissingSetup
+  });
+
+  res.json(result);
+};

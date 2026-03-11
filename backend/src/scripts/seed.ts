@@ -14,6 +14,12 @@ async function main() {
     { code: "PAYROLL_RUN", name: "View Run Payroll" },
     { code: "PAYROLL_ARCHIVE", name: "View Payroll Archive" },
     { code: "PAYROLL_LIST", name: "View Payroll List" },
+    { code: "SAVE_PAYROLL", name: "Save Payroll" },
+    { code: "PAYROLL_INITIALIZE", name: "Payroll Initialize" },
+
+    { code: "EMB_VIEW", name: "View EMB Data" },
+    { code: "RFC_VIEW", name: "View RFC Data" },
+
 
     { code: "USER_MANAGE", name: "Manage Users" },
     { code: "ADMIN_MANAGE", name: "Manage Admin" }
@@ -29,9 +35,11 @@ async function main() {
 
   const roles = [
     { name: "ADMIN", permissions: permissions.map(p => p.code) },
-    { name: "PAYROLL", permissions: ["PAYROLL_VIEW"] },
+    { name: "PAYROLL_ADMIN", permissions: ["PAYROLL_VIEW"] },
     { name: "APPROVER", permissions: ["BONUS_APPROVE"] },
-    { name: "FINANCE", permissions: ["PAYROLL_VIEW"] }
+    { name: "FINANCE", permissions: ["PAYROLL_VIEW"] },
+    { name: "EMB", permissions: ["EMB_VIEW"] },
+    { name: "RFC", permissions: ["RFC_VIEW"] },
   ]
 
   for (const role of roles) {

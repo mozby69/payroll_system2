@@ -12,6 +12,7 @@ import CompanyFilter from "../CompanyFilter";
 import RequestModal from "../Modal";
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import GenButton from "../Buttons";
+import { useAuth } from "../UserContext";
 
 
 
@@ -24,11 +25,20 @@ interface Props {
 export default function StepReviewSave({ onBack }: Props) {
   const [selectedCompany, setSelectedCompany] = useState("");
   const [loading, setLoading] = useState(false);
-  const { data, isLoading } = useDisplayPayroll();
-  const savePayroll = useSavePayroll();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+
+  const { hasPermission,user } = useAuth()
+
+  const companyId = user?.company_id;
+
+  const { data, isLoading } = useDisplayPayroll(companyId);
+  
+  const savePayroll = useSavePayroll();
+
   const payCode = data?.data?.[0]?.PayCode ?? "-";
+  const companyCode = data?.data?.[0]?.EmpCode.BranchCode.company_id ?? "-";
 
   const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
 
@@ -46,7 +56,7 @@ export default function StepReviewSave({ onBack }: Props) {
       "Confirm Save Payroll",
       "Are you sure you want to save this payroll?",
       () => {
-        savePayroll.mutate();
+        savePayroll.mutate(companyId ?? "");
       }
     );
   };
@@ -187,46 +197,45 @@ export default function StepReviewSave({ onBack }: Props) {
 
       <div className="print:hidden flex justify-between">
 
-        <div>
+        <div className="flex justify-between w-full">
+         
+
+          <div className="text-sm text-slate-600">
           <h2 className="text-lg font-semibold text-slate-800">
             Review & Save Payroll
           </h2>
-
-          <div className="text-sm text-slate-600">
             Final payroll summary and confirmation.
+          </div>
+
+          <div className="mt-4">
+            <h2 className="text-gray-700"><span className="font-semibold">For Payroll Period:</span> {payCode}</h2>
           </div>
 
         </div>
 
-        <div>
-          <CompanyFilter
-          value={selectedCompany}
-          cycle={currentCycle}    
-          onChange={setSelectedCompany}
-        />
-        </div>
+        
 
       </div>
 
       <div className="flex justify-between px-4 pt-4">
 
       <div>
+      {hasPermission("SAVE_PAYROLL") && (
            <div className="flex gap-x-2">
                 <GenButton variant="primary" onClick={openModal}>View Variance</GenButton>
-                <GenButton variant="positive" onClick={handleSave}>   {savePayroll.isPending ? "Saving..." : "Save Payroll"}</GenButton>
-           
+                <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
+                  {savePayroll.isPending ? "Saving..." : "Save Payroll"}
+                </GenButton>
             </div>
-         
+              )}
       </div>
-     
+      <div>
+            <h2><span className="font-bold">Company:</span> {companyCode}</h2>
+      </div> 
 
-
-        <div className=" grid place-items-center">
-          <h2 className="text-gray-700"><span className="font-semibold">For Payroll Period:</span> {payCode}</h2>
-        </div>
-
-      
       </div>
+
+ 
 
       <div className="print-area">
         <div className="print-page min-w-56 overflow-x-auto">

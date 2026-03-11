@@ -26,6 +26,10 @@ model User{
   rejectedBonuses     BonusSummary[] @relation("RejectedBonuses")
   auditLogs AuditLog[]
 
+
+  company_id String? @db.VarChar(20) @map("company_id")
+  company company_details? @relation(fields: [company_id], references: [CompanyCode])
+
   @@map("user")
 }
 
@@ -356,6 +360,7 @@ model company_details{
     companyRules BonusRuleCompany[] @relation
 
     total_payroll_by_company totalPayrollByCompany[]
+    user User[] @relation()
 
     @@map("companydetails")
 }

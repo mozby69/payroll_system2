@@ -34,7 +34,7 @@ export const importBranches = async (): Promise<ImportResponse> => {
 
 export const fetchEmployeesByCycle = async (
   params: {
-    cycle: string;
+    company_id: string;
     page: number;
     limit: number;
     search?: string;
@@ -48,6 +48,25 @@ export const fetchEmployeesByCycle = async (
 
   return res.data;
 };
+
+
+export const fetchInitializePayroll = async (
+  params: {
+    cycle: string;
+    page: number;
+    limit: number;
+    search?: string;
+    onlyNew?:boolean;
+    onlyMissingSetup?:boolean;
+  }
+): Promise<PaginatedResponse<EmployeeRow>> => {
+  const res = await api.get("/prepare-payroll/initialize-payroll", {
+    params,
+  });
+
+  return res.data;
+};
+
 
 
 export interface UpdateEmployeePayrollPayload {
@@ -90,10 +109,33 @@ export interface ComputedProps{
   EmpCode:{
     Firstname:string;
     Lastname:string;
+    BranchCode:{
+      branchCode:string;
+    }
   }
 }
 
 export const fetchComputedPayroll = async (params: {
+  company_id: string;
+  page: number;
+  limit: number;
+  search?: string;
+  range: DateRange | null;
+}): Promise<PaginatedResponse<ComputedProps>> => {
+  const res = await api.get("/prepare-payroll/computed-payroll", {
+    params: {
+      ...params,
+      startDate: params.range?.startDate,
+      endDate: params.range?.endDate,
+    },
+  });
+
+  return res.data;
+};
+
+
+
+export const fetchInitializeComputedPayroll = async (params: {
   cycle: string;
   page: number;
   limit: number;

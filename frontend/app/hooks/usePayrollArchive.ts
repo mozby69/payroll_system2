@@ -27,11 +27,14 @@ export function useSaveWtaxOverride() {
 
 
 
-export function useDisplayPayroll() {
+export function useDisplayPayroll(company_id?: string) {
   return useQuery<PayrollResponse>({
-    queryKey: ["payroll-display"],
+    queryKey: ["payroll-display", company_id],
+    enabled: !!company_id,
     queryFn: async () => {
-      const res = await api.get("/payroll-archive/display-all");
+      const res = await api.get("/payroll-archive/display-all", {
+        params: { company_id },
+      });
       return res.data;
     },
   });
@@ -55,8 +58,10 @@ export function useSavePayroll(onSuccess?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await api.post("/payroll-archive/payroll-save");
+    mutationFn: async (company_id:string) => {
+      const res = await api.post("/payroll-archive/payroll-save",null,{
+        params:{company_id},
+      });
       return res.data;
     },
     onSuccess: async () => {

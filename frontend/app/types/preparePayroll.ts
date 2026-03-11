@@ -68,7 +68,8 @@ export type Column<T> = {
   export type PaginatedResponse<T> = {
     data: T[];
     meta: {
-      cycle: string;
+      cycle?:string;
+      company_id:string;
       total: number;
       page: number;
       limit: number;

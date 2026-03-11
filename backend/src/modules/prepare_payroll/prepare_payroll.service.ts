@@ -6,16 +6,13 @@ import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP 
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
 
-export async function fetchEmployeesByPayrollCycle({
-  cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
-  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
+export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
+  { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
 
     const baseFilter = {
-        BranchCode: {
-          CompanyCode: {
-            CompanyCycle: cycle,
-          },
-        },
+      BranchCode: {
+        company_id: company_id
+      },
         ...(onlyNew && { isNewEmployee: true }), 
         ...(onlyMissingSetup && {
           Disbursing: true,
@@ -382,7 +379,15 @@ export async function searchEmployees(keyword: string) {
 
 
 
-export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
+export async function ComputePayroll({company_id,page,limit,search}: {  company_id: string; page: number; limit: number; search?: string}) {
+
+  const baseFilter = {
+    EmpCode: {
+      BranchCode: {
+        company_id: company_id,
+      },
+    },
+  };
 
   const searchFilter = search
   ? {
@@ -415,10 +420,11 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
 
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
     AND: [
-      { CycleCategory: cycle },
+      baseFilter,
       { status: { in: ["PENDING"] } },
       searchFilter,
       statusOverride,
+
     ],
   };
   
@@ -442,9 +448,11 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
         TotalUndertime:true,
         NightShiftOtAtt: true,
         EmpCode: {
+          
           select: {
             Firstname: true,
             Lastname: true,
+            BranchCode:true,
             employeepayroll: {
               select: {
                 basic_salary: true,
@@ -501,3 +509,273 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
   
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//payroll initialize ***********************************************************
+
+export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
+  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
+
+    const baseFilter = {
+        BranchCode: {
+          CompanyCode: {
+            CompanyCycle: cycle,
+          },
+        },
+        ...(onlyNew && { isNewEmployee: true }), 
+        ...(onlyMissingSetup && {
+          Disbursing: true,
+          isNewEmployee:false
+        }),
+      };
+
+      const searchFilter = search
+        ? {
+            OR: [
+              { EmpCode: { contains: search } },
+              { Firstname: { contains: search } },
+              { Lastname: { contains: search } },
+            ],
+          }
+        : {};
+
+
+      const statusFilter = {
+        OR: [
+          {
+            EmployeeStatus: {
+              notIn: ["Resigned", "Inactive", "Terminate"],
+            },
+          },
+          {
+            bod_member: {
+              in: ["bod1", "bod2"],
+            },
+          },
+        ],
+      };
+
+      const where = {
+        AND: [
+          baseFilter,
+          searchFilter,
+          statusFilter,
+        ],
+      };
+
+  const total = await prisma.employee.count({ where });
+
+  
+
+  const data = await prisma.employee.findMany({
+    where,
+    skip: (page - 1) * limit,
+    take: limit,
+    orderBy: { EmpCode: "desc" },
+    select: {
+      EmpCode: true,
+      Firstname: true,
+      Lastname: true,
+      Department: true,
+      Position: true,
+      EmploymentStatus: true,
+      isNewEmployee: true,
+      bod_member:true,
+      Taxable:true,
+      Disbursing:true,
+      WithAtm:true,
+ 
+      employeepayroll: {
+        select: {
+          basic_salary: true,
+          cash_assistance: true,
+          ecola: true,
+        },
+      },
+      BranchCode: {
+        select: {
+          branchCode: true,
+          Location: true,
+          CompanyCode: {
+            select: {
+              CompanyName: true,
+              CompanyCycle: true,
+            },
+          },
+        },
+      },
+    },
+    
+  });
+
+
+
+
+      const normalized = data.map(emp => {
+        const basicSalary = emp.employeepayroll?.basic_salary?.toNumber() ?? 0;  
+     
+
+        return {
+          ...emp,
+          basic_salary: basicSalary,
+        };
+      });
+
+  return {
+    data:normalized,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+
+
+
+
+
+
+
+
+
+
+export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
+
+
+
+  const searchFilter = search
+  ? {
+      OR: [
+        { EmpCodeId: { contains: search } },
+        { EmpCode: { Firstname: { contains: search } } },
+        { EmpCode: { Lastname: { contains: search } } },
+      ],
+    }
+  : {};
+
+  const statusOverride = {
+    OR: [
+      {
+        EmpCode: {
+          EmployeeStatus: {
+            notIn: ["Resigned", "Inactive", "Terminate"],
+          },
+        },
+      },
+      {
+        EmpCode: {
+          bod_member: {
+            in: ["bod1", "bod2"],
+          },
+        },
+      },
+    ],
+  };
+
+  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
+    AND: [
+      { CycleCategory: cycle },
+      { status: { in: ["PENDING"] } },
+      searchFilter,
+      statusOverride,
+
+    ],
+  };
+  
+
+  const [total, data] = await Promise.all([
+    prisma.employeeSummary.count({ where: finalWhere }),
+  
+    prisma.employeeSummary.findMany({
+      where: finalWhere,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { EmpCodeId: "asc" },
+      select: {
+        PayCode: true,
+        EmpCodeId: true,
+        LateCount: true,
+        TotalAbsentHours: true,
+        RegularAtt: true,
+        OvertimeAtt: true,
+        NightShiftAtt: true,
+        TotalUndertime:true,
+        NightShiftOtAtt: true,
+        EmpCode: {
+          
+          select: {
+            Firstname: true,
+            Lastname: true,
+            BranchCode:true,
+            employeepayroll: {
+              select: {
+                basic_salary: true,
+                cash_assistance: true,
+                ecola: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+  
+
+  const normalized = data.map((emp) => {
+    const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;
+    const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
+    const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+    const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
+    const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+
+    const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
+    const lateCount = computeLate(totalLateCount,basicSalary);
+    const absent = computeAbsent(totalAbsent,basicSalary);
+    const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
+
+    const overTime = computeOvertime(basicSalary, {
+      regular: emp.RegularAtt,
+      overtime: emp.OvertimeAtt,
+      nightShift: emp.NightShiftAtt,
+      nightShiftOt: emp.NightShiftOtAtt,
+    });
+
+    return {
+      ...emp,
+      late_count:lateCount,
+      absence_count:absent,
+      overtime:overTime,
+      undertime:undertimeCount,
+      gross_pay:computeGrossPay(overTime,semiMonthlyRate,lateCount,totalUndertimeCount,absent),
+    };
+  });
+
+  return {
+    data: normalized,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+  

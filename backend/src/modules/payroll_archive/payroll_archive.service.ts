@@ -12,18 +12,18 @@ import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/g
 export async function employeeProbationary(){
 
   try{
-    const computed = await displayCompletePayroll(["PENDING"]);
-    if (!computed || computed.length === 0) return 0;
-    const payCycle = computed[0].PayCode;
+    // const computed = await displayCompletePayroll(["PENDING"]);
+    // if (!computed || computed.length === 0) return 0;
+    // const payCycle = computed[0].PayCode;
 
-    const data1 = await prisma.employee.findMany({
-      where:{
-        EmploymentStatus:"Probationary",
-        EmployeeStatus:"Active"
-      }
-    })
+    // const data1 = await prisma.employee.findMany({
+    //   where:{
+    //     EmploymentStatus:"Probationary",
+    //     EmployeeStatus:"Active"
+    //   }
+    // })
 
-    return {data1,payCycle};
+    // return {data1,payCycle};
     
   }
 
@@ -52,7 +52,7 @@ export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId:
 
 
 
-export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL")[]) {
+export async function displayCompletePayroll(company_id:string, statuses:("PENDING" | "FOR_APPROVAL")[]) {
   
     try{
       const sssTable = await getSSSContributions();
@@ -60,29 +60,46 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       const bodPhil = await getBodPhilhealth();
       const tax_list = await getTaxTable();
       
-      const employeeList = await prisma.employeeSummary.findMany({
-        where:{
-          status: {
-            in: statuses,
+
+      const baseFilter = {
+        EmpCode: {
+          BranchCode: {
+            company_id: company_id,
           },
-          OR: [
+        },
+      };
+
+
+      const employeeList = await prisma.employeeSummary.findMany({
+        where: {
+          AND: [
+            baseFilter,
             {
-              EmpCode: {
-                EmployeeStatus: {
-                  notIn: ["Resigned", "Inactive", "Terminate"],
-                },
+              status: {
+                in: statuses,
               },
             },
             {
-              EmpCode: {
-                bod_member: {
-                  in: ["bod1", "bod2"],
+              OR: [
+                {
+                  EmpCode: {
+                    EmployeeStatus: {
+                      notIn: ["Resigned", "Inactive", "Terminate"],
+                    },
+                  },
                 },
-              },
+                {
+                  EmpCode: {
+                    bod_member: {
+                      in: ["bod1", "bod2"],
+                    },
+                  },
+                },
+              ],
             },
           ],
-
         },
+
         select:{
           PayCode:true,
           CycleCategory:true,
@@ -126,8 +143,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
             },
             
           },
-          
-          
         },
         orderBy:{
           EmpCode:{
@@ -374,10 +389,16 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
-  export async function saveComputedPayroll() {
+  export async function saveComputedPayroll(company_id:string) {
    
     const result = await prisma.employeeSummary.updateMany({
-      where: { status: "PENDING" },
+      where: {
+         status: "PENDING",
+         EmpCode:{
+          BranchCode:{
+            company_id:company_id,
+          }
+         }         },
       data: { status: "FOR_APPROVAL" },
     });
   
@@ -394,7 +415,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     
   
     return await prisma.$transaction(async (tx) => {
-      const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
+      const company = 'EMB';
+      const computed = await displayCompletePayroll(company,["FOR_APPROVAL"]);
 
   
     if (!computed || computed.length === 0) return 0;

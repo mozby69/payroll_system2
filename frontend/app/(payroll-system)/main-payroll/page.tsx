@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import SideModalLayout from "../../components/SideModal";
 import { useUpdateEmployeeSetup } from "@/app/hooks/disburse";
+import { useAuth } from "@/app/components/UserContext";
 
 type PayrollStep = 1 | 2 | 3;
 
@@ -37,157 +38,27 @@ export default function PreparePayroll() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
+  const { hasPermission,user } = useAuth()
+
+
+  const companyId = user?.company_id;
+
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
   };
 
-
-
-  // Disburse Code ↓
-  const [shouldCheckModal, setShouldCheckModal] = useState(false);
-  const [editedEmployees, setEditedEmployees] = useState<Record<string,SetupState>>({});
-
-  const { data: newEmployee, isFetching: isFetchingNew } = useEmployeesByCycle({
-    cycle: branchCycle,
-    page,
-    limit: 500,
-    search: debouncedSearch,
-    onlyNew: true,
-  });
-
-  const { data: setupEmployee, isFetching: isFetchingSetup } = useEmployeesByCycle({
-    cycle: branchCycle,
-    page,
-    limit: 500,
-    search: debouncedSearch,
-    onlyMissingSetup: true,
-  });
-
-  const originalEmployees = useMemo<Record<string, SetupState>>(() => {
-    const combined = [
-      ...(newEmployee?.data ?? []),
-      ...(setupEmployee?.data ?? []),
-    ];
-
-    const map: Record<string, SetupState> = {};
-
-    combined.forEach(emp => {
-      map[emp.EmpCode] = {
-        EmpCode: emp.EmpCode,
-        Disbursing: emp.Disbursing,
-        WithAtm: emp.WithAtm,
-        Taxable: emp.Taxable,
-      };
-    });
-
-    return map;
-  }, [newEmployee?.data, setupEmployee?.data]);
-
-
-  useEffect(() => {
-    setEditedEmployees(originalEmployees);
-  }, [originalEmployees]);
-
-  // Disburse Code ↑
-
   const { data: employee } = useEmployeesByCycle({
-    cycle: branchCycle,
+    company_id: companyId ?? "",
     page,
     limit: 6,
     search: debouncedSearch,
   });
 
-  // Disburse Code ↓
-
-  const {mutateAsync:saveSetup} = useUpdateEmployeeSetup();
-
-  const handleCycleChanges = (cycle: string) => {
-    if (isPending) return;
-
-    SweetAlert.loadingAlert("Importing data");
-
-    mutate(undefined, {
-      onSuccess: () => {
-        setDateRange(null);
-        setBranchCycle(cycle);
-        setPage(1);
-
-        SweetAlert.successAlert("Import successful");
-
-      
-        setShouldCheckModal(true);
-      },
-    });
-  };
-
-  // Disburse Code ↑
 
 
-  const { isFetching,isSuccess,error  } = useFetchApiAttendance(
-    range
-      ? {
-          startDate: range.startDate,
-          endDate: range.endDate,
-          branchCycle,
-        }
-      : null
-  );
-
-  const showProcessing = isFetching && !!range;
-
-  // Disburse Code ↓
-  useEffect(() => {
-    if (!shouldCheckModal) return;
-    if (isFetchingNew || isFetchingSetup) return;
-
-    const hasEmployees =
-      (newEmployee?.data?.length ?? 0) > 0 ||
-      (setupEmployee?.data?.length ?? 0) > 0;
-
-    if (hasEmployees) {
-      queueMicrotask(() => setOpen(true));
-    }
-
-    queueMicrotask(() => setShouldCheckModal(false));
-  }, [
-    shouldCheckModal,
-    isFetchingNew,
-    isFetchingSetup,
-    newEmployee?.data,
-    setupEmployee?.data,
-  ]);
 
 
-  // Disburse Code ↑
-
-  useEffect(() => {
-    if (!error || !range) return;
-  
-    const axiosError = error as AxiosError<{ message?: string }>;
-  
-    const message =
-      axiosError.response?.data?.message ??
-      "Payroll cannot be recomputed because it is already for approval.";
-  
-    SweetAlert.warningAlert(
-      "There is a pending payroll",
-      message
-    );
-
-    queueMicrotask(() => {
-      setDateRange(null);
-    });
-  
-  }, [error, range]);
-
-  useEffect(() => {
-    if (isSuccess) {
-      queryClient.invalidateQueries({
-        queryKey: ["employees-computed"],
-      });
-    }
-  }, [isSuccess, queryClient]);
   
 
   const steps: Step[] = [
@@ -210,75 +81,15 @@ export default function PreparePayroll() {
     },
   ];
 
-  const goToStep2 = () => {
-    if (!branchCycle) {
-      SweetAlert.warningAlert(
-        "Payroll Cycle Required",
-        "Please select a payroll cycle before proceeding."
-      );
-      return;
-    }
 
-  
-    setCurrentStep(2);
-  };
 
-// Disburse code ↓
-
-  const handleResetChanges = () => {
-    setEditedEmployees(originalEmployees);
-  };
-
-  const handleSaveChanges = async () => {
-    const changedEmployees = Object.values(editedEmployees).filter(emp => {
-      const original = originalEmployees[emp.EmpCode];
-      if (!original) return false;
-
-      return (
-        emp.Disbursing !== original.Disbursing ||
-        emp.WithAtm !== original.WithAtm ||
-        emp.Taxable !== original.Taxable
-      );
-    });
-
-    if (changedEmployees.length === 0) return;
-
-    await saveSetup({
-      employees: changedEmployees.map(emp => ({
-        empCode: emp.EmpCode,
-        Disbursing: emp.Disbursing,
-        WithAtm: emp.WithAtm,
-        Taxable: emp.Taxable,
-      })),
-    });
-
-   
-    SweetAlert.successAlert("Employee Setup Updated Successfully")
-  };
-
-  const isDirty = Object.keys(editedEmployees).some(code => {
-    const edited = editedEmployees[code];
-    const original = originalEmployees[code];
-
-    if (!original) return false;
-
-    return (
-      edited.Disbursing !== original.Disbursing ||
-      edited.WithAtm !== original.WithAtm ||
-      edited.Taxable !== original.Taxable
-    );
-  });
-
-  // Disburse code ↑
 
 
   
 
   return (
     <div className="relative min-h-screen bg-slate-100 px-6 py-8 text-mainGray">
-      {showProcessing && (
-        <ProcessingOverlay message="Fetching HR data and computing payroll…" />
-      )}
+   
 
      
   
@@ -286,41 +97,17 @@ export default function PreparePayroll() {
         <h1 className="text-2xl font-semibold text-slate-800">
           Prepare Payroll
         </h1>
-      
       </div>
   
  
       <div className="rounded-xl bg-white p-5 shadow-sm border border-slate-200">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Payroll Cycle</label>
-              <select
-                onChange={(e)=>handleCycleChanges(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white w-50 px-3 py-2.5
-                           text-sm text-slate-700 shadow-sm
-                           focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-100">
-                <option value="">Select Payroll Cycle</option>
-                <option value="10-25-Cycle">10–25 Cycle</option>
-                <option value="15-30-Cycle">15–30 Cycle</option>
-              </select>
-            </div>
-
-          </div>
-  
-      
-          <div className="text-xs text-slate-500">
-            {range
-              ? `Selected: ${range.startDate} → ${range.endDate}`
-              : "No payroll period selected"}
-          </div>
-        </div>
+       
         <div className="flex justify-center items-center mt-2">
           <div className="w-300">
              <Stepper steps={steps} />
           </div>
         </div>
+
       </div>
 
 
@@ -334,7 +121,7 @@ export default function PreparePayroll() {
             onSearchChange={handleSearchChange}
             page={page}
             onPageChange={setPage}
-            onNext={() => goToStep2()}
+            onNext={() => setCurrentStep(2)}
           />
         </div>
 
@@ -355,177 +142,7 @@ export default function PreparePayroll() {
         </div>
      
 
-   {/* // Disburse Code ↓ */}
-    {open && (
-      <SideModalLayout
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Employee Payroll Setup"
-        onSave={handleSaveChanges}
-        isSaveDisabled={!isDirty}
-        isDirty={isDirty}
-        onReset={handleResetChanges}
-      >
-        <div className=" flex flex-col gap-6">
-                <div className="flex flex-col w-full">
-                  <div className="w-full text-start py-4">
-                    <h6>Recent Employees</h6>
-                  </div>
-                  <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
-                      <thead className="bg-mainDark text-white">
-                      <tr className="text-sm">
-                        <th className="px-4 py-3 text-left">Fullname</th>
-                        <th className="px-4 py-3 text-center">Disbursing</th>
-                        <th className="px-4 py-3 text-center">ATM</th>
-                        <th className="px-4 py-3 text-center">Taxable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {newEmployee?.data?.map((emp) => (
-                        <tr key={emp.EmpCode}>
-                          <td className="px-4 py-3 text-left">
-                            {emp.Firstname} {emp.Lastname}
-                          </td>
-                          <td className="px-4 py-3  text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Disbursing ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Disbursing: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.WithAtm ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    WithAtm: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Taxable ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Taxable: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      {newEmployee?.data?.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="text-center p-4 text-gray-500">
-                            No new employees found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex flex-col w-full">
-                  <div className="w-full text-start py-4">
-                    <h6>Disburse or No ATM Employees</h6>
-                  </div>
-        
-                   <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
-                      <thead className="bg-mainDark text-white">
-                      <tr className="text-sm">
-                        <th className="px-4 py-3 text-left">Fullname</th>
-                        <th className="px-4 py-3 text-center">Disbursing</th>
-                        <th className="px-4 py-3 text-center">ATM</th>
-                        <th className="px-4 py-3 text-center">Taxable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                       {setupEmployee?.data?.map((emp) => (
-                        <tr key={emp.EmpCode}>
-                          <td className="px-4 py-3 text-left">
-                            {emp.Firstname} {emp.Lastname}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Disbursing ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Disbursing: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.WithAtm ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    WithAtm: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Taxable ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Taxable: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      {setupEmployee?.data.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="text-center p-4 text-gray-500">
-                            No matching employees found.
-                          </td>
-                        </tr>
-                      )}
-                  </tbody>
-                  </table>
-        
-                </div>
-              </div>
-      </SideModalLayout>
-    )}
-
-    {/* // Disburse Code ↑ */}
+              
 
 
 

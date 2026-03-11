@@ -30,7 +30,8 @@ export async function saveWtaxOverrideController(req: Request, res: Response) {
 
 export const displayCompletePayrollController = async (req: Request, res: Response) => {
   try{
-    const res1 = await displayCompletePayroll(['PENDING']);
+    const company_id = req.query.company_id as string;
+    const res1 = await displayCompletePayroll(company_id,['PENDING']);
    
     return res.status(200).json({ status: "SUCCESS", data:res1});
   }
@@ -42,7 +43,9 @@ export const displayCompletePayrollController = async (req: Request, res: Respon
 
 export async function savePayrollController(req: Request, res: Response) {
   try {
-    const result = await saveComputedPayroll();
+    const company_id = req.query.company_id as string;
+
+    const result = await saveComputedPayroll(company_id);
     return res.json({ success: true, res: result });
   } catch (err) {
     console.error(err);
@@ -67,9 +70,9 @@ export async function saveComputedFinalPayrollController(req:Request, res:Respon
 
 export const displayForApprovalController = async (req: Request, res: Response) => {
   try{
-  
+    const company_id = req.query.company_id as string;
 
-    const data = await displayCompletePayroll(['FOR_APPROVAL']);
+    const data = await displayCompletePayroll(company_id,['FOR_APPROVAL']);
 
     return res.status(200).json({ status: "SUCCESS",data });
   }

@@ -24,6 +24,13 @@ export const MENU_SECTIONS: MenuSection[] = [
           icon: LayoutDashboard
         },
         {
+          label: "Initialize Payroll",
+          path: "/initialize-payroll",
+          icon: User,
+          permission: "PAYROLL_INITIALIZE"
+        },
+
+        {
           label: "Payroll",
           icon: Calculator,
           children: [
@@ -55,6 +62,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         }
       ]
     },
+   
     {
       title: "Employees",
       items: [
