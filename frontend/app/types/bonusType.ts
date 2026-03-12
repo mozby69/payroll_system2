@@ -121,6 +121,22 @@ export type InvalidEmployees = {
       companies: {
         companyCode: string
       }[]
+      variance: {
+        prevPayroll: number
+        prevPayrollDate: string
+        totalArchive: number
+        totalEmployees: number
+        totalVarianceBasicSalary: number
+        varianceCount: number
+        varianceEmployees: {
+          EmpCode: string
+          basic_salary: number
+          name: string
+          type: string
+          remarks: string
+          date: string
+        }[]
+      }
     }
   }
   

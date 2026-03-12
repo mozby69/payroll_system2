@@ -141,6 +141,17 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
             Configure how bonuses are computed
           </p>
         </div>
+        
+          {/* Bonus Type */}
+          <SelectField
+            label="Bonus Type"
+            name="bonusType"
+            placeholder="Select bonus type"
+            value={form.bonusType ?? ""}
+            error={errors?.bonusType?._errors?.[0]}
+            onChange={handleChange}
+            options={BonusTypeEnum.options}
+          />
 
         {/* Code */}
         <InputField
@@ -162,16 +173,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           onChange={handleChange}
         />
 
-        {/* Bonus Type */}
-        <SelectField
-          label="Bonus Type"
-          name="bonusType"
-          placeholder="Select bonus type"
-          value={form.bonusType ?? ""}
-          error={errors?.bonusType?._errors?.[0]}
-          onChange={handleChange}
-          options={BonusTypeEnum.options}
-        />
+   
 
         {/* Formula */}
         <SelectField

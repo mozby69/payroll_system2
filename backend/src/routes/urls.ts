@@ -20,6 +20,7 @@ import printeRoutes from '../modules/print/print.routes';
 import conversionRouites from '../modules/conversion/conversion.routes';
 
 
+
 const router = Router();
 
 
@@ -29,7 +30,6 @@ router.use('/import',importRoutes);
 router.use('/process', apiRoutes)
 
 router.use("/auth", loginRoutes);
-router.use("/auth", authRoutes); 
 
 router.use("/bonus", bonusRoutes);
 

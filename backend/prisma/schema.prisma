@@ -114,6 +114,8 @@ model Employee {
   BranchCode     Branch?  @relation(fields: [BranchCodeId], references: [branchCode])
   BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
 
+  EndDate       DateTime? @db.Date
+
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()

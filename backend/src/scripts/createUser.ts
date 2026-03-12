@@ -4,17 +4,16 @@ import bcrypt from "bcryptjs";
 import { createUserService } from "../modules/login/login.services.js";
 
 async function main() {
-  const hashedPassword = await bcrypt.hash("12345678", 10);
+  const Password = "12345678";
 
   const user = await createUserService({
       email: "financial@example.com",
       name: "Trial User",
       username: "admin1234",
-      password: hashedPassword,
+      password: Password,
       roleIds: [1]
   });
 
-  console.log("User created:", user);
 }
 
 main()

@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { createUserController, getPermissionController, getRoleController, getUsersController, loginController, updateRolePermissionsController, updateUserController } from "./login.controller";
+import { authenticateToken } from "../auth/auth.middleware";
+import { logout, me } from "../auth/auth.controller";
 
 const router = Router();
 
@@ -17,5 +19,8 @@ router.put(
     "/users/:id",
     updateUserController
   )
+
+  router.get("/me", authenticateToken, me);
+router.post("/logout", authenticateToken, logout);
 
 export default router;
