@@ -182,9 +182,26 @@
     background: white !important;
     box-shadow: none !important;
     border: none !important;
+    width: 100%;
+    overflow: visible !important;
   }
   table {
+    width: 100%;
     border-collapse: collapse;
+  }
+
+  th, td {
+    font-size: 11px;
+    padding: 6px;
+    word-break: break-word;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
   }
 }
 

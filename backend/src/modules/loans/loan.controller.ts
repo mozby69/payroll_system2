@@ -401,3 +401,30 @@ export const searchEmployeeController = async (req: Request, res: Response) => {
   res.json(data);
 };
 
+
+export const getLoanSummaryController = async (req: Request, res: Response) => {
+  try {
+    const { month, period, company,loanType } = req.query;
+
+    if (!month || !period) {
+      return res.status(400).json({
+        message: "month and period are required"
+      });
+    }
+
+    const data = await loanService.getLoanSummary(
+      month as string,
+      period as string,
+      company as string,
+      loanType as string
+    );
+
+    res.json(data);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Server Error"
+    });
+  }
+};

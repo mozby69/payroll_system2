@@ -37,6 +37,7 @@ export async function me(req: Request, res: Response) {
   res.json({
     id: user.id,
     username: user.username,
+    company_id:user.company_id,
     roles,
     permissions
   })

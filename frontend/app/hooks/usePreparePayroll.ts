@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, importAttendanceCount, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, fetchInitializeComputedPayroll, fetchInitializePayroll, importAttendanceCount, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
 import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
@@ -64,32 +64,28 @@ export const useImportAttendanceCount = () => {
 
 export function useEmployeesByCycle(
   params: {
-    cycle: string | null;
+   company_id: string | null;
     page: number;
     limit: number;
     search?: string;
     onlyNew?: boolean;
     onlyMissingSetup?: boolean;
   }
-  // options?: Omit<
-  //   UseQueryOptions<PaginatedResponse<EmployeeRow>>,
-  //   "queryKey" | "queryFn"
-  // >
+
 ) {
   return useQuery<PaginatedResponse<EmployeeRow>>({
     queryKey: ["employees", params],
     queryFn: () =>
       fetchEmployeesByCycle({
-        cycle: params.cycle!,
+       company_id: params.company_id!,
         page: params.page,
         limit: params.limit,
         search: params.search,
         onlyNew: params.onlyNew,
         onlyMissingSetup: params.onlyMissingSetup
       }),
-    enabled: !!params.cycle,
-    // enabled: options?.enabled ?? !!params.cycle,
-    // ...options,
+    enabled: !!params.company_id,
+    
   });
 }
 
@@ -127,11 +123,11 @@ export function useEmployeeSearch(keyword: string) {
 
 
 
-export function useComputedPayroll(params: { cycle: string; page: number; limit: number; search?: string; range: DateRange | null }) {
+export function useComputedPayroll(params: { company_id: string; page: number; limit: number; search?: string; range: DateRange | null }) {
   return useQuery<PaginatedResponse<ComputedProps>>({
     queryKey: [
       "employees-computed",
-      params.cycle ?? "",
+      params.company_id ?? "",
       params.page,
       params.limit,
       params.search ?? "",
@@ -140,5 +136,58 @@ export function useComputedPayroll(params: { cycle: string; page: number; limit:
     ],
     queryFn: () =>
       fetchComputedPayroll(params),
+
+    enabled: !!params.company_id, 
+  });
+}
+
+
+
+
+
+
+
+export function usefetchInitializePayroll(
+  params: {
+    cycle: string | null;
+    page: number;
+    limit: number;
+    search?: string;
+    onlyNew?: boolean;
+    onlyMissingSetup?: boolean;
+  }) { return useQuery<PaginatedResponse<EmployeeRow>>({
+    queryKey: ["employees-initialize-computed", params],
+    queryFn: () =>
+      fetchInitializePayroll({
+        cycle: params.cycle!,
+        page: params.page,
+        limit: params.limit,
+        search: params.search,
+        onlyNew: params.onlyNew,
+        onlyMissingSetup: params.onlyMissingSetup
+      }),
+    enabled: !!params.cycle,
+  });
+}
+
+
+
+
+
+export function useInitializeComputedPayroll(params: { cycle: string; page: number; limit: number; search?: string; range: DateRange | null }) {
+  return useQuery<PaginatedResponse<ComputedProps>>({
+    queryKey: [
+      "employees-computed-initialize",
+      params.cycle ?? "",
+      params.page,
+      params.limit,
+      params.search ?? "",
+      params.range?.startDate ?? "",
+      params.range?.endDate ?? "",
+    ],
+    queryFn: () =>
+      fetchInitializeComputedPayroll(params),
+
+    enabled: !!params.cycle, 
   });
 }

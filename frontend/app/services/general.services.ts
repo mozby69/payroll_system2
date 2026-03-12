@@ -10,3 +10,16 @@ export async function getCompanyDetailsByCodeServices(CompanyCode: string) : Pro
         const res = await api.get(`/general/companies-by-code/${CompanyCode}`)
         return res.data
 }
+
+export const fetchCompanies = async () => {
+  const { data } = await api.get("/general/companies");
+  return data.data;
+};
+
+
+export const fetchLoanTypes = async (): Promise<string[]> => {
+
+  const { data } = await api.get("/general/loan-types");
+
+  return data.data;
+};

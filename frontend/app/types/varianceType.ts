@@ -32,28 +32,49 @@
 
 
 
-export interface Variance {
-    basic: number;
-    sssEmployee: number;
-    sssEmployer: number;
-    phil: number;
-    pagibigEmployee: number;
-    pagibigEmployer: number;
-  }
-
   
 export interface VarianceRow {
-    PayCycle: string;
-    basic: number;
-    sssEmployee: number;
-    sssEmployer: number;
-    phil: number;
+  rowKey?: string;
+  id?: number;
+  cycle_category?: string;
+  PayCycle: string;
+  payroll_period?: string;
+
+  total_basic_salary: string | number;
+  Total_SSSContributionEmployee: string | number;
+  Total_SSSContributionEmployer: string | number;
+
+  Total_PhilhealthContributionEmployee: string | number;
+  Total_PhilhealthContributionEmployer: string | number;
+
+  Total_PagibigContributionEmployee?: string | number;
+  Total_PagibigContributionEmployer?: string | number;
+
+  total_wtax?: string | number;
 }
 
+export interface CompanyVarianceRow {
+  PayCycle: string;
+
+  total_basic_salary?: number;
+  Total_SSSContributionEmployee?: number;
+  Total_SSSContributionEmployer?: number;
+
+  Total_PhilhealthContributionEmployee?: number;
+  Total_PhilhealthContributionEmployer?: number;
+
+  Total_PagibigContributionEmployee?: number;
+  Total_PagibigContributionEmployer?: number;
+
+  total_wtax?: number;
+}
+
+export interface CompanyVariance {
+  company: string | null;
+  rows: CompanyVarianceRow[];
+}
 
 export interface VarianceResponse {
-  success: boolean;
-  current_period: {
-    rows: VarianceRow[];
-  };
+  total_variance: VarianceRow[];
+  company_variance: CompanyVariance[];
 }

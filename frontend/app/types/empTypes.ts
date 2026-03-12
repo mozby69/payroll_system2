@@ -141,11 +141,6 @@ export type PayrollFormState = {
 };
 
 
-export type Company = {
-  CompanyCode: string;
-  CompanyName: string;
-};
-
 export type EmployeeIncreaseItem = {
   EmpCode: string;
   Firstname: string;

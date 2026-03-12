@@ -56,9 +56,6 @@ export const computeGrossPay = (overtime:number | null,basicPay:number | null,la
 export const computePhilRateEmployee = (basicPay: number | null,philPercentage: number | null, isBod:boolean, bodEmployeeShare?: number | null, isNewProbi?: boolean,payCode?: string | null): number => {
   if (basicPay == null || philPercentage == null) return 0;
 
-  if (isBod) {
-    return Number(bodEmployeeShare ?? 0);
-  }
 
   if (basicPay == null || philPercentage == null) return 0;
 
@@ -71,8 +68,17 @@ export const computePhilRateEmployee = (basicPay: number | null,philPercentage: 
 
       if (isProbi && startDay !== 1 && startDay !== 16) return 0;
       if (!isProbi && startDay !== 1) return 0;
+
+      
+      if (isBod && startDay !== 1) return 0;
     }
   }
+
+  if (isBod) {
+    return Number(bodEmployeeShare ?? 0);
+  }
+
+
 
   const result = basicPay * philPercentage;
   return Number(result.toFixed(2));
@@ -81,12 +87,6 @@ export const computePhilRateEmployee = (basicPay: number | null,philPercentage: 
 
 export const computePhilRateEmployer = (basicPay: number | null,philPercentage: number | null, isBod:boolean,bodEmployeeShare?: number | null, isNewProbi?: boolean,payCode?: string | null): number => {
   if (basicPay == null || philPercentage == null || bodEmployeeShare == null) return 0;
-
-  if (isBod) {
-      const res = basicPay * philPercentage;
-      const final = res - bodEmployeeShare;
-      return Number(final.toFixed(2));
-    }
 
   const isProbi = isNewProbi ?? false;
 
@@ -97,8 +97,20 @@ export const computePhilRateEmployer = (basicPay: number | null,philPercentage: 
 
       if (isProbi && startDay !== 1 && startDay !== 16) return 0;
       if (!isProbi && startDay !== 1) return 0;
+
+
+      if (isBod && startDay !== 1) return 0;
     }
   }
+
+  
+  if (isBod) {
+    const res = basicPay * philPercentage;
+    const final = res - bodEmployeeShare;
+    return Number(final.toFixed(2));
+  }
+
+  
   const result = (basicPay / 2) * philPercentage;
   return Number(result.toFixed(2));
 };

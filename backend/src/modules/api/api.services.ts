@@ -10,31 +10,30 @@ import { appendMissingBodEmployees } from "../general/general.services";
 import { totalmem } from "os";
 
 export async function fetchHrAttendance(params: ApiParams){
-    const {startDate, endDate, branchCycle} = params;
+  const {startDate, endDate, branchCycle} = params;
 
 
-    const totatPayroll = await prisma.totalPayroll.findFirst({
-      where: {
-        cycle_category: branchCycle
+  const totatPayroll = await prisma.totalPayroll.findFirst({
+    where: {
+      cycle_category: branchCycle
+    },
+    orderBy: {
+      id: "desc"
+    }
+  })
+ const  prevPeriod = totatPayroll?.payroll_period ?? "";
+
+  const response = await hrApi.get("/attendance/summary/", {
+      params: {
+          startDate,
+          endDate,
+          branchCycle,
+          prevPeriod
       },
-      orderBy: {
-        id: "desc"
-      }
-    })
-   const  prevPeriod = totatPayroll?.payroll_period ?? "";
+  });
 
-    const response = await hrApi.get("/attendance/summary/", {
-        params: {
-            startDate,
-            endDate,
-            branchCycle,
-            prevPeriod
-        },
-    });
-
-    return response.data;
+  return response.data;
 }
-
 export function transformAttendanceData(
     hrData: any,
     params: ApiParams
@@ -67,9 +66,7 @@ export function transformAttendanceData(
 
 
 
-export async function saveEmployeeAttendance(
-    employees: EmployeeSummaryTypes[]
-  ) {
+export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],branchCycle:string) {
     if (!employees.length) return;
   
 
@@ -89,6 +86,7 @@ export async function saveEmployeeAttendance(
 
       await tx.employeeSummary.deleteMany({
         where: {
+          CycleCategory:branchCycle,
           status: "PENDING",
         },
       });

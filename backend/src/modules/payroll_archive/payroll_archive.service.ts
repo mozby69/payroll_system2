@@ -12,18 +12,18 @@ import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/g
 export async function employeeProbationary(){
 
   try{
-    const computed = await displayCompletePayroll(["PENDING"]);
-    if (!computed || computed.length === 0) return 0;
-    const payCycle = computed[0].PayCode;
+    // const computed = await displayCompletePayroll(["PENDING"]);
+    // if (!computed || computed.length === 0) return 0;
+    // const payCycle = computed[0].PayCode;
 
-    const data1 = await prisma.employee.findMany({
-      where:{
-        EmploymentStatus:"Probationary",
-        EmployeeStatus:"Active"
-      }
-    })
+    // const data1 = await prisma.employee.findMany({
+    //   where:{
+    //     EmploymentStatus:"Probationary",
+    //     EmployeeStatus:"Active"
+    //   }
+    // })
 
-    return {data1,payCycle};
+    // return {data1,payCycle};
     
   }
 
@@ -35,7 +35,24 @@ export async function employeeProbationary(){
 }
 
 
-export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL")[]) {
+
+export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId: string; PayrollPeriod: string; computedWtax: number; editedValue: number}) {
+  const {PayCode,EmpCodeId, PayrollPeriod,computedWtax, editedValue} = data;
+
+  await prisma.payrollWtaxOverride.create({
+    data: {
+      PayCode,
+      EmpCodeId,
+      PayrollPeriod,
+      computed_value: computedWtax ?? 0,
+      edited_value: editedValue
+    }
+  });
+}
+
+
+
+export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER")[] ,company_id?:string) {
   
     try{
       const sssTable = await getSSSContributions();
@@ -43,29 +60,48 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
       const bodPhil = await getBodPhilhealth();
       const tax_list = await getTaxTable();
       
-      const employeeList = await prisma.employeeSummary.findMany({
-        where:{
-          status: {
-            in: statuses,
+
+      const baseFilter = {
+        EmpCode: {
+          BranchCode: {
+            company_id: company_id,
           },
-          OR: [
+        },
+      };
+
+
+
+
+      const employeeList = await prisma.employeeSummary.findMany({
+        where: {
+          AND: [
+            baseFilter,
             {
-              EmpCode: {
-                EmployeeStatus: {
-                  notIn: ["Resigned", "Inactive", "Terminate"],
-                },
+              status: {
+                in: statuses,
               },
             },
             {
-              EmpCode: {
-                bod_member: {
-                  in: ["bod1", "bod2"],
+              OR: [
+                {
+                  EmpCode: {
+                    EmployeeStatus: {
+                      notIn: ["Resigned", "Inactive", "Terminate"],
+                    },
+                  },
                 },
-              },
+                {
+                  EmpCode: {
+                    bod_member: {
+                      in: ["bod1", "bod2"],
+                    },
+                  },
+                },
+              ],
             },
           ],
-
         },
+
         select:{
           PayCode:true,
           CycleCategory:true,
@@ -109,8 +145,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
             },
             
           },
-          
-          
         },
         orderBy:{
           EmpCode:{
@@ -119,7 +153,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         }
       });
 
-
+      if (!employeeList || employeeList.length === 0) {
+        return [];
+      }
+      
 
 // loans fetch and query here ↓
 
@@ -193,6 +230,30 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 // loans fetch and query here ↑
 
 
+
+
+      //wtax override 
+      const overrides = await prisma.payrollWtaxOverride.findMany({
+        where: {
+          OR: employeeList.map((e) => ({
+            PayCode: e.PayCode,
+            EmpCodeId: e.EmpCodeId,
+            PayrollPeriod: e.PayrollPeriod
+          }))
+        },
+        orderBy: { created_at: "desc" }
+      });
+
+      const overrideMap = new Map<string, number>();
+
+      for (const o of overrides) {
+        const key = `${o.PayCode}_${o.EmpCodeId}_${o.PayrollPeriod}`;
+        if (!overrideMap.has(key)) {
+          overrideMap.set(key, Number(o.edited_value));
+        }
+      }
+      //wtax override
+
       const normalized = employeeList.map((emp) => {
         
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
@@ -256,9 +317,16 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           nightShift: emp.NightShiftAtt,
           nightShiftOt: emp.NightShiftOtAtt,
         });
-        const TaxList = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+        const computedWtax  = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+
+        const key = `${emp.PayCode}_${emp.EmpCodeId}_${emp.PayrollPeriod}`;
+        const overrideValue = overrideMap.get(key);
+    
+        const finalWtax = overrideValue ?? computedWtax;
+
+
         const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,undertimeCount,absent);
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + TaxList);
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
       
@@ -285,8 +353,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           philhealth_contrib_employer:philhealthRateEmployer,
           pagibig_contrib_employee:pagibigEmployeeShare,
           pagibig_contrib_employer:pagibigEmployerShare,
-          net_pay:netPay.toFixed(2),
-          wtax:TaxList,
+          net_pay:netPay,
+          wtax: finalWtax,          
+          computedWtax: computedWtax,
           company_id:companyId,
       
         };
@@ -322,16 +391,25 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
 
 
-  export async function saveComputedPayroll() {
+  export async function saveComputedPayroll(company_id:string) {
    
     const result = await prisma.employeeSummary.updateMany({
-      where: { status: "PENDING" },
-      data: { status: "FOR_APPROVAL" },
+      where: {
+         status: "PENDING",
+         EmpCode:{
+          BranchCode:{
+            company_id:company_id,
+          }
+         }        
+        },
+      data: { status: "FOR_CHECKER" },
     });
   
     io.emit("payroll:changed");
     return result;
   }
+
+
   
 
 
@@ -342,7 +420,21 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     
   
     return await prisma.$transaction(async (tx) => {
-      const computed = await displayCompletePayroll(["FOR_APPROVAL"]);
+
+
+      const pending = await tx.employeeSummary.findFirst({
+        where: {
+          status: {
+            in: ["PENDING", "FOR_CHECKER"],
+          },
+        },
+      });
+      
+      if (pending) {
+        throw new Error("CANNOT_SAVE_FINAL_PAYROLL");
+      }
+    
+      const computed = await displayCompletePayroll(["FOR_APPROVER"]);
 
   
     if (!computed || computed.length === 0) return 0;
@@ -436,6 +528,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
         acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
         acc.philEmployee += Number(emp.philhealth_contrib_employee ?? 0);
+        acc.philEmployer += Number(emp.philhealth_contrib_employer ?? 0);
         acc.wtax += Number(emp.wtax ?? 0);
         acc.basic += Number(emp.semi_monthly ?? 0);
         return acc;
@@ -452,6 +545,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
         pagibigEmployee: 0,
         pagibigEmployer: 0,
         philEmployee: 0,
+        philEmployer:0,
         wtax: 0,
         basic: 0,
       }
@@ -476,7 +570,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Total_PagibigContributionEmployee: totals.pagibigEmployee,
           Total_PagibigContributionEmployer: totals.pagibigEmployer,
           Total_PhilhealthContributionEmployee: totals.philEmployee,
-          Total_PhilhealthContributionEmployer: totals.philEmployee, // if same logic
+          Total_PhilhealthContributionEmployer: totals.philEmployer,
           total_wtax: totals.wtax,
           total_basic_salary: totals.basic,
           Total_Undertime:totals.undertime,
@@ -593,7 +687,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
           Pagibig_employer_share: emp.pagibig_contrib_employer,
       
           philhealth_employee_share: emp.philhealth_contrib_employee,
-          philhealth_employer_share: emp.philhealth_contrib_employee,
+          philhealth_employer_share: emp.philhealth_contrib_employer,
           
       
           // Loan Code ↓
@@ -710,7 +804,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
 
   
       await tx.employeeSummary.updateMany({
-        where: { status: "FOR_APPROVAL" },
+        where: { status: "FOR_APPROVER" },
         data: { status: "DONE" },
       });
 
@@ -735,7 +829,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
   export async function reCheckPayroll(){
    
     const data = await prisma.employeeSummary.updateMany({
-      where: { status: "FOR_APPROVAL" },
+      where: { status: "FOR_CHECKER" },
       data: { status: "PENDING" },
     });
 
@@ -744,6 +838,28 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_APPROVAL
     return data;
 }
   
+
+
+export async function SaveToApproverPayroll(company_id:string){
+   
+  const data = await prisma.employeeSummary.updateMany({
+    where: {
+      status: "FOR_CHECKER",
+      EmpCode:{
+       BranchCode:{
+         company_id:company_id,
+       }
+      }        
+     },
+    data: { status: "FOR_APPROVER" },
+  });
+
+  io.emit("payroll:changed");
+
+  return data;
+}
+
+
 
 
   

@@ -68,7 +68,8 @@ export type Column<T> = {
   export type PaginatedResponse<T> = {
     data: T[];
     meta: {
-      cycle: string;
+      cycle?:string;
+      company_id:string;
       total: number;
       page: number;
       limit: number;
@@ -171,6 +172,8 @@ export interface PayrollEmployee {
   philhealth_contrib_employer:number;
   net_pay:number;
   wtax:number;
+  computedWtax:number;
+
 
   // Loan Code ↓
   rfc_loan:number;

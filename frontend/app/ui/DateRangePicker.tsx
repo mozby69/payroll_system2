@@ -23,6 +23,7 @@ interface DateRangePickerProps {
   disabledRanges?: { from: Date; to: Date }[];
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export default function DateRangePicker({
@@ -31,6 +32,7 @@ export default function DateRangePicker({
   placeholder = "Select date range",
   className = "",
   disabledRanges = [],
+  disabled = false,
 }: DateRangePickerProps) {
   const [range, setRange] = useState<Date[]>(value);
   const [open, setOpen] = useState(false);
@@ -61,16 +63,23 @@ export default function DateRangePicker({
       {/* Input */}
       <input
         readOnly
+        disabled={disabled}
         value={
           range.length === 2
             ? `${formatPHDate(range[0])} to ${formatPHDate(range[1])}`
             : ""
         }
         //onClick={() => setOpen(true)}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (!disabled) {
+            setOpen((prev) => !prev);
+          }
+        }}
 
         placeholder={placeholder}
-        className="border border-slate-300 px-3 py-2.5 rounded w-full cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className={`border border-slate-300 px-3 py-2.5 rounded w-full 
+          ${disabled ? "bg-gray-100 cursor-not-allowed" : "cursor-pointer bg-white"}
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
       />
 
       {/* Calendar */}

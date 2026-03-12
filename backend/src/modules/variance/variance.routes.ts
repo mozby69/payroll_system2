@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fetchVarianceController } from "./variance.controller";
+import { fetchEmployeeVarianceController, fetchVarianceController } from "./variance.controller";
 
 
 
@@ -7,7 +7,7 @@ const router = Router();
 
 
 router.get("/fetch-variance", fetchVarianceController);
-
+router.get("/fetch-employee-variance",fetchEmployeeVarianceController);
 
 
 export default router;

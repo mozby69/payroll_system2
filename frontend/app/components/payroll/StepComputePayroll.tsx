@@ -12,6 +12,7 @@ import { Pagination } from "../Pagination";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
 import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
+import { useAuth } from "../UserContext";
 
 
 interface Props {
@@ -35,12 +36,13 @@ interface Props {
       //const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
       const queryClient = useQueryClient();
       const { data: disabledRanges = [] } = useDisabledPayrollDates(cycle);
-
+      const { hasPermission,user } = useAuth()
+      const companyId = user?.company_id;
      
       const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
 
       const { data: employee_payroll } = useComputedPayroll({
-          cycle,
+          company_id: companyId ?? "",
           page,
           limit: 6,
           search: debouncedSearch,
@@ -49,19 +51,22 @@ interface Props {
 
       const tableData: ComputedProps[] = employee_payroll?.data ?? [];
 
+      const payCode = employee_payroll?.data?.[0]?.PayCode ?? "-";
+
       const columns: Column<ComputedProps>[] = [
         {
           header: "Employee",
           render: (row) =>
             `${row.EmpCode.Firstname}, ${row.EmpCode.Lastname}`,
         },
-        {
-          header:"PayCode",
-          accessor: (row) => row.PayCode,
-        },
+      
         {
           header:"EMPCODE",
           accessor: (row) => row.EmpCodeId,
+        },
+        {
+          header:"BRANCH",
+          accessor: (row) => row.EmpCode.BranchCode.branchCode,
         },
         {
           header:"LATE",
@@ -111,40 +116,23 @@ interface Props {
           </div>
 
      
-        <div className="flex justify-between gap-x-8">
+        <div className="flex justify-between gap-x-4">
 
-            <DateRangePicker
-                  value={
-                    range
-                      ? [new Date(range.startDate), new Date(range.endDate)]
-                      : undefined
-                  }
-                  disabledRanges={flatpickrDisabled}
-                  onChange={(newRange) => {
-                    SweetAlert.confirmationAlert(
-                      "Confirm Payroll Period",
-                      `${newRange.startDate} → ${newRange.endDate}`,
-                      () => {
-                        setRange(newRange);
-                        setPage(1);
-                      
-                      }
-                    );
-                  }}
-                />
-
-                    
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-              />   
+          <div>
+            <h2 className="font-semibold">Payroll Period: <span className="font-medium">{payCode}</span></h2>
+          </div>
+                
+          <input
+            type="text"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+          />   
 
 
 
-              </div>
+          </div>
 
 
                     
@@ -169,6 +157,10 @@ interface Props {
                 <button onClick={async () => {
                     await queryClient.refetchQueries({
                       queryKey: ["payroll-display"],
+                      exact: true,
+                    });
+                    await queryClient.refetchQueries({
+                      queryKey: ["variance-display"],
                       exact: true,
                     });
                     onNext();

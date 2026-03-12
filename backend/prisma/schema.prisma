@@ -26,6 +26,10 @@ model User{
   rejectedBonuses     BonusSummary[] @relation("RejectedBonuses")
   auditLogs AuditLog[]
 
+
+  company_id String? @db.VarChar(20) @map("company_id")
+  company company_details? @relation(fields: [company_id], references: [CompanyCode])
+
   @@map("user")
 }
 
@@ -92,15 +96,6 @@ model Employee {
   Lastname       String?   @db.VarChar(20) @map("Lastname")
   Suffix         String?  @db.VarChar(5) @map("Suffix")
   DateofBirth      DateTime? @db.Date @map("DateofBirth")
-  // BirthPlace     String?  @db.VarChar(50) @map("BirthPlace")
-  // Age            String?  @db.VarChar(5) @map("Age")
-  // BloodType      String?   @db.VarChar(3) @map("BloodType")
-  // Gender         String?   @db.VarChar(8) @map("Gender")
-  // CivilStatus    String?   @db.VarChar(10) @map("CivilStatus")
-  // Address        String?   @db.VarChar(200) @map("Address")
-  // HomeAddress    String?  @db.VarChar(200) @map("HomeAddress")
-  // PhoneNo        String?  @db.VarChar(12) @map("PhoneNo")
-  // Email          String?  @db.VarChar(50) @map("Email")
   Position       String?   @db.VarChar(50) @map("Position")
   Department     String?  @db.VarChar(50) @map("Department")
   EmployementDate DateTime? @db.Date @map("EmployementDate")
@@ -129,7 +124,7 @@ model Employee {
   bod_philhealth BodPhilhealtContrib[] @relation()
   archive_allowance archive_allowance[] @relation()
 
-   specialLeaves SpecialLeaves[]
+  specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount[] @relation()
 
   @@map("employee")
@@ -171,6 +166,9 @@ model EmployeeSummary{
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  
+  payroll_wtax_override PayrollWtaxOverride[] @relation()
 
   @@id([PayCode, EmpCodeId,PayrollPeriod])
   @@map("employee_summary")
@@ -364,6 +362,7 @@ model company_details{
     companyRules BonusRuleCompany[] @relation
 
     total_payroll_by_company totalPayrollByCompany[]
+    user User[] @relation()
 
     @@map("companydetails")
 }
@@ -770,4 +769,22 @@ model AttendanceCount {
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   @@map("myapp_attendancecount")
+}
+
+
+model PayrollWtaxOverride {
+  id              Int      @id @default(autoincrement())
+
+  PayCode         String   @db.VarChar(20)
+  EmpCodeId       String   @db.VarChar(20)
+  PayrollPeriod   String   @db.VarChar(50)
+
+  computed_value  Decimal  @db.Decimal(12,2)
+  edited_value    Decimal  @db.Decimal(12,2)
+
+  created_at      DateTime @default(now())
+
+  employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId, PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
+
+  @@index([PayCode, EmpCodeId, PayrollPeriod])
 }

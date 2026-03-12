@@ -30,7 +30,11 @@ export interface EmployeeSummary {
     message: string;
   }
 
+export interface ErrorResponse {
+    message: string;
+  }
 
+  
   export interface CompanyDetailsType {
     CompanyCode: string;
     CompanyCycle: string;
@@ -67,3 +71,9 @@ export interface EmployeeSummary {
 
 
   
+export type FecthCompany = {
+  CompanyCode: string;
+  CompanyName: string;
+};
+
+export type LoanTypeResponse = string[];

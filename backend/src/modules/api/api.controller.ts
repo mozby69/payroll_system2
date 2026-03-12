@@ -26,7 +26,7 @@ export const getAttendance = async (req: Request, res: Response) => {
     const employees = transformAttendanceData(data, params);
     
     // IMPORTANT: await the save operation
-    await saveEmployeeAttendance(employees);
+    await saveEmployeeAttendance(employees,params.branchCycle);
     
     // Return success response with count
     res.status(200).json({

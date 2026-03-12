@@ -1,5 +1,6 @@
 import { Router } from "express";
-import {  displayCompletePayrollController, savePayrollController,saveComputedFinalPayrollController,displayForApprovalController,reCheckPayrollController, getTotalPayrollController, getEmployeeArchivedController, ViewEmployeeBankAccountsController, GenerateBankFileController, printEmployeeArchivedController } from "./payroll_archive.controller";
+import {  displayCompletePayrollController, savePayrollController,saveComputedFinalPayrollController,displayForApprovalController,reCheckPayrollController, getTotalPayrollController, getEmployeeArchivedController, ViewEmployeeBankAccountsController, GenerateBankFileController, printEmployeeArchivedController, saveWtaxOverrideController, SaveToApproverPayrollController } from "./payroll_archive.controller";
+import { authenticateToken } from "../../middleware/authMiddleware";
 
 const router = Router();
 
@@ -14,6 +15,8 @@ router.get("/employee-archived", getEmployeeArchivedController)
 router.get("/employee-bank-list",ViewEmployeeBankAccountsController);
 router.post("/generate-bank-file",GenerateBankFileController);
 router.get("/employee-archived/print", printEmployeeArchivedController);
+router.post("/wtax-override",saveWtaxOverrideController);
+router.post('/save-to-approver',SaveToApproverPayrollController);
 
 
 export default router;
