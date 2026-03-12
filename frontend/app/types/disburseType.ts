@@ -27,6 +27,7 @@ export type MainDisburseCount = {
 export type MainDisburseItem = {
   mainDisburseID: number;
   typeDisburse: string;
+  payrollCycle: string;
   payrollPeriod: string;
   createdAt: string;
   status: DisburseStatus;
@@ -58,4 +59,27 @@ export type DisburseDetailsItem = {
       Department: string | null;
     };
   };
+};
+
+
+export type PayrollCycle = "10-25-Cycle" | "15-30-Cycle";
+
+export interface DisburseCompany {
+  CompanyCode: number;
+  CompanyName: string;
+  isDisburse: boolean;
+}
+
+export interface GetDisburseCompaniesParams {
+  cycle: PayrollCycle;
+  isDisburse?: boolean;
+}
+
+export type CompanySetupItem = {
+  CompanyCode: string;
+  isDisburse: boolean;
+};
+
+export type UpdateCompanySetupPayload = {
+  companies: CompanySetupItem[];
 };

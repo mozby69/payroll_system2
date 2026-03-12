@@ -15,9 +15,18 @@ import { useDebounce } from "../../utils/useDebounce";
 import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import SideModalLayout from "../../components/SideModal";
-import { useUpdateEmployeeSetup } from "@/app/hooks/disburse";
+import { useDisburseCompanies, useUpdateCompanySetup, useUpdateEmployeeSetup } from "@/app/hooks/disburse";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PayrollCycle } from "@/app/types/disburseType";
 
 type PayrollStep = 1 | 2 | 3;
+
+type SideModalTabKey = "employees" | "branches";
+
+const SIDEMODALTABS : {key:SideModalTabKey; label:string}[] = [
+    { key: "employees", label: "Employees" },
+    { key: "branches", label: "Branches" },
+];
 
 type SetupState = {
     EmpCode: string;
@@ -25,6 +34,11 @@ type SetupState = {
     WithAtm: boolean;
     Taxable: boolean;
 };
+
+type Setupcompanies ={
+    CompanyCode:number;
+    isDisburse: boolean;
+}
 
 export default function PreparePayroll() {
   const [page, setPage] = useState(1);
@@ -37,6 +51,9 @@ export default function PreparePayroll() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
@@ -46,7 +63,7 @@ export default function PreparePayroll() {
 
   // Disburse Code ↓
   const [shouldCheckModal, setShouldCheckModal] = useState(false);
-  const [editedEmployees, setEditedEmployees] = useState<Record<string,SetupState>>({});
+
 
   const { data: newEmployee, isFetching: isFetchingNew } = useEmployeesByCycle({
     cycle: branchCycle,
@@ -64,6 +81,18 @@ export default function PreparePayroll() {
     onlyMissingSetup: true,
   });
 
+  
+  const {data: disburseCompanies = [],isFetching: isFetchingDisburseCompany,} = useDisburseCompanies({
+    cycle: branchCycle as PayrollCycle,
+    isDisburse: true,
+  });
+
+  const {data: notDisburseCompanies = [],isFetching: isFetchingNoDisburseCompany,} = useDisburseCompanies({
+    cycle: branchCycle as PayrollCycle,
+    isDisburse: false,
+  });
+      
+
   const originalEmployees = useMemo<Record<string, SetupState>>(() => {
     const combined = [
       ...(newEmployee?.data ?? []),
@@ -72,7 +101,7 @@ export default function PreparePayroll() {
 
     const map: Record<string, SetupState> = {};
 
-    combined.forEach(emp => {
+    combined.forEach((emp) => {
       map[emp.EmpCode] = {
         EmpCode: emp.EmpCode,
         Disbursing: emp.Disbursing,
@@ -84,10 +113,35 @@ export default function PreparePayroll() {
     return map;
   }, [newEmployee?.data, setupEmployee?.data]);
 
+  const originalCompanies = useMemo<Record<number, Setupcompanies>>(() => {
+    const combined = [...disburseCompanies, ...notDisburseCompanies];
 
-  useEffect(() => {
-    setEditedEmployees(originalEmployees);
-  }, [originalEmployees]);
+    const map: Record<number, Setupcompanies> = {};
+
+    combined.forEach((c) => {
+      map[c.CompanyCode] = {
+        CompanyCode: c.CompanyCode,
+        isDisburse: c.isDisburse,
+      };
+    });
+
+    return map;
+  }, [disburseCompanies, notDisburseCompanies]);
+
+  const [editedEmployees, setEditedEmployees] = useState<Record<string, SetupState>>({});
+  const [baselineEmployees, setBaselineEmployees] = useState<Record<string, SetupState>>({});
+
+  const [editedCompanies, setEditCompanies] = useState<Record<number, Setupcompanies>>({});
+  const [baselineCompanies, setBaselineCompanies] = useState<Record<number, Setupcompanies>>({});
+  
+
+
+  const initialTab =
+  (searchParams.get("tab") as SideModalTabKey) ?? "employees";
+
+
+  const [active, setActive] = useState<SideModalTabKey>(initialTab);
+
 
   // Disburse Code ↑
 
@@ -101,6 +155,8 @@ export default function PreparePayroll() {
   // Disburse Code ↓
 
   const {mutateAsync:saveSetup} = useUpdateEmployeeSetup();
+
+  const { mutateAsync: saveCompanySetup } = useUpdateCompanySetup();
 
   const handleCycleChanges = (cycle: string) => {
     if (isPending) return;
@@ -138,26 +194,49 @@ export default function PreparePayroll() {
 
   // Disburse Code ↓
   useEffect(() => {
-    if (!shouldCheckModal) return;
-    if (isFetchingNew || isFetchingSetup) return;
+  if (!shouldCheckModal) return;
+  if (
+    isFetchingNew ||
+    isFetchingSetup ||
+    isFetchingDisburseCompany ||
+    isFetchingNoDisburseCompany
+  )
+    return;
 
-    const hasEmployees =
-      (newEmployee?.data?.length ?? 0) > 0 ||
-      (setupEmployee?.data?.length ?? 0) > 0;
+  const hasEmployees =
+    (newEmployee?.data?.length ?? 0) > 0 ||
+    (setupEmployee?.data?.length ?? 0) > 0;
 
-    if (hasEmployees) {
-      queueMicrotask(() => setOpen(true));
-    }
+  const hasCompanies =
+    (disburseCompanies?.length ?? 0) > 0 ||
+    (notDisburseCompanies?.length ?? 0) > 0;
 
-    queueMicrotask(() => setShouldCheckModal(false));
-  }, [
-    shouldCheckModal,
-    isFetchingNew,
-    isFetchingSetup,
-    newEmployee?.data,
-    setupEmployee?.data,
-  ]);
+  if (hasEmployees || hasCompanies) {
+    queueMicrotask(() => {
+      setEditedEmployees(originalEmployees);
+      setBaselineEmployees(originalEmployees);
 
+      setEditCompanies(originalCompanies);
+      setBaselineCompanies(originalCompanies);
+
+      setOpen(true);
+    });
+  }
+
+  queueMicrotask(() => setShouldCheckModal(false));
+}, [
+  shouldCheckModal,
+  isFetchingNew,
+  isFetchingSetup,
+  isFetchingDisburseCompany,
+  isFetchingNoDisburseCompany,
+  newEmployee?.data,
+  setupEmployee?.data,
+  disburseCompanies,
+  notDisburseCompanies,
+  originalEmployees,
+  originalCompanies,
+]);
 
   // Disburse Code ↑
 
@@ -226,12 +305,13 @@ export default function PreparePayroll() {
 // Disburse code ↓
 
   const handleResetChanges = () => {
-    setEditedEmployees(originalEmployees);
+    setEditedEmployees(baselineEmployees);
+    setEditCompanies(baselineCompanies);
   };
 
   const handleSaveChanges = async () => {
     const changedEmployees = Object.values(editedEmployees).filter(emp => {
-      const original = originalEmployees[emp.EmpCode];
+      const original = baselineEmployees[emp.EmpCode];
       if (!original) return false;
 
       return (
@@ -241,33 +321,113 @@ export default function PreparePayroll() {
       );
     });
 
-    if (changedEmployees.length === 0) return;
+    const changedCompanies = Object.values(editedCompanies).filter(company => {
+      const original = baselineCompanies[company.CompanyCode];
+      if (!original) return false;
 
-    await saveSetup({
-      employees: changedEmployees.map(emp => ({
-        empCode: emp.EmpCode,
-        Disbursing: emp.Disbursing,
-        WithAtm: emp.WithAtm,
-        Taxable: emp.Taxable,
-      })),
+      return company.isDisburse !== original.isDisburse;
     });
 
-   
-    SweetAlert.successAlert("Employee Setup Updated Successfully")
+    if (changedEmployees.length === 0 && changedCompanies.length === 0) return;
+
+    if (changedEmployees.length > 0) {
+      await saveSetup({
+        employees: changedEmployees.map(emp => ({
+          empCode: emp.EmpCode,
+          Disbursing: emp.Disbursing,
+          WithAtm: emp.WithAtm,
+          Taxable: emp.Taxable,
+        })),
+      });
+    }
+
+    if (changedCompanies.length > 0) {
+      await saveCompanySetup({
+        companies: changedCompanies.map(company => ({
+          CompanyCode: String(company.CompanyCode),
+          isDisburse: company.isDisburse,
+        })),
+      });
+    }
+
+    setBaselineEmployees(editedEmployees);
+    setBaselineCompanies(editedCompanies);
+
+    SweetAlert.successAlert("Payroll Setup Updated Successfully");
+  };
+  const employeeDirty = useMemo(() => {
+      return Object.keys(editedEmployees).some((code) => {
+        const edited = editedEmployees[code];
+        const original = baselineEmployees[code];
+
+        if (!original) return false;
+
+        return (
+          edited.Disbursing !== original.Disbursing ||
+          edited.WithAtm !== original.WithAtm ||
+          edited.Taxable !== original.Taxable
+        );
+      });
+  }, [editedEmployees, baselineEmployees]);
+
+  const companyDirty = useMemo(() => {
+        const combined = [...disburseCompanies, ...notDisburseCompanies];
+
+        return combined.some((company) => {
+          const code = company.CompanyCode;
+
+          const edited =
+            editedCompanies[code]?.isDisburse ?? company.isDisburse;
+
+          const original = baselineCompanies[code]?.isDisburse ?? company.isDisburse;
+
+          return edited !== original;
+        });
+      }, [
+        editedCompanies,
+        baselineCompanies,
+        disburseCompanies,
+        notDisburseCompanies,
+  ]);
+
+  const isDirty = employeeDirty || companyDirty;
+
+
+  const changeTab = (tab: SideModalTabKey) => {
+    setActive(tab);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+
+    if (tab !== "employees") {
+      params.delete("page");
+     
+    }
+
+    router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const isDirty = Object.keys(editedEmployees).some(code => {
-    const edited = editedEmployees[code];
-    const original = originalEmployees[code];
+  const attemptTabChange = (tab: SideModalTabKey) => {
+    if (!isDirty) {
+      changeTab(tab);
+      return;
+    }
 
-    if (!original) return false;
-
-    return (
-      edited.Disbursing !== original.Disbursing ||
-      edited.WithAtm !== original.WithAtm ||
-      edited.Taxable !== original.Taxable
+    SweetAlert.confirmationAlert(
+      "Unsaved Changes",
+      "You have unsaved changes. Do you want to save before switching tabs?",
+      async () => {
+        await handleSaveChanges();
+        changeTab(tab);
+      },
+      () => {
+        handleResetChanges();
+        changeTab(tab);
+      }
     );
-  });
+  };
+
+
 
   // Disburse code ↑
 
@@ -356,6 +516,7 @@ export default function PreparePayroll() {
      
 
    {/* // Disburse Code ↓ */}
+   
     {open && (
       <SideModalLayout
         open={open}
@@ -366,161 +527,290 @@ export default function PreparePayroll() {
         isDirty={isDirty}
         onReset={handleResetChanges}
       >
+
         <div className=" flex flex-col gap-6">
-                <div className="flex flex-col w-full">
-                  <div className="w-full text-start py-4">
-                    <h6>Recent Employees</h6>
+            <ul className="flex gap-x-4 text-sm bg-mainLightGray py-2 px-4 rounded-lg text-mainLight mt-2">
+                {SIDEMODALTABS.map(({ key, label }) => (
+                  <li
+                    key={key}
+                    onClick={() => attemptTabChange(key)}
+                    className={`px-4 py-2 rounded-md font-semibold cursor-pointer ${
+                      active === key
+                        ? "bg-mainLight text-mainGray"
+                        : "hover:bg-mainLight hover:text-mainLightGray"
+                    }`}
+                  >
+                    {label}
+                  </li>
+                ))}
+              </ul>
+
+                  {active == "employees" && (
+                    <div className="flex flex-col w-full gap-y-8">
+                      <div className="flex flex-col w-full">
+                        <div className="w-full text-start py-4">
+                          <h6>Recent Employees</h6>
+                        </div>
+                        <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
+                            <thead className="bg-mainDark text-white">
+                            <tr className="text-sm">
+                              <th className="px-4 py-3 text-left">Fullname</th>
+                              <th className="px-4 py-3 text-center">Disbursing</th>
+                              <th className="px-4 py-3 text-center">ATM</th>
+                              <th className="px-4 py-3 text-center">Taxable</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {newEmployee?.data?.map((emp) => (
+                              <tr key={emp.EmpCode}>
+                                <td className="px-4 py-3 text-left">
+                                  {emp.Firstname} {emp.Lastname}
+                                </td>
+                                <td className="px-4 py-3  text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={editedEmployees[emp.EmpCode]?.Disbursing ?? false}
+                                    onChange={(e) => {
+                                      setEditedEmployees(prev => ({
+                                        ...prev,
+                                        [emp.EmpCode]: {
+                                          ...prev[emp.EmpCode],
+                                          Disbursing: e.target.checked,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={editedEmployees[emp.EmpCode]?.WithAtm ?? false}
+                                    onChange={(e) => {
+                                      setEditedEmployees(prev => ({
+                                        ...prev,
+                                        [emp.EmpCode]: {
+                                          ...prev[emp.EmpCode],
+                                          WithAtm: e.target.checked,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={editedEmployees[emp.EmpCode]?.Taxable ?? false}
+                                    onChange={(e) => {
+                                      setEditedEmployees(prev => ({
+                                        ...prev,
+                                        [emp.EmpCode]: {
+                                          ...prev[emp.EmpCode],
+                                          Taxable: e.target.checked,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                            {newEmployee?.data?.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="text-center p-4 text-gray-500">
+                                  No new employees found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex flex-col w-full">
+                        <div className="w-full text-start py-4">
+                          <h6>Disburse or No ATM Employees</h6>
+                        </div>
+                        <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
+                            <thead className="bg-mainDark text-white">
+                            <tr className="text-sm">
+                              <th className="px-4 py-3 text-left">Fullname</th>
+                              <th className="px-4 py-3 text-center">Disbursing</th>
+                              <th className="px-4 py-3 text-center">ATM</th>
+                              <th className="px-4 py-3 text-center">Taxable</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {setupEmployee?.data?.map((emp) => (
+                              <tr key={emp.EmpCode}>
+                                <td className="px-4 py-3 text-left">
+                                  {emp.Firstname} {emp.Lastname}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={editedEmployees[emp.EmpCode]?.Disbursing ?? false}
+                                    onChange={(e) => {
+                                      setEditedEmployees(prev => ({
+                                        ...prev,
+                                        [emp.EmpCode]: {
+                                          ...prev[emp.EmpCode],
+                                          Disbursing: e.target.checked,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={editedEmployees[emp.EmpCode]?.WithAtm ?? false}
+                                    onChange={(e) => {
+                                      setEditedEmployees(prev => ({
+                                        ...prev,
+                                        [emp.EmpCode]: {
+                                          ...prev[emp.EmpCode],
+                                          WithAtm: e.target.checked,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={editedEmployees[emp.EmpCode]?.Taxable ?? false}
+                                    onChange={(e) => {
+                                      setEditedEmployees(prev => ({
+                                        ...prev,
+                                        [emp.EmpCode]: {
+                                          ...prev[emp.EmpCode],
+                                          Taxable: e.target.checked,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                            {setupEmployee?.data.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="text-center p-4 text-gray-500">
+                                  No matching employees found.
+                                </td>
+                              </tr>
+                            )}
+                        </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                {(active == "branches" &&(
+                  <div className="flex  flex-col gap-y-8">
+                      <div className="flex flex-col w-full">
+                        <div className="w-full text-start py-4">
+                            <h6>Main Disburse Branches</h6>
+                        </div>
+
+                        <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
+                            <thead className="bg-mainDark text-white">
+                            <tr className="text-sm">
+                              <th className="px-4 py-3 text-left">Company Name</th>
+                              <th className="px-4 py-3 text-center">Disbursing</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {disburseCompanies.map((disburse) => (
+                                <tr key={disburse.CompanyCode}>
+                                  <td className="px-4 py-3 text-left">
+                                    {disburse.CompanyName}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        editedCompanies[disburse.CompanyCode]?.isDisburse ??
+                                        disburse.isDisburse
+                                      }
+                                      onChange={(e) => {
+                                        setEditCompanies((prev) => ({
+                                          ...prev,
+                                          [disburse.CompanyCode]: {
+                                            CompanyCode: disburse.CompanyCode,
+                                            isDisburse: e.target.checked,
+                                          },
+                                        }));
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              ))
+                            }
+                            {disburseCompanies?.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="text-center p-4 text-gray-500">
+                                  No Disburse Companies found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex flex-col w-full">
+                        <div className="w-full text-start py-4">
+                            <h6>Optional Disburse Branches</h6>
+                        </div>
+                        <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
+                            <thead className="bg-mainDark text-white">
+                            <tr className="text-sm">
+                              <th className="px-4 py-3 text-left">Company Name</th>
+                              <th className="px-4 py-3 text-center">Disbursing</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {notDisburseCompanies.map((disburse) => (
+                                <tr key={disburse.CompanyCode}>
+                                  <td className="px-4 py-3 text-left">
+                                    {disburse.CompanyName}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        editedCompanies[disburse.CompanyCode]?.isDisburse ??
+                                        disburse.isDisburse
+                                      }
+                                      onChange={(e) => {
+                                        setEditCompanies((prev) => ({
+                                          ...prev,
+                                          [disburse.CompanyCode]: {
+                                            CompanyCode: disburse.CompanyCode,
+                                            isDisburse: e.target.checked,
+                                          },
+                                        }));
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              ))
+                            }
+                            {notDisburseCompanies?.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="text-center p-4 text-gray-500">
+                                  No Companies found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+
+                      </div>
                   </div>
-                  <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
-                      <thead className="bg-mainDark text-white">
-                      <tr className="text-sm">
-                        <th className="px-4 py-3 text-left">Fullname</th>
-                        <th className="px-4 py-3 text-center">Disbursing</th>
-                        <th className="px-4 py-3 text-center">ATM</th>
-                        <th className="px-4 py-3 text-center">Taxable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {newEmployee?.data?.map((emp) => (
-                        <tr key={emp.EmpCode}>
-                          <td className="px-4 py-3 text-left">
-                            {emp.Firstname} {emp.Lastname}
-                          </td>
-                          <td className="px-4 py-3  text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Disbursing ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Disbursing: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.WithAtm ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    WithAtm: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Taxable ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Taxable: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      {newEmployee?.data?.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="text-center p-4 text-gray-500">
-                            No new employees found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex flex-col w-full">
-                  <div className="w-full text-start py-4">
-                    <h6>Disburse or No ATM Employees</h6>
-                  </div>
-        
-                   <table className="w-full border-separate border-spacing-0 rounded-md overflow-hidden shadow-lg">
-                      <thead className="bg-mainDark text-white">
-                      <tr className="text-sm">
-                        <th className="px-4 py-3 text-left">Fullname</th>
-                        <th className="px-4 py-3 text-center">Disbursing</th>
-                        <th className="px-4 py-3 text-center">ATM</th>
-                        <th className="px-4 py-3 text-center">Taxable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                       {setupEmployee?.data?.map((emp) => (
-                        <tr key={emp.EmpCode}>
-                          <td className="px-4 py-3 text-left">
-                            {emp.Firstname} {emp.Lastname}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Disbursing ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Disbursing: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.WithAtm ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    WithAtm: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={editedEmployees[emp.EmpCode]?.Taxable ?? false}
-                              onChange={(e) => {
-                                setEditedEmployees(prev => ({
-                                  ...prev,
-                                  [emp.EmpCode]: {
-                                    ...prev[emp.EmpCode],
-                                    Taxable: e.target.checked,
-                                  },
-                                }));
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                      {setupEmployee?.data.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="text-center p-4 text-gray-500">
-                            No matching employees found.
-                          </td>
-                        </tr>
-                      )}
-                  </tbody>
-                  </table>
-        
-                </div>
+                )
+
+                )}
+
+
               </div>
       </SideModalLayout>
     )}

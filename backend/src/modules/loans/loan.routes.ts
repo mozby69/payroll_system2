@@ -9,7 +9,9 @@ import { addEmployeeLoanController,
     getLoansByEmpCodeController,
     getBonusRules,
     searchEmployeeController,
-    getLoanSummaryController
+    getLoanSummaryController,
+    removeLoanLedgerController,
+    updateLedgerDateController
     } from "./loan.controller";
 
 
@@ -35,6 +37,12 @@ router.get('/employees/search',searchEmployeeController);
 router.post("/by-empcode", getLoansByEmpCodeController);
 router.get("/bonus-rules", getBonusRules);
 router.get("/get-loan-summary", getLoanSummaryController);
+
+router.delete("/:loan_id/ledger",removeLoanLedgerController);
+router.patch(
+  "/:loan_id/ledger/date",
+  updateLedgerDateController
+);
 
 
 export default router;

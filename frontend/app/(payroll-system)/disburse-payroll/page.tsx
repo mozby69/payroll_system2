@@ -3,10 +3,11 @@
 import GenButton from "@/app/components/Buttons";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useApproveDisburse, useDisburseDetails, useMainDisburse } from "../../hooks/disburse";
-import { useState } from "react";
-import { Check, View } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, Printer, View } from "lucide-react";
 import SweetAlert from "@/app/components/Swal";
 import RequestModal from "@/app/components/Modal";
+import { useReactToPrint } from "react-to-print";
 
 function DisbursePage() {
   const router = useRouter();
@@ -18,6 +19,8 @@ function DisbursePage() {
 
   const statusParam =
     searchParams.get("status") ?? "";
+
+  const summaryRef = useRef<HTMLDivElement>(null);
 
   const page = Number(searchParams.get("page") ?? "1");
 
@@ -48,6 +51,42 @@ function DisbursePage() {
     const { data: detailsData, isLoading: detailsLoading } = useDisburseDetails(selectedDisburseId);
 
     const { mutate: approveMutate } = useApproveDisburse();
+
+    const [branchFilter, setBranchFilter] = useState("");
+
+    const branches = useMemo(() => {
+      if (!detailsData) return [];
+
+      const map = new Map();
+
+      detailsData.forEach((item) => {
+        const branch = item.empArchive.EmpCode.BranchCode;
+
+        if (branch && !map.has(branch.branchCode)) {
+          map.set(branch.branchCode, branch);
+        }
+      });
+
+      return Array.from(map.values());
+    }, [detailsData]);
+
+
+    const filteredDetails = useMemo(() => {
+      if (!detailsData) return [];
+
+      if (!branchFilter) return detailsData;
+
+      return detailsData.filter(
+        (item) =>
+          item.empArchive.EmpCode.BranchCode?.branchCode === branchFilter
+      );
+    }, [detailsData, branchFilter]);
+
+    const handlePrintDisburse = useReactToPrint({
+          contentRef: summaryRef,
+          documentTitle: `Disburse-Payroll`,
+      })
+      
 
     const handleApproved = (mainDisburseID: number) => {
       SweetAlert.confirmationAlert(
@@ -194,9 +233,13 @@ function DisbursePage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto bg-mainNeutral rounded-xl border border-mainNeutral">
+                  
                   <table className="w-full border-separate border-spacing-0 rounded-xl overflow-hidden shadow-lg">
                     <thead className="bg-mainBg text-mainLight uppercase text-xs">
                       <tr>
+                        <th className="px-6 py-3 text-left">
+                          Payroll Cycle
+                        </th>
                         <th className="px-6 py-3 text-left">
                           Payroll Period
                         </th>
@@ -225,8 +268,13 @@ function DisbursePage() {
                             key={
                               batch.mainDisburseID
                             }
-                            className="hover:odd:bg-mainNeutral hover:cursor-pointer transition odd:bg-mainLight even:bg-mainNeutral"
+                            className="hover:odd:bg-mainNeutral hover:cursor-pointer transition odd:bg-mainLight even:bg-mainNeutral text-sm"
                           >
+                            <td className="px-6 py-4 font-medium">
+                              {
+                                batch.payrollCycle
+                              }
+                            </td>
                             <td className="px-6 py-4 font-medium">
                               {
                                 batch.payrollPeriod
@@ -268,7 +316,7 @@ function DisbursePage() {
                                   .empDisburses
                               }
                             </td>
-                            <td className={`px-6 py-4 inline-flex gap-2 justify-start items-center`}>
+                            <td className={`px-2 py-4 inline-flex gap-2 justify-start items-center`}>
                               <GenButton
                                 variant="outline"
                                 onClick={
@@ -345,7 +393,7 @@ function DisbursePage() {
 
     {openDetails && (
         <RequestModal
-          size="xl"
+          size="xxl"
           title="Disbursement Details"
           onClose={() => {
             setOpenDetails(false);
@@ -358,56 +406,79 @@ function DisbursePage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-separate border-spacing-0 rounded-xl overflow-hidden shadow-lg my-4">
-                <thead className="bg-mainBg text-mainLight uppercase text-xs">
-                  <tr>
-                    <th className="px-5 py-4 text-left">
-                      Employee Code
-                    </th>
-                    <th className="px-5 py-4 text-left">
-                      Branch Code
-                    </th>
-                    <th className="px-5 py-4 text-left">
-                      Name
-                    </th>
-                    <th className="px-5 py-4 text-left">
-                      Position
-                    </th>
-                    <th className="px-5 py-4 text-left">
-                      Department
-                    </th>
-                    <th className="px-5 py-4 text-right">
-                      Net Pay
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="flex w-full justify-end gap-x-4">
+                <select
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    className="px-3 py-2 border rounded-md"
+                  >
+                    <option value="">All Branches</option>
+                    {branches.map((b) => (
+                      <option key={b.branchCode} value={b.branchCode}>
+                        {b.branchCode}
+                      </option>
+                    ))}
+                </select>
+                <GenButton
+                  variant="primary"
+                  className="inline-flex items-center justify-center"
+                  onClick={handlePrintDisburse}
+                >
+                    <Printer size={16} /> Print Disburse Data
+                </GenButton>
+              </div>
 
-                {detailsData?.map((item) => (
-                  <tr key={item.disburseID} className="border-t hover:odd:bg-mainNeutral hover:cursor-pointer transition odd:bg-mainLight even:bg-mainNeutral">
-                    <td className="px-6 py-4">
-                      {item.empArchive.EmpCode.EmpCode}
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.empArchive.EmpCode.BranchCode?.branchCode}
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.empArchive.EmpCode.Lastname},{" "}
-                      {item.empArchive.EmpCode.Firstname}
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.empArchive.EmpCode.Position}
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.empArchive.EmpCode.Department}
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold">
-                      ₱{Number(item.empArchive.Netpay).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                    </tbody>
-                  </table>
+                    <div ref={summaryRef} className="my-8">
+                      <table  className="w-full border-separate border-spacing-0 rounded-xl overflow-hidden shadow-lg my-4">
+                        <thead className="bg-mainBg text-mainLight uppercase text-xs">
+                          <tr>
+                            <th className="px-8 py-4 text-left">
+                              Employee Code
+                            </th>
+                            <th className="px-8 py-4 text-left">
+                              Branch Code
+                            </th>
+                            <th className="px-8 py-4 text-left">
+                              Name
+                            </th>
+                            <th className="px-8 py-4 text-left">
+                              Position
+                            </th>
+                            <th className="px-8 py-4 text-left">
+                              Department
+                            </th>
+                            <th className="px-8 py-4 text-right">
+                              Net Pay
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                        {filteredDetails?.map((item) => (
+                          <tr key={item.disburseID} className="border-t hover:odd:bg-mainNeutral hover:cursor-pointer transition odd:bg-mainLight even:bg-mainNeutral">
+                            <td className="px-8 py-4">
+                              {item.empArchive.EmpCode.EmpCode}
+                            </td>
+                            <td className="px-8 py-4">
+                              {item.empArchive.EmpCode.BranchCode?.branchCode}
+                            </td>
+                            <td className="px-8 py-4">
+                              {item.empArchive.EmpCode.Lastname},{" "}
+                              {item.empArchive.EmpCode.Firstname}
+                            </td>
+                            <td className="px-8 py-4">
+                              {item.empArchive.EmpCode.Position}
+                            </td>
+                            <td className="px-8 py-4">
+                              {item.empArchive.EmpCode.Department}
+                            </td>
+                            <td className="px-8 py-4 text-right font-semibold">
+                              ₱{Number(item.empArchive.Netpay).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                            </tbody>
+                          </table>
+                    </div>
                 </div>
               )}
             </RequestModal>

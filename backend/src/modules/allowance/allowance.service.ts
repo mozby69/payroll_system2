@@ -132,7 +132,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
           EmpCodeId: { in: empCodes },
           status: "ACTIVE",
           loan_type:  {
-              in: ["FCH_LOAN", "RFC_LOAN"],
+              in: ["FCH_LOAN", "RFC_LOAN", "ARE_LOAN"],
             },
           deduct_allowance: true,
         },
@@ -172,9 +172,9 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         let alreadyDeducted = false;
         let expectedPayrollCycle = "30";
 
-        if (empLoan.cycle_category === "10-25-Cycle") {
-          expectedPayrollCycle = "30";
-        }
+        // if (empLoan.cycle_category === "10-25-Cycle") {
+        //   expectedPayrollCycle = "30";
+        // }
 
         if (ledger) {
           const d = ledger.transaction_date;
@@ -379,7 +379,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             EmpCodeId: { in: empCodes },
             status: "ACTIVE",
             loan_type:  {
-              in: ["FCH_LOAN", "RFC_LOAN"],
+              in: ["FCH_LOAN", "RFC_LOAN", "ARE_LOAN"],
             },
             deduct_allowance: true,
           },
@@ -418,9 +418,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             const d = ledger.transaction_date;
             let expectedPayrollCycle = "30";
 
-            if (loan.cycle_category === "10-25-Cycle") {
-              expectedPayrollCycle = "30";
-            }
+            // if (loan.cycle_category === "10-25-Cycle") {
+            //   expectedPayrollCycle = "30";
+            // }
 
             
             alreadyDeducted =
@@ -564,7 +564,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
               EmpCodeId: emp.EmpCode,
               status: "ACTIVE",
               loan_type:  {
-                  in: ["FCH_LOAN", "RFC_LOAN"],
+                  in: ["FCH_LOAN", "RFC_LOAN", "ARE_LOAN"],
               },
               deduct_allowance: true,
             },

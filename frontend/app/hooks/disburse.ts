@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient, useQuery} from "@tanstack/react-query"
-import { UpdateEmployeeSetupPayload, GetMainDisburseParams, DisburseDetailsItem } from "../types/disburseType";
-import { UpdateEmployeeSetup, approveDisburse, getDisburseDetails, getMainDisburse} from "../services/disburse.services";
+import { UpdateEmployeeSetupPayload, GetMainDisburseParams, DisburseDetailsItem, DisburseCompany, GetDisburseCompaniesParams, UpdateCompanySetupPayload } from "../types/disburseType";
+import { UpdateEmployeeSetup, approveDisburse, getDisburseCompanies, getDisburseDetails, getMainDisburse, updateCompanySetup} from "../services/disburse.services";
 
 
 export const useUpdateEmployeeSetup=()=>{
@@ -12,6 +12,9 @@ export const useUpdateEmployeeSetup=()=>{
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey:["employees-by-cycle"],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["employees"],
             });
         },
     });
@@ -53,5 +56,38 @@ export const useDisburseDetails = (
     queryFn: () =>
       getDisburseDetails(mainDisburseID!),
     enabled: !!mainDisburseID,
+  });
+};
+
+
+export function useDisburseCompanies(params: GetDisburseCompaniesParams) {
+  const { cycle, isDisburse } = params;
+
+  return useQuery<DisburseCompany[]>({
+    queryKey: ["disburse-companies", cycle, isDisburse],
+    queryFn: () => getDisburseCompanies(params),
+    enabled: !!cycle,
+  });
+}
+
+export const useUpdateCompanySetup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateCompanySetupPayload) =>
+      updateCompanySetup(payload),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["disburse-companies"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["employees-by-cycle"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["employees"],
+      });
+    },
   });
 };

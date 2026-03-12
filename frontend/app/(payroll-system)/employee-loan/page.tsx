@@ -20,6 +20,7 @@ import { AxiosError } from "axios";
 import RequestModal from "@/app/components/Modal";
 import { useCompanies, useLoanTypes } from "@/app/hooks/useGeneral";
 import { useReactToPrint } from "react-to-print";
+import { useAuth } from "@/app/components/UserContext";
 
 
 type TabKey = "apply"| "are" | "loan-list" ;
@@ -62,7 +63,7 @@ function LoanApplyContent() {
         isLoading: bonusLoading,
         isError: bonusError
     } = useBonusRules();
-
+   
     const [searchloan, setSearch] = useState("");
     
     const { data: employees } = useEmployeeSearch(searchloan);
@@ -665,7 +666,7 @@ function LoanListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
- 
+  const { user} = useAuth();
   const { filters } = useFilters();
 
   const { data: companies } = useCompanies()
@@ -719,7 +720,7 @@ function LoanListContent() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
 
-  const [cycle, setCycle] = useState<"10-25" | "15-30">("10-25");
+  const [cycle, setCycle] = useState<"10-25-Cycle" | "15-30-Cycle">("10-25-Cycle");
   const [period, setPeriod] = useState<"10" | "25" | "15" | "30">("10");
   const [month, setMonth] = useState(getCurrentMonth());
 
@@ -731,20 +732,26 @@ function LoanListContent() {
 
     const endOfMonth = new Date(year, date.getMonth() + 1, 0).getDate();
 
-    if (cycle== "10-25"){
-      if (period === "10" || period === "15") {
+    if (cycle== "10-25-Cycle"){
+      if (period === "10" ) {
         return `${monthName} 01-15, ${year}`;
       }
+      else if (period === "25" ) {
+        return `${monthName}  16-${endOfMonth}, ${year}`;
+      }
       else{
-         return `${monthName} 16-${endOfMonth}, ${year}`;
+         return `${monthName} 01-${endOfMonth}, ${year}`;
       }
     }
     else{
-      if (period === "15" || period === "30") {
+      if (period === "15") {
         return `${monthName} 01-15, ${year}`;
       }
+      else if (period === "25") {
+        return `${monthName} 16-${endOfMonth}, ${year}`;
+      }
       else{
-         return `${monthName} 16-${endOfMonth}, ${year}`;
+         return `${monthName} 01-${endOfMonth}, ${year}`;
       }
     }
     
@@ -753,11 +760,11 @@ function LoanListContent() {
   })();
 
   const handleCycleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value as "10-25" | "15-30";
+    const value = e.target.value as "10-25-Cycle" | "15-30-Cycle";
 
     setCycle(value);
 
-    if (value === "10-25") {
+    if (value === "10-25-Cycle") {
       setPeriod("10");
     } else {
       setPeriod("15");
@@ -777,6 +784,7 @@ function LoanListContent() {
     isLoading: summaryLoading
   } = useLoanSummary(
     month,
+    cycle,
     period,
     company,
     loanType,
@@ -1003,8 +1011,8 @@ function LoanListContent() {
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-md"
                   >
                     <option value="">Select Payroll Cycle</option>
-                    <option value="10-25">10-25 Cycle</option>
-                    <option value="15-30">15-30 Cycle</option>
+                    <option value="10-25-Cycle">10-25 Cycle</option>
+                    <option value="15-30-Cycle">15-30 Cycle</option>
                   </select>
                 </div>
 
@@ -1031,7 +1039,7 @@ function LoanListContent() {
                         <label className="text-sm font-semibold">
                             Select Period
                         </label>
-                        {cycle === "10-25" && (
+                        {cycle === "10-25-Cycle" && (
                           <select
                             value={period}
                             onChange={handlePeriodChange}
@@ -1040,9 +1048,10 @@ function LoanListContent() {
                             <option value="">Select Payroll Period</option>
                             <option value="10">10 Period</option>
                             <option value="25">25 Period</option>
+                            <option value="30">Allowance</option>
                           </select>
                         )}
-                        {cycle === "15-30" && (
+                        {cycle === "15-30-Cycle" && (
                           <select
                             value={period}
                             onChange={handlePeriodChange}
@@ -1050,7 +1059,8 @@ function LoanListContent() {
                           >
                             <option value="">Select Payroll Period</option>
                             <option value="15">15 Period</option>
-                            <option value="30">30 Period</option>
+                            <option value="25">30 Period</option>
+                            <option value="30">Allowance</option>
                           </select>
                         )}
                     </div>
@@ -1142,8 +1152,21 @@ function LoanListContent() {
                           </tr>
                         </tfoot>
                       </table>
+
+                      <div className="print-only mt-8 px-4">
+                        <div className="flex flex-col gap-6">
+                          <p className="font-normal text-xs">PREPARED BY:</p>
+                          <div className="flex flex-col gap-y-1 text-mainLightGray">
+                            <hr className="w-52" />
+                            <h1 className="font-semibold text-mainGray">{user?.name}</h1>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   )}
+
+                
                 </div>
               )}
               {activeSubTab == "accounts" &&(
