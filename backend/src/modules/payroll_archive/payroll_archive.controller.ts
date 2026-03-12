@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -31,7 +31,7 @@ export async function saveWtaxOverrideController(req: Request, res: Response) {
 export const displayCompletePayrollController = async (req: Request, res: Response) => {
   try{
     const company_id = req.query.company_id as string;
-    const res1 = await displayCompletePayroll(company_id,['PENDING']);
+    const res1 = await displayCompletePayroll(['PENDING'],company_id);
    
     return res.status(200).json({ status: "SUCCESS", data:res1});
   }
@@ -60,26 +60,52 @@ export async function saveComputedFinalPayrollController(req:Request, res:Respon
     const result = await saveComputedFinalPayroll();
     return res.json({ success: true, res: result })
   }
-  catch(error){
-    console.error("error",error);
-    res.status(500).json({message:"failed to save final payroll"})
+  catch (error: unknown) {
+    if (error instanceof Error && error.message === "CANNOT_SAVE_FINAL_PAYROLL") {
+      return res.status(409).json({
+        message: "You cannot save while there are pending payrolls"
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to save final payroll"
+    });
   }
 }
+
+
+
+// export const displayForApprovalController = async (req: Request, res: Response) => {
+//   try{
+//     const company_id = req.query.company_id as string;
+
+//     const data = await displayCompletePayroll(company_id,['FOR_CHECKER']);
+
+//     return res.status(200).json({ status: "SUCCESS",data });
+//   }
+//   catch(error){
+//     res.status(500).json({message:`SERVER ERROR: ${error}`})
+//   }
+// }
 
 
 
 export const displayForApprovalController = async (req: Request, res: Response) => {
-  try{
+  try {
     const company_id = req.query.company_id as string;
+    const status = req.query.status as "PENDING" | "FOR_CHECKER" | "FOR_APPROVER";
 
-    const data = await displayCompletePayroll(company_id,['FOR_APPROVAL']);
+    const data = await displayCompletePayroll([status],company_id);
 
-    return res.status(200).json({ status: "SUCCESS",data });
+    return res.status(200).json({
+      status: "SUCCESS",
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({ message: `SERVER ERROR: ${error}` });
   }
-  catch(error){
-    res.status(500).json({message:`SERVER ERROR: ${error}`})
-  }
-}
+};
+
 
 
 
@@ -262,5 +288,22 @@ export async function GenerateBankFileController(req: Request,res: Response) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to generate file" });
+  }
+}
+
+
+
+
+
+
+export async function SaveToApproverPayrollController(req: Request, res: Response) {
+  try {
+    const company_id = req.query.company_id as string;
+    const result = await SaveToApproverPayroll(company_id);
+
+    return res.json({ success: true, res: result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to save payroll" });
   }
 }

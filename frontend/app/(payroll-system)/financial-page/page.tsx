@@ -5,8 +5,9 @@ import RequestModal from "@/app/components/Modal";
 import PayrollSpreadsheetPrint from "@/app/components/reports/PrintPayrollSpreadsheet";
 import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadSheet";
 import SweetAlert from "@/app/components/Swal";
+import { useAuth } from "@/app/components/UserContext";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
-import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll } from "@/app/hooks/usePayrollArchive";
+import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import { useRef, useState } from "react";
@@ -18,20 +19,36 @@ import { useReactToPrint } from "react-to-print"
 
 export default function FinancialPage(){
 
-      const { data, isLoading } = useDisplayForApprovalPayroll();
-      const isEmpty = !data || !data.data || data.data.length === 0;
+  
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
+      const saveToApprover = useSaveToApproverPayroll()
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
       const [selectedCompany, setSelectedCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
-   
+      const { hasPermission,hasRole,user } = useAuth()
 
+
+      let status: "FOR_CHECKER" | "FOR_APPROVER";
+
+      if (hasRole("FINANCIAL_CHECKER")) {
+        status = "FOR_CHECKER";
+      } else if (hasRole("FINANCE_APPROVER")) {
+        status = "FOR_APPROVER";
+      } else {
+        status = "FOR_CHECKER"; 
+      }
+      
+      const { data, isLoading } = useDisplayForApprovalPayroll(status);
+
+  
+
+   
       const payCode = data?.data?.[0]?.PayCode ?? "-";
       const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
-
+      const isEmpty = !data || !data.data || data.data.length === 0;
 
       const [editedWtax, setEditedWtax] = useState<Record<string, number>>({});
 
@@ -94,8 +111,7 @@ export default function FinancialPage(){
           philEmployer: emp.philhealth_contrib_employer,
           pagibigEmployer: emp.pagibig_contrib_employer,
     
-          // internal helpers (not displayed but useful)
-        // ✅ CORRECT
+   
           rowKey: key,
           PayCode: emp.PayCode,
           EmpCodeId: emp.EmpCodeId,
@@ -128,6 +144,18 @@ export default function FinancialPage(){
           }
         );
       };
+
+
+      const handleSaveToApprover = () => {
+        SweetAlert.confirmationAlert(
+          "Confirm Save Payroll",
+          "Are you sure you want to this save payroll?",
+          () => {
+            saveToApprover.mutate(selectedCompany);
+          }
+        );
+      };
+    
     
     
       const totals = rows.reduce(
@@ -202,18 +230,29 @@ export default function FinancialPage(){
               </div>
              
               <div className="flex gap-x-4">
+          
+                   
+              {hasRole("FINANCIAL_CHECKER") && (
                 <GenButton onClick={handleRecheck}
                         variant="edit"
-                        disabled={recheckPayroll.isPending || isLoading || isEmpty}
-                        >
+                        disabled={recheckPayroll.isPending || isLoading || isEmpty}>
                         {recheckPayroll.isPending ? "Saving..." : "Reopen Payroll"}
                 </GenButton>
-                <GenButton onClick={handleSave}
-                        variant="positive"
-                        disabled={savePayroll.isPending || isLoading || isEmpty}
-                        >
-                        {savePayroll.isPending ? "Saving..." : "Save Payroll"}
-                </GenButton>
+              )}
+
+                {hasPermission("SAVE_FINAL_PAYROLL") && (
+                  <GenButton onClick={handleSave}
+                          variant="positive"
+                          disabled={savePayroll.isPending || isLoading || isEmpty}>
+                          {savePayroll.isPending ? "Saving..." : "Save Payroll"}
+                  </GenButton>
+                )}
+
+              {hasPermission("SAVE_TO_APPROVER") && (
+                  <button onClick={handleSaveToApprover}
+                  className="bg-amber-800 px-4 rounded-md text-white cursor-pointer">Save Payroll</button>
+                )}
+
               </div>
             </div>
         

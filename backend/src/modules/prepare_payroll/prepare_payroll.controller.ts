@@ -104,6 +104,9 @@ export const searchEmployeeController = async (req: Request, res: Response) => {
 
 export const getComputedPayrollController = async (req: Request,res: Response) => {
   const company_id = req.query.company_id as string;
+
+
+
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
   const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;

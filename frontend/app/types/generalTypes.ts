@@ -30,7 +30,11 @@ export interface EmployeeSummary {
     message: string;
   }
 
+export interface ErrorResponse {
+    message: string;
+  }
 
+  
   export interface CompanyDetailsType {
     CompanyCode: string;
     CompanyCycle: string;

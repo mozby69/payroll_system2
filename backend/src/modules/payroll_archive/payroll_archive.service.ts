@@ -52,7 +52,7 @@ export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId:
 
 
 
-export async function displayCompletePayroll(company_id:string, statuses:("PENDING" | "FOR_APPROVAL")[]) {
+export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER")[] ,company_id?:string) {
   
     try{
       const sssTable = await getSSSContributions();
@@ -68,6 +68,8 @@ export async function displayCompletePayroll(company_id:string, statuses:("PENDI
           },
         },
       };
+
+
 
 
       const employeeList = await prisma.employeeSummary.findMany({
@@ -398,13 +400,16 @@ export async function displayCompletePayroll(company_id:string, statuses:("PENDI
           BranchCode:{
             company_id:company_id,
           }
-         }         },
-      data: { status: "FOR_APPROVAL" },
+         }        
+        },
+      data: { status: "FOR_CHECKER" },
     });
   
     io.emit("payroll:changed");
     return result;
   }
+
+
   
 
 
@@ -415,8 +420,21 @@ export async function displayCompletePayroll(company_id:string, statuses:("PENDI
     
   
     return await prisma.$transaction(async (tx) => {
-      const company = 'EMB';
-      const computed = await displayCompletePayroll(company,["FOR_APPROVAL"]);
+
+
+      const pending = await tx.employeeSummary.findFirst({
+        where: {
+          status: {
+            in: ["PENDING", "FOR_CHECKER"],
+          },
+        },
+      });
+      
+      if (pending) {
+        throw new Error("CANNOT_SAVE_FINAL_PAYROLL");
+      }
+    
+      const computed = await displayCompletePayroll(["FOR_APPROVER"]);
 
   
     if (!computed || computed.length === 0) return 0;
@@ -786,7 +804,7 @@ export async function displayCompletePayroll(company_id:string, statuses:("PENDI
 
   
       await tx.employeeSummary.updateMany({
-        where: { status: "FOR_APPROVAL" },
+        where: { status: "FOR_APPROVER" },
         data: { status: "DONE" },
       });
 
@@ -811,7 +829,7 @@ export async function displayCompletePayroll(company_id:string, statuses:("PENDI
   export async function reCheckPayroll(){
    
     const data = await prisma.employeeSummary.updateMany({
-      where: { status: "FOR_APPROVAL" },
+      where: { status: "FOR_CHECKER" },
       data: { status: "PENDING" },
     });
 
@@ -820,6 +838,28 @@ export async function displayCompletePayroll(company_id:string, statuses:("PENDI
     return data;
 }
   
+
+
+export async function SaveToApproverPayroll(company_id:string){
+   
+  const data = await prisma.employeeSummary.updateMany({
+    where: {
+      status: "FOR_CHECKER",
+      EmpCode:{
+       BranchCode:{
+         company_id:company_id,
+       }
+      }        
+     },
+    data: { status: "FOR_APPROVER" },
+  });
+
+  io.emit("payroll:changed");
+
+  return data;
+}
+
+
 
 
   

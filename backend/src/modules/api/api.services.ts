@@ -66,9 +66,7 @@ export function transformAttendanceData(
 
 
 
-export async function saveEmployeeAttendance(
-    employees: EmployeeSummaryTypes[]
-  ) {
+export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],branchCycle:string) {
     if (!employees.length) return;
   
 
@@ -88,6 +86,7 @@ export async function saveEmployeeAttendance(
 
       await tx.employeeSummary.deleteMany({
         where: {
+          CycleCategory:branchCycle,
           status: "PENDING",
         },
       });

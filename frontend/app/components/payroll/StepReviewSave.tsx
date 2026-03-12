@@ -227,7 +227,7 @@ export default function StepReviewSave({ onBack }: Props) {
                   {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                 </GenButton>
             </div>
-              )}
+        )}
       </div>
       <div>
             <h2><span className="font-bold">Company:</span> {companyCode}</h2>
@@ -285,6 +285,9 @@ export default function StepReviewSave({ onBack }: Props) {
               <FinancialVarianceModal paycode={payCode} cycle={currentCycle}/>
             </RequestModal>
           )}
+
+
+
 
     </div>
   );

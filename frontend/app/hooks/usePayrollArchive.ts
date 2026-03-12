@@ -4,6 +4,8 @@ import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
 import { getEmployeeArchivedService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
 import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
+import { ApiErrorResponse, ErrorResponse } from "../types/generalTypes";
+import { AxiosError } from "axios";
 
 
 
@@ -42,11 +44,13 @@ export function useDisplayPayroll(company_id?: string) {
 
 
 
-export function useDisplayForApprovalPayroll() {
+export function useDisplayForApprovalPayroll(status: "FOR_CHECKER" | "FOR_APPROVER") {
   return useQuery<PayrollResponse>({
-    queryKey: ["payroll-display-for-approval"],
+    queryKey: ["payroll-display-for-approval",status],
     queryFn: async () => {
-      const res = await api.get("/payroll-archive/for-approval");
+      const res = await api.get("/payroll-archive/for-approval",{
+        params: { status },
+      });
       return res.data;
     },
     refetchOnMount: "always",
@@ -125,8 +129,9 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
       
       onSuccess?.();
     },
-    onError: () => {
-      SweetAlert.errorAlert("Failed to save payroll");
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error.response?.data?.message ?? "Failed to save payroll";
+      SweetAlert.errorAlert(message);
     },
   });
 }
@@ -289,4 +294,64 @@ export function useGenerateBankFile() {
   };
 
   return { generate };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// export function useSavePayroll(onSuccess?: () => void) {
+//   const queryClient = useQueryClient();
+
+//   return useMutation({
+//     mutationFn: async (company_id:string) => {
+//       const res = await api.post("/payroll-archive/payroll-save",null,{
+//         params:{company_id},
+//       });
+//       return res.data;
+//     },
+
+
+
+export function useSaveToApproverPayroll(onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (company_id:string) => {
+      const res = await api.post("/payroll-archive/save-to-approver",null,{
+        params:{company_id},
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      SweetAlert.successAlert("successful");
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display-for-approval"],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+      });
+      
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "employees-computed",
+      });
+    
+
+      onSuccess?.();
+    },
+    onError: () => {
+      SweetAlert.errorAlert("Failed to recheck payroll");
+    },
+  });
 }
