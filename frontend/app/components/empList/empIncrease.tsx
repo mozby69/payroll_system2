@@ -121,6 +121,7 @@ export default function EmpIncrease({ open, onClose }: Props) {
         "Increase Employee Salary",
         "Select reason and enter increase amount.",
         [
+        { value: "None", label:"None"},
         { value: "Salary Increase", label: "Salary Increase" },
         { value: "Goverment Increase", label: "Goverment Increase" },
         { value: "Merit Increase", label: "Merit Increase" },
