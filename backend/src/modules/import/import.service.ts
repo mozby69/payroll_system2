@@ -112,6 +112,8 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmploymentStatus: e.EmploymentStatus,
             EmployeeStatus: e.EmployeeStatus,
             isNewEmployee: true,
+            Position:e.Position,
+            Department: e.Department
           },
           update: {
             Firstname: e.Firstname,
@@ -122,6 +124,8 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmployementDate: toDateOrNull(e.EmployementDate),
             EmploymentStatus: e.EmploymentStatus,
             EmployeeStatus: e.EmployeeStatus,
+            Position: e.Position,
+            Department: e.Department
           },
         });
 

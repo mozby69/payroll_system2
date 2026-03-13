@@ -17,6 +17,8 @@ export type BranchDTO = {
     EmployementDate:string;
     EmploymentStatus:string;
     EmployeeStatus:string;
+    Position: string;
+    Department: string;
   };
 
   export type CompanyDTO = {
