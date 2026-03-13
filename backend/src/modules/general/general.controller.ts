@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getAllCompanies, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan } from "./general.services";
+import { fetchCompanyCycles, getAllCompanies, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan } from "./general.services";
 import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
 
@@ -39,6 +39,16 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
   }
 
 
+
+  export async function fetchCompanyCyclesController(req: Request, res: Response) {
+    try {
+      const result = await fetchCompanyCycles()
+      
+      return res.json({ success: true, data: result });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch cycles" });
+    }
+  }
   
 export async function getCompaniesByCodeController(req: Request, res: Response) {
     try {

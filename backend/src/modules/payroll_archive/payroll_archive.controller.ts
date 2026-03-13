@@ -57,7 +57,12 @@ export async function savePayrollController(req: Request, res: Response) {
  
 export async function saveComputedFinalPayrollController(req:Request, res:Response){
   try{
-    const result = await saveComputedFinalPayroll();
+    const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
+    if (!cycle) {
+      return res.status(400).json({ message: "cycle is required" });
+    }
+    
+    const result = await saveComputedFinalPayroll(cycle);
     return res.json({ success: true, res: result })
   }
   catch (error: unknown) {

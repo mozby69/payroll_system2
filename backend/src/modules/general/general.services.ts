@@ -54,15 +54,25 @@ export async function getBodPhilhealth(){
 
 
 
-export async function appendMissingBodEmployees(tx: Prisma.TransactionClient, employees: EmployeeSummaryTypes[]) {
-    if (!employees.length) return [];
-  
-    const bodEmployees = await tx.employee.findMany({
-      where: {
-        bod_member: { in: ["bod1", "bod2"] },
+export async function appendMissingBodEmployees(
+  tx: Prisma.TransactionClient,
+  employees: EmployeeSummaryTypes[]
+) {
+  if (!employees.length) return [];
+
+  const template = employees[0];
+
+  const bodEmployees = await tx.employee.findMany({
+    where: {
+      bod_member: { in: ["bod1", "bod2"] },
+      BranchCode: {
+        CompanyCode: {
+          CompanyCycle: template.CycleCategory,
+        },
       },
-      select: { EmpCode: true },
-    });
+    },
+    select: { EmpCode: true },
+  });
   
     const existingIds = new Set(employees.map((e) => e.EmpCode_id.trim()));
   
@@ -70,7 +80,7 @@ export async function appendMissingBodEmployees(tx: Prisma.TransactionClient, em
       (b) => !existingIds.has(b.EmpCode.trim())
     );
   
-    const template = employees[0];
+   
   
     return missingBods.map((b) => ({
       EmpCodeId: b.EmpCode,
@@ -111,6 +121,17 @@ export async function getCompaniesByCycle(cycle: string) {
   });
 
   return companies;
+}
+
+
+export async function fetchCompanyCycles() {
+  const cycles = await prisma.company_details.findMany({
+    select: { CompanyCycle: true },
+    distinct: ["CompanyCycle"],
+    orderBy: { CompanyCycle: "asc" }
+  });
+
+  return cycles;
 }
 
 

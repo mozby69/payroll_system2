@@ -29,6 +29,21 @@ export function useGetCompanyDetails(){
   }
 
 
+
+  // cycle & company
+
+  export function useCompanyCycles() {
+    return useQuery({
+      queryKey: ["company-cycles"],
+      queryFn: async () => {
+        const res = await api.get("/general/fetch-company-cycle");
+        return res.data;
+      },
+    });
+  }
+
+
+
   export function useGetCompanyByCode(companyCode: string) {
     return useQuery({
       queryKey: ["companies-by-code", companyCode],

@@ -101,8 +101,10 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await api.post("/payroll-archive/archived-final-payroll");
+    mutationFn: async (cycle:string) => {
+      const res = await api.post("/payroll-archive/archived-final-payroll",null,{
+        params:{cycle},
+      });
       return res.data;
     },
     onSuccess: async () => {
