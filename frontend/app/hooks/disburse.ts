@@ -14,7 +14,7 @@ export const useUpdateEmployeeSetup=()=>{
                 queryKey:["employees-by-cycle"],
             });
             queryClient.invalidateQueries({
-              queryKey: ["employees"],
+              queryKey: ["employees-initialize-computed"],
             });
         },
     });
@@ -86,7 +86,7 @@ export const useUpdateCompanySetup = () => {
         queryKey: ["employees-by-cycle"],
       });
       queryClient.invalidateQueries({
-        queryKey: ["employees"],
+        queryKey: ["employees-initialize-computed"],
       });
     },
   });
