@@ -28,7 +28,7 @@ export default function FinancialPage(){
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
       //const [selectedCompany, setSelectedCompany] = useState("");
-      const [cycle, setCycle] = useState("10-25-Cycle");
+      const [cycle, setCycle] = useState("");
       const [company, setCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
@@ -64,7 +64,7 @@ export default function FinancialPage(){
 
 
 
-        const rows: SpreadsheetRow[] = (data?.data ?? [])
+        const rows: SpreadsheetRow[] = !cycle ? [] : (data?.data ?? [])
         .filter((emp) => {
           if (cycle && emp.CycleCategory !== cycle) return false;
       
@@ -256,14 +256,15 @@ export default function FinancialPage(){
                 {hasPermission("SAVE_FINAL_PAYROLL") && (
                   <GenButton onClick={handleSave}
                           variant="positive"
-                          disabled={savePayroll.isPending || isLoading || isEmpty}>
+                          disabled={savePayroll.isPending || isLoading || isEmpty || !cycle}>
                           {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                   </GenButton>
                 )}
 
               {hasPermission("SAVE_TO_APPROVER") && (
                   <button onClick={handleSaveToApprover}
-                  className="bg-amber-800 px-4 rounded-md text-white cursor-pointer">Save Payroll</button>
+                   disabled={!cycle || !company}
+                  className="bg-amber-800 px-4 rounded-md text-white cursor-pointer disabled:opacity-50 disabled:hover:cursor-not-allowed">Save Payroll</button>
                 )}
 
               </div>

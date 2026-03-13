@@ -25,3 +25,76 @@
         pagibig_loan: 0,
       },
     ];
+
+
+
+
+    *******************************************************************************     march 13 2026 **************
+
+
+
+
+    const rows: SpreadsheetRow[] = (data?.data ?? [])
+        .filter((emp) => {
+          if (cycle && emp.CycleCategory !== cycle) return false;
+      
+          if (company && emp.EmpCode.BranchCode?.company_id !== company) {
+            return false;
+          }
+      
+          return true;
+        })
+      .map((emp) => {
+        const key = buildKey(
+          emp.PayCode,
+          emp.EmpCodeId,
+          emp.PayrollPeriod
+        );
+    
+        const finalWtax = editedWtax[key] ?? Number(emp.wtax);
+    
+        const net =
+          Number(emp.gross_pay) -
+          (
+            finalWtax +
+            Number(emp.sss_contrib_employee) +
+            Number(emp.philhealth_contrib_employee) +
+            Number(emp.pagibig_contrib_employee) +
+            Number(emp.are_loan) +
+            Number(emp.rfc_loan) +
+            Number(emp.fch_loan) +
+            Number(emp.sss_loan) +
+            Number(emp.pagibig_loan)
+          );
+    
+        return {
+          name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
+          basicPay: emp.semi_monthly,
+          overtime: emp.overtime,
+          late: emp.late_count,
+          undertime: emp.undertime,
+          absence: emp.absence,
+          gross: emp.gross_pay,
+          wtax: finalWtax,
+          sss: emp.sss_contrib_employee,
+          philhealth: emp.philhealth_contrib_employee,
+          pagibig: emp.pagibig_contrib_employee,
+          arE: emp.are_loan,
+          rfc: emp.rfc_loan,
+          fch: emp.fch_loan,
+          salaryLoan: emp.sss_loan,
+          calamityLoan: 0,
+          pagibigSalaryLoan: emp.pagibig_loan,
+          netPayable: net,
+          sssEmployer: emp.sss_contrib_employer,
+          philEmployer: emp.philhealth_contrib_employer,
+          pagibigEmployer: emp.pagibig_contrib_employer,
+    
+   
+          rowKey: key,
+          PayCode: emp.PayCode,
+          EmpCodeId: emp.EmpCodeId,
+          PayrollPeriod: emp.PayrollPeriod,
+          computedWtax: Number(emp.computedWtax)
+              };
+            });
