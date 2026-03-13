@@ -404,7 +404,7 @@ export const searchEmployeeController = async (req: Request, res: Response) => {
 
 export const getLoanSummaryController = async (req: Request, res: Response) => {
   try {
-    const { month, period, company,loanType } = req.query;
+    const { month,cycle, period, company,loanType } = req.query;
 
     if (!month || !period) {
       return res.status(400).json({
@@ -414,6 +414,7 @@ export const getLoanSummaryController = async (req: Request, res: Response) => {
 
     const data = await loanService.getLoanSummary(
       month as string,
+      cycle as string,
       period as string,
       company as string,
       loanType as string
@@ -425,6 +426,115 @@ export const getLoanSummaryController = async (req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({
       message: "Server Error"
+    });
+  }
+};
+
+
+
+export const removeLoanLedgerController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const loan_id = Number(req.params.loan_id);
+    const { ledger_id, remarks } = req.body;
+
+    if (!loan_id || isNaN(loan_id)) {
+      return res.status(400).json({
+        message: "Invalid loan id",
+      });
+    }
+
+    if (!ledger_id) {
+      return res.status(400).json({
+        message: "ledger_id is required",
+      });
+    }
+
+    if (!remarks || !remarks.trim()) {
+      return res.status(400).json({
+        message: "Remarks are required",
+      });
+    }
+
+    const result = await loanService.removeLoanLedger(
+      loan_id,
+      Number(ledger_id),
+      remarks
+    );
+
+    return res.status(200).json(result);
+
+  } catch (error: any) {
+
+    if (
+      error.message === "Ledger not found" ||
+      error.message === "Ledger mismatch"
+    ) {
+      return res.status(404).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to remove ledger",
+      error: error.message,
+    });
+  }
+};
+
+
+export const updateLedgerDateController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+
+    const loan_id = Number(req.params.loan_id);
+    const { ledger_id, transaction_date, remarks } = req.body;
+
+    if (!loan_id || isNaN(loan_id)) {
+      return res.status(400).json({
+        message: "Invalid loan id"
+      });
+    }
+
+    if (!ledger_id) {
+      return res.status(400).json({
+        message: "ledger_id is required"
+      });
+    }
+
+    if (!transaction_date) {
+      return res.status(400).json({
+        message: "transaction_date is required"
+      });
+    }
+
+    const result = await loanService.updateLedgerTransactionDate(
+      loan_id,
+      Number(ledger_id),
+      new Date(transaction_date),
+      remarks
+    );
+
+    return res.status(200).json(result);
+
+  } catch (error: any) {
+
+    if (
+      error.message === "Ledger not found" ||
+      error.message === "Ledger mismatch"
+    ) {
+      return res.status(404).json({
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to update ledger date",
+      error: error.message
     });
   }
 };

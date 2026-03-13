@@ -9,7 +9,7 @@ router.get("/employee", getEmployees);
 router.get("/employee/:empCode", getEmployeeByEmpCode)
 
 
-router.put("/employee/:empCode/payroll", updateEmployeePayrollByEmpCode);
+router.put("/employee/:empCode/payroll",authenticateToken, updateEmployeePayrollByEmpCode);
 router.get(
   "/employees/company/:companyCode",
   getEmployeesByCompany

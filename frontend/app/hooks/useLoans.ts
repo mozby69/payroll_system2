@@ -1,6 +1,6 @@
 import { useQueryClient, useMutation, useQuery,keepPreviousData} from "@tanstack/react-query";
-import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, fetchLoanSummary, loanSearchEmployees, payEmployeeLoan, updateEmployeeLoan } from "../services/loan.services";
-import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem, LoanMonitoringRow } from "../types/loanTypes";
+import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, fetchLoanSummary, loanSearchEmployees, payEmployeeLoan, removeLoanLedger, updateEmployeeLoan, updateLedgerDate } from "../services/loan.services";
+import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem, LoanMonitoringRow, RemoveLedgerPayload, UpdateLedgerDateVariables } from "../types/loanTypes";
 
 
 
@@ -160,6 +160,7 @@ export function useEmployeeSearch(keyword: string) {
 
 export const useLoanSummary = (
   month: string,
+  cycle:string,
   period: string,
   companyCode?: string,
   loanType?:string,
@@ -167,9 +168,76 @@ export const useLoanSummary = (
 ) => {
 
   return useQuery<LoanMonitoringRow[]>({
-    queryKey: ["loan-summary", month, period, companyCode, loanType],
-    queryFn: () => fetchLoanSummary(month, period, companyCode, loanType),
+    queryKey: ["loan-summary", month,cycle, period, companyCode, loanType],
+    queryFn: () => fetchLoanSummary(month,cycle, period, companyCode, loanType),
     enabled
   });
 
+};
+
+
+
+export const useRemoveLoanLedger = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      loan_id,
+      ledger_id,
+      remarks,
+    }: RemoveLedgerPayload) =>
+      removeLoanLedger(loan_id, ledger_id, remarks),
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["emp-loan", variables.loan_id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loan-details", variables.loan_id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loans"],
+      });
+    },
+  });
+};
+
+
+export const useUpdateLedgerDate = () => {
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+
+    mutationFn: ({
+      loan_id,
+      ledger_id,
+      transaction_date,
+      remarks
+    }: UpdateLedgerDateVariables) =>
+      updateLedgerDate(
+        loan_id,
+        ledger_id,
+        transaction_date,
+        remarks
+      ),
+
+    onSuccess: (_, variables) => {
+
+      queryClient.invalidateQueries({
+        queryKey: ["emp-loan", variables.loan_id]
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loan-details", variables.loan_id]
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loans"]
+      });
+
+    }
+  });
 };
