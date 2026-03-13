@@ -432,22 +432,22 @@ function DisbursePage() {
                       <table  className="w-full border-separate border-spacing-0 rounded-xl overflow-hidden shadow-lg my-4">
                         <thead className="bg-mainBg text-mainLight uppercase text-xs">
                           <tr>
-                            <th className="px-8 py-4 text-left">
+                            <th className="px-8 py-6 text-left">
                               Employee Code
                             </th>
-                            <th className="px-8 py-4 text-left">
+                            <th className="px-8  py-6 text-left">
                               Branch Code
                             </th>
-                            <th className="px-8 py-4 text-left">
+                            <th className="px-8 py-6 text-left">
                               Name
                             </th>
-                            <th className="px-8 py-4 text-left">
+                            <th className="px-8 py-6 text-left">
                               Position
                             </th>
-                            <th className="px-8 py-4 text-left">
+                            <th className="px-8 py-6 text-left">
                               Department
                             </th>
-                            <th className="px-8 py-4 text-right">
+                            <th className="px-8 py-6 text-right">
                               Net Pay
                             </th>
                           </tr>
@@ -455,23 +455,23 @@ function DisbursePage() {
                         <tbody>
                         {filteredDetails?.map((item) => (
                           <tr key={item.disburseID} className="border-t hover:odd:bg-mainNeutral hover:cursor-pointer transition odd:bg-mainLight even:bg-mainNeutral">
-                            <td className="px-8 py-4">
+                            <td className="px-8 py-6">
                               {item.empArchive.EmpCode.EmpCode}
                             </td>
-                            <td className="px-8 py-4">
+                            <td className="px-8 py-6">
                               {item.empArchive.EmpCode.BranchCode?.branchCode}
                             </td>
-                            <td className="px-8 py-4">
+                            <td className="px-8 py-6">
                               {item.empArchive.EmpCode.Lastname},{" "}
                               {item.empArchive.EmpCode.Firstname}
                             </td>
-                            <td className="px-8 py-4">
+                            <td className="px-8 py-6">
                               {item.empArchive.EmpCode.Position}
                             </td>
-                            <td className="px-8 py-4">
+                            <td className="px-8 py-6">
                               {item.empArchive.EmpCode.Department}
                             </td>
-                            <td className="px-8 py-4 text-right font-semibold">
+                            <td className="px-8 py-6 text-right font-semibold">
                               ₱{Number(item.empArchive.Netpay).toLocaleString()}
                             </td>
                           </tr>
