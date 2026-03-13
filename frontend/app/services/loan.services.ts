@@ -95,6 +95,7 @@ export function loanSearchEmployees(q: string) {
 
 export const fetchLoanSummary = async (
   month: string,
+  cycle:string,
   period: string,
   companyCode?: string,
   loanType?: string,
@@ -103,11 +104,48 @@ export const fetchLoanSummary = async (
   const { data } = await api.get("/loans/get-loan-summary", {
     params: {
       month,
+      cycle,
       period,
       company: companyCode,
       loanType:loanType
     }
   });
+
+  return data;
+};
+
+
+export const removeLoanLedger = async (
+  loan_id: number,
+  ledger_id: number,
+  remarks: string
+) => {
+  const { data } = await api.delete(`/loans/${loan_id}/ledger`, {
+    data: {
+      ledger_id,
+      remarks,
+    },
+  });
+
+  return data;
+};
+
+
+export const updateLedgerDate = async (
+  loan_id: number,
+  ledger_id: number,
+  transaction_date: string,
+  remarks: string
+) => {
+
+  const { data } = await api.patch(
+    `/loans/${loan_id}/ledger/date`,
+    {
+      ledger_id,
+      transaction_date,
+      remarks
+    }
+  );
 
   return data;
 };

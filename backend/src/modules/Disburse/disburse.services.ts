@@ -134,3 +134,74 @@ export async function getMainDisburseDetails(
     },
   });
 }
+
+
+export async function getDisburseCompanies({
+  cycle,
+  isDisburse,
+}: {
+  cycle: "10-25-Cycle" | "15-30-Cycle";
+  isDisburse?: boolean;
+}) {
+  return prisma.company_details.findMany({
+    where: {
+      CompanyCycle: cycle,
+      ...(isDisburse !== undefined && { isDisburse }),
+    },
+    select: {
+      CompanyCode: true,
+      CompanyName: true,
+      isDisburse: true,
+    },
+  });
+}
+
+
+
+export async function saveCompanyDisburseSetup(
+  companies: {
+    CompanyCode: string;
+    isDisburse: boolean;
+  }[]
+) {
+  return await prisma.$transaction(async (tx) => {
+    for (const company of companies) {
+
+      await tx.company_details.update({
+        where: {
+          CompanyCode: company.CompanyCode,
+        },
+        data: {
+          isDisburse: company.isDisburse,
+        },
+      });
+
+
+      const branches = await tx.branch.findMany({
+        where: {
+          company_id: company.CompanyCode,
+        },
+        select: {
+          branchCode: true,
+        },
+      });
+
+      const branchCodes = branches.map((b) => b.branchCode);
+
+      if (branchCodes.length === 0) continue;
+
+      await tx.employee.updateMany({
+        where: {
+          BranchCodeId: {
+            in: branchCodes,
+          },
+        },
+        data: {
+          Disbursing: company.isDisburse,
+        },
+      });
+    }
+
+    return { success: true };
+  });
+}

@@ -373,6 +373,7 @@ export const getLoanWithLedger = async (loan_id: number) =>{
         orderBy: { transaction_date: "asc" },
         select:{
           loan_ledger_id: true,
+          created_at:true,
           transaction_date: true,
           transaction_type: true,
           debit_amount: true,
@@ -444,7 +445,8 @@ export const getEmpLoan = async (loan_id: number) => {
   const ledger = empLoan.ledger.map(l => {
     const isDeduction = l.transaction_type === "PAYROLL_DEDUCT";
     const isPaid = isDeduction && l.payment_status === "PAID";
-    const isCreated = isDeduction && l.payment_status === "NEW"
+    const isCreated = isDeduction && l.payment_status === "NEW";
+    const isSkipped = !isDeduction && l.payment_status === "SKIPPED";
 
     return {
       loan_ledger_id: l.loan_ledger_id,
@@ -458,11 +460,9 @@ export const getEmpLoan = async (loan_id: number) => {
       isDeduction,
       isPaid,
       isCreated,
+      isSkipped
     };
   });
-
-
-
 
   const totalPaid = ledger.reduce(
     (sum, l) => sum + l.credit_amount,
@@ -729,6 +729,7 @@ function getNextPayroll(
 
 }
 
+
 export const insertLoanPayment = async (loan_id: number,
   actionType: LoanActionType) => {
     
@@ -742,6 +743,7 @@ export const insertLoanPayment = async (loan_id: number,
       where: { loan_id },
       select: {
         loan_id: true,
+        start_date: true,
         EmpCodeId: true,
         status: true,
         principal: true,
@@ -771,6 +773,8 @@ export const insertLoanPayment = async (loan_id: number,
           orderBy: { transaction_date: "desc" },
         });
 
+    const start_date_year = fetchLoan.start_date.getFullYear() 
+    const start_date_month = fetchLoan.start_date.getMonth()
 
     const { transaction_date, payroll_cycle } = latestLedger
       ? getNextPayroll(
@@ -780,7 +784,8 @@ export const insertLoanPayment = async (loan_id: number,
           cycleCategory
         )
       : {
-          transaction_date: new Date(),
+         
+          transaction_date: new Date(start_date_year, start_date_month, 10),
           payroll_cycle: String(
             CYCLE_RULES[cycleCategory].first
           ) as PayrollCycle,
@@ -1011,6 +1016,7 @@ export async function searchEmployees(keyword: string) {
 
 export const getLoanSummary = async (
   month: string,
+  cycle:string,
   period: string,
   companyCode?: string,
   loanType?:string
@@ -1023,6 +1029,7 @@ export const getLoanSummary = async (
   const loans = await prisma.loan_details.findMany({
     where: {
       loan_type: loanType || undefined,
+      cycle_category: cycle || undefined,
       EmpCode: {
         BranchCode: {
           company_id: companyCode || undefined
@@ -1070,24 +1077,29 @@ export const getLoanSummary = async (
 
   return loans.map((loan) => {
 
-    const totalPaid = loan.ledger
-      .filter((l) => {
-        const txDate = new Date(l.transaction_date);
+    const totalPaid = Number(
+      loan.ledger
+        .filter((l) => {
+          const txDate = new Date(l.transaction_date);
 
-        if (txDate < startDate) return true;
+          if (txDate < startDate) return true;
 
-        if (txDate >= startDate && txDate < endDate) {
-          return (
-            l.payroll_cycle !== null &&
-            Number(l.payroll_cycle) <= Number(period)
-          );
-        }
+          if (txDate >= startDate && txDate < endDate) {
+            return (
+              l.payroll_cycle !== null &&
+              Number(l.payroll_cycle) <= Number(period)
+            );
+          }
 
-        return false;
-      })
-      .reduce((sum, l) => sum + Number(l.credit_amount), 0);
+          return false;
+        })
+        .reduce((sum, l) => sum + Number(l.credit_amount), 0)
+        .toFixed(2)
+    );
 
-    const runningBalance = Number(loan.principal) - totalPaid;
+    const runningBalance = Number(
+      (Number(loan.principal) - totalPaid).toFixed(2)
+    );
 
     const endDateComputed = new Date(loan.start_date);
     endDateComputed.setMonth(
@@ -1107,5 +1119,91 @@ export const getLoanSummary = async (
       total_deduction: totalPaid,
       running_balance: runningBalance
     };
+  });
+};
+
+
+export const removeLoanLedger = async (
+  loan_id: number,
+  ledger_id: number,
+  remarks: string
+) => {
+  return prisma.$transaction(async (tx) => {
+
+    const ledger = await tx.loan_ledger.findUnique({
+      where: { loan_ledger_id: ledger_id }
+    });
+
+    if (!ledger) {
+      throw new Error("Ledger not found");
+    }
+
+    if (ledger.loan_id !== loan_id) {
+      throw new Error("Ledger mismatch");
+    }
+
+    await tx.loan_ledger_logs.create({
+      data: {
+        loan_id: ledger.loan_id,
+        ledger_id: ledger.loan_ledger_id,
+
+        transaction_date: ledger.transaction_date,
+        transaction_type: ledger.transaction_type,
+        debit_amount: ledger.debit_amount,
+        credit_amount: ledger.credit_amount,
+        payment_status: ledger.payment_status,
+        payroll_cycle: ledger.payroll_cycle,
+
+        remarks,
+        type: "LEDGER_DELETED"
+      }
+    });
+
+    await tx.loan_ledger.delete({
+      where: { loan_ledger_id: ledger_id }
+    });
+
+    return { success: true };
+
+  });
+};
+
+
+export const updateLedgerTransactionDate = async (
+  loan_id: number,
+  ledger_id: number,
+  transaction_date: Date,
+  remarks: string
+) => {
+  return prisma.$transaction(async (tx) => {
+
+    const ledger = await tx.loan_ledger.findUnique({
+      where: { loan_ledger_id: ledger_id }
+    });
+
+    if (!ledger) {
+      throw new Error("Ledger not found");
+    }
+
+    if (ledger.loan_id !== loan_id) {
+      throw new Error("Ledger mismatch");
+    }
+
+    const updatedLedger = await tx.loan_ledger.update({
+      where: { loan_ledger_id: ledger_id },
+      data: {
+        transaction_date
+      }
+    });
+
+    await tx.loan_ledger_logs.create({
+      data: {
+        loan_id,
+        remarks,
+        type: "LEDGER_DATE_UPDATED"
+      }
+    });
+
+    return updatedLedger;
   });
 };

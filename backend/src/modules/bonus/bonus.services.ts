@@ -1,10 +1,12 @@
-import { AuditAction, AuditModule, Prisma } from "@prisma/client"
+import { AuditAction, AuditModule, BonusType, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
 import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
 import { formatDateToMMDDYY } from "../../utils/formatDateToMMDDYY"
+import { VarianceEmployee } from "./bonus.types"
+import { getPreviousPayrollDate } from "../../utils/getPreviousPayrollDate"
 
 //Bonus Rules
 export async function createBonusRuleService(data: CreateBonusRuleInput) {
@@ -194,6 +196,9 @@ export async function generateBonusForAllEmployees({
     const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
 
 
+  
+   
+
     const pendingChecker = await tx.employeeBonus.findMany({
         where: {
           status: "GENERATED"
@@ -208,6 +213,8 @@ export async function generateBonusForAllEmployees({
         }
       }
     })
+
+
     if (blockingSummary?.status === "RELEASED") {
       throw {
         code: "PENDING_BONUS",  
@@ -231,6 +238,17 @@ export async function generateBonusForAllEmployees({
         message: "A bonus generation is already pending. Please complete or cancel the existing process before generating a new bonus."
       }
     } 
+
+    if (blockingSummary) {
+      throw {
+        code: "PENDING_BONUS",
+        status: 409,
+        message: "Bonus already generated for this period."
+      }
+    }
+
+
+  
  
     const companies = await tx.bonusRuleCompany.findMany({
       where: {
@@ -278,7 +296,6 @@ export async function generateBonusForAllEmployees({
     })
 
 
-    console.log(employees)
 
     const invalidEmployees: Array<{
       empCode: string
@@ -971,7 +988,7 @@ export async function getEmployeesByBonusSummarySerive(
     const summary = await tx.bonusSummary.findFirst({
       include: {
         bonusRule: {
-          select: { code: true, name: true, bonusType: true,  }
+          select: { code: true, name: true, bonusType: true, eligibleMonth: true }
         }
 
       },
@@ -986,6 +1003,10 @@ export async function getEmployeesByBonusSummarySerive(
         employees: [],
       }
     }
+
+  
+
+
     const allowedCompanies = await tx.bonusRuleCompany.findMany({
       where: {
         bonusRuleId: summary.bonusRuleId,
@@ -1023,9 +1044,13 @@ export async function getEmployeesByBonusSummarySerive(
               CompanyCode: selectedCompanyCode
             },
           },
+         
         },
-
-
+      {
+        EmployementDate: {
+          lte: summary.generateDate
+        }
+      },
         {
           OR: [
             { EmployeeStatus: "Active" },
@@ -1059,15 +1084,15 @@ export async function getEmployeesByBonusSummarySerive(
     orderBy: { Lastname: "asc" },
   })
 
-    console.log("test: ", employees)
-
-     const test = await prisma.$transaction(async (tx) => {
+     const variance = await prisma.$transaction(async (tx) => {
       return await reconcileEmployeePayrollBonus(
         tx,
         selectedCompanyCode,
         summary
       )
     })
+
+    console.log("test: ", variance)
 
 
     const result = employees.map(emp => {
@@ -1103,6 +1128,7 @@ export async function getEmployeesByBonusSummarySerive(
       summary,
       companies: allowedCompanies,
       employees: result,
+      variance 
     }
   })
 }
@@ -1271,10 +1297,16 @@ const employeesWithVariance = currentData
 
 type SummaryInput = {
   id: number
+  generateDate: Date
+  asOfDate: Date
   bonusRule: {
     code: string
+    eligibleMonth: number
+    bonusType: BonusType
   }
 }
+
+
 
 
 export async function reconcileEmployeePayrollBonus(
@@ -1282,49 +1314,141 @@ export async function reconcileEmployeePayrollBonus(
   selectedCompanyCode: string,
   summary: SummaryInput,
 ) {
-  // 1️⃣ Employees
+  // Employees
+
+  const startAndEnd = getBonusStartAndEndDate(summary.bonusRule.eligibleMonth, summary.bonusRule.bonusType, summary.asOfDate)
+
+    const bonusStart = new Date(startAndEnd.bonusStart)
+    const bonusEnd   = new Date(startAndEnd.bonusEnd)
+
+
   const employees = await tx.employee.findMany({
     where: {
       AND: [
         {
           BranchCode: {
             CompanyCode: {
-              CompanyCode: selectedCompanyCode,
+              CompanyCode: selectedCompanyCode
             },
           },
+         
         },
+      {
+        EmployementDate: {
+          lte: summary.generateDate
+        }
+      },
         {
           OR: [
             { EmployeeStatus: "Active" },
-            { EmployeeStatus: "Probationary" },
             { bod_member: "bod1" },
             { bod_member: "bod2" },
           ],
         },
       ],
     },
+
     select: {
       EmpCode: true,
       Firstname: true,
       Lastname: true,
-    },
+      employeepayroll: {
+        select: {
+          basic_salary: true
+        }
+      },
+      specialLeaves: {
+        where: {
+          OR: [
+            {
+              status: { not: "Expected" },
+              start: { not: null, lte: bonusEnd },
+              end:   { not: null, gte: bonusStart }
+            },
+            {
+              status: "Expected",
+              expectedStart: { not: null, lte: bonusEnd },
+              expectedEnd:   { not: null, gte: bonusStart }
+            }
+          ]
+        },
+        select: {
+          leaveName: true,
+          start: true,
+          end: true,
+          expectedStart: true,
+          expectedEnd: true,
+          status: true
+        }
+      },
+      employee_salary_history: {
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 1,
+        select:{
+          remarks: true,
+          createdAt: true
+        }
+      }
+    }
   })
 
-  // 2️⃣ Payroll Archive
+
+
+
+  const prevPayroll = await tx.totalPayrollByCompany.findFirst({
+    where:{
+      company_id: selectedCompanyCode
+    },
+    select: {
+      total_payroll_id: true,
+      total_basic_salary: true,
+      PayCycle: true,
+      cycle_category: true
+    },
+    orderBy:{
+      id: "desc"
+    }
+  })
+
+  // Payroll Archive
   const payrollArchive = await tx.employeePayrollArchive.findMany({
     where: {
-      EmpCode: {
-        BranchCode: {
-          company_id: selectedCompanyCode,
-        },
-      },
+      AND:[
+            {
+              EmpCode: {
+                BranchCode: {
+                  company_id: selectedCompanyCode,
+                },
+              },
+            },
+            {
+              totalPayrollId: prevPayroll?.total_payroll_id
+            }
+      ]
     },
     select: {
       EmpCodeId: true,
+      Basic_salary: true,
+      EmpCode: {
+        select:{
+          Firstname: true,
+          Lastname: true,
+          EmployeeStatus: true,
+          EndDate: true,
+          employeepayroll:{
+            select:{
+              basic_salary: true
+            }
+          }
+        }
+      }
     },
   })
 
-  // 3️⃣ Bonus Records (this summary only)
+
+  // Bonus Records (this summary only)
   const bonusRecords = await tx.employeeBonus.findMany({
     where: {
       bonusSummaryId: summary.id,
@@ -1335,47 +1459,137 @@ export async function reconcileEmployeePayrollBonus(
     },
   })
 
-  // =============================
+
   // Build Sets
-  // =============================
 
   const archiveSet = new Set<string>(
     payrollArchive.map(p => p.EmpCodeId)
   )
-
-  const bonusSet = new Set<string>(
-    bonusRecords.map(b => b.employeeCode)
-  )
-
+  
   const bonusSetEmployee = new Set<string>(
-    employees.map(b => b.EmpCode)
+    employees.map(e => e.EmpCode)
   )
 
+  const archiveSalaryMap = new Map(
+    payrollArchive.map(a => [a.EmpCodeId, Number(a.Basic_salary)])
+  )
+  
+  
+
+  // CORE VARIANCE LOGIC
+
+  //Employees with salary changed
+
+  const salaryChanged: VarianceEmployee[] = employees
+  .filter(emp => archiveSalaryMap.has(emp.EmpCode))
+  .map(emp => {
+    const currentSalary = Number(emp.employeepayroll?.basic_salary ?? 0)
+    const archiveSalary =( archiveSalaryMap.get(emp.EmpCode) ?? 0)  * 2
 
 
-  // console.log("Archive: ",  archiveSet)
-  console.log("Bonus: ",  bonusSetEmployee)
+    if (currentSalary !== archiveSalary) {
 
+      const history = emp.employee_salary_history?.[0]
+      
+      return {
+        EmpCode: emp.EmpCode,
+        name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+        basic_salary: (currentSalary - archiveSalary) / 2,
+        type: "SALARY_CHANGED" as const,
+        remarks: history?.remarks ?? history?.remarks ?? "Salary updated",
+        date: history?.createdAt
+          ? new Date(history.createdAt).toLocaleDateString()
+          : ""
+      }
+    }
 
+    return null
+  })
+  .filter(Boolean) as VarianceEmployee[]
+  
+  //  Employees with bonus but no archive
+  const bonusWithoutArchive: VarianceEmployee[] = employees
+  .filter(emp =>
+    bonusSetEmployee.has(emp.EmpCode) &&
+    !archiveSet.has(emp.EmpCode)
+  )
+  .map(emp => {
+    const leave = emp.specialLeaves?.[0]
 
-  // =============================
-  // 🎯 CORE VARIANCE LOGIC
-  // =============================
+    const start =
+      leave?.status === "Expected"
+        ? leave?.expectedStart
+        : leave?.start
 
-  const varianceEmployees = employees
-    .filter(emp =>
-      bonusSet.has(emp.EmpCode) && // has bonus (even zero)
-      !archiveSet.has(emp.EmpCode) // but no payroll archive
-    )
-    .map(emp => ({
+    const end =
+      leave?.status === "Expected"
+        ? leave?.expectedEnd
+        : leave?.end
+
+    const date =
+      start && end
+        ? `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
+        : ""
+    return {
       EmpCode: emp.EmpCode,
       name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
-    }))
+      basic_salary: Number(emp.employeepayroll?.basic_salary) / 2,
+      type: "BONUS_NO_ARCHIVE" as const,
+      remarks: leave?.leaveName ?? "",
+      date
+    }
+  })
+  
+  //  Archive exists but employee/bonus missing
+  const archiveWithoutBonus: VarianceEmployee[] = payrollArchive
+  .filter(arch => !bonusSetEmployee.has(arch.EmpCodeId))
+  .map(arch => ({
+    EmpCode: arch.EmpCodeId,
+    name: `${arch.EmpCode.Lastname ?? ""}, ${arch.EmpCode?.Firstname ?? ""}`,
+    basic_salary: Number(arch.EmpCode?.employeepayroll?.basic_salary) / 2,
+    type: "ARCHIVE_NO_BONUS" as const,
+    remarks: arch.EmpCode.EmployeeStatus ?? "",
+    date: arch.EmpCode.EndDate
+          ? new Date(arch.EmpCode.EndDate).toLocaleDateString()
+           : ""
+  }))
+  
+  // combine both
+  const varianceEmployees: VarianceEmployee[] = [
+    ...bonusWithoutArchive,
+    ...archiveWithoutBonus,
+    ...salaryChanged
+  ]
+
+  const totalVarianceBasicSalary = varianceEmployees.reduce((sum, emp) => {
+    const amount = emp.basic_salary ?? 0
+  
+    if (emp.type === "ARCHIVE_NO_BONUS") {
+      // employee existed before but not now → subtract
+      return sum - amount
+    }
+  
+    if (emp.type === "SALARY_CHANGED") {
+      // amount already represents the difference
+      return sum + amount
+    }
+  
+    // BONUS_NO_ARCHIVE or other additions
+    return sum + amount
+  }, 0)
+
 
   return {
+    prevPayroll: prevPayroll?.total_basic_salary,
+    prevPayrollDate: getPreviousPayrollDate(
+      prevPayroll?.PayCycle ?? "",
+      prevPayroll?.cycle_category ?? ""
+    ),
     totalEmployees: employees.length,
+    totalArchive: payrollArchive.length,
     varianceCount: varianceEmployees.length,
     varianceEmployees,
+    totalVarianceBasicSalary
   }
 }
 

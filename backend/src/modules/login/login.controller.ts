@@ -37,9 +37,14 @@ export async function loginController(
     });
 
     res.status(200).json({ user });
-  } catch (error: any) {
-    res.status(401).json({
-      message: error?.message ?? "Login failed",
+  }catch (error: any) {
+    if (error.message === "INVALID_USER" || error.message === "INVALID_PASSWORD") {
+      return res.status(401).json({
+        message: "Invalid username or password",
+      });
+    }
+    return res.status(500).json({
+      message: "Internal server error",
     });
   }
 }

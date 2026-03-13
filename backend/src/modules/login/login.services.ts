@@ -27,13 +27,16 @@ export async function loginUser(params: LoginDTO) {
     }
   })
 
+
   if (!user || !user.isActive) {
-    throw new Error("Invalid username or password")
+    throw new Error("INVALID_USER")
   }
+ 
 
   const isPasswordValid = await bcrypt.compare(password, user.password)
+  console.log("test: ", isPasswordValid)
   if (!isPasswordValid) {
-    throw new Error("Invalid username or password")
+    throw new Error("INVALID_PASSWORD")
   }
 
   const roles = user.roles.map(r => r.role.name)

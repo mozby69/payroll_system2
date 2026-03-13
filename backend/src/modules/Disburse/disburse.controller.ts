@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getFilteredMainDisburse, saveEmployeeSetup,approveDisburse, getMainDisburseDetails } from "./disburse.services";
+import { getFilteredMainDisburse, saveEmployeeSetup,approveDisburse, getMainDisburseDetails, getDisburseCompanies, saveCompanyDisburseSetup } from "./disburse.services";
 
 export const saveEmployeeSetupController = async (
   req: Request,
@@ -97,7 +97,6 @@ export const getMainDisburseDetailsController = async (
 ) => {
   try {
     const { id } = req.params;
-
     const data = await getMainDisburseDetails(
       Number(id)
     );
@@ -107,6 +106,52 @@ export const getMainDisburseDetailsController = async (
     console.error("Disburse Details Error:", error);
     return res.status(500).json({
       message: "Failed to fetch disbursement details",
+    });
+  }
+};
+
+
+export const getDisburseCompaniesByCycle = async (req: Request,res: Response) => {
+  const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
+
+  const isDisburse =
+    typeof req.query.isDisburse === "string"
+      ? req.query.isDisburse === "true"
+      : undefined;
+
+  if (!cycle) {
+    return res.status(400).json({ message: "cycle is required" });
+  }
+
+  const result = await getDisburseCompanies({
+    cycle,
+    isDisburse
+  });
+
+  res.json(result);
+};
+
+export const updateCompanyDisburse = async (req: Request, res: Response) => {
+  try {
+    const { companies } = req.body;
+
+    if (!Array.isArray(companies) || companies.length === 0) {
+      return res.status(400).json({
+        message: "Companies payload is required",
+      });
+    }
+
+    const result = await saveCompanyDisburseSetup(companies);
+
+    return res.status(200).json({
+      message: "Company disburse setup updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error updating company disburse setup:", error);
+
+    return res.status(500).json({
+      message: "Failed to update company disburse setup",
     });
   }
 };

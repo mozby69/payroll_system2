@@ -17,7 +17,9 @@ export interface EmployeeList{
     Email:string;
     Position:string;
     Department:string;
-    BranchCode:string;
+    BranchCode: {
+      branchCode: string;
+    };
     EmploymentStatus: string;
 
     employeepayroll?: {

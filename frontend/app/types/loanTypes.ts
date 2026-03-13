@@ -67,6 +67,7 @@ export type LedgerRow = {
   debit_amount: number;
   credit_amount: number;
   isPaid: boolean;
+  isSkipped: boolean;
   isDeduction:boolean;
   isCreated:boolean;
 };
@@ -74,15 +75,17 @@ export type LedgerRow = {
 export type LoanLedgerItem = {
   loan_ledger_id: number | string;
   transaction_date: string | null;
+  created_at: string | null;
   transaction_type: string;
   payment_status: string | null;
   debit_amount: number;
   credit_amount: number;
   remarks: string | null;
   isPaid: boolean;
+  isSkipped: boolean;
   isDeduction: boolean;
   isCreated: boolean;
-  payroll_cycle?: "10" | "25";
+  payroll_cycle?: "10" | "25" | "15" | "30";
 };
 
 
@@ -260,4 +263,24 @@ export type LoanMonitoringRow = {
   deduction: number
   total_deduction: number
   running_balance: number
+}
+
+
+export type RemoveLedgerPayload = {
+  loan_id: number;
+  ledger_id: number;
+  remarks: string;
+};
+
+export type UpdateLedgerDatePayload = {
+  ledger_id: number
+  transaction_date: string
+  remarks: string
+}
+
+export type UpdateLedgerDateVariables = {
+  loan_id: number
+  ledger_id: number
+  transaction_date: string
+  remarks: string
 }

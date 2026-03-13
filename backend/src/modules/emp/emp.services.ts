@@ -69,7 +69,11 @@ export const getAllEmployees = async ({
       Lastname: true,
       Department: true,
       EmploymentStatus: true,
-      BranchCodeId: true,
+      BranchCode: {
+        select: {
+          branchCode: true,
+        }
+      },
       employeepayroll:{
         select:{
           basic_salary:true,

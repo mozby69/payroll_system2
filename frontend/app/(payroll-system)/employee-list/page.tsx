@@ -134,7 +134,7 @@ function EmployeeListContent() {
                   <td className="p-4">
                     {emp.Lastname}, {emp.Firstname} {emp.Middlename}
                   </td>
-                  <td className="p-4">{emp.BranchCode ?? "-"}</td>
+                  <td className="p-4">{emp.BranchCode?.branchCode ?? "-"}</td>
                   <td className="p-4">{emp.Department ?? "-"}</td>
                   <td className="p-4">{emp.EmploymentStatus}</td>
                   <td className="p-4">

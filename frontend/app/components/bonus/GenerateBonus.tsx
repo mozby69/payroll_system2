@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useRef, useState } from "react"
 import {
   useGetEmployeeGeneratedBonus,
   useResetBonus,
@@ -13,12 +13,18 @@ import EditBonusModal from "./modals/EditBonusModal"
 import SweetAlert from "../Swal"
 import toast from "react-hot-toast"
 import { handleApiError } from "@/app/utils/handleApiError"
+import GenButton from "../Buttons"
+import { useReactToPrint } from "react-to-print"
+import PrintBonusReport from "../reports/BonusReport/PrintBonusReport"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
   const [editModal, setIsOpenEditModal] = useState(false)
   const [selectedBonus, setSelectedBonus] = useState<EmployeBonusType | null>(null)
   const [selectedCompany, setSelectedCompany] = useState<string | undefined>()
+  const printRef = useRef<HTMLDivElement>(null)
+
+
 
   const resetBonusMutation = useResetBonus()
   const submitBonusMutation = useSubmitBonus()
@@ -69,6 +75,9 @@ export default function GenerateBonusPage() {
   const summary = data?.data.summary
   const companies = data?.data.companies ?? []
   const employees = data?.data.employees ?? []
+  const variance = data?.data.variance
+  
+
 
   // ✅ derive active company safely
   const activeCompany =
@@ -105,9 +114,29 @@ export default function GenerateBonusPage() {
     }
     
       
+    const varianceEmployees = variance?.varianceEmployees ?? []
+
+    const varianceTotal = variance?.totalVarianceBasicSalary ?? 0
     
+    const varianceBreakdownTotal = varianceEmployees.reduce((sum, e) => {
+      const amount = Number(e.basic_salary) || 0
+    
+      return e.type === "ARCHIVE_NO_BONUS"
+        ? sum - amount
+        : sum + amount
+    }, 0) 
+    
+    const remainingVariance = varianceTotal - varianceBreakdownTotal
+
+
+        const handlePrint1 = useReactToPrint({
+              contentRef: printRef,
+              documentTitle: `Bonus`,
+            })
 
   return (
+
+    
     <div className="flex flex-col gap-6">
 
       {/* Header */}
@@ -169,34 +198,51 @@ export default function GenerateBonusPage() {
         </div>
       )}
 
-      {/* Company Buttons */}
-      {companies.length > 0 && (
-        <div className="flex gap-3">
-          {companies.map(company => {
-            const isActive =
-              activeCompany === company.companyCode
+      <div className="flex justify-between">
+          <div>
+              {/* Company Buttons */}
+              {companies.length > 0 && (
+                <div className="flex gap-3">
+                  {companies.map(company => {
+                    const isActive =
+                      activeCompany === company.companyCode
 
-            return (
-              <button
-                key={company.companyCode}
-                onClick={() =>
-                  setSelectedCompany(company.companyCode)
-                }
-                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                  isActive
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {company.companyCode}
-              </button>
-            )
-          })}
-        </div>
-      )}
+                    return (
+                      <button
+                        key={company.companyCode}
+                        onClick={() =>
+                          setSelectedCompany(company.companyCode)
+                        }
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          isActive
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {company.companyCode}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+          </div>
+
+          {companies.length > 0 && (
+          <div className="div">
+                <GenButton
+                          variant="main"
+                          onClick={handlePrint1}
+                          >
+                          Print Bonus
+              </GenButton>
+          </div>
+          )}
+      </div>
+
+
 
       {/* Table */}
-      <div className="bg-white border rounded-xl shadow-sm flex flex-col h-150">
+      <div className="bg-white border rounded-xl shadow-sm flex flex-col max-h-150">
         <div className="flex-1 overflow-y-auto">
           <table className="w-full text-sm border-collapse table-fixed" >
 
@@ -231,6 +277,7 @@ export default function GenerateBonusPage() {
                     bonus.hasLeave  ? "bg-red-100 hover:bg-red-50" : ""
                   }`}
                   onDoubleClick={()=>handleEditBonus(bonus)}
+                  title={bonus.remarks ?? ""}
                 >
                   <td className="px-4 py-3">{index + 1}</td>
                   <td className="px-4 py-3 font-medium">
@@ -260,11 +307,9 @@ export default function GenerateBonusPage() {
                     ₱{Number(bonus.netAmount).toLocaleString()}
                   </td>
                   <td
-  className="px-4 py-3 font-medium max-w-sm truncate text-left"
-  title={bonus.remarks ?? ""}
->
-  {bonus.remarks}
-</td>
+                   className="px-4 py-3 font-medium max-w-sm truncate text-left">
+                      {bonus.remarks}
+                    </td>
                 </tr>
               ))}
             </tbody>
@@ -297,12 +342,91 @@ export default function GenerateBonusPage() {
                 </td>
                 <td></td>
               </tr>
-            </tfoot>
-          )}
+
+
+      
+      </tfoot>
+      )}
 
           </table>
+
+  
         </div>
       </div>
+
+        {/*Varience */}
+        {employees.length >= 1 && (
+            <div className="mt-4 bg-gray-50 border rounded-lg p-4 max-w-180 ">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  Payroll Comparison
+                </h3>
+                <div className="grid grid-cols-2 gap-y-1 text-sm">
+                  <span>Half Month</span>
+                  <span className="text-right">₱{totals.halfMonth.toLocaleString()}</span>
+
+                  <span>Payroll {variance?.prevPayrollDate}</span>
+                  <span className="text-right">
+                     ₱{Number(variance?.prevPayroll ?? 0).toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="border-t my-2"></div>
+
+                <div className="grid grid-cols-2 text-sm font-semibold">
+                  <span className="text-red-600">VARIANCE</span>
+                  <span className="text-right">₱{varianceTotal.toLocaleString()}</span>
+                </div>
+
+                {varianceEmployees.length > 0 && (
+                  
+                  <>
+                    <div className="border-t my-2"></div>
+                    <div className="grid grid-cols-3 gap-y-1 text-sm">
+                      {varianceEmployees.map(emp => {
+                        const amount = Number(emp.basic_salary || 0)
+
+                        const isAddition =
+                          emp.type === "BONUS_NO_ARCHIVE" ||
+                          emp.type === "SALARY_CHANGED"
+                        return (
+                          <React.Fragment key={emp.EmpCode}>
+                           <span className="pl-2 col-span-2" >
+                            {emp.remarks ? emp.remarks + ": " : "UNKOWN: "} {emp.name}  {emp.date ? "- (" +emp.date +")" : ""}
+                          </span>
+                          <span
+                              className={`text-right ${
+                                isAddition ? "text-green-600" : "text-red-600"
+                              }`}
+                            >
+                              {isAddition
+                                ? `(₱${amount.toLocaleString()})`
+                                : `₱${amount.toLocaleString()}`}
+                            </span>
+                          </React.Fragment>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+
+                <div className="border-t my-2"></div>
+
+                <div className="grid grid-cols-2 text-sm font-semibold">
+                  <span>Total Variance Balance</span>
+                  <span
+                    className={`text-right ${
+                      remainingVariance === 0 ? "text-green-700" : "text-red-700"
+                    }`}
+                  >
+                    {remainingVariance === 0
+                      ? "(₱0.00)"
+                      : `₱${remainingVariance.toLocaleString()}`}
+                  </span>
+                </div>
+            </div>
+        )}
+
+
 
       {/*Add Modal */}
       {addModal && (
@@ -331,6 +455,14 @@ export default function GenerateBonusPage() {
         </RequestModal>
       )}
 
+
+      {data && (
+        <div style={{ display: "none" }}>
+           <PrintBonusReport ref={printRef} data={data} />
+        </div>
+      )
+}      
+     
     </div>
   )
 }

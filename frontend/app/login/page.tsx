@@ -15,16 +15,15 @@ import { loginSchema, LoginSchema } from "../schema/login.schema";
 import { useRouter } from "next/navigation";
 import { LoginParams } from "../types/login";
 import { useAuth } from "../components/UserContext";
+import toast from "react-hot-toast";
 
 
 
 export default function Login() {
     const router = useRouter();
-    const { mutateAsync } = useLogin();
     const { refreshUser } = useAuth();
 
-    const { isPending, error } = useLogin();
-
+    const { mutateAsync, isPending, error } = useLogin();
 
     const methods = useForm<LoginSchema>({
         resolver: zodResolver(loginSchema),
@@ -36,6 +35,7 @@ export default function Login() {
 
     const onSubmit = async (data: LoginParams) => {
         await mutateAsync(data);
+        toast.success("Login successful")
         await refreshUser();
         router.replace("/");
       };
@@ -97,7 +97,7 @@ export default function Login() {
                                         type="password"
                                         placeholder="*******"
                                     />
-
+                                     {/* ERROR DISPLAY */}
                                     {error && (
                                     <p className="text-negative text-sm text-center">
                                         {(error as AxiosError<{ message: string }>)?.response?.data?.message}

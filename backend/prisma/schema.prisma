@@ -109,6 +109,8 @@ model Employee {
   BranchCode     Branch?  @relation(fields: [BranchCodeId], references: [branchCode])
   BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
 
+  EndDate       DateTime? @db.Date
+
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()
@@ -354,6 +356,7 @@ model company_details{
     CompanyCode   String   @id @db.VarChar(20) 
     CompanyCycle String? @db.VarChar(50)
     CompanyName String? @db.VarChar(50)
+    isDisburse Boolean @default(false)
 
     branch_code Branch[] @relation
 
@@ -385,6 +388,8 @@ model loan_details {
 
   ledger loan_ledger[]
 
+  loan_logs loan_ledger_logs[]
+
   @@map("loan_details")
 }
 
@@ -407,6 +412,34 @@ model loan_ledger {
   loan loan_details @relation(fields: [loan_id], references: [loan_id], onDelete: Cascade)
 
   @@map("loan_ledger")
+}
+
+enum ledger_logs_type {
+    LEDGER_DELETED
+    LEDGER_DATE_UPDATED
+}
+
+model loan_ledger_logs {
+  logs_id Int @id @default(autoincrement())
+
+  loan_id Int
+  ledger_id Int?
+
+  transaction_date DateTime? @db.Date
+  transaction_type String? @db.VarChar(50)
+
+  debit_amount Decimal? @db.Decimal(10,2)
+  credit_amount Decimal? @db.Decimal(10,2)
+
+  payment_status String? @db.VarChar(50)
+  payroll_cycle String? @db.VarChar(10)
+
+  remarks String? @db.VarChar(255)
+  type ledger_logs_type
+
+  created_at DateTime @default(now())
+
+  loan loan_details @relation(fields: [loan_id], references: [loan_id], onDelete: Cascade)
 }
 
 // Bonus Schema 
@@ -706,6 +739,7 @@ enum DisburseStatus {
 
 model main_disburse {
   mainDisburseID Int      @id @default(autoincrement())
+  payrollCycle   String   @db.VarChar(50) @map("payroll_cycle")
   typeDisburse   String   @db.VarChar(50) @map("type_disburse")
   payrollPeriod  String   @db.VarChar(50) @map("payroll_period")
   createdAt      DateTime @map("created_at")

@@ -8,7 +8,6 @@ import { useAuth } from "../components/UserContext";
 export const useLogin = () => {
   return useMutation({
     mutationFn: (params: LoginParams) => loginService(params),
-    
   });
 };
 
