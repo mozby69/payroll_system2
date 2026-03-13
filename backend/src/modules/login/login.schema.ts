@@ -8,7 +8,9 @@ export const createUserSchema = z.object({
   
     roleIds: z
       .array(z.number().int().positive())
-      .min(1, "At least one role is required")
+      .min(1, "At least one role is required"),
+    company_id: z.string().optional(),
+
   })
 
 
@@ -20,7 +22,8 @@ export const createUserSchema = z.object({
   
     roleIds: z
       .array(z.number().int().positive())
-      .min(1, "At least one role is required")
+      .min(1, "At least one role is required"),
+      company_id: z.string().optional(),
   })
   
   

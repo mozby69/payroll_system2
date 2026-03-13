@@ -93,7 +93,7 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
       </main>
       {userModal && (
-          <RequestModal title=" Account Configuration" size="xl" onClose={()=>setUserModal(false)}>
+          <RequestModal title=" Account Configuration" size="xxl" onClose={()=>setUserModal(false)}>
               <AccountConfigurationModal onClose={()=>setUserModal(false)} />
         </RequestModal>
       )}

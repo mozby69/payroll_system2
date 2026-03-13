@@ -125,7 +125,24 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           })
         }
       }
+      const bonusTypeOptions = BonusTypeEnum.options.map((o) => ({
+        value: o,
+        label:
+          o === "MIDYEAR"
+            ? "Mid Year"
+            : o === "QUARTERLY"
+            ? "Quarterly"
+            : o === "ANNUAL"
+            ? "Annual"
+            : "Special"
+      }))
 
+      const formulaTypeOptions = FormulaTypeEnum.options.map((o) => ({
+        value: o,
+        label: o === "BASIC_DIV_1"
+          ? "Basic ÷ 1"
+          : "Basic ÷ 2"
+      }))
   return (
     <div className="relative">
       {showProcessing && (
@@ -150,7 +167,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
             value={form.bonusType ?? ""}
             error={errors?.bonusType?._errors?.[0]}
             onChange={handleChange}
-            options={BonusTypeEnum.options}
+            options={bonusTypeOptions}
           />
 
         {/* Code */}
@@ -183,7 +200,7 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           value={form.formulaType ?? ""}
           error={errors?.formulaType?._errors?.[0]}
           onChange={handleChange}
-          options={FormulaTypeEnum.options}
+          options={formulaTypeOptions}
         />
 
         {/* Numbers */}

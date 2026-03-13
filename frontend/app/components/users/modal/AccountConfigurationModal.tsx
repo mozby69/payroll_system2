@@ -70,6 +70,7 @@ export default function AccountConfigurationModal({ onClose}: Props) {
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Roles</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Company</th>
               <th className="px-4 py-3 font-medium text-right">Actions</th>
             </tr>
           </thead>
@@ -130,6 +131,9 @@ export default function AccountConfigurationModal({ onClose}: Props) {
                   >
                     {user.isActive ? "Active" : "Disabled"}
                   </span>
+                </td>
+                <td className="px-4 py-3 font-medium text-gray-800">
+                  {user.company_id}
                 </td>
 
                 <td className="px-4 py-3 text-right">

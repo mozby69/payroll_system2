@@ -14,8 +14,10 @@ import {
 
 import { useState } from "react"
 import { ZodFormattedError } from "zod"
-import { InputField } from "../../FormInputs"
+import { InputField, SelectField } from "../../FormInputs"
 import { User } from "@/app/types/login"
+import { useGetCompanyDetails } from "@/app/hooks/useGeneral"
+import { BonusTypeEnum } from "@/app/schema/bonus.schema"
 
 type Props = {
   onClose: () => void
@@ -34,11 +36,14 @@ export default function CreateUserModal({
   const updateUser = useUpdateUser()
   const { data: roles } = useGetRoles()
 
+  const {data: company} = useGetCompanyDetails();
+
   const [form, setForm] = useState<RegisterSchema>({
     email: initialData?.email ?? "",
     name: initialData?.name ?? "",
     username: initialData?.username ?? "",
     password: "",
+    company_id:  initialData?.company_id ?? "",
     roleIds: initialData
     ? initialData.roles.map(r => r.role.id)
     : []
@@ -47,10 +52,23 @@ export default function CreateUserModal({
   const [errors, setErrors] =
     useState<ZodFormattedError<RegisterSchema> | null>(null)
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
+    function handleChange(
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) {
+      const { name, value, type, checked } = e.target as HTMLInputElement
+    
+      setForm(prev => ({
+        ...prev,
+        [name]:
+          type === "checkbox"
+            ? checked
+            : type === "number"
+              ? value === "" ? 0 : Number(value)
+              : value === ""
+                ? null
+                : value
+      }))
+    }
 
   function handleSubmit() {
     const schema = isEdit ? updateUserSchema : registerSchema
@@ -82,6 +100,12 @@ export default function CreateUserModal({
       })
     }
   }
+
+  const companyOptions =
+  company?.map((c) => ({
+    value: c.CompanyCode,
+    label: c.CompanyName
+  })) ?? [];
 
   return (
     <div className="space-y-5">
@@ -162,6 +186,16 @@ export default function CreateUserModal({
           </p>
         )}
       </div>
+
+         <SelectField
+                  label="Company"
+                  name="company_id"
+                  placeholder="Select company"
+                  value={form.company_id ?? ""}
+                  error={errors?.company_id?._errors?.[0]}
+                  onChange={handleChange}
+                  options={companyOptions}
+                />
 
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-4 border-t">
