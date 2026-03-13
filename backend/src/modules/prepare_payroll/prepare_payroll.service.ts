@@ -685,6 +685,7 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
           bod_member: {
             in: ["bod1", "bod2"],
           },
+          
         },
       },
     ],
@@ -693,6 +694,15 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
     AND: [
       { CycleCategory: cycle },
+      {
+        EmpCode: {
+          BranchCode: {
+            CompanyCode: {
+              CompanyCycle: cycle,
+            },
+          },
+        },
+      },
       { status: { in: ["PENDING"] } },
       searchFilter,
       statusOverride,

@@ -416,7 +416,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
 
-  export async function saveComputedFinalPayroll() {
+  export async function saveComputedFinalPayroll(cycle: "10-25-Cycle" | "15-30-Cycle") {
     
   
     return await prisma.$transaction(async (tx) => {
@@ -427,6 +427,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           status: {
             in: ["PENDING", "FOR_CHECKER"],
           },
+          CycleCategory:cycle,
         },
       });
       
@@ -447,7 +448,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
     const payrollCycle = payCycle.split("-")[0];
 
-    const cycleCategory = computed[0].CycleCategory;
+    const cycleCategory = cycle;
     const rawSelectedPayrollDate = computed[0]?.selected_payroll_date;
     
     const loans = await tx.loan_details.findMany({

@@ -142,7 +142,7 @@ export const fetchInitializeComputedPayroll = async (params: {
   search?: string;
   range: DateRange | null;
 }): Promise<PaginatedResponse<ComputedProps>> => {
-  const res = await api.get("/prepare-payroll/computed-payroll", {
+  const res = await api.get("/prepare-payroll/initialize-computed-payroll", {
     params: {
       ...params,
       startDate: params.range?.startDate,

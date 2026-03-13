@@ -12,6 +12,7 @@ import { ComputedProps } from "@/app/services/preparePayroll";
 import Datatable from "@/app/components/Datatable";
 import { Column } from "@/app/types/preparePayroll";
 import { useQueryClient } from "@tanstack/react-query";
+import { Pagination } from "@/app/components/Pagination";
 
 
 interface props{
@@ -99,6 +100,11 @@ export default function SelectDate({branchCycle}:props){
                   }
                 }, [isSuccess, queryClient]);
 
+                const handleSearchChange = (value: string) => {
+                  setSearch(value);
+                  setPage(1);
+                };
+
     return(
         <div>
 
@@ -134,7 +140,27 @@ export default function SelectDate({branchCycle}:props){
                 </div> 
 
 
+                <div className="flex justify-end mb-4 pt-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Search..."
+                                        value={search}
+                                        onChange={(e) => handleSearchChange(e.target.value)}
+                                        className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                                    />   
+                                </div>
+
+
                 <Datatable columns={columns} data={tableData} />
+
+                
+                <Pagination
+                  page={page}
+                  totalPages={employee_payroll?.meta.totalPages ?? 1}
+                  totalItems={employee_payroll?.meta.total ?? 0}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                />
 
 
 

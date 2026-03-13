@@ -28,7 +28,7 @@ export default function FinancialPage(){
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
       //const [selectedCompany, setSelectedCompany] = useState("");
-      const [cycle, setCycle] = useState("");
+      const [cycle, setCycle] = useState("10-25-Cycle");
       const [company, setCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
@@ -64,11 +64,16 @@ export default function FinancialPage(){
 
 
 
-      const rows: SpreadsheetRow[] = (data?.data ?? [])
-      .filter((emp) => {
-        if (!company) return true;
-        return emp.EmpCode.BranchCode?.company_id === company;
-      })
+        const rows: SpreadsheetRow[] = (data?.data ?? [])
+        .filter((emp) => {
+          if (cycle && emp.CycleCategory !== cycle) return false;
+      
+          if (company && emp.EmpCode.BranchCode?.company_id !== company) {
+            return false;
+          }
+      
+          return true;
+        })
       .map((emp) => {
         const key = buildKey(
           emp.PayCode,
@@ -132,7 +137,7 @@ export default function FinancialPage(){
           "Confirm Save Payroll",
           "Are you sure you want to save this payroll?",
           () => {
-            savePayroll.mutate();
+            savePayroll.mutate(cycle);
           }
         );
       };
