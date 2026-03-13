@@ -1,5 +1,7 @@
 "use client";
 import GenButton from "@/app/components/Buttons";
+import CompanyCycleFilter from "@/app/components/Company_CycleFilter";
+import CompanyFilterCycle from "@/app/components/Company_CycleFilter";
 import CompanyFilter from "@/app/components/CompanyFilter";
 import RequestModal from "@/app/components/Modal";
 import PayrollSpreadsheetPrint from "@/app/components/reports/PrintPayrollSpreadsheet";
@@ -25,7 +27,9 @@ export default function FinancialPage(){
       const saveToApprover = useSaveToApproverPayroll()
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
-      const [selectedCompany, setSelectedCompany] = useState("");
+      //const [selectedCompany, setSelectedCompany] = useState("");
+      const [cycle, setCycle] = useState("");
+      const [company, setCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
       const { hasPermission,hasRole,user } = useAuth()
@@ -62,8 +66,8 @@ export default function FinancialPage(){
 
       const rows: SpreadsheetRow[] = (data?.data ?? [])
       .filter((emp) => {
-        if (!selectedCompany) return true;
-        return emp.EmpCode.BranchCode?.company_id === selectedCompany;
+        if (!company) return true;
+        return emp.EmpCode.BranchCode?.company_id === company;
       })
       .map((emp) => {
         const key = buildKey(
@@ -151,12 +155,16 @@ export default function FinancialPage(){
           "Confirm Save Payroll",
           "Are you sure you want to this save payroll?",
           () => {
-            saveToApprover.mutate(selectedCompany);
+            saveToApprover.mutate(company);
           }
         );
       };
     
     
+      const handleCycleChange = (value: string) => {
+        setCycle(value);
+        setCompany("");
+      };
     
       const totals = rows.reduce(
           (acc, row) => {
@@ -263,11 +271,12 @@ export default function FinancialPage(){
                 </div>
 
                 <div>
-                  <CompanyFilter
-                  value={selectedCompany}
-                  cycle={currentCycle}         
-                  onChange={setSelectedCompany}
-                />
+                <CompanyCycleFilter
+                    cycle={cycle}
+                    company={company}
+                    onCycleChange={handleCycleChange}
+                    onCompanyChange={setCompany}
+                  />
                 </div>
             </div>
 
@@ -291,7 +300,7 @@ export default function FinancialPage(){
 
 
             <div className="hidden print:block">
-                <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={selectedCompany} />
+                <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={company} />
             </div>
         </div>
     );

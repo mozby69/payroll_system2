@@ -114,6 +114,17 @@ export async function getCompaniesByCycle(cycle: string) {
 }
 
 
+export async function fetchCompanyCycles() {
+  const cycles = await prisma.company_details.findMany({
+    select: { CompanyCycle: true },
+    distinct: ["CompanyCycle"],
+    orderBy: { CompanyCycle: "asc" }
+  });
+
+  return cycles;
+}
+
+
 // FILTER COMPANY BY COMPANY CODE
 
 export async function getCompaniesByCode(CompanyCode: string) {
