@@ -162,11 +162,8 @@ export default function GeneratePayslipModal({
     {
       header: "Total Deduction",
       accessor: (row) =>
-        formatCurrency(
-          Number(row.w_tax) +
-          Number(row.sss_loan) +
-          Number(row.pagibig_loan) +
-          Number(row.sss_calamity_loan)
+        formatCurrency(Number(row.total_deductions)
+         
         ),
     },
     {

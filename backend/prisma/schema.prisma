@@ -333,6 +333,7 @@ model EmployeePayrollArchive {
   sss_calamity_loan Decimal? @db.Decimal(10,2)
   isNewEmployee Boolean @default(false)
   created_at DateTime @default(now())
+  total_deductions Decimal? @db.Decimal(10,2) @map("total_deductions")
 
   totalPayrollId Int @map("total_payroll_id")
   totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
@@ -775,19 +776,19 @@ enum LeaveName {
 }
 
 model SpecialLeaves {
-    id                   Int     @id @default(autoincrement())
+    id Int @id
     leaveName            LeaveName
     start                DateTime? @db.Date
     end                  DateTime? @db.Date
     expectedStart        DateTime? @db.Date
     expectedEnd          DateTime? @db.Date
     status               LeaveStatus
-    createdAt            DateTime   @default(now())
+    created_at            DateTime   @default(now())
     empCodeId            String
 
     employee            Employee  @relation(fields: [empCodeId], references: [EmpCode])        
     @@index([empCodeId])
-
+  
 }
 
 

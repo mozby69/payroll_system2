@@ -1,8 +1,9 @@
 // modules/import/import.service.ts
 import axios from "axios";
 import { prisma } from "../../config/prismaClient";
-import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO, SpecialleavesDTO } from "./import.types";
 import { Prisma } from "@prisma/client";
+import { mapLeaveName, mapLeaveStatus } from "./import.helper";
 
 
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
@@ -213,9 +214,48 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
 
   
 
+
+  export const saveSpecialLeaves = async (
+    details: SpecialleavesDTO[]
+  ): Promise<number> => {
+    if (!Array.isArray(details) || details.length === 0) return 0;
+  
+    await prisma.$transaction(
+      details.map((d) =>
+        prisma.specialLeaves.upsert({
+          where: {
+            id: d.id
+          },
+          create: {
+            id: d.id,
+            empCodeId: d.EmpCode__EmpCode,
+            leaveName: mapLeaveName(d.leaveName),
+            start: d.start ? new Date(d.start) : null,
+            end: d.end ? new Date(d.end) : null,
+            expectedStart: d.expectedStart ? new Date(d.expectedStart) : null,
+            expectedEnd: d.expectedEnd ? new Date(d.expectedEnd) : null,
+            status: mapLeaveStatus(d.status),
+            created_at: new Date()
+          },
+          update: {
+            leaveName: mapLeaveName(d.leaveName),
+            start: d.start ? new Date(d.start) : null,
+            end: d.end ? new Date(d.end) : null,
+            expectedStart: d.expectedStart ? new Date(d.expectedStart) : null,
+            expectedEnd: d.expectedEnd ? new Date(d.expectedEnd) : null,
+            status: mapLeaveStatus(d.status)
+          }
+        })
+      )
+    );
+  
+    return details.length;
+  };
+
+
   
   export const importBranchesService = async () => {
-    const { branches, employees,employees_details,company_details } = await fetchFromDjango();
+    const { branches, employees,employees_details,company_details,special_leaves } = await fetchFromDjango();
   
     if (!Array.isArray(branches)) {
       throw new Error("Branches payload is invalid");
@@ -225,15 +265,26 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
     await saveBranches(branches);
     const employeeCount = await saveEmployees(employees);
     const detailsCount = await saveEmployeeDetails(employees_details);
+    const specialleaves = await saveSpecialLeaves(special_leaves);
   
     return {
       branches: branches.length,
       employees: employeeCount,
       employeeDetails: detailsCount,
       companyDetails: company_details.length,
+      special_leaves:specialleaves,
     };
   };
   
+
+
+
+
+
+
+
+
+
 
 
 

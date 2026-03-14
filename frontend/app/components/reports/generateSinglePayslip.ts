@@ -181,9 +181,9 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                                     <div>      TOTAL DEDUCTIONS : </div>
                                     <div> 
                                     ${
-                                        Number(totalDeductions) === 0
+                                        Number(item.total_deductions) === 0
                                         ? "0.00"
-                                        : Number(totalDeductions).toFixed(2)
+                                        : Number(item.total_deductions).toFixed(2)
                                       }
                                      
                                      </div>

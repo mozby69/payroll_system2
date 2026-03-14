@@ -88,7 +88,7 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees Loan",
           path: "/employee-loan",
           icon: HandCoins,
-          permission: "BONUS_GENERATE"
+          permission: "VIEW_LOANS"
         }
       ]
     },

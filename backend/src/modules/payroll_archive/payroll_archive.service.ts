@@ -329,6 +329,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
+
+        const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee;
+
+        // console.log("total",emp.EmpCode.Firstname,'totaldeduct-',totalDeductions);
       
         return {
           ...emp,
@@ -357,6 +361,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           wtax: finalWtax,          
           computedWtax: computedWtax,
           company_id:companyId,
+          total_deductions:totalDeductions,
       
         };
  
@@ -702,6 +707,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           isNewEmployee:emp.EmpCode.isNewEmployee,
           EmpCodeId: emp.EmpCodeId,
           totalPayrollId: total.id,
+          total_deductions:emp.total_deductions,
         };
       });
       
@@ -812,13 +818,25 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
   
       await tx.employeeSummary.updateMany({
-        where: { status: "FOR_APPROVER" },
+        where: { 
+          status: "FOR_APPROVER",
+          CycleCategory:cycle,
+         },
         data: { status: "DONE" },
       });
 
       await tx.employee.updateMany({
-        where: { isNewEmployee: true },
-        data: { isNewEmployee:false  },
+        where: {
+          isNewEmployee: true,
+          BranchCode: {
+            CompanyCode: {
+              CompanyCycle: cycle
+            }
+          }
+        },
+        data: {
+          isNewEmployee: false
+        }
       });
   
       return archivePayload.length;
@@ -837,7 +855,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
   export async function reCheckPayroll(){
    
     const data = await prisma.employeeSummary.updateMany({
-      where: { status: "FOR_CHECKER" },
+      where: { 
+        status: "FOR_CHECKER",
+        
+       },
       data: { status: "PENDING" },
     });
 
@@ -1004,7 +1025,7 @@ export async function SaveToApproverPayroll(company_id:string){
               Firstname: true,
               Middlename: true,
               Lastname: true,
-              BranchCodeId: true
+              BranchCodeId: true,
             }
           }
         },

@@ -20,6 +20,8 @@ async function main() {
     { code: "SAVE_TO_APPROVER", name: "Save Payroll to Approver" },
     { code: "SAVE_FINAL_PAYROLL", name: "Save Final Payroll" },
 
+    { code: "VIEW_LOANS", name: "View Loans" },
+
     { code: "USER_MANAGE", name: "Manage Users" },
     { code: "ADMIN_MANAGE", name: "Manage Admin" }
   ]
