@@ -1,4 +1,4 @@
-import { CompaniesResponse } from "../types/generalTypes";
+import { ApiResponse, BranchesType, CompaniesResponse, ReorderBranchesPayload } from "../types/generalTypes";
 import api from "./axios";
 
 export async function getCompanyDetailsServices() {
@@ -23,3 +23,20 @@ export const fetchLoanTypes = async (): Promise<string[]> => {
 
   return data.data;
 };
+
+export async function getBranchesService(): Promise<BranchesType[]> {
+  const res = await api.get<ApiResponse<BranchesType[]>>("/general/branches")
+  return res.data.data
+}
+
+export const reorderBranchesService = async (
+  payload: ReorderBranchesPayload
+): Promise<ApiResponse<null>> => {
+
+  const res = await api.put<ApiResponse<null>>(
+    "/general/branches-reorder",
+    payload
+  )
+
+  return res.data
+}

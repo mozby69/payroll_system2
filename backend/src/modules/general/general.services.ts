@@ -180,4 +180,47 @@ export const getUniqueLoan = async () => {
 
 
 
+export const getBranchesDetailsService = async () => {
+  return prisma.branch.findMany({
+    orderBy: [
+      { company_id: "asc" },
+      { position: "asc" }
+    ]
+  });
+};
 
+
+export const reorderBranchesService = async (
+  companyId: string,
+  branchCodes: string[]
+) => {
+
+  if (!companyId) {
+    throw new Error("company_id is required")
+  }
+
+  if (!Array.isArray(branchCodes)) {
+    throw new Error("branchCodes must be an array")
+  }
+
+  const updates: Prisma.PrismaPromise<any>[] = []
+
+  branchCodes.forEach((code, index) => {
+
+    updates.push(
+      prisma.branch.update({
+        where: { branchCode: code },
+        data: {
+          position: index + 1
+        }
+      })
+    )
+
+  })
+
+  if (updates.length > 0) {
+    await prisma.$transaction(updates)
+  }
+
+  return true
+}

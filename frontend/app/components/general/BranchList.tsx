@@ -1,0 +1,77 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { useGetBranches, useReorderBranches } from "@/app/hooks/useGeneral"
+import { groupBranches } from "@/app/utils/groupBranches"
+import { BranchesType } from "@/app/types/generalTypes"
+
+import { DndContext, closestCenter } from "@dnd-kit/core"
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable"
+import BranchRow from "./BranchRow"
+
+type GroupedBranches = Record<string, BranchesType[]>
+
+export default function BranchList() {
+  const { data } = useGetBranches()
+  const { mutate } = useReorderBranches()
+
+  const [grouped, setGrouped] = useState<GroupedBranches>({})
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (data) {
+      setGrouped(groupBranches(data))
+    }
+  }, [data])
+
+  const handleDragEnd = (companyId: string, event: any) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const items = grouped[companyId]
+
+    const oldIndex = items.findIndex(i => i.branchCode === active.id)
+    const newIndex = items.findIndex(i => i.branchCode === over.id)
+
+    const reordered = arrayMove(items, oldIndex, newIndex)
+
+    setGrouped(prev => ({
+      ...prev,
+      [companyId]: reordered
+    }))
+
+    // debounce auto-save
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    debounceRef.current = setTimeout(() => {
+      mutate({
+        company_id: companyId,
+        branchCodes: reordered.map(b => b.branchCode)
+      })
+    }, 400)
+  }
+
+  return (
+    <div style={{ maxWidth: 600, margin: "auto" }}>
+      {Object.entries(grouped).map(([companyId, branches]) => (
+        <div key={companyId} style={{ marginBottom: 40 }}>
+          <h2>{companyId}</h2>
+
+          <DndContext
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => handleDragEnd(companyId, event)}
+          >
+            <SortableContext
+              items={branches.map(b => b.branchCode)}
+              strategy={verticalListSortingStrategy}
+            >
+              {branches.map(branch => (
+                <BranchRow key={branch.branchCode} branch={branch} />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
+      ))}
+    </div>
+  )
+}

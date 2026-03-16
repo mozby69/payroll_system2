@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -300,7 +300,7 @@ export async function GenerateBankFileController(req: Request,res: Response) {
 
 
 
-
+//KIM
 
 export async function SaveToApproverPayrollController(req: Request, res: Response) {
   try {
@@ -311,5 +311,48 @@ export async function SaveToApproverPayrollController(req: Request, res: Respons
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to save payroll" });
+  }
+}
+
+
+export async function getPayrollArchiveReportController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const payrollId = Number(req.params.id);
+    const companyId = req.query.company_id as string;
+
+    if (!payrollId) {
+      return res.status(400).json({
+        message: "Payroll ID is required"
+      });
+    }
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required"
+      });
+    }
+
+    const report = await getPayrollArchiveReportService(
+      payrollId,
+      companyId
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: report
+    });
+
+  }catch (err: any) {
+    switch (err?.code) {
+      case "PAYROLL_NOT_FOUND":
+        return res.status(400).json(err)
+      default:
+        return res.status(500).json({
+          message: "Internal server error"
+        })
+    }
   }
 }

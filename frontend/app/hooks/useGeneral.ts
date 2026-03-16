@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchCompanies, fetchLoanTypes, getCompanyDetailsByCodeServices, getCompanyDetailsServices } from "../services/general.services";
-import { CompaniesResponse, CompanyDetailsType, FecthCompany } from "../types/generalTypes";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchCompanies, fetchLoanTypes, getBranchesService, getCompanyDetailsByCodeServices, getCompanyDetailsServices, reorderBranchesService } from "../services/general.services";
+import { BranchesType, CompaniesResponse, CompanyDetailsType, FecthCompany, ReorderBranchesPayload } from "../types/generalTypes";
 import api from "../services/axios";
 
 
@@ -70,3 +70,25 @@ export const useLoanTypes = () => {
   });
 
 };
+
+
+export const useGetBranches = () => {
+  return useQuery<BranchesType[]>({
+    queryKey: ["branches"],
+    queryFn: getBranchesService,
+    staleTime: 1000 * 60 * 10
+  })
+}
+
+
+export const useReorderBranches = () => {
+
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ReorderBranchesPayload) =>
+      reorderBranchesService(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["branches"] })
+    }
+  })
+}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { generatePdfController, getCompaniesByCodeController,getCompaniesController, getCompaniesByCycleController, getCompanyDetailsController, getUniqueLoanController, fetchCompanyCyclesController } from "./general.controller";
+import { generatePdfController, getCompaniesByCodeController,getCompaniesController, getCompaniesByCycleController, getCompanyDetailsController, getUniqueLoanController, fetchCompanyCyclesController, getBranchesDetailsController, reorderBranchesController } from "./general.controller";
 
 
 
@@ -13,5 +13,8 @@ router.get("/print",generatePdfController);
 router.get("/companies", getCompaniesController);
 router.get("/loan-types", getUniqueLoanController);
 router.get("/fetch-company-cycle",fetchCompanyCyclesController);
+router.get("/branches", getBranchesDetailsController)
+router.put("/branches-reorder", reorderBranchesController);
+
 
 export default router;

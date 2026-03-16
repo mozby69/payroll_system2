@@ -1189,3 +1189,154 @@ export async function displayBankAdminBDO(){
       throw error;
     }
   }
+
+
+
+
+
+
+//// KIM PAYROLL REPORT
+type PayrollDate = {
+  start_date: string
+  end_date: string
+}
+
+export async function getPayrollArchiveReportService(
+  payrollId: number,
+  company_id: string
+) {
+  try {
+
+    const totalPayroll = await prisma.totalPayroll.findUnique({
+      where:{
+        id: payrollId
+      }
+    });
+
+    if (!totalPayroll) {
+      throw {
+        code: "PAYROLL_NOT_FOUND",  
+        status: 409,
+        message: "Error bonus not found"
+      }
+    }
+
+    const payrollDate = totalPayroll?.selected_payroll_date as PayrollDate;
+
+    const endDate = payrollDate?.end_date
+      ? new Date(payrollDate.end_date)
+      : undefined;
+    
+
+    const employees = await prisma.employee.findMany({
+      where: {
+        BranchCode: {
+          company_id: company_id
+        },
+        EmployeeStatus: {
+          not: "Resigned"
+        } 
+        ,
+        EmployementDate: {
+          lte: endDate
+        }
+      },
+      include: {
+        BranchCode: true,
+        archive_employee_payroll: {
+          where: {
+            totalPayrollId: payrollId
+          }
+        },
+        employeepayroll: {
+          select:{
+            basic_salary: true
+          }
+        }
+      },
+      orderBy: [
+        { bod_member: "desc" },
+        { BranchCode: { branchCode: "asc" } },
+        { Lastname: "asc" }
+      ]
+    });
+
+    // Normalize payroll values
+    const rows = employees.map(emp => {
+      const payroll = emp.archive_employee_payroll[0];
+      return {
+        empCode: emp.EmpCode,
+        name: `${emp.Lastname}, ${emp.Firstname}`,
+        board: emp.bod_member,
+        branch: emp.BranchCode?.branchCode ?? null,
+        department: emp.Department ?? null,
+        basic: emp.employeepayroll?.basic_salary ?? 0,
+        halfBasic: payroll?.Basic_salary ?? 0,
+        overtime: payroll?.Overtime ?? 0,
+        late: payroll?.Late ?? 0,
+        undertime: payroll?.undertime ?? 0,
+        absences: payroll?.Absent ?? 0,
+        total: payroll?.Netpay ?? 0,
+        pagIbigEmployeer: payroll?.Pagibig_employer_share ?? 0,
+        sssEmployeer: payroll?.SSS_employer_share ?? 0,
+        philhealthEmployeer: payroll?.philhealth_employer_share ?? 0
+      };
+
+    });
+
+    // Board Employees (bod1 / bod2)
+    const boardEmployees = rows.filter(
+      r => r.board === "bod2" 
+    );
+
+    // Main Holding Employees
+    const holdingEmployees = rows.filter(
+      r =>
+        (!r.board || r.board === "") 
+             &&
+      (r.department !== "M2" && (r.branch === "EMB-MAIN"))
+              ||
+         r.branch === "ASS"
+    );
+
+      // Mancom Employees 
+
+      const mancomEmployees = rows.filter(
+        r => r.board === "Mancom"
+      )
+
+    // 3️⃣ Branch Employees
+    const branchEmployees = rows.filter(
+      r =>
+        (!r.board || r.board === "")
+                  &&
+        (r.branch !== "EMB-MAIN" &&  r.branch !== "ASS")
+                   ||   
+     (r.department === "M2" && (r.branch === "EMB-MAIN")
+    )
+    );
+
+    type BranchGroup = Record<string, typeof branchEmployees>;
+
+    const branchGroups = branchEmployees.reduce<BranchGroup>((acc, emp) => {
+    
+      const branchKey = emp.branch ?? "UNKNOWN";
+    
+      acc[branchKey] ??= [];
+      acc[branchKey].push(emp);
+    
+      return acc;
+    
+    }, {});
+    return {
+      boardEmployees,
+      mancomEmployees,
+      holdingEmployees,
+      branchGroups
+    };
+
+  } catch (error) {
+    console.error("Error occurred", error);
+    throw error;
+  }
+}

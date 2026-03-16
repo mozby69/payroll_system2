@@ -81,6 +81,7 @@ model Branch {
   Employees String?  @db.VarChar(10) @map("Employees")
   BranchImage String?   @db.VarChar(100)
   employees   Employee[] @relation
+  position    Int         @default(0)
 
   company_id String? @db.VarChar(20) @map("company_id")
   CompanyCode   company_details? @relation(fields: [company_id], references: [CompanyCode])
@@ -273,7 +274,7 @@ model BankAccountAdmin{
 model PagIbig_List{
   pagibig_id Int @id @default(autoincrement())
   pagibig_employee_share Decimal? @db.Decimal(10,2)
-  pagibig_employer_share Decimal? @db.Decimal(10,2)
+  pagibig_employer_share Decimal? @db.Decimal(10,2) @default(200)
 
   EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])

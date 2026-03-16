@@ -75,7 +75,59 @@ export const saveBranches = async (branches: BranchDTO[]): Promise<number> => {
     )
   );
 
+   // assign positions for new branches
+   await assignBranchPositions();
+
   return branches.length;
+};
+
+export const assignBranchPositions = async () => {
+
+  const branches = await prisma.branch.findMany({
+    orderBy: [
+      { company_id: "asc" },
+      { position: "asc" }
+    ]
+  });
+
+  const grouped: Record<string, typeof branches> = {};
+
+  for (const branch of branches) {
+    const key = branch.company_id ?? "UNKNOWN";
+
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(branch);
+  }
+
+  const updates: Prisma.PrismaPromise<any>[] = [];
+
+  for (const companyId in grouped) {
+
+    const companyBranches = grouped[companyId];
+
+    const maxPosition = Math.max(
+      ...companyBranches.map(b => b.position || 0)
+    );
+
+    let nextPosition = maxPosition + 1;
+
+    companyBranches
+      .filter(b => b.position === 0)
+      .forEach(branch => {
+
+        updates.push(
+          prisma.branch.update({
+            where: { branchCode: branch.branchCode },
+            data: { position: nextPosition++ }
+          })
+        );
+
+      });
+  }
+
+  if (updates.length > 0) {
+    await prisma.$transaction(updates);
+  }
 };
 
 

@@ -11,7 +11,8 @@ import { Column } from "@/app/types/preparePayroll"
 import RequestModal from "@/app/components/Modal"
 import GeneratePayslipModal from "@/app/components/archive/GeneratePayslipModal"
 import ViewBank from "@/app/ModalContent/ArchivePayroll/BankRelease/ViewBank"
-import { BanknoteArrowDown, BookOpenCheck } from "lucide-react"
+import { BanknoteArrowDown, BookOpenCheck, PrinterCheckIcon } from "lucide-react"
+import ArchiveReportModal from "@/app/components/archive/ArchiveReportModal"
 
 
 export default function ArchivePayroll() {
@@ -23,8 +24,10 @@ export default function ArchivePayroll() {
   const [payslipModal, setPayslipModal] = useState(false)
   const [totalPayrollId, setTotalPayrollId] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openReportModal, setOpenReportModal] = useState(false);
   const [selectedPayCode, setSelectedPayCode] = useState<string | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
+  const [selectedArchive, setSelectedArchive] = useState<TotalPayroll>()
 
   const debouncedSearch = useDebounce(search, 400)
 
@@ -62,10 +65,16 @@ export default function ArchivePayroll() {
   }
 
 
-  const handleGeneratePayslip = (data: TotalPayroll) => {
-    setTotalPayrollId(data.id)
-    setPayslipModal(true)
-}
+      const handleGeneratePayslip = (data: TotalPayroll) => {
+          setTotalPayrollId(data.id)
+          setPayslipModal(true)
+      }
+
+    const handleGenerateReport = (data: TotalPayroll) => {
+      setTotalPayrollId(data.id)
+      setOpenReportModal(true)
+      setSelectedArchive(data)
+    }
 
 
   const closeModal = () => {
@@ -102,6 +111,16 @@ export default function ArchivePayroll() {
       header: "Actions",
       render: (row) => (
         <div className="flex items-center gap-2">
+          <button
+          onClick={() => handleGenerateReport(row)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                     text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
+                     border border-emerald-200 rounded-md 
+                     transition-colors duration-200"
+        >
+          <PrinterCheckIcon size={15} />
+          Report
+        </button>
       
         <button
           onClick={() => handleGeneratePayslip(row)}
@@ -190,6 +209,18 @@ export default function ArchivePayroll() {
             </RequestModal>
           )
           }
+
+          {openReportModal && selectedArchive && (
+            <RequestModal 
+            size="xxxl" 
+            title="Archive Report"
+            onClose={()=>{
+              setOpenReportModal(false); 
+              setTotalPayrollId(0)}
+            }>
+              <ArchiveReportModal totalPayrollId={totalPayrollId} archiveData={selectedArchive} />
+          </RequestModal>
+          )}
 
  
 

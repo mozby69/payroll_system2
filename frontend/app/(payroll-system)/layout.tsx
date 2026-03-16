@@ -5,15 +5,17 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../components/UserContext";
 import { redirect } from "next/navigation";
 import SweetAlert from "../components/Swal";
-import { LogOut, Settings, User, User2 } from "lucide-react";
+import { Home, LogOut, Settings, User, User2 } from "lucide-react";
 import RequestModal from "../components/Modal";
 import AccountConfigurationModal from "../components/users/modal/AccountConfigurationModal";
+import BranchList from "../components/general/BranchList";
 
 
 
 export default function PayrollLayout({children,}: {children: React.ReactNode;}) {
   const [OpenSidebar, setOpenSideBar] = useState(true);
   const [openMenu, setOpenMenu] = useState(false);
+  const[openBranchModal, setOpenBranchModal] = useState(false)
   const { user, loading, logout } = useAuth();
 
   const [userModal, setUserModal] = useState(false)
@@ -25,9 +27,6 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
   return (
     <div className=" flex min-h-screen">
-
-
-
       <aside className={`sticky top-0 h-screen 
         transition-all duration-300
         ${OpenSidebar ? "w-64" : "w-16"} 
@@ -62,6 +61,14 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
                   <User/>
                   Users
                 </li>
+
+                <li
+                 className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                  onClick={()=>setOpenBranchModal(true)}
+                 >
+                  <Home/>
+                  Branches
+                </li>
                 <li 
                   onClick={() => {
                     SweetAlert.confirmationAlert(
@@ -95,6 +102,12 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
       {userModal && (
           <RequestModal title=" Account Configuration" size="xxl" onClose={()=>setUserModal(false)}>
               <AccountConfigurationModal onClose={()=>setUserModal(false)} />
+        </RequestModal>
+      )}
+
+      {openBranchModal && (
+        <RequestModal title="Reorder Branches" size="lg" onClose={()=>setOpenBranchModal(false)}>
+            <BranchList />
         </RequestModal>
       )}
         

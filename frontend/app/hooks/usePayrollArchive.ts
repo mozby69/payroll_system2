@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
-import { getEmployeeArchivedService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
+import { getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
 import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 import { ApiErrorResponse, ErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
+import { PayrollArchiveReport } from "../types/archiveTypes";
 
 
 
@@ -355,5 +356,23 @@ export function useSaveToApproverPayroll(onSuccess?: () => void) {
     onError: () => {
       SweetAlert.errorAlert("Failed to recheck payroll");
     },
+  });
+}
+
+
+export function usePayrollArchiveReport(
+  totalPayrollId: number,
+  company_id: string
+) {
+  return useQuery<PayrollArchiveReport>({
+    queryKey: ["payroll-archive-report", totalPayrollId, company_id],
+
+    queryFn: () =>
+      getPayrollArchiveReportService({
+        totalPayrollId,
+        company_id,
+      }),
+      enabled: !!company_id && !!totalPayrollId,
+      staleTime: 1000 * 60 * 5,
   });
 }
