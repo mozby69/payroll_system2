@@ -9,6 +9,9 @@ export interface AllowanceProps {
     totalDeduction:string | null;
     loan: string | null;
     deduct:string | null;
+    BranchCode:{
+      branchCode:string;
+    };
 }
   
 

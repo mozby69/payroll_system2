@@ -105,7 +105,7 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees Allowance",
           path: "/allowance",
           icon: PhilippinePeso,
-          permission: "PAYROLL_LIST"
+          permission: "PAYROLL_ARCHIVE"
         },
         {
           label: "Employees Conversion",
