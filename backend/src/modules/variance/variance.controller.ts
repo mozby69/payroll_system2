@@ -1,21 +1,22 @@
-import {  fetchEmployeeVariance, fetchVariance } from "./variance.service";
+import {  fetchEmployeeVariance, fetchVariance, fetchVarianceEmp } from "./variance.service";
 import { Request, Response } from "express";
 
 
 
-
 export async function fetchVarianceController(req: Request, res: Response) {
-    try {
+  try {
 
-      const result = await fetchVariance();
+    const company_id = req.query.company_id as string;
 
-      return res.json(  result  );
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Failed to save payroll" });
-    }
+    const result = await fetchVariance(company_id);
+
+    return res.json(result);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch variance" });
   }
-  
+}
 
 
 export async function fetchEmployeeVarianceController(req:Request, res:Response){
@@ -29,3 +30,31 @@ export async function fetchEmployeeVarianceController(req:Request, res:Response)
     res.status(500).json({message:"failed to save payroll"});
   }
 } 
+
+
+
+export async function fetchVarianceControllerEmp(req: Request, res: Response) {
+  try {
+
+    const companyId = req.query.company_id as string;
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "company_id is required"
+      });
+    }
+
+    const result = await fetchVarianceEmp(companyId);
+
+    return res.json(result);
+
+  } catch (error) {
+
+    console.error("Variance Controller Error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch variance"
+    });
+
+  }
+}

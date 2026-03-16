@@ -281,8 +281,8 @@ export default function StepReviewSave({ onBack }: Props) {
 
 
         {isModalOpen && (
-            <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
-              <FinancialVarianceModal paycode={payCode} cycle={currentCycle}/>
+            <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
+              <FinancialVarianceModal paycode={payCode} cycle={currentCycle} company_id={companyId}/>
             </RequestModal>
           )}
 
