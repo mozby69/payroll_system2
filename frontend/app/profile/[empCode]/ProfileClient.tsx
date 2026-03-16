@@ -234,6 +234,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
           "Please select the reason for modifying salary components.",
           [
             { value: "None", label:"None"},
+            { value: "Regularization Increase", label: "Regularization Increase"},
             { value: "Salary Increase", label: "Salary Increase" },
             { value: "Goverment Increase", label: "Goverment Increase" },
             { value: "Merit Increase", label: "Merit Increase" },
