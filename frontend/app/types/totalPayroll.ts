@@ -60,6 +60,7 @@ export type TotalPayroll = {
     status: string
     created_at: string
     totalPayrollId: number
+    total_deductions:number;
     EmpCodeId: string
     EmpCode: {
       Firstname: string

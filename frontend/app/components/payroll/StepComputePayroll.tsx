@@ -155,13 +155,12 @@ interface Props {
                 </button>
 
                 <button onClick={async () => {
-                    await queryClient.refetchQueries({
+                    await queryClient.invalidateQueries({
                       queryKey: ["payroll-display"],
-                      exact: true,
                     });
-                    await queryClient.refetchQueries({
+                
+                    await queryClient.invalidateQueries({
                       queryKey: ["variance-display"],
-                      exact: true,
                     });
                     onNext();
                   }}

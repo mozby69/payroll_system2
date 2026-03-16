@@ -54,6 +54,12 @@ export default function FinancialPage(){
       const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
       const isEmpty = !data || !data.data || data.data.length === 0;
 
+      const filteredData = data?.data?.filter(
+        (item) => item.CycleCategory === cycle
+      ) ?? [];
+
+      const isEmpty2 = filteredData.length === 0;
+
       const [editedWtax, setEditedWtax] = useState<Record<string, number>>({});
 
       const buildKey = (
@@ -256,14 +262,14 @@ export default function FinancialPage(){
                 {hasPermission("SAVE_FINAL_PAYROLL") && (
                   <GenButton onClick={handleSave}
                           variant="positive"
-                          disabled={savePayroll.isPending || isLoading || isEmpty || !cycle}>
+                          disabled={savePayroll.isPending || isLoading || isEmpty2 || !cycle}>
                           {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                   </GenButton>
                 )}
 
               {hasPermission("SAVE_TO_APPROVER") && (
                   <button onClick={handleSaveToApprover}
-                   disabled={!cycle || !company}
+                   disabled={!cycle || !company || isEmpty}
                   className="bg-amber-800 px-4 rounded-md text-white cursor-pointer disabled:opacity-50 disabled:hover:cursor-not-allowed">Save Payroll</button>
                 )}
 
@@ -278,11 +284,12 @@ export default function FinancialPage(){
 
                 <div>
                 <CompanyCycleFilter
-                    cycle={cycle}
-                    company={company}
-                    onCycleChange={handleCycleChange}
-                    onCompanyChange={setCompany}
-                  />
+                  cycle={cycle}
+                  company={company}
+                  payrollData={data?.data ?? []}
+                  onCycleChange={handleCycleChange}
+                  onCompanyChange={setCompany}
+                />
                 </div>
             </div>
 
