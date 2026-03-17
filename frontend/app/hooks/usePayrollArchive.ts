@@ -102,9 +102,9 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (cycle:string) => {
+    mutationFn: async ({cycle,companyId}:{cycle:string; companyId:string}) => {
       const res = await api.post("/payroll-archive/archived-final-payroll",null,{
-        params:{cycle},
+        params:{cycle, companyId},
       });
       return res.data;
     },
@@ -146,8 +146,10 @@ export function useReCheckPayroll(onSuccess?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await api.post("/payroll-archive/recheck-payroll");
+    mutationFn: async (company_id:string) => {
+      const res = await api.post("/payroll-archive/recheck-payroll",null,{
+        params:{company_id},
+      });
       return res.data;
     },
     onSuccess: async () => {
@@ -175,6 +177,47 @@ export function useReCheckPayroll(onSuccess?: () => void) {
     },
   });
 }
+
+
+
+
+
+export function useReCheckPayrollToChecker(onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (company_id:string) => {
+      const res = await api.post("/payroll-archive/recheck-back-to-checker",null,{
+        params:{company_id},
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      SweetAlert.successAlert("Recheck successful");
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display-for-approval"],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+      });
+      
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "employees-computed",
+      });
+    
+
+      onSuccess?.();
+    },
+    onError: () => {
+      SweetAlert.errorAlert("Failed to recheck payroll");
+    },
+  });
+}
+
 
 export function useTotalPayroll(
   page: number,
