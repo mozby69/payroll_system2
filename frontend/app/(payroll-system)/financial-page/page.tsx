@@ -70,7 +70,7 @@ export default function FinancialPage(){
 
 
 
-        const rows: SpreadsheetRow[] = !cycle ? [] : (data?.data ?? [])
+      const rows: SpreadsheetRow[] = !cycle ? [] : (data?.data ?? [])
         .filter((emp) => {
           if (cycle && emp.CycleCategory !== cycle) return false;
       
@@ -234,11 +234,13 @@ export default function FinancialPage(){
        
             <div className="flex justify-between px-4 gap-x-4">
               <div className="inline-flex justify-start items-center gap-8">
-                <GenButton
-                variant="primary"
-                 disabled={isLoading || isEmpty}
-                 onClick={openModal}
-                 >View Variance</GenButton>
+              <GenButton
+                  variant="primary"
+                  disabled={isLoading || isEmpty || !company}
+                  onClick={openModal}
+                >
+                  View Variance
+                </GenButton>
                  <GenButton
                     variant="main"
                     onClick={handlePrint1}
@@ -304,12 +306,15 @@ export default function FinancialPage(){
                       }
                     />
 
-
-                 {/* {isModalOpen && (
-                        <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
-                          <FinancialVarianceModal/>
-                        </RequestModal>
-                      )} */}
+              {isModalOpen && (
+                <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
+                  <FinancialVarianceModal
+                    paycode={payCode}
+                    cycle={cycle}
+                    company_id={company}
+                  />
+                </RequestModal>
+              )}
 
 
             <div className="hidden print:block">

@@ -32,6 +32,8 @@ export interface VarianceEmployee {
   currentTaxEmploye?: number
 
 
+  leaveType?: string
+
 
   difference?: number
 }
@@ -49,7 +51,9 @@ export interface VarianceAnalysis {
   pagEmployerVariance: VarianceEmployee[]
   pagVariance: VarianceEmployee[]
 
-   taxVariance: VarianceEmployee[]
+  taxVariance: VarianceEmployee[]
+
+  specialLeaveEmployees: VarianceEmployee[]  
 }
 
 /* ================================
