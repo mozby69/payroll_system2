@@ -3,7 +3,7 @@ import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
 import { getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
-import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
+import { BankProps, BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 import { ApiErrorResponse, ErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
 import { PayrollArchiveReport } from "../types/archiveTypes";
@@ -283,22 +283,27 @@ export function usePrintEmployeeArchived(
 
 
 
-export function useFetchBank(PayCode: string | null,cycle_category:string | null) {
-  return useQuery<BankResponse>({
-    queryKey: ['fetch-bank-list', PayCode,cycle_category],
+export function useFetchBank(
+  PayCode: string | null,
+  cycle_category: string | null,
+  company_id: string | null
+) {
+  return useQuery<BankProps[]>({
+    queryKey: ["fetch-bank-list", PayCode, cycle_category, company_id],
     queryFn: async () => {
-
-      if (!PayCode || !cycle_category) {
-        throw new Error('PayCode is required');
+      if (!PayCode || !cycle_category || !company_id) {
+        throw new Error("Missing required params");
       }
 
-      const response = await api.get<BankResponse>(`/payroll-archive/employee-bank-list?PayCode=${PayCode}&cycle_category=${cycle_category}`);
+      const response = await api.get<BankProps[]>(
+        `/payroll-archive/employee-bank-list?PayCode=${PayCode}&cycle_category=${cycle_category}&company_id=${company_id}`
+      );
+
       return response.data;
     },
-    enabled: Boolean(PayCode && cycle_category), 
+    enabled: Boolean(PayCode && cycle_category && company_id),
   });
 }
-
 
 
 // interface BankFileRow {
@@ -308,10 +313,11 @@ export function useFetchBank(PayCode: string | null,cycle_category:string | null
 export function useGenerateBankFile() {
   const generate = async (
     bank: "BDO" | "PNB",
-    rows: { bankAccount: string; amount: number }[]
+    rows: { bankAccount: string; amount: number }[],
+    company: string,
   ) => {
     const response = await api.post(
-      `/payroll-archive/generate-bank-file?bank=${bank}`,
+      `/payroll-archive/generate-bank-file?bank=${bank}&company_id=${company}`,
       rows
     );
 

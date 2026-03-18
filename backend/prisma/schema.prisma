@@ -113,6 +113,9 @@ model Employee {
 
   EndDate       DateTime? @db.Date
 
+  SecondaryBranch String? @db.VarChar(50) 
+  isAlien Boolean @default(false)
+
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()

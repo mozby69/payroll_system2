@@ -93,6 +93,7 @@ export interface BankProps {
   cycle_category:"10-25-Cycle" | "15-30-Cycle";
   Netpay:number;
   BranchCodeId:string;
+  EmpCodeId:string;
   EmpCode:{
     Firstname:string;
     Lastname:string;

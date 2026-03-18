@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -250,6 +250,8 @@ export async function ViewEmployeeBankAccountsController(req:Request,res:Respons
   try{
     const cycle = req.query.cycle_category as "10-25-Cycle" | "15-30-Cycle" | undefined;
     const paycode = req.query.PayCode as string | undefined;
+    const company_id = req.query.company_id as string;
+
 
     if (!paycode || !cycle) {
       return res.status(500).json({message:"no paycode or cycle"});
@@ -257,7 +259,8 @@ export async function ViewEmployeeBankAccountsController(req:Request,res:Respons
 
     const data = await ViewEmployeeBankAccounts({
       PayCode:paycode,
-       cycle_category:cycle
+       cycle_category:cycle,
+       company_id:company_id,
       });
 
    

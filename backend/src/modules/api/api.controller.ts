@@ -57,10 +57,7 @@ export const getAttendance = async (req: Request, res: Response) => {
 
 
 
-export async function getDisabledPayrollDatesController(
-  req: Request,
-  res: Response
-) {
+export async function getDisabledPayrollDatesController(req: Request,res: Response) {
   const cycle = req.query.cycle as string;
 
   if (!cycle) {

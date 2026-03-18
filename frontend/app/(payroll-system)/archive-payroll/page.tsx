@@ -28,7 +28,9 @@ export default function ArchivePayroll() {
   const [selectedPayCode, setSelectedPayCode] = useState<string | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
   const [selectedArchive, setSelectedArchive] = useState<TotalPayroll>()
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
 
+  
   const debouncedSearch = useDebounce(search, 400)
 
   const payCodeOptions = useMemo(() => generatePayCodeOptions(5), [])
@@ -43,11 +45,11 @@ export default function ArchivePayroll() {
   // const paycycle = data?.data?.[0]?.PayCycle ?? "";
   // const cycleCategory = data?.data?.[0]?.cycle_category ?? "";
 
-  const { data: bank_data } = useFetchBank(selectedPayCode,selectedCycle);
+  const { data: bank_data = [] } = useFetchBank(selectedPayCode,selectedCycle,selectedCompany);
 
   
-  const bdo_data = bank_data?.BDO ?? [];
-  const pnb_data = bank_data?.PNB ?? [];
+
+  
 
  
 
@@ -127,8 +129,7 @@ export default function ArchivePayroll() {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
                      text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
                      border border-emerald-200 rounded-md 
-                     transition-colors duration-200"
-        >
+                     transition-colors duration-200">
           <BookOpenCheck size={15} />
           Payslip
         </button>
@@ -226,7 +227,13 @@ export default function ArchivePayroll() {
 
         {isModalOpen && (
             <RequestModal size="xxxl" title={`VIEW BANK RELEASE`} onClose={closeModal}>
-                <ViewBank BDOList={bdo_data} PNBList={pnb_data}   cycleCategory={selectedCycle}/>
+              <ViewBank
+                  data2={bank_data}
+                  cycleCategory={selectedCycle}
+                  company={selectedCompany}
+                  paycode={selectedPayCode}
+                  setCompany={setSelectedCompany}
+                />
             </RequestModal>
           )}
 

@@ -1144,13 +1144,16 @@ export async function displayBankAdminBDO(){
 }
 
 
-  export async function ViewEmployeeBankAccounts({PayCode,cycle_category}: EmployeeBankAccountsParams) {
+  export async function ViewEmployeeBankAccounts({PayCode,cycle_category,company_id}: EmployeeBankAccountsParams) {
     try {
       const employeeList = await prisma.employeePayrollArchive.findMany({
         where: {
           PayCode,
           cycle_category,
           EmpCode: {
+            BranchCode:{
+              company_id:company_id,
+            },
             Disbursing: {
               not: true,
             },
@@ -1161,7 +1164,9 @@ export async function displayBankAdminBDO(){
           PayCode: true,
           cycle_category: true,
           Netpay: true,
+          EmpCodeId:true,
           EmpCode: {
+            
             select: {
               Firstname: true,
               Lastname: true,
@@ -1197,6 +1202,7 @@ export async function displayBankAdminBDO(){
         cycle_category: row.cycle_category,
         Netpay: row.Netpay?.toNumber() ?? 0,
         BranchCodeId:row.EmpCode.BranchCodeId,
+        EmpCodeId:row.EmpCodeId,
         EmpCode: {
           Firstname: row.EmpCode.Firstname,
           Lastname: row.EmpCode.Lastname,
@@ -1206,9 +1212,9 @@ export async function displayBankAdminBDO(){
         },
       }));
   
-      const grouped = groupByCompany(normalized);
+     // const grouped = groupByCompany(normalized);
   
-      return grouped;
+      return normalized;
     } catch (error) {
       console.error("Error occured", error);
       throw error;
