@@ -48,13 +48,14 @@ export default function SSSPage(){
                                   accessor: (row) => row.end_range,
                                 },
                                 {
+                                  header: "Employer Share",
+                                  accessor: (row) => row.employer_share,
+                                  },
+                                {
                                     header: "Employee Share",
                                     accessor: (row) => row.employee_share,
                                 },
-                                {
-                                header: "Employer Share",
-                                accessor: (row) => row.employer_share,
-                                },
+                             
                                 {
                                     header:"Actions",
                                     render: (row) => (

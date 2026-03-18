@@ -9,7 +9,7 @@ import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadShee
 import SweetAlert from "@/app/components/Swal";
 import { useAuth } from "@/app/components/UserContext";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
-import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
+import {  useDisplayForApprovalPayroll, useReCheckPayroll, useReCheckPayrollToChecker, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import { useRef, useState } from "react";
@@ -24,6 +24,7 @@ export default function FinancialPage(){
   
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
+      const recheckPayrollToChecker = useReCheckPayrollToChecker();
       const saveToApprover = useSaveToApproverPayroll()
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
@@ -143,7 +144,7 @@ export default function FinancialPage(){
           "Confirm Save Payroll",
           "Are you sure you want to save this payroll?",
           () => {
-            savePayroll.mutate(cycle);
+            savePayroll.mutate({cycle,companyId:company});
           }
         );
       };
@@ -155,7 +156,17 @@ export default function FinancialPage(){
           "Confirm Reopen Payroll",
           "Are you sure you want to this recheck payroll?",
           () => {
-            recheckPayroll.mutate();
+            recheckPayroll.mutate(company);
+          }
+        );
+      };
+
+      const handleRecheckToChecker = () => {
+        SweetAlert.confirmationAlert(
+          "Confirm Reopen Payroll",
+          "Are you sure you want to this recheck payroll?",
+          () => {
+            recheckPayrollToChecker.mutate(company);
           }
         );
       };
@@ -254,17 +265,26 @@ export default function FinancialPage(){
               {hasRole("FINANCIAL_CHECKER") && (
                 <GenButton onClick={handleRecheck}
                         variant="edit"
-                        disabled={recheckPayroll.isPending || isLoading || isEmpty}>
+                        disabled={recheckPayroll.isPending || isLoading || isEmpty || !company}>
                         {recheckPayroll.isPending ? "Saving..." : "Reopen Payroll"}
                 </GenButton>
               )}
 
                 {hasPermission("SAVE_FINAL_PAYROLL") && (
+                  <>
                   <GenButton onClick={handleSave}
                           variant="positive"
-                          disabled={savePayroll.isPending || isLoading || isEmpty2 || !cycle}>
+                          disabled={savePayroll.isPending || isLoading || isEmpty2 || !cycle || !company}>
                           {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                   </GenButton>
+
+                  <GenButton onClick={handleRecheckToChecker}
+                          variant="edit"
+                          disabled={savePayroll.isPending || isLoading || isEmpty2 || !cycle || !company}>
+                          {savePayroll.isPending ? "Saving..." : "Reopen Payroll"}
+                  </GenButton>
+
+                  </>
                 )}
 
               {hasPermission("SAVE_TO_APPROVER") && (

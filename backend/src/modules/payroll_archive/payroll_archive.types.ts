@@ -44,7 +44,7 @@ export function convertPayrollLabelToPeriod(
 export interface EmployeeBankAccountsParams{
   PayCode:string;
   cycle_category: "10-25-Cycle" | "15-30-Cycle" | undefined;
-  
+  company_id:string;
 }
 
 export interface PayrollRow {

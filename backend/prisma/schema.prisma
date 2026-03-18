@@ -25,6 +25,7 @@ model User{
   releasedBonuses     BonusSummary[] @relation("ReleasedBonuses")
   rejectedBonuses     BonusSummary[] @relation("RejectedBonuses")
   auditLogs AuditLog[]
+  payrollprocesslogs PayrollProcessingLog[] @relation()
 
 
   company_id String? @db.VarChar(20) @map("company_id")
@@ -183,6 +184,29 @@ model EmployeeSummary{
 }
 
 
+enum logs_action_type {
+    REOPEN_TO_CHECKER
+    SAVE_TO_APPROVER
+    SAVE_FINAL_PAYROLL
+}
+
+model PayrollProcessingLog{
+  id Int @id @default(autoincrement())
+  PayCode       String   @db.VarChar(20)
+  PayrollPeriod String   @db.VarChar(50)
+  CycleCategory String   @db.VarChar(50)
+  action        logs_action_type
+  createdAt     DateTime @default(now())
+  companyCode String
+
+  userId        Int
+  user          User @relation(fields: [userId], references: [id])
+
+  @@index([PayCode, PayrollPeriod, CycleCategory])
+  @@map("payroll_process_log")
+}
+
+
 
 model totalPayroll{ 
   id Int @id @default(autoincrement())
@@ -205,6 +229,7 @@ model totalPayroll{
   total_basic_salary Decimal? @db.Decimal(10,2) @map("total_basic")
   selected_payroll_date Json? @map("selected_payroll_date")
   Total_Undertime  Decimal? @db.Decimal(10,2) @map("total_undertime")
+  status String @default("IN_PROGRESS") @map("status")
 
  employee_archives EmployeePayrollArchive[]
  total_payroll_by_company totalPayrollByCompany[]

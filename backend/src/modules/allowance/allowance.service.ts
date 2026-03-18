@@ -5,6 +5,9 @@ import {  formatAllowanceMonth, getDaysInMonth, getPreviousMonth } from "./allow
 import { nowPH } from "../../utils/timezone";
 
 
+
+
+
 export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}: allowanceprops) {
     const [year, month] = selectedMonth.split("-").map(Number);
     const prev = getPreviousMonth(year, month);
@@ -51,6 +54,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         Firstname: true,
         Lastname: true,
         EmployeeStatus:true,
+        BranchCode:true,
         employeepayroll: {
           select: {
             cash_assistance: true,
@@ -117,6 +121,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         total: finalTotal,          
         loan:0,           
         totalDeduction: totalDeductions,   
+        BranchCode:emp.BranchCode,
       };
     });
 
@@ -259,7 +264,6 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     const [year, month] = selectedMonth.split("-").map(Number);
     const prev = getPreviousMonth(year, month);
 
-
     const monthName = new Date(prev.year, prev.month - 1).toLocaleString("en-US", {
       month: "long",
     });
@@ -280,10 +284,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             },
           },
         ],
-        // EmployeeStatus: {
-        //   notIn: ["Resigned", "Inactive", "Terminate"],
-        // },
       },
+
+
       select: {
         EmpCode: true,
         Firstname: true,

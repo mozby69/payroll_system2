@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -58,26 +58,35 @@ export async function savePayrollController(req: Request, res: Response) {
 export async function saveComputedFinalPayrollController(req:Request, res:Response) {
   try{
     const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
-    
+    const companyId = req.query.companyId as string | undefined; 
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
     if (!cycle) {
       return res.status(400).json({ message: "cycle is required" });
     }
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" }); 
+    }
     
-    const result = await saveComputedFinalPayroll(cycle);
+    const result = await saveComputedFinalPayroll(cycle,companyId,approvedBy);
     return res.json({ success: true, res: result })
   }
-  catch (error: unknown) {
-    if (error instanceof Error && error.message === "CANNOT_SAVE_FINAL_PAYROLL") {
-      return res.status(409).json({
-        message: "You cannot save while there are pending payrolls"
-      });
-    }
-
+  catch (error) {
+    console.error("SAVE FINAL PAYROLL ERROR:", error);
+   
     return res.status(500).json({
-      message: "Failed to save final payroll"
+    message: error instanceof Error ? error.message : "Failed to save final payroll"
     });
-  }
-}
+   }
+   }
 
 
 
@@ -117,12 +126,37 @@ export const displayForApprovalController = async (req: Request, res: Response) 
 
 export async function reCheckPayrollController(req: Request, res: Response) {
   try {
-    const result = await reCheckPayroll();
+    const company_id = req.query.company_id as string;
+    const result = await reCheckPayroll(company_id);
     return res.json({ success: true, res: result });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to save payroll" });
   }
+}
+
+
+export async function reCheckPayrollToCheckerController(req:Request,res: Response){
+  try{
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
+    const company_id = req.query.company_id as string;
+    const result = await reCheckPayrollToChecker(company_id,approvedBy);
+    return res.json({ success: true, res: result });
+  }
+  catch (error) {
+    console.error("SAVE FINAL PAYROLL ERROR:", error);
+    return res.status(500).json({
+    message: error instanceof Error ? error.message : "Failed to save final payroll"
+    });
+   }
 }
 
 
@@ -216,6 +250,8 @@ export async function ViewEmployeeBankAccountsController(req:Request,res:Respons
   try{
     const cycle = req.query.cycle_category as "10-25-Cycle" | "15-30-Cycle" | undefined;
     const paycode = req.query.PayCode as string | undefined;
+    const company_id = req.query.company_id as string;
+
 
     if (!paycode || !cycle) {
       return res.status(500).json({message:"no paycode or cycle"});
@@ -223,7 +259,8 @@ export async function ViewEmployeeBankAccountsController(req:Request,res:Respons
 
     const data = await ViewEmployeeBankAccounts({
       PayCode:paycode,
-       cycle_category:cycle
+       cycle_category:cycle,
+       company_id:company_id,
       });
 
    
@@ -305,13 +342,28 @@ export async function GenerateBankFileController(req: Request,res: Response) {
 export async function SaveToApproverPayrollController(req: Request, res: Response) {
   try {
     const company_id = req.query.company_id as string;
-    const result = await SaveToApproverPayroll(company_id);
+   
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
+    const result = await SaveToApproverPayroll(company_id,approvedBy);
+
+   
 
     return res.json({ success: true, res: result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to save payroll" });
-  }
+  }  catch (error) {
+    console.error("SAVE FINAL PAYROLL ERROR:", error);
+   
+    return res.status(500).json({
+    message: error instanceof Error ? error.message : "Failed to save final payroll"
+    });
+   }
 }
 
 

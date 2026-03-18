@@ -1,3 +1,4 @@
+import CompanyFilter from "@/app/components/CompanyFilter";
 import { useGenerateBankFile } from "@/app/hooks/usePayrollArchive";
 import { BankProps } from "@/app/types/totalPayroll";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
@@ -8,211 +9,147 @@ import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 
 
 interface Props {
-    BDOList: BankProps[];
-    PNBList: BankProps[];
-    cycleCategory: string | null;
-  }
+  data2: BankProps[];
+  cycleCategory: string | null;
+  company: string | null;
+  paycode:string | null;
+  setCompany: (val: string | null) => void;
+}
   
-  export default function ViewBank({ BDOList, PNBList, cycleCategory, }: Props) {
-    const bdoCycle = BDOList?.[0]?.cycle_category ?? null;
-    const pnbCycle = PNBList?.[0]?.cycle_category ?? null;
-    const { generate } = useGenerateBankFile();
-  
-    const showBDO = cycleCategory === "10-25-Cycle";
+export default function ViewBank({data2,cycleCategory,company,paycode,setCompany}: Props) {
+  const calculateTotal = (list: BankProps[]) =>
+    list.reduce((sum, emp) => sum + emp.Netpay, 0);
 
-    const calculateTotal = (list: BankProps[]) =>
-        list.reduce((sum, emp) => sum + emp.Netpay, 0);
-      
-      const bdoTotal = calculateTotal(BDOList);
-      const pnbTotal = calculateTotal(PNBList);
-  
-
-  
-    return (
-      <div className="p-6 space-y-4">
-
-            <div className="flex justify-between items-center mb-4">
+  const total = calculateTotal(data2);
 
 
-            <div>
-            {showBDO && (
+  const no_data = data2.length === 0;
+  const showBDO = company === "EMB" && !no_data;
+  const showPNB = company !== null && company !== "EMB" && !no_data;
+  const selectedBank = company === "EMB" ? "BDO" : company ? "PNB" : null;
+  const { generate } = useGenerateBankFile();
+
+  return (
+    <div className="p-6 space-y-6">
+
+
+<div>{paycode}</div>
+      <div className="flex justify-between items-center">
+        <CompanyFilter
+          value={company ?? ""}
+          cycle={cycleCategory ?? ""}
+          onChange={(val) => setCompany(val || null)}
+        />
+
+      <div className="flex gap-x-4">
+            {selectedBank && company && (
                 <button
-                onClick={() =>
+                  onClick={() =>
                     generate(
-                    "BDO",
-                    BDOList
-                        .filter(emp => emp.EmpCode.bank_account)
-                        .map(emp => ({
-                        bankAccount: emp.EmpCode.bank_account ?? "",
-                        amount: emp.Netpay,
-                        }))
+                      selectedBank,
+                      data2
+                        .filter((emp) => emp.EmpCode.bank_account)
+                        .map((emp) => ({
+                          bankAccount: emp.EmpCode.bank_account ?? "",
+                          amount: emp.Netpay,
+                        })),
+                      company 
                     )
-                }
-                className="bg-green-700 hover:bg-green-600 text-white rounded-lg px-6 py-2.5">
-                Generate BDO File
+                  }
+                  className={`${
+                    selectedBank === "BDO"
+                      ? "bg-green-700 hover:bg-green-600"
+                      : "bg-blue-700 hover:bg-blue-600"
+                  } text-white rounded-lg px-6 py-2.5`}
+                >
+                  Generate {selectedBank}
                 </button>
-            )}
-            </div>
-
-            <div>
-            <button
-                onClick={() =>
-                generate(
-                    "PNB",
-                    PNBList
-                    .filter(emp => emp.EmpCode.bank_account)
-                    .map(emp => ({
-                        bankAccount: emp.EmpCode.bank_account ?? "",
-                        amount: emp.Netpay,
-                    }))
-                )
-                }
-                className="bg-blue-700 hover:bg-blue-600 text-white rounded-lg px-6 py-2.5">
-                Generate PNB File
-            </button>
-            </div>
-
-            </div>
-
-
-
-
-
-       
-  
-        {/* ================= BDO ================= */}
-        {showBDO && (
-          <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
-                BANK: BDO
-              </h2>
-              <h2 className="text-lg font-semibold text-gray-800">
-                CYCLE: {bdoCycle}
-              </h2>
-            </div>
-  
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-gray-700 text-white uppercase">
-                  <th className="py-2 px-3 text-left">Name</th>
-                  <th className="py-2 px-3 text-center">Branch</th>
-                  <th className="py-2 px-3 text-right">Amount</th>
-                  <th>Bank Account</th>
-                </tr>
-              </thead>
-  
-              <tbody>
-                {BDOList.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="py-6 text-center text-gray-400"
-                    >
-                      No data available
-                    </td>
-                  </tr>
-                ) : (
-                  BDOList.map((emp) => (
-                    <tr
-                      key={emp.id}
-                      className="border-t hover:bg-gray-50"
-                    >
-                      <td className="py-2 px-3">
-                        {emp.EmpCode.Lastname}{" "}
-                        {emp.EmpCode.Firstname}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        {emp.BranchCodeId}
-                      </td>
-                      <td className="py-2 px-3 text-right font-medium">
-                        {formatAmount(emp.Netpay)}
-                      </td>
-                      <td className="py-2 px-3 text-center font-medium">{emp.EmpCode.bank_account}</td>
-                    </tr>
-                  ))
-                )}
-
-                <tr className="border-t-2 bg-gray-100 font-extrabold">
-                    <td className="py-3 px-3 text-left" colSpan={2}>GRAND TOTAL:</td>
-                    
-                    <td className="py-3 px-3 text-right text-green-900">
-                    {formatCurrency(bdoTotal)}
-                    </td>
-                    <td></td>
-                </tr>
-
-
-              </tbody>
-            </table>
+              )}
           </div>
-        )}
+
+      </div>
+
+
+     
   
 
-
-
-        {/* ================= PNB ================= */}
-        <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              BANK: PNB
-            </h2>
-            <span className="text-lg font-semibold text-gray-800">
-              CYCLE: {pnbCycle}
-            </span>
-          </div>
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
   
-          <table className="w-full border-collapse text-sm">
-            <thead className="font-bold uppercase">
-              <tr className="bg-gray-700 text-white">
-                <th className="py-2 px-3 text-left">Name</th>
-                <th className="py-2 px-3 text-center">Branch</th>
-                <th className="py-2 px-3 text-right">Amount</th>
-                <th>Bank Account</th>
+          <thead>
+            <tr className="bg-gray-800 text-white text-xs uppercase tracking-wide">
+              <th className="px-4 py-3 text-left">Employee</th>
+              <th className="px-4 py-3 text-left">EmpCode</th>
+              <th className="px-4 py-3 text-center">Branch</th>
+              <th className="px-4 py-3 text-right">Net Pay</th>
+              <th className="px-4 py-3 text-center">Bank Account</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+           
+            {data2.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="text-center py-10 text-gray-400">
+                  No data available
+                </td>
               </tr>
-            </thead>
+            ) : (
+              data2.map((emp) => (
+                <tr
+                  key={emp.id}
+                  className="border-t hover:bg-gray-50 transition"
+                >
+                  <td className="px-4 py-3 font-medium text-gray-800">
+                    {emp.EmpCode.Lastname}, {emp.EmpCode.Firstname}
+                  </td>
+
+                  <td className="px-4 py-3 font-medium text-gray-800">
+                    {emp.EmpCodeId}
+                  </td>
   
-            <tbody className="font-semibold">
-              {PNBList.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="py-6 text-center text-gray-400"
-                  >
-                    No data available
+                  <td className="px-4 py-3 text-center text-gray-600">
+                    {emp.BranchCodeId}
+                  </td>
+  
+                  <td className="px-4 py-3 text-right font-semibold text-green-700">
+                    {emp.Netpay.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+  
+                  <td className="px-4 py-3 text-center text-gray-700">
+                    {emp.EmpCode.bank_account ?? (
+                      <span className="text-gray-400 italic">No Account</span>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                PNBList.map((emp) => (
-                  <tr
-                    key={emp.id}
-                    className="border-t hover:bg-gray-50">
-                    <td className="py-2 px-3">
-                      {emp.EmpCode.Lastname}{" "}
-                      {emp.EmpCode.Firstname}
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                      {emp.BranchCodeId}
-                    </td>
-                    <td className="py-2 px-3 text-right">
-                      {formatAmount(emp.Netpay)}
-                    </td>
-                    <td className="py-2 px-3 text-center font-medium">{emp.EmpCode.bank_account}</td>
-                  </tr>
-                ))
-              )}
+              ))
+            )}
+          </tbody>
 
-                <tr className="border-t-2 bg-gray-100 font-extrabold">
-                    <td className="py-3 px-3 text-left" colSpan={2}>GRAND TOTAL:</td>
-                    
-                    <td className="py-3 px-3 text-right text-green-900">
-                    {formatCurrency(pnbTotal)}
-                    </td>
-                    <td></td>
-                </tr>
-            </tbody>
-          </table>
-        </div>
+          {data2.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 bg-gray-100">
+                <td className="px-4 py-3 font-bold" colSpan={2}>
+                  GRAND TOTAL
+                </td>
+                <td className="px-4 py-3 text-right font-bold text-green-800">
+                  {total.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          )}
+
+        </table>
       </div>
-    );
-  }
+    </div>
+  );
+
+}

@@ -119,7 +119,7 @@ export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],b
       });
       
     });
-  }
+}
   
 
 

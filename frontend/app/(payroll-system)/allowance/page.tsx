@@ -59,15 +59,17 @@ export default function AllowancePage(){
 
             },
             {
+              header: "Employee",
+              render: (row) => `${row.BranchCode.branchCode}`,
+
+            },
+            {
               header: "EMPCODE",
               accessor: (row) => row.EmpCode,
             },
+           
             {
-              header: "DEDUCTIONS",
-              accessor: (row) => row.deduct ?? '0',
-            },
-            {
-              header: "Cash Allowance",
+              header: "Allowance",
               render: (row) => `${row.cash_assistance}`,
            
             },
@@ -77,15 +79,19 @@ export default function AllowancePage(){
       
             },
             {
+              header: "DEDUCTIONS",
+              accessor: (row) => row.deduct ?? '0',
+            },
+            {
               header: "Loan",
               render: (row) => `${row.loan ?? '0'}`,
       
             },
-            {
-              header:"TOTAL DEDUCTION",
-              render: (row) => `${row.totalDeduction}`,
+            // {
+            //   header:"TOTAL DEDUCTION",
+            //   render: (row) => `${row.totalDeduction}`,
            
-            },
+            // },
             {
               header: "TOTAL",
               accessor: (row) => row.total ?? '0',
@@ -165,8 +171,9 @@ export default function AllowancePage(){
                   </div>
 
                 
-          
+                   
                   <Datatable columns={columns} data={tableData} showFooter/>
+                    
             
                   <Pagination
                       page={page}
