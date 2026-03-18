@@ -106,7 +106,7 @@ export async function createUserService(data: RegisterSchema) {
         username,
         password: hashedPassword,
         isActive: true,
-        company_id
+        company_id: company_id
     }
     })
 
@@ -125,7 +125,6 @@ export async function createUserService(data: RegisterSchema) {
     email: user.email,
     name: user.name,
     username: user.username,
-    company_id: user.company_id,
     isActive: user.isActive,
     createdAt: user.createdAt
   }
@@ -140,7 +139,7 @@ export async function updateUserService(
     username?: string
     password?: string
     roleIds?: number[]
-    company_id?: string
+    company_id?: string | null
   }
 ) {
   return prisma.$transaction(async tx => {

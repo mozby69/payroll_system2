@@ -1234,6 +1234,20 @@ export async function getPayrollArchiveReportService(
       }
     });
 
+    const companyDetails = await prisma.company_details.findUnique({
+      where:{
+        CompanyCode: company_id
+      }
+    });
+
+    if (!companyDetails) {
+      throw {
+        code: "COMPANY_NOT_FOUND",  
+        status: 409,
+        message: "Error bonus not found"
+      }
+    }
+
     if (!totalPayroll) {
       throw {
         code: "PAYROLL_NOT_FOUND",  
@@ -1273,11 +1287,12 @@ export async function getPayrollArchiveReportService(
           select:{
             basic_salary: true
           }
-        }
+        },
+        specialLeaves: true
       },
       orderBy: [
         { bod_member: "desc" },
-        { BranchCode: { branchCode: "asc" } },
+        { BranchCode: { position: "asc" } },
         { Lastname: "asc" }
       ]
     });
@@ -1285,6 +1300,64 @@ export async function getPayrollArchiveReportService(
     // Normalize payroll values
     const rows = employees.map(emp => {
       const payroll = emp.archive_employee_payroll[0];
+    
+      let reason: string | null = null;
+      let leaveInfo = null;
+    
+      const payrollStart = new Date(payrollDate.start_date);
+      const payrollEnd = new Date(payrollDate.end_date);
+    
+      if ((payroll?.Netpay ?? 0) === 0) {
+    
+        const leave = emp.specialLeaves?.find(l => {
+          const leaveStart =
+          l.status === "Expected"
+            ? l.expectedStart
+              ? new Date(l.expectedStart)
+              : null
+            : l.start
+              ? new Date(l.start)
+              : null;
+        const leaveEnd =
+          l.status === "Expected"
+            ? l.expectedEnd
+              ? new Date(l.expectedEnd)
+              : null
+            : l.end
+              ? new Date(l.end)
+              : null;
+        
+        if (!leaveStart || !leaveEnd) return false;
+        
+        return leaveStart <= payrollEnd && leaveEnd >= payrollStart;
+        });
+    
+        if (leave) {
+    
+          const leaveStart =
+            leave.status === "Expected"
+              ? leave.expectedStart
+              : leave.start;
+    
+          const leaveEnd =
+            leave.status === "Expected"
+              ? leave.expectedEnd
+              : leave.end;
+    
+          reason = "ON_LEAVE";
+
+          if (leaveStart && leaveEnd) {
+    
+            leaveInfo = {
+              type: leave.leaveName,
+              start:   new Date(leaveStart).toLocaleDateString(),
+              end:  new Date(leaveEnd).toLocaleDateString(),
+              status: leave.status
+            };
+          }
+        }
+      }
+    
       return {
         empCode: emp.EmpCode,
         name: `${emp.Lastname}, ${emp.Firstname}`,
@@ -1297,13 +1370,16 @@ export async function getPayrollArchiveReportService(
         late: payroll?.Late ?? 0,
         undertime: payroll?.undertime ?? 0,
         absences: payroll?.Absent ?? 0,
-        total: payroll?.Netpay ?? 0,
+        total: payroll?.Grosspay ?? 0,
         pagIbigEmployeer: payroll?.Pagibig_employer_share ?? 0,
         sssEmployeer: payroll?.SSS_employer_share ?? 0,
-        philhealthEmployeer: payroll?.philhealth_employer_share ?? 0
+        philhealthEmployeer: payroll?.philhealth_employer_share ?? 0,
+    
+        reason,
+        leaveInfo
       };
-
     });
+
 
     // Board Employees (bod1 / bod2)
     const boardEmployees = rows.filter(
@@ -1349,7 +1425,14 @@ export async function getPayrollArchiveReportService(
       return acc;
     
     }, {});
+
+
+    const summaries = {
+      company: companyDetails.CompanyName,
+      PayCycle: totalPayroll.PayCycle
+    }
     return {
+      summaries,
       boardEmployees,
       mancomEmployees,
       holdingEmployees,

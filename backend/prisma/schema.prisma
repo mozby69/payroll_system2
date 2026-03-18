@@ -80,7 +80,8 @@ model Branch {
   Location    String?   @db.VarChar(50)
   Employees String?  @db.VarChar(10) @map("Employees")
   BranchImage String?   @db.VarChar(100)
-  employees   Employee[] @relation
+  employees   Employee[] @relation("Employees")
+  secondBranch   Employee[] @relation("EmployeesSecond")
   position    Int         @default(0)
 
   company_id String? @db.VarChar(20) @map("company_id")
@@ -107,11 +108,15 @@ model Employee {
   Taxable Boolean @default(false) @map("Taxable")
   isNewEmployee Boolean @default(false)
   bod_member String? @db.VarChar(100)
-  BranchCode     Branch?  @relation(fields: [BranchCodeId], references: [branchCode])
+  BranchCode     Branch?  @relation("Employees",fields: [BranchCodeId], references: [branchCode])
   BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
 
   EndDate       DateTime? @db.Date
+  SecondaryBranch String? @db.VarChar(50) 
+  isAlien Boolean @default(false)
+  SecondBranch    Branch?  @relation("EmployeesSecond",fields: [SecondaryBranch], references: [branchCode])
 
+  
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()

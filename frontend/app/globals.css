@@ -178,6 +178,50 @@
     padding-inline: 1rem;
   }
 
+    .print-wrapper {
+    width: 100%;
+    padding: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  th,
+  td {
+    border: 1px solid #000;
+    padding: 4px;
+    text-align: right;
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  .branch-section {
+    margin-bottom: 20px;
+  }
+
+  .grand-total-section {
+    margin-top: 20px;
+  }
+
+
   .print-container {
     background: white !important;
     box-shadow: none !important;

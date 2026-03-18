@@ -1053,9 +1053,13 @@ export async function getEmployeesByBonusSummarySerive(
       },
         {
           OR: [
-            { EmployeeStatus: "Active" },
+            {
+              EmployeeStatus: {
+                notIn: ["Active"]
+              }
+            },
             { bod_member: "bod1" },
-            { bod_member: "bod2" },
+            { bod_member: "bod2" }
           ],
         },
       ],

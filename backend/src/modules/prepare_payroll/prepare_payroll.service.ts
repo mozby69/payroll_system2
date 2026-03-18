@@ -571,11 +571,31 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
       };
 
       const where = {
-        AND: [
-          baseFilter,
-          searchFilter,
-          statusFilter,
-        ],
+        OR: [
+          {
+            AND: [
+              baseFilter,
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+          {
+            AND: [
+              { isAlien: true },
+                {SecondBranch:{
+                  CompanyCode: {
+                    CompanyCycle: cycle,
+                  },
+                }
+              },
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+        ]
+      
       };
 
   const total = await prisma.employee.count({ where });

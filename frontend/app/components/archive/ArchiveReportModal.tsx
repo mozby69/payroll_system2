@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Column } from "@/app/types/preparePayroll"
 import { useGetEmployeeArchived, usePayrollArchiveReport } from "@/app/hooks/usePayrollArchive"
 import { useDebounce } from "@/app/utils/useDebounce"
@@ -17,6 +17,10 @@ import RequestModal from "../Modal"
 import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
 import ArchiveReportTable from "./ArchiveReportTable"
 import { useCompaniesByCycle } from "@/app/hooks/useGeneral"
+import { useReactToPrint } from "react-to-print"
+import ArchiveReportView from "./ArchiveReportView"
+import ArchivePayrollPrintView from "./ArchivePayrollPrint"
+import { PayrollArchiveEmployee } from "@/app/types/archiveTypes"
 
 type PayslipProps = {
   totalPayrollId: number
@@ -30,7 +34,7 @@ export default function ArchiveReportModal({
   const [loading, setLoading] = useState(false)
   const [isModalViewOpen, setIsModalViewOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeArchivedType | null>(null);
-
+  const printRef = useRef<HTMLDivElement>(null)
   const [selectedBranch, setSelectedBranch] = useState<string>("");
 
 
@@ -56,54 +60,10 @@ export default function ArchiveReportModal({
   );
 
   const preselectedbranch = branches.length === 1 ? branches[0].branchCode : selectedBranch;
-  const handlePrint = async () => {
-    try {
-      setLoading(true);
-  
-      const fullData = await printEmployeeArchivedService({
-        totalPayrollId,
-        selectedCompany,
-        selectedBranch
-      });
-  
-      if (!fullData || fullData.length === 0) {
-        setLoading(false);
-        return;
-      }
-  
-      const res = await fetch("/api/print/payroll", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "payslip",
-          paper: "A4",
-          orientation: "portrait",
-          data: fullData,
-        }),
-      });
-  
-      if (!res.ok) throw new Error("Print failed");
-  
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-  
-      setLoading(false);
-  
-      const printWindow = window.open(url, "_blank");
-  
-      if (!printWindow) {
-        alert("Popup blocked. Please allow popups.");
-        URL.revokeObjectURL(url);
-        return;
-      }
-  
-    } catch (err) {
-      console.error(err);
-      alert("Failed to print payroll");
-      setLoading(false);
-    }
-  };
-  
+   const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: "Payroll Archive Report"
+  })
 
 
   
@@ -135,7 +95,7 @@ export default function ArchiveReportModal({
     };
   
     return allEmployees.reduce(
-      (acc, e: any) => ({
+      (acc, e: PayrollArchiveEmployee) => ({
         halfBasic: acc.halfBasic + toNumber(e.halfBasic),
         overtime: acc.overtime + toNumber(e.overtime),
         late: acc.late + toNumber(e.late),
@@ -187,7 +147,7 @@ export default function ArchiveReportModal({
             onClick={handlePrint}
             className="flex items-center gap-2"
           >
-            <Printer size={16} />
+            <Printer size={16} onClick={handlePrint}/>
             Print All
           </GenButton>
   
@@ -243,97 +203,30 @@ export default function ArchiveReportModal({
   
       {isLoading && <div>Loading payroll report...</div>}
 
-        {report && (
-          <div className="bg-white border rounded-xl p-6">
+      {report && (
+  <div  className="print-wrapper">
 
-            <ArchiveReportTable
-              title="BOARD"
-              employees={report.boardEmployees}
-            />
-              <ArchiveReportTable
-              title="MANCOM"
-              employees={report.mancomEmployees}
-            />
+    <h2 className="text-center text-xl font-bold mb-6">
+      PAYROLL ARCHIVE REPORT
+    </h2>
+{grandTotals && (
+  <div>
+    <ArchiveReportView grandTotals={grandTotals}  report = {report}/>
+    <div style={{ display: "none" }}>
+        <div ref={printRef}>
+          <ArchivePayrollPrintView
+            report={report}
+            grandTotals={grandTotals}
+          />
+        </div>
+      </div>
+  </div>
+)}
+   
 
-            <ArchiveReportTable
-              title="MAIN HOLDING"
-              employees={report.holdingEmployees}
-            />
 
-            {Object.entries(report.branchGroups).map(
-              ([branch, employees]: any) => (
-                <ArchiveReportTable
-                  key={branch}
-                  title={branch}
-                  employees={employees}
-                />
-              )
-            )}
-
-            {report && grandTotals && (
-              <div className="mt-8 border-t pt-6">
-
-                <h3 className="font-semibold text-lg mb-2">GRAND TOTAL</h3>
-
-                <table className="w-full border text-sm bg-gray-50 font-semibold">
-                  <thead>
-                    <tr>
-                      <th className="border px-2 py-1 text-left">TOTAL</th>
-                      <th className="border px-2 py-1">HALF BASIC</th>
-                      <th className="border px-2 py-1">OVERTIME</th>
-                      <th className="border px-2 py-1">LATE</th>
-                      <th className="border px-2 py-1">ABSENCES</th>
-                      <th className="border px-2 py-1">TOTAL</th>
-                      <th className="border px-2 py-1">PAG-IBIG</th>
-                      <th className="border px-2 py-1">SSS</th>
-                      <th className="border px-2 py-1">PHILHEALTH</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    <tr>
-                      <td className="border px-2 py-1 text-right">GRAND TOTAL</td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.halfBasic)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.overtime)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.late)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.absences)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.total)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.pagibig)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.sss)}
-                      </td>
-
-                      <td className="border px-2 py-1 text-right">
-                        {formatCurrency(grandTotals.philhealth)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-              </div>
-            )}
-
-          </div>
-        )}
+  </div>
+)}
 
 
       {isModalViewOpen && selectedEmployee && (

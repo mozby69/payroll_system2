@@ -19,6 +19,8 @@ export type BranchDTO = {
     EmployeeStatus:string;
     Position: string;
     Department: string;
+    SecondaryBranch:string;
+    isAlien:boolean;
   };
 
   export type CompanyDTO = {

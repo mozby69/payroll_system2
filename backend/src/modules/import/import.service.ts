@@ -166,7 +166,9 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmployeeStatus: e.EmployeeStatus,
             isNewEmployee: true,
             Position:e.Position,
-            Department: e.Department
+            Department: e.Department,
+            SecondaryBranch: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
+            isAlien:e.isAlien
           },
           update: {
             Firstname: e.Firstname,
@@ -178,7 +180,9 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmploymentStatus: e.EmploymentStatus,
             EmployeeStatus: e.EmployeeStatus,
             Position: e.Position,
-            Department: e.Department
+            Department: e.Department,
+            SecondaryBranch: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
+            isAlien:e.isAlien
           },
         });
 
