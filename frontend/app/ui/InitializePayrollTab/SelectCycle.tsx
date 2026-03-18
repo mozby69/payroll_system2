@@ -678,7 +678,7 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
                                 </td>
                               </tr>
                             ))}
-                            {setupEmployee?.data.length === 0 && (
+                            {setupEmployee?.data?.length === 0 && (
                               <tr>
                                 <td colSpan={4} className="text-center p-4 text-gray-500">
                                   No matching employees found.
