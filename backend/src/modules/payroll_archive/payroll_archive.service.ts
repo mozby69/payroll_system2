@@ -491,7 +491,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>
         loan && !loan.alreadyDeducted ? loan.amount : 0;
   
-      // ── Aggregate this company's totals ─────────────────────────────────────
       const companyTotals = computed.reduce(
         (acc, emp) => {
           acc.gross       += Number(emp.gross_pay ?? 0);
@@ -517,8 +516,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         }
       );
   
-      // ── 1️⃣ Upsert totalPayroll — create once, accumulate on each company save ──
-      //    Key: PayCycle + cycle_category (identifies one payroll run)
+
       const existingTotal = await tx.totalPayroll.findFirst({
         where: {
           PayCycle: payrollPeriod,
@@ -671,8 +669,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           });
         }
       }
-  
-      // ── Disburse ────────────────────────────────────────────────────────────
+
       const disbursingEmployees = await tx.employee.findMany({
         where: { EmpCode: { in: empCodes }, Disbursing: true },
         select: { EmpCode: true },
@@ -732,7 +729,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         data: { status: "DONE" },
       });
   
-      // ── Update isNewEmployee → false (this company only) ───────────────────
+
      await tx.employee.updateMany({
     where: {
       isNewEmployee: true,
@@ -750,9 +747,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     },
   });
   
-      // ── 4️⃣ Check if ALL companies in this cycle are now DONE ───────────────
-      //    If no FOR_APPROVER summaries remain anywhere in this cycle,
-      //    mark the totalPayroll as COMPLETED.
+
       const remainingForApprover = await tx.employeeSummary.findFirst({
         where: {
           status: {

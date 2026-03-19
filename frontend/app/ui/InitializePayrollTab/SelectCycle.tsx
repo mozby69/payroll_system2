@@ -23,10 +23,11 @@ import { ProcessingOverlay } from "../loader/ProcessingOverlay";
 
 type SideModalTabKey = "employees" | "branches";
 
-const SIDEMODALTABS : {key:SideModalTabKey; label:string}[] = [
+const SIDEMODALTABS : { key:SideModalTabKey; label:string }[] = [
     { key: "employees", label: "Employees" },
     { key: "branches", label: "Branches" },
 ];
+
 
 type SetupState = {
     EmpCode: string;
@@ -35,7 +36,9 @@ type SetupState = {
     Taxable: boolean;
 };
 
-type Setupcompanies ={
+
+
+type Setupcompanies = {
     CompanyCode:number;
     isDisburse: boolean;
 }
