@@ -167,7 +167,7 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             isNewEmployee: true,
             Position:e.Position,
             Department: e.Department,
-            SecondaryBranch: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
+            secondaryBranchId: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
             isAlien:e.isAlien
           },
           update: {
@@ -181,7 +181,7 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmployeeStatus: e.EmployeeStatus,
             Position: e.Position,
             Department: e.Department,
-            SecondaryBranch: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
+            secondaryBranchId: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
             isAlien:e.isAlien
           },
         });

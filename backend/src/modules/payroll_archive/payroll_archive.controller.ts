@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -111,9 +111,13 @@ export const displayForApprovalController = async (req: Request, res: Response) 
     const status = req.query.status as "PENDING" | "FOR_CHECKER" | "FOR_APPROVER";
 
     const data = await displayCompletePayroll([status],company_id);
+    const availableCompany = await getAvailableCompanyCyclesService([status]);
+
+    console.log(availableCompany)
 
     return res.status(200).json({
       status: "SUCCESS",
+      availableCompany,
       data,
     });
   } catch (error) {

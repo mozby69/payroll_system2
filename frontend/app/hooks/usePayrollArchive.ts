@@ -45,12 +45,12 @@ export function useDisplayPayroll(company_id?: string) {
 
 
 
-export function useDisplayForApprovalPayroll(status: "FOR_CHECKER" | "FOR_APPROVER") {
+export function useDisplayForApprovalPayroll(status: "FOR_CHECKER" | "FOR_APPROVER",company_id:string) {
   return useQuery<PayrollResponse>({
-    queryKey: ["payroll-display-for-approval",status],
+    queryKey: ["payroll-display-for-approval",status,company_id],
     queryFn: async () => {
       const res = await api.get("/payroll-archive/for-approval",{
-        params: { status },
+        params: { status,company_id },
       });
       return res.data;
     },

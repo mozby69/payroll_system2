@@ -12,7 +12,7 @@ import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useReCheckPayrollToChecker, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print"
 
 
@@ -46,14 +46,32 @@ export default function FinancialPage(){
         status = "FOR_CHECKER"; 
       }
       
-      const { data, isLoading } = useDisplayForApprovalPayroll(status);
+      const { data, isLoading } = useDisplayForApprovalPayroll(status,company);
 
   
 
    
       const payCode = data?.data?.[0]?.PayCode ?? "-";
-      const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
       const isEmpty = !data || !data.data || data.data.length === 0;
+
+      const availableCompany = data?.availableCompany ?? [];
+
+        const cycles = useMemo(() => {
+          return [...new Set(availableCompany.map(c => c.cycle))];
+        }, [availableCompany]);
+
+        const companies = useMemo(() => {
+          if (!cycle) return [];
+
+          return [
+            ...new Set(
+              availableCompany
+                .filter(c => c.cycle === cycle)
+                .map(c => c.company_id)
+            ),
+          ];
+        }, [cycle, availableCompany]);
+
 
       const filteredData = data?.data?.filter(
         (item) => item.CycleCategory === cycle
@@ -72,15 +90,15 @@ export default function FinancialPage(){
 
 
         const rows: SpreadsheetRow[] = !cycle ? [] : (data?.data ?? [])
-        .filter((emp) => {
-          if (cycle && emp.CycleCategory !== cycle) return false;
+        // .filter((emp) => {
+        //   if (cycle && emp.CycleCategory !== cycle) return false;
       
-          if (company && emp.EmpCode.BranchCode?.company_id !== company) {
-            return false;
-          }
+        //   if (company && emp.EmpCode.BranchCode?.company_id !== company) {
+        //     return false;
+        //   }
       
-          return true;
-        })
+        //   return true;
+        // })
       .map((emp) => {
         const key = buildKey(
           emp.PayCode,
@@ -103,6 +121,10 @@ export default function FinancialPage(){
             Number(emp.sss_loan) +
             Number(emp.pagibig_loan)
           );
+
+
+
+
     
         return {
           name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
@@ -183,10 +205,8 @@ export default function FinancialPage(){
       };
     
     
-      const handleCycleChange = (value: string) => {
-        setCycle(value);
-        setCompany("");
-      };
+   
+
     
       const totals = rows.reduce(
           (acc, row) => {
@@ -238,6 +258,10 @@ export default function FinancialPage(){
           contentRef: printRef,
           documentTitle: `Payroll-${payCode}`,
         })
+
+
+
+
 
     return ( 
         <div className="py-8 px-4">
@@ -303,14 +327,43 @@ export default function FinancialPage(){
                 </div>
 
                 <div>
-                <CompanyCycleFilter
-                  cycle={cycle}
-                  company={company}
-                  payrollData={data?.data ?? []}
-                  onCycleChange={handleCycleChange}
-                  onCompanyChange={setCompany}
-                />
+              
                 </div>
+                <div className="flex gap-4 px-4 mt-4">
+
+                    {/* Cycle */}
+                    <select
+                      className="border px-3 py-2 rounded"
+                      value={cycle}
+                      onChange={(e) => {
+                        setCycle(e.target.value);
+                        setCompany(""); // reset company
+                      }}
+                    >
+                      <option value="">Select Cycle</option>
+                      {cycles.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Company */}
+                    <select
+                      className="border px-3 py-2 rounded"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      disabled={!cycle}
+                    >
+                      <option value="">Select Company</option>
+                      {companies.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+
+            </div>
             </div>
 
               <SpreadSheet

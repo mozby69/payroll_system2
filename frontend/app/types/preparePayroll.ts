@@ -134,6 +134,12 @@ export interface EmployeeSummaryTypes {
 export interface PayrollResponse {
   status: "SUCCESS";
   data: PayrollEmployee[];
+  availableCompany: AvailableCompany[];
+}
+
+export interface AvailableCompany {
+  company_id: string;
+  cycle: string;
 }
 
 

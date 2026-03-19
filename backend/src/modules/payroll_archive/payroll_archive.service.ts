@@ -76,27 +76,69 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       const employeeList = await prisma.employeeSummary.findMany({
         where: {
           AND: [
-            baseFilter,
             {
               status: {
                 in: statuses,
               },
             },
+        
             {
               OR: [
+                // NORMAL
                 {
-                  EmpCode: {
-                    EmployeeStatus: {
-                      notIn: ["Resigned", "Inactive", "Terminate"],
+                  AND: [
+                    baseFilter,
+                    {
+                      OR: [
+                        {
+                          EmpCode: {
+                            EmployeeStatus: {
+                              notIn: ["Resigned", "Inactive", "Terminate"],
+                            },
+                          },
+                        },
+                        {
+                          EmpCode: {
+                            bod_member: {
+                              in: ["bod1", "bod2"],
+                            },
+                          },
+                        },
+                      ],
                     },
-                  },
+                  ],
                 },
+        
+                // ALIEN
                 {
-                  EmpCode: {
-                    bod_member: {
-                      in: ["bod1", "bod2"],
+                  AND: [
+                    {
+                      EmpCode: {
+                        isAlien: true,
+                        secondaryBranch:{
+                          company_id: company_id
+                        }
+                      },
                     },
-                  },
+                    {
+                      OR: [
+                        {
+                          EmpCode: {
+                            EmployeeStatus: {
+                              notIn: ["Resigned", "Inactive", "Terminate"],
+                            },
+                          },
+                        },
+                        {
+                          EmpCode: {
+                            bod_member: {
+                              in: ["bod1", "bod2"],
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  ],
                 },
               ],
             },
@@ -117,6 +159,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           NightShiftOtAtt:true,
           EmpCodeId:true,
           selected_payroll_date:true,
+        
           EmpCode:{
             select:{
               Firstname:true,
@@ -125,6 +168,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               isNewEmployee:true,
               bod_member:true,
               Taxable:true,
+              isAlien: true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -135,6 +179,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                   basic_salary: true,
                 }
               },
+              secondaryBranch: true,
                   
             pagibig_list:{
               select:{
@@ -157,6 +202,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       if (!employeeList || employeeList.length === 0) {
         return [];
       }
+
       
 
 // loans fetch and query here ↓
@@ -401,12 +447,32 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
    
     const result = await prisma.employeeSummary.updateMany({
       where: {
-         status: "PENDING",
-         EmpCode:{
-          BranchCode:{
-            company_id:company_id,
-          }
-         }        
+        OR:[
+          {
+            status: "PENDING",
+            EmpCode:{
+             BranchCode:{
+               company_id:company_id,
+             }
+            } 
+          },
+             {
+              AND: [
+                { 
+                  EmpCode:{
+                  isAlien: true,
+                  secondaryBranch: {
+                    company_id: company_id,
+                  },
+                  }
+                },
+      
+                {
+                  status: "PENDING",
+                }
+              ]
+            }
+        ]
         },
       data: { status: "FOR_CHECKER" },
     });
@@ -431,7 +497,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       const allComputed = await displayCompletePayroll(["FOR_APPROVER"]);
       if (!allComputed || allComputed.length === 0) return 0;
   
-      const computed = allComputed.filter((e) => e.company_id === companyId);
+      const computed = allComputed.filter((e) => 
+        e.company_id === companyId
+               ||
+       ( e.EmpCode?.isAlien === true &&
+        e.EmpCode?.secondaryBranch?.company_id === companyId)
+      );
       if (computed.length === 0) return 0;
   
       const empCodes        = computed.map((e) => e.EmpCodeId);
@@ -642,6 +713,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           total_deductions:          emp.total_deductions,
         };
       });
+
+
+      console.log("Arcvhive: ", archivePayload)
   
       await tx.employeePayrollArchive.createMany({
         data: archivePayload,
@@ -723,11 +797,37 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
    
       await tx.employeeSummary.updateMany({
         where: {
-          status: "FOR_APPROVER",
-          CycleCategory: cycle,
-          EmpCode: {
-            BranchCode: { CompanyCode: { CompanyCode: companyId } }
-          },
+          AND: [
+            {
+              status: "FOR_APPROVER",
+              CycleCategory: cycle,
+            },
+            
+            {
+              OR:[
+
+                {
+                  EmpCode: {
+                    BranchCode: { CompanyCode: { CompanyCode: companyId } }
+                  },
+                },
+
+                {
+                  AND: [
+                    {
+                      EmpCode: {
+                        isAlien: true,
+                        secondaryBranch:{
+                          company_id: companyId
+                        }
+                      },
+                    },
+                  ]
+                }
+
+              ]
+            }
+          ]
         },
         data: { status: "DONE" },
       });
@@ -735,16 +835,42 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       // ── Update isNewEmployee → false (this company only) ───────────────────
      await tx.employee.updateMany({
     where: {
-      isNewEmployee: true,
-      BranchCode: {
-        CompanyCode: {
-          is: {
-            CompanyCycle: cycle,
-            CompanyCode: companyId,
-          },
-        },
-      },
+      AND: [
+        {
+          isNewEmployee: true,
+        }, 
+
+        {
+
+          OR: [
+            {
+              BranchCode: {
+                CompanyCode: {
+                  is: {
+                    CompanyCycle: cycle,
+                    CompanyCode: companyId,
+                  },
+                },
+              },
+            },
+            {
+              AND: [
+                {
+                    isAlien: true,
+                    secondaryBranch:{
+                      company_id: companyId
+                  },
+                },
+              ]
+            }
+          ]
+        }
+      ]
+
+   
     },
+
+
     data: {
       isNewEmployee: false,
     },
@@ -874,12 +1000,36 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
    
   const data = await prisma.employeeSummary.updateMany({
     where: {
-      status: "FOR_CHECKER",
-      EmpCode:{
-       BranchCode:{
-         company_id:company_id,
-       }
-      }        
+      AND: [
+        {
+          status: "FOR_CHECKER",
+        },
+        {
+          OR: [
+            {
+              EmpCode:{
+                BranchCode:{
+                  company_id:company_id,
+                }
+                } 
+            },
+            {
+              AND: [
+                {
+                  EmpCode: {
+                    isAlien: true,
+                    secondaryBranch:{
+                      company_id: company_id
+                    }
+                  },
+                },
+              ],
+            }
+          ]
+        }
+       
+      ]
+           
      },
     data: { status: "FOR_APPROVER" },
   });
@@ -1275,16 +1425,33 @@ export async function getPayrollArchiveReportService(
 
     const employees = await prisma.employee.findMany({
       where: {
-        BranchCode: {
-          company_id: company_id
-        },
-        EmployeeStatus: {
-          not: "Resigned"
-        } 
-        ,
-        EmployementDate: {
-          lte: endDate
-        }
+        AND: [
+          {
+            EmployeeStatus: {
+              not: "Resigned"
+            } 
+            ,
+            EmployementDate: {
+              lte: endDate
+            },
+          },
+          {
+            OR: [
+                {
+                  BranchCode: {
+                      company_id: company_id
+                  }
+               },
+               {
+                isAlien: true,
+                secondaryBranch:{
+                  company_id: company_id
+                }
+               }
+            ]
+          }
+        ]
+     
       },
       include: {
         BranchCode: true,
@@ -1298,6 +1465,7 @@ export async function getPayrollArchiveReportService(
             basic_salary: true
           }
         },
+        secondaryBranch: true,
         specialLeaves: true
       },
       orderBy: [
@@ -1310,7 +1478,6 @@ export async function getPayrollArchiveReportService(
     // Normalize payroll values
     const rows = employees.map(emp => {
       const payroll = emp.archive_employee_payroll[0];
-    
       let reason: string | null = null;
       let leaveInfo = null;
     
@@ -1384,9 +1551,9 @@ export async function getPayrollArchiveReportService(
         pagIbigEmployeer: payroll?.Pagibig_employer_share ?? 0,
         sssEmployeer: payroll?.SSS_employer_share ?? 0,
         philhealthEmployeer: payroll?.philhealth_employer_share ?? 0,
-    
         reason,
-        leaveInfo
+        leaveInfo,
+        secondBranch: emp.isAlien ? emp.secondaryBranch?.company_id : ""
       };
     });
 
@@ -1402,8 +1569,10 @@ export async function getPayrollArchiveReportService(
         (!r.board || r.board === "") 
              &&
       (r.department !== "M2" && (r.branch === "EMB-MAIN"))
-              ||
-         r.branch === "ASS"
+               ||
+         (r.branch === "ASS")
+               ||
+      (r.secondBranch === company_id)
     );
 
       // Mancom Employees 
@@ -1415,12 +1584,15 @@ export async function getPayrollArchiveReportService(
     // 3️⃣ Branch Employees
     const branchEmployees = rows.filter(
       r =>
-        (!r.board || r.board === "")
+      (  (!r.board || r.board === "")
                   &&
         (r.branch !== "EMB-MAIN" &&  r.branch !== "ASS")
                    ||   
-     (r.department === "M2" && (r.branch === "EMB-MAIN")
+     (r.department === "M2" && (r.branch === "EMB-MAIN"))
+          
     )
+             &&
+    (r.secondBranch === '')
     );
 
     type BranchGroup = Record<string, typeof branchEmployees>;
@@ -1454,3 +1626,64 @@ export async function getPayrollArchiveReportService(
     throw error;
   }
 }
+
+
+export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER")[]) {
+  try {
+    const data = await prisma.employeeSummary.findMany({
+      where: {
+        status: {
+          in: statuses,
+        },
+
+        EmpCode: {
+          isNot:{
+            isAlien: true
+          }
+        }
+      },
+      select: {
+        CycleCategory: true,
+        EmpCode: {
+          select: {
+            BranchCode: {
+              select: {
+                company_id: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy:{
+        CycleCategory: "asc"
+      }
+    });
+
+    const map = new Map<string, { company_id: string; cycle: string }>();
+
+    for (const row of data) {
+      const company = row.EmpCode?.BranchCode?.company_id;
+      const cycle = row.CycleCategory;
+
+      if (!company || !cycle) continue;
+
+      const key = `${company}_${cycle}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          company_id: company,
+          cycle,
+        });
+      }
+    }
+
+    return Array.from(map.values());
+
+  } catch (error) {
+    console.error("Error fetching company cycles:", error);
+    throw error;
+  }
+}
+
+
+

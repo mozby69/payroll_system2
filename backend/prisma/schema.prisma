@@ -113,9 +113,9 @@ model Employee {
   BranchCodeId   String?  @db.VarChar(20) @map("BranchCode_id")
 
   EndDate       DateTime? @db.Date
-  SecondaryBranch String? @db.VarChar(50) 
+  secondaryBranchId  String? @db.VarChar(20) 
   isAlien Boolean @default(false)
-  SecondBranch    Branch?  @relation("EmployeesSecond",fields: [SecondaryBranch], references: [branchCode])
+  secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
 
   
 
