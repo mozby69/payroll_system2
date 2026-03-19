@@ -53,7 +53,7 @@ export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId:
 
 
 
-export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER")[] ,company_id?:string) {
+export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER" )[] ,company_id?:string) {
   
     try{
       const sssTable = await getSSSContributions();
@@ -188,6 +188,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 pagibig_employer_share:true,
               }
             },
+            specialLeaves:{
+              select:{
+                leaveName: true,
+                status:true,
+              }
+            }
             },
             
           },

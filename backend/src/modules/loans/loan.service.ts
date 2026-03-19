@@ -22,8 +22,18 @@ export async function saveEmployeeLoan(data: loanProps){
 
   const divisor = data.deduct_allowance ? 3 : 2;
 
-  const perPayroll =
-    Math.floor((Number(data.principal) / totalTerms / divisor) * 100) / 100;
+  const rawPerPayroll =
+    Number(data.principal) / totalTerms / divisor;
+
+  let perPayroll: number;
+
+  if (data.loan_type === "ARE_LOAN") {
+
+    perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+  } else {
+
+    perPayroll = Math.floor(rawPerPayroll * 100) / 100;
+  }
 
     
   const startDate = new Date(data.start_date);

@@ -129,7 +129,7 @@ export default function CompanyVariance({ companyCode }: Props) {
             {/* SALARY INCREASE */}
             {varianceAnalysis.salaryIncrease.length > 0 && (
               <VarianceList
-                title="Regularization Increase"
+                title="Salary Increase"
                 employees={varianceAnalysis.salaryIncrease}
                 color="text-mainhighlight"
                 render={(emp) =>
@@ -148,6 +148,19 @@ export default function CompanyVariance({ companyCode }: Props) {
                 }
               />
             )}
+
+            {varianceAnalysis?.specialLeaveEmployees?.length > 0 && (
+              <VarianceList
+                title="Special Leave Employees"
+                employees={varianceAnalysis.specialLeaveEmployees}
+                color="text-mainhighlight"
+                render={(emp) =>
+                  `${emp.name} – ${emp.leaveType} (${formatCurrency(emp.previousBasic ?? emp.currentBasic)})`
+                }
+              />
+            )}
+
+            
             {varianceAnalysis?.sssVariance?.length > 0 && (
               <VarianceList
                 title="SSS Employee Variance"
