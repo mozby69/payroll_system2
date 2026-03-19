@@ -203,7 +203,7 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
           create: {
             EmpCodeId: e.EmpCode,
             pagibig_employee_share: new Prisma.Decimal(0),
-            pagibig_employer_share: new Prisma.Decimal(0),
+            pagibig_employer_share: 200,
           },
           update: {},
         });

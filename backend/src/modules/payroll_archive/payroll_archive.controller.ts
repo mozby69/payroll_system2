@@ -288,6 +288,7 @@ export async function GenerateBankFileController(req: Request,res: Response) {
   try {
     const rows = req.body as BankFileRow[];
     const bank = String(req.query.bank).trim().toUpperCase();
+    const company_id = req.query.company_id as string;
 
     const bankAdmins = await displayBankAdminBDO();
 
@@ -322,7 +323,7 @@ export async function GenerateBankFileController(req: Request,res: Response) {
     // ================= PNB =================
     if (bank === "PNB") {
       const buffer = await generatePNBExcel(normalized);
-      const filename = `PNB${today}.xlsx`;
+      const filename = `PNB${today}${company_id}.xlsx`;
 
       return res.json({
         filename,

@@ -33,7 +33,7 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
     <div className="p-6 space-y-6">
 
 
-<div>{paycode}</div>
+      <div className="font-semibold text-lg"><span className="font-bold">Payroll Period: </span>{paycode}</div>
       <div className="flex justify-between items-center">
         <CompanyFilter
           value={company ?? ""}
@@ -42,7 +42,7 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
         />
 
       <div className="flex gap-x-4">
-            {selectedBank && company && (
+            {selectedBank && company  && !no_data && (
                 <button
                   onClick={() =>
                     generate(
@@ -91,7 +91,7 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
            
             {data2.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center py-10 text-gray-400">
+                <td colSpan={5} className="text-center py-10 text-gray-400">
                   No data available
                 </td>
               </tr>
@@ -133,7 +133,7 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
           {data2.length > 0 && (
             <tfoot>
               <tr className="border-t-2 bg-gray-100">
-                <td className="px-4 py-3 font-bold" colSpan={2}>
+                <td className="px-4 py-3 font-bold" colSpan={3}>
                   GRAND TOTAL
                 </td>
                 <td className="px-4 py-3 text-right font-bold text-green-800">
