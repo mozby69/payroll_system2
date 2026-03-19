@@ -55,6 +55,8 @@ export interface PayrollRow {
   EmpCode: {
     Firstname: string | null;
     Lastname: string | null;
+    isAlien?:boolean,
+    secondaryBranchId?:string,
     BranchCode: {
       company_id: string | null;
     } | null;

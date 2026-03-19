@@ -719,7 +719,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       });
 
 
-      console.log("Arcvhive: ", archivePayload)
+  
   
       await tx.employeePayrollArchive.createMany({
         data: archivePayload,
@@ -1301,14 +1301,32 @@ export async function displayBankAdminBDO(){
         where: {
           PayCode,
           cycle_category,
-          EmpCode: {
-            BranchCode:{
-              company_id:company_id,
+          OR:[
+            {
+              EmpCode:{
+                BranchCode:{
+                  company_id:company_id,
+                },
+                Disbursing:{
+                  not:true,
+                },
+              },
             },
-            Disbursing: {
-              not: true,
+            {
+              EmpCode:{
+                isAlien:true,
+                secondaryBranch:{
+                  company_id:company_id,
+                },
+                Disbursing:{
+                  not:true,
+                },
+              },
             },
-          },
+          ]
+         
+
+       
         },
         select: {
           id:true,
@@ -1323,6 +1341,9 @@ export async function displayBankAdminBDO(){
               Lastname: true,
               BranchCodeId:true,
               Disbursing:true,
+              isAlien:true,
+              secondaryBranch:true,
+              secondaryBranchId:true,
               employeepayroll:{
                 select:{
                   bank_account:true,
@@ -1352,7 +1373,7 @@ export async function displayBankAdminBDO(){
         PayCode: row.PayCode,
         cycle_category: row.cycle_category,
         Netpay: row.Netpay?.toNumber() ?? 0,
-        BranchCodeId:row.EmpCode.BranchCodeId,
+        BranchCodeId: row.EmpCode.isAlien ? row.EmpCode.secondaryBranchId  : row.EmpCode.BranchCodeId,
         EmpCodeId:row.EmpCodeId,
         EmpCode: {
           Firstname: row.EmpCode.Firstname,

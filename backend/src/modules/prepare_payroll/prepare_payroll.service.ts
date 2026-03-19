@@ -47,32 +47,12 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
   };
 
   const where = {
-    OR: [
-      {
-        AND: [
-          baseFilter,
-          searchFilter,
-          statusFilter,
-        ],
-      },
-
-      {
-        AND: [
-          { isAlien: true },
-            {secondaryBranch:{
-             company_id: company_id,
-            }
-          },
-          searchFilter,
-          statusFilter,
-        ],
-      },
-
-    ]
-  
+    AND: [
+      baseFilter,
+      searchFilter,
+      statusFilter,
+    ],
   };
-
-
 
   const total = await prisma.employee.count({ where });
   const bodPhil = await getBodPhilhealth();
@@ -438,42 +418,14 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     ],
   };
 
-
-
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
-    OR: [
-      {
-        AND: [
-          baseFilter,
-          { status: { in: ["PENDING"] } },
-          searchFilter,
-          statusOverride,
-    
-        ],
-      },
+    AND: [
+      baseFilter,
+      { status: { in: ["PENDING"] } },
+      searchFilter,
+      statusOverride,
 
-      {
-        AND: [
-          { 
-            EmpCode:{
-            isAlien: true
-            }
-          },
-
-          {
-              EmpCode:{
-                secondaryBranch:{
-                company_id: company_id,
-              }
-            }
-          },
-        searchFilter,
-        statusOverride,
-        { status: { in: ["PENDING"] } },
-      ],
-      }
-    ]
-    
+    ],
   };
   
 
@@ -619,31 +571,11 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
       };
 
       const where = {
-        OR: [
-          {
-            AND: [
-              baseFilter,
-              searchFilter,
-              statusFilter,
-            ],
-          },
-
-          {
-            AND: [
-              { isAlien: true },
-                {secondaryBranch:{
-                  CompanyCode: {
-                    CompanyCycle: cycle,
-                  },
-                }
-              },
-              searchFilter,
-              statusFilter,
-            ],
-          },
-
-        ]
-      
+        AND: [
+          baseFilter,
+          searchFilter,
+          statusFilter,
+        ],
       };
 
   const total = await prisma.employee.count({ where });
@@ -759,51 +691,23 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
     ],
   };
 
-  
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
-    OR: [
+    AND: [
+      { CycleCategory: cycle },
       {
-        AND: [
-          { CycleCategory: cycle },
-          {
-            EmpCode: {
-              BranchCode: {
-                CompanyCode: {
-                  CompanyCycle: cycle,
-                },
-              },
+        EmpCode: {
+          BranchCode: {
+            CompanyCode: {
+              CompanyCycle: cycle,
             },
           },
-          { status: { in: ["PENDING"] } },
-          searchFilter,
-          statusOverride,
-    
-        ],
+        },
       },
+      { status: { in: ["PENDING"] } },
+      searchFilter,
+      statusOverride,
 
-      {
-    AND: [
-          { 
-            EmpCode:{
-            isAlien: true
-            }
-          },
-
-          {
-              EmpCode:{
-              secondaryBranch:{
-                CompanyCode: {
-                  CompanyCycle: cycle,
-                },
-              }
-            }
-          },
-        searchFilter,
-        statusOverride,
-      ],
-      },
-    ]
-  
+    ],
   };
   
 
