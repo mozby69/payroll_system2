@@ -33,11 +33,16 @@ export const useUpdateEmployeePayroll = () => {
     mutationFn: (payload: UpdateEmployeePayrollPayload) =>
       updateEmployeePayroll(payload),
 
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["employee-profile", variables.empCode],
-      });
-    },
+   onSuccess: async (_, variables) => {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: ["employee-profile", variables.empCode],
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ["employees"],
+    }),
+  ]);
+},
   });
 };
 
