@@ -183,11 +183,11 @@ export default function StepReviewSave({ onBack }: Props) {
     }
   };
 
-  const openModal = () => {;
+  const openModal = () => {
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {;
+  const closeModal = () => {
     setIsModalOpen(false);
   };
   

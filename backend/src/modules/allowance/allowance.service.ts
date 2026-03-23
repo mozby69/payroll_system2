@@ -38,6 +38,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
                   { EmpCode: { contains: search } },
                   { Firstname: { contains: search } },
                   { Lastname: { contains: search } },
+                  { BranchCodeId: { contains: search } },
                 ],
               },
             ]
@@ -55,6 +56,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         Lastname: true,
         EmployeeStatus:true,
         BranchCode:true,
+        BranchCodeId:true,
         employeepayroll: {
           select: {
             cash_assistance: true,
@@ -365,7 +367,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         branch_code:branchCode ?? "NO_BRANCH",
         bod_member:bodMember,
         position:manCom,
-     
+        
         // loan code ↓
         fch_rfc_deducted
         // loan code ↑
@@ -553,6 +555,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           totalDeduction:emp.deduct + emp.fch_rfc_deducted,
          // totalAbsentHours: emp.totalDeduction,
           selectedMonth, // FK
+          branch:emp.branch_code,
           loan:emp.fch_rfc_deducted,
           createdAt: nowPH(),
         })),
