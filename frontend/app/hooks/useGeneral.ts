@@ -92,3 +92,22 @@ export const useReorderBranches = () => {
     }
   })
 }
+
+
+
+
+
+type Branch = {
+  branchCode: string;
+  Location: string | null;
+};
+
+export function useFetchBranches() {
+  return useQuery<Branch[]>({
+    queryKey: ["branches-list"],
+    queryFn: async () => {
+      const res = await api.get("/general/branch-list");
+      return res.data;
+    },
+  });
+}

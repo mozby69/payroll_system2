@@ -55,6 +55,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         Lastname: true,
         EmployeeStatus:true,
         BranchCode:true,
+        BranchCodeId:true,
         employeepayroll: {
           select: {
             cash_assistance: true,
@@ -79,6 +80,20 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         Lastname:"asc",
       },
     });
+
+
+    const empCodes = employees.map(e => e.EmpCode);
+
+    const overrides = await prisma.allowance_branch_override.findMany({
+      where: {
+        selectedMonth,
+        EmpCode: { in: empCodes },
+      },
+    });
+
+    const overrideMap = new Map(
+      overrides.map(o => [o.EmpCode, o.branchCode])
+    );
   
     const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
 
@@ -104,6 +119,9 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
       
       const totalDeductions = (cashDailyRate * totalAbsentHours) + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
 
+
+      
+
       // const cashDailyRate = cashAssistance / daysInPrevMonth;
       // const ecolaDailyRate = ecola / daysInPrevMonth;
 
@@ -121,7 +139,9 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
         total: finalTotal,          
         loan:0,           
         totalDeduction: totalDeductions,   
-        BranchCode:emp.BranchCode,
+        BranchCode: {
+          branchCode: overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode,
+        },
       };
     });
 
@@ -322,6 +342,20 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         Lastname:"asc",
       }
     });
+
+
+    const empCodes = employees.map(e => e.EmpCode);
+
+    const overrides = await prisma.allowance_branch_override.findMany({
+      where: {
+        selectedMonth,
+        EmpCode: { in: empCodes },
+      },
+    });
+
+    const overrideMap = new Map(
+      overrides.map(o => [o.EmpCode, o.branchCode])
+    );
   
     //return employees.map((emp) => {
     const rows = employees.map((emp) => {
@@ -329,7 +363,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
       const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
       const hasEcola = emp.employeepayroll?.with_ecola === true;
-      const branchCode = emp.BranchCode?.branchCode;
+      const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
       const bodMember = emp.bod_member;
       const manCom = emp.Position;
 
@@ -554,6 +588,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
          // totalAbsentHours: emp.totalDeduction,
           selectedMonth, // FK
           loan:emp.fch_rfc_deducted,
+          branchCode:emp.branch_code,
+          
           createdAt: nowPH(),
         })),
         
@@ -606,7 +642,30 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
 
-
+  type UpdateAllowanceBranchParams = {
+    EmpCode: string;
+    selectedMonth: string;
+    branchCode: string;
+  };
+  
+  export async function updateAllowanceBranch({EmpCode,selectedMonth,branchCode}: UpdateAllowanceBranchParams) {
+    await prisma.allowance_branch_override.upsert({
+      where: {
+        EmpCode_selectedMonth: {
+          EmpCode,
+          selectedMonth,
+        },
+      },
+      update: {
+        branchCode,
+      },
+      create: {
+        EmpCode,
+        selectedMonth,
+        branchCode,
+      },
+    });
+  }
 
 
 export async function displayAllowanceList({page,limit,search}: SummaryAllowanceProps) {
@@ -799,10 +858,10 @@ export async function ViewAllList(selectedMonth: string) {
     const nonBoard = filteredRows.filter((row) => row.bod_member !== "bod1" && row.bod_member !== "bod3");
 
     // 3️⃣ MANCOM (Senior_Manager only, excluding board)
-    const mancom = nonBoard.filter((row) => row.position === "Senior_Manager");
+    const mancom = nonBoard.filter((row) => row.bod_member === "MANCOM");
 
     // 4️⃣ Remaining employees (exclude MANCOM & BOARD)
-    const regularEmployees = nonBoard.filter((row) => row.position !== "Senior_Manager");
+    const regularEmployees = nonBoard.filter((row) => row.bod_member !== "MANCOM");
 
     const branches: Record<string, AllowanceRow[]> = {};
 

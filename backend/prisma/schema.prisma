@@ -84,7 +84,6 @@ model Branch {
   employees   Employee[] @relation("Employees")
   secondBranch   Employee[] @relation("EmployeesSecond")
   position    Int         @default(0)
-
   company_id String? @db.VarChar(20) @map("company_id")
   CompanyCode   company_details? @relation(fields: [company_id], references: [CompanyCode])
 
@@ -700,7 +699,8 @@ model archive_allowance {
   createdAt DateTime @map("created_at")
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
-
+  branchCode  String
+  
   summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
@@ -727,6 +727,18 @@ model archive_allowance_summary {
   @@unique([selectedMonth])
   @@map("archive_allowance_summary")
 }
+
+
+
+model allowance_branch_override {
+  id          Int    @id @default(autoincrement())
+  EmpCode     String
+  selectedMonth String
+  branchCode  String
+
+  @@unique([EmpCode, selectedMonth])
+}
+
 
 enum SalaryType {
   Basic

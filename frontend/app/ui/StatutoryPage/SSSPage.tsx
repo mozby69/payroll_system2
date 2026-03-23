@@ -18,8 +18,7 @@ import { useState } from "react";
 
 export default function SSSPage(){
 
-         const [selectedSSS,setSelectedSSS] = useState<SSSProps | null>(null);
-
+            const [selectedSSS,setSelectedSSS] = useState<SSSProps | null>(null);
             const [page, setPage] = useState(1);
             const PAGE_SIZE = 10;
             const [search, setSearch] = useState("");

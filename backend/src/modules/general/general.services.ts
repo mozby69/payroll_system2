@@ -102,6 +102,21 @@ export async function appendMissingBodEmployees(
   
 
 
+//filter branch
+
+export async function getBranch() {
+  const branches = await prisma.branch.findMany({
+    select: {
+      branchCode: true,
+      Location: true,
+    },
+    orderBy: {
+      branchCode: "asc",
+    },
+  });
+
+  return branches;
+}
 
 
 

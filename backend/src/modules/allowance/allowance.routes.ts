@@ -4,7 +4,9 @@ import { fetchAllowanceController, saveAllowanceController,fetchAllowanceSummary
 fetchArchiveAllowanceByMonthController, allowancePrintController, 
 getBranchesByCompanyController,
 fetchAllowancePrintDataController,
-fetchViewAllListController} from "./allowance.controller";
+fetchViewAllListController,
+updateAllowanceBranchController,
+} from "./allowance.controller";
 
 const router = Router();
 
@@ -17,6 +19,6 @@ router.get('/print-branch',allowancePrintController);
 router.get("/branches-by-company",getBranchesByCompanyController);
 router.get("/print-data", fetchAllowancePrintDataController);
 router.get("/view-all",fetchViewAllListController);
-
+router.post("/update-branch", updateAllowanceBranchController);
 
 export default router;

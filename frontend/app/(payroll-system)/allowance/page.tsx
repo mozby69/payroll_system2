@@ -11,6 +11,8 @@ import AllowanceArchiveTab from "@/app/components/allowance/archiveTab";
 import { TabItem, Tabs } from "@/app/components/Tab";
 import RequestModal from "@/app/components/Modal";
 import ViewAllList from "@/app/ModalContent/Allowance/ViewAllList";
+import { Pencil } from "lucide-react";
+import EditBranchAllowance from "@/app/ModalContent/Allowance/EditBranch";
 
 
 
@@ -26,6 +28,8 @@ export default function AllowancePage(){
         const [month, setMonth] = useState("");
         const saveAllowance = useSaveAllowance(month);
         const [isModalOpen, setIsModalOpen] = useState(false);
+        const [isModalOpen2, setIsModalOpen2] = useState(false);
+        const [selectedAllowance, setSelectedAllowance] = useState<AllowanceProps | null>(null);
         const { data: allowance_data } = useFetchAllowance({
                 page,
                 limit: 10,
@@ -97,6 +101,21 @@ export default function AllowancePage(){
               accessor: (row) => row.total ?? '0',
             
             },
+            {
+              header:"Actions",
+              render: (row) => (
+                <div className="flex gap-2">
+                  <button
+                  onClick={() =>{
+                    openModal2();
+                    setSelectedAllowance(row);
+                  } }
+                  className="px-3 py-2.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
+                  <Pencil/>
+                  </button>
+                </div>
+              ),
+            }
           ];
           
 
@@ -119,6 +138,15 @@ export default function AllowancePage(){
             const closeModal = () => {
               setIsModalOpen(false);
             };
+
+            const openModal2 = () => {
+              setIsModalOpen2(true);
+            };
+          
+            const closeModal2 = () => {
+              setIsModalOpen2(false);
+            };
+
 
       
     return(
@@ -195,6 +223,12 @@ export default function AllowancePage(){
                 {isModalOpen && (
                     <RequestModal size="xxl" title={`VIEW ALL`} onClose={closeModal}>
                         <ViewAllList selectedMonth={month}/>
+                    </RequestModal>
+                  )}
+
+              {isModalOpen2 && (
+                    <RequestModal size="sm" title={`EDIT BRANCH`} onClose={closeModal2}>
+                        <EditBranchAllowance onClose={closeModal2}  data={selectedAllowance} selectedMonth={month}/>
                     </RequestModal>
                   )}
 

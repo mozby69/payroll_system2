@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fetchCompanyCycles, getAllCompanies, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan, reorderBranchesService } from "./general.services";
+import { fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan, reorderBranchesService } from "./general.services";
 import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
 
@@ -210,3 +210,18 @@ export const reorderBranchesController = async (
 
 }
 
+
+
+
+
+
+export const getBranchController = async (req:Request, res:Response) => {
+  try{
+    const data = await getBranch();
+
+    return res.status(200).json(data);
+  }
+  catch(error){
+    console.error("error occured",error);
+  }
+}
