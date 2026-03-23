@@ -47,12 +47,32 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
   };
 
   const where = {
-    AND: [
-      baseFilter,
-      searchFilter,
-      statusFilter,
-    ],
+    OR: [
+      {
+        AND: [
+          baseFilter,
+          searchFilter,
+          statusFilter,
+        ],
+      },
+
+      {
+        AND: [
+          { isAlien: true },
+            {secondaryBranch:{
+             company_id: company_id,
+            }
+          },
+          searchFilter,
+          statusFilter,
+        ],
+      },
+
+    ]
+  
   };
+
+
 
   const total = await prisma.employee.count({ where });
   const bodPhil = await getBodPhilhealth();
@@ -418,14 +438,42 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     ],
   };
 
-  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
-    AND: [
-      baseFilter,
-      { status: { in: ["PENDING"] } },
-      searchFilter,
-      statusOverride,
 
-    ],
+
+  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
+    OR: [
+      {
+        AND: [
+          baseFilter,
+          { status: { in: ["PENDING"] } },
+          searchFilter,
+          statusOverride,
+    
+        ],
+      },
+
+      {
+        AND: [
+          { 
+            EmpCode:{
+            isAlien: true
+            }
+          },
+
+          {
+              EmpCode:{
+                secondaryBranch:{
+                company_id: company_id,
+              }
+            }
+          },
+        searchFilter,
+        statusOverride,
+        { status: { in: ["PENDING"] } },
+      ],
+      }
+    ]
+    
   };
   
 
@@ -527,7 +575,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 
 
 //payroll initialize ***********************************************************
-// With second Branch
+
 export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
   {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
 
@@ -573,11 +621,31 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
       };
 
       const where = {
-        AND: [
-          baseFilter,
-          searchFilter,
-          statusFilter,
-        ],
+        OR: [
+          {
+            AND: [
+              baseFilter,
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+          {
+            AND: [
+              { isAlien: true },
+                {secondaryBranch:{
+                  CompanyCode: {
+                    CompanyCycle: cycle,
+                  },
+                }
+              },
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+        ]
+      
       };
 
   const total = await prisma.employee.count({ where });
@@ -693,23 +761,51 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
     ],
   };
 
+  
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
-    AND: [
-      { CycleCategory: cycle },
+    OR: [
       {
-        EmpCode: {
-          BranchCode: {
-            CompanyCode: {
-              CompanyCycle: cycle,
+        AND: [
+          { CycleCategory: cycle },
+          {
+            EmpCode: {
+              BranchCode: {
+                CompanyCode: {
+                  CompanyCycle: cycle,
+                },
+              },
             },
           },
-        },
+          { status: { in: ["PENDING"] } },
+          searchFilter,
+          statusOverride,
+    
+        ],
       },
-      { status: { in: ["PENDING"] } },
-      searchFilter,
-      statusOverride,
 
-    ],
+      {
+    AND: [
+          { 
+            EmpCode:{
+            isAlien: true
+            }
+          },
+
+          {
+              EmpCode:{
+              secondaryBranch:{
+                CompanyCode: {
+                  CompanyCycle: cycle,
+                },
+              }
+            }
+          },
+        searchFilter,
+        statusOverride,
+      ],
+      },
+    ]
+  
   };
   
 
