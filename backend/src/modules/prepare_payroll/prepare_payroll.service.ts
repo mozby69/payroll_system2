@@ -537,6 +537,8 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
             CompanyCycle: cycle,
           },
         },
+        isAlien: false,
+
         ...(onlyNew && { isNewEmployee: true }), 
         ...(onlyMissingSetup && {
           Disbursing: true,

@@ -913,13 +913,31 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
   export async function reCheckPayroll(company_id:string){
    
     const data = await prisma.employeeSummary.updateMany({
-      where: { 
-        status: "FOR_CHECKER",
-        EmpCode:{
-          BranchCode:{
-            company_id:company_id,
+       where: { 
+        AND:[
+          {
+            status: "FOR_CHECKER",
+          },
+          {
+            OR: [
+              { 
+              EmpCode:{
+                BranchCode:{
+                  company_id:company_id,
+                }
+              }
+              },
+              {
+                EmpCode:{
+                  secondaryBranch:{
+                    company_id: company_id
+                  }
+                }
+              }
+            ]
           }
-        }
+        ]
+       
        },
       data: { status: "PENDING" },
     });
@@ -953,12 +971,30 @@ export async function reCheckPayrollToChecker(company_id:string,approvedBy:numbe
    
   const data = await prisma.employeeSummary.updateMany({
     where: { 
-      status: "FOR_APPROVER",
-      EmpCode:{
-        BranchCode:{
-          company_id:company_id,
+      AND:[
+        {
+          status: "FOR_APPROVER",
+        },
+        {
+          OR: [
+            { 
+            EmpCode:{
+              BranchCode:{
+                company_id:company_id,
+              }
+            }
+            },
+            {
+              EmpCode:{
+                secondaryBranch:{
+                  company_id: company_id
+                }
+              }
+            }
+          ]
         }
-      }
+      ]
+     
      },
     data: { status: "FOR_CHECKER" },
   });
