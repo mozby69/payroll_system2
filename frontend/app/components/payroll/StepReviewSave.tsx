@@ -27,7 +27,7 @@ export default function StepReviewSave({ onBack }: Props) {
   const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const [isModalOpen2, setIsModalOpen2] = useState(false);
 
   const { hasPermission,user } = useAuth()
 
@@ -183,11 +183,11 @@ export default function StepReviewSave({ onBack }: Props) {
     }
   };
 
-  const openModal = () => {;
+  const openModal = () => {
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {;
+  const closeModal = () => {
     setIsModalOpen(false);
   };
   
@@ -223,6 +223,7 @@ export default function StepReviewSave({ onBack }: Props) {
       {hasPermission("SAVE_PAYROLL") && (
            <div className="flex gap-x-2">
                 <GenButton variant="primary" onClick={openModal}>View Variance</GenButton>
+                <GenButton variant="danger" onClick={openModal}>Deductions</GenButton>
                 <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
                   {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                 </GenButton>

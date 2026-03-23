@@ -63,7 +63,7 @@ export default function AllowancePage(){
 
             },
             {
-              header: "Employee",
+              header: "Branch",
               render: (row) => `${row.BranchCode.branchCode}`,
 
             },
@@ -146,7 +146,6 @@ export default function AllowancePage(){
             const closeModal2 = () => {
               setIsModalOpen2(false);
             };
-
 
       
     return(
@@ -231,6 +230,13 @@ export default function AllowancePage(){
                         <EditBranchAllowance onClose={closeModal2}  data={selectedAllowance} selectedMonth={month}/>
                     </RequestModal>
                   )}
+
+
+              {isModalOpen2 &&(
+                  <RequestModal size="md" title={`Edit Branch`} onClose={closeModal2}>
+                    <EditBranchAllowance data={selectedAllowance} selectedMonth={month} onClose={closeModal} />
+                  </RequestModal>
+                )}
 
 
                   
