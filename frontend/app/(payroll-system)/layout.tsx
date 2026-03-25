@@ -16,12 +16,13 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
   const [OpenSidebar, setOpenSideBar] = useState(true);
   const [openMenu, setOpenMenu] = useState(false);
   const[openBranchModal, setOpenBranchModal] = useState(false)
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, hasPermission } = useAuth();
 
   const [userModal, setUserModal] = useState(false)
 
   if (loading) return null;
   if (!user) redirect("/login");
+
 
 
 
@@ -54,13 +55,16 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
                   <Settings/>
                   Settings
                 </li>
-                <li
-                 className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
-                  onClick={()=>setUserModal(true)}
-                 >
-                  <User/>
-                  Users
-                </li>
+                {hasPermission("USER_MANAGE") && (
+                    <li
+                    className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                     onClick={()=>setUserModal(true)}
+                    >
+                     <User/>
+                     Users
+                   </li>
+                  )}
+           
 
                 <li
                  className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"

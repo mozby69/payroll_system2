@@ -1037,27 +1037,22 @@ export async function getEmployeesByBonusSummarySerive(
   
   const employees = await tx.employee.findMany({
     where: {
-      AND: [
+      OR: [
         {
           BranchCode: {
             CompanyCode: {
               CompanyCode: selectedCompanyCode
             },
           },
-         
+
+          EmployeeStatus: "Active",
+          EmployementDate: {
+            lte: summary.generateDate
+          }
         },
-      {
-        EmployementDate: {
-          lte: summary.generateDate
-        }
-      },
+     
         {
           OR: [
-            {
-              EmployeeStatus: {
-                notIn: ["Active"]
-              }
-            },
             { bod_member: "bod1" },
             { bod_member: "bod2" }
           ],

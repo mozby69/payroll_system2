@@ -21,6 +21,7 @@ export type BranchDTO = {
     Department: string;
     SecondaryBranch:string;
     isAlien:boolean;
+    EndDate:string;
   };
 
   export type CompanyDTO = {

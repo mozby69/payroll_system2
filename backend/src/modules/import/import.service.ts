@@ -168,7 +168,8 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             Position:e.Position,
             Department: e.Department,
             secondaryBranchId: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
-            isAlien:e.isAlien
+            isAlien:e.isAlien,
+            EndDate:toDateOrNull(e.EndDate),
           },
           update: {
             Firstname: e.Firstname,
@@ -182,7 +183,8 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             Position: e.Position,
             Department: e.Department,
             secondaryBranchId: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
-            isAlien:e.isAlien
+            isAlien:e.isAlien,
+            EndDate:toDateOrNull(e.EndDate),
           },
         });
 
