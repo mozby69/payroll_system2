@@ -54,6 +54,7 @@ export interface ArchiveAllowance {
   totalDeduction: number | null;
   total: number | null;
   createdAt: string;
+  branchCode:string;
 }
 
 
@@ -118,6 +119,6 @@ export interface LoanItem{
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
-  BRANCHES: Record<string, ViewAllItem[]>;
+  BRANCHES: Record<string, Record<string, ViewAllItem[]>>;
   LOANS: LoanItem[];
 }

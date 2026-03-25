@@ -21,6 +21,7 @@ export function useUpdateBranch() {
     onSuccess: () => {
       SweetAlert.successAlert("Branch updated successfully");
       queryClient.invalidateQueries({ queryKey: ["allowance-list"] });
+        queryClient.invalidateQueries({ queryKey: ["fetch-view-all"] });
     },
   });
 }

@@ -232,11 +232,11 @@ export default function AllowancePage(){
                   )}
 
 
-              {isModalOpen2 &&(
+              {/* {isModalOpen2 &&(
                   <RequestModal size="md" title={`Edit Branch`} onClose={closeModal2}>
                     <EditBranchAllowance data={selectedAllowance} selectedMonth={month} onClose={closeModal} />
                   </RequestModal>
-                )}
+                )} */}
 
 
                   

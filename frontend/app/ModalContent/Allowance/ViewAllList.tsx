@@ -2,6 +2,7 @@ import { useFetchViewAll } from "@/app/hooks/useAllowance";
 import { LoanItem, ViewAllItem } from "@/app/types/allowanceType";
 import { formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
+import { tr } from "zod/v4/locales";
 
 
 
@@ -54,6 +55,13 @@ export default function ViewAllList({selectedMonth}:Props){
       const boardTotals = computeTotals(boardMembers);
       const mancomTotals = computeTotals(mancom);
       const loanTotals = computeLoanTotal(loans);
+
+      const embBranches = branches["EMB"] ?? {};
+      const embEmployees = Object.values(embBranches).flat();
+      const embTotals = computeTotals(embEmployees);
+
+      
+
     return(
         <>
         <div className="p-2">
@@ -145,14 +153,27 @@ export default function ViewAllList({selectedMonth}:Props){
 
 
             
-            <div className="pt-4">
-            {Object.entries(branches).map(([branch, employees]) => (
-                <div key={branch} className="mb-6">
-          
+        <div className="pt-4">
+        {Object.entries(branches).map(([company, branchGroup]) => (
+            
+        <div key={company} className="mb-8">
 
-                <table className="border-collapse w-12/12 border border-gray-300 text-center">
+
+            <h2 className="font-bold text-lg uppercase mb-2">{company}</h2>
+
+            {Object.entries(branchGroup).map(([branch, employees], index, arr) => {
+                const branchTotals = computeTotals(employees);
+                const isLastBranch = index === arr.length - 1;
+
+                const companyEmployees = Object.values(branchGroup).flat();
+                const companyTotals = computeTotals(companyEmployees);
+
+                return (
+                <div key={branch} className="mb-6">
+
+                    <table className="border-collapse w-full border border-gray-300 text-center">
                     <thead>
-                    <tr className="bg-gray-300">
+                        <tr className="bg-gray-300">
                         <th className="py-2">{branch}</th>
                         <th>CASH ASSISTANCE</th>
                         <th>ECOLA</th>
@@ -160,17 +181,13 @@ export default function ViewAllList({selectedMonth}:Props){
                         <th>LOANS</th>
                         <th>TOTAL DEDUCTIONS</th>
                         <th>TOTAL</th>
-                    </tr>
+                        </tr>
                     </thead>
 
                     <tbody>
-                    {(() => {
-                    const branchTotals = computeTotals(employees);
-
-                    return (
-                        <>
+                        {/* EMPLOYEES */}
                         {employees.map((emp) => (
-                            <tr key={emp.EmpCode} className="border-t">
+                        <tr key={emp.EmpCode} className="border-t">
                             <td className="py-1">{emp.name}</td>
                             <td>{emp.cash_allowance.toFixed(2)}</td>
                             <td>{emp.computed_ecola.toFixed(2)}</td>
@@ -178,26 +195,223 @@ export default function ViewAllList({selectedMonth}:Props){
                             <td>{emp.fch_rfc_deducted.toFixed(2)}</td>
                             <td>{emp.totalDeduction.toFixed(2)}</td>
                             <td className="font-semibold">{emp.total.toFixed(2)}</td>
-                            </tr>
+                        </tr>
                         ))}
 
+                        {/* BRANCH TOTAL */}
                         <tr className="border-t font-semibold bg-gray-100">
-                            <td className="py-1">GRAND TOTAL</td>
+                        <td className="py-2">GRAND TOTAL</td>
+                        <td>{formatCurrency(branchTotals.cash_allowance)}</td>
+                        <td>{formatCurrency(branchTotals.computed_ecola)}</td>
+                        <td>{formatCurrency(branchTotals.deduct)}</td>
+                        <td>{formatCurrency(branchTotals.fch_rfc_deducted)}</td>
+                        <td>{formatCurrency(branchTotals.totalDeduction)}</td>
+                        <td>{formatCurrency(branchTotals.total)}</td>
+                        </tr>
+
+                        {/* EMB MAIN EXTRA */}
+                        {branch === "EMB-MAIN" && (
+                        <>
+                            <tr>
+                            <td className="invisible p-2">d</td>
+                            </tr>
+
+                            <tr className="border-t font-semibold">
+                            <td>TOTAL MH</td>
                             <td>{formatCurrency(branchTotals.cash_allowance)}</td>
                             <td>{formatCurrency(branchTotals.computed_ecola)}</td>
-                            <td>{formatCurrency(branchTotals.deduct)}</td>
-                            <td>{formatCurrency(branchTotals.fch_rfc_deducted)}</td>
-                            <td>{formatCurrency(branchTotals.totalDeduction)}</td>
-                            <td>{formatCurrency(branchTotals.total)}</td>
-                        </tr>
+                            <td>
+                                {formatCurrency(
+                                branchTotals.cash_allowance +
+                                branchTotals.computed_ecola
+                                )}
+                            </td>
+                            <td colSpan={3}></td>
+                            </tr>
+
+                            <tr className="border-t font-semibold">
+                            <td>TOTAL BOARD & MANCOM</td>
+                            <td>
+                                {formatCurrency(
+                                mancomTotals.cash_allowance + boardTotals.cash_allowance
+                                )}
+                            </td>
+                            <td>
+                                {formatCurrency(
+                                mancomTotals.computed_ecola + boardTotals.computed_ecola
+                                )}
+                            </td>
+                            <td>
+                                {formatCurrency(
+                                mancomTotals.cash_allowance +
+                                boardTotals.cash_allowance +
+                                mancomTotals.computed_ecola +
+                                boardTotals.computed_ecola
+                                )}
+                            </td>
+                            <td colSpan={3}></td>
+                            </tr>
+
+                            <tr className="font-semibold bg-gray-200">
+                            <td>TOTAL</td>
+                            <td>
+                                {formatCurrency(
+                                embTotals.cash_allowance +
+                                mancomTotals.cash_allowance +
+                                boardTotals.cash_allowance
+                                )}
+                            </td>
+                            <td>
+                                {formatCurrency(
+                                branchTotals.computed_ecola +
+                                mancomTotals.computed_ecola +
+                                boardTotals.computed_ecola
+                                )}
+                            </td>
+                            <td>
+                                {formatCurrency(
+                                embTotals.cash_allowance +
+                                branchTotals.computed_ecola +
+                                mancomTotals.cash_allowance +
+                                mancomTotals.computed_ecola +
+                                boardTotals.cash_allowance +
+                                boardTotals.computed_ecola
+                                )}
+                            </td>
+                            <td colSpan={3}></td>
+                            </tr>
                         </>
-                    );
-                    })()}
+                        )}
+
+                
+                          {company === "EMB" && isLastBranch && (
+                            <>
+                                <tr>
+                                <td className="invisible">s</td>
+                                </tr>
+
+                                <tr className="bg-red-200 font-bold border-t-2">
+                                <td className="py-2">TOTAL EMB</td>
+
+                                <td className="text-center">
+                                    {formatCurrency(companyTotals.cash_allowance)}
+                                </td>
+
+                                <td className="text-center">
+                                    {formatCurrency(companyTotals.computed_ecola)}
+                                </td>
+
+                                <td className="text-center">
+                                    {formatCurrency(
+                                    companyTotals.cash_allowance +
+                                    companyTotals.computed_ecola
+                                    )}
+                                </td>
+
+                                <td colSpan={3}></td>
+                                </tr>
+                            </>
+                            )}
+
+                       {company === "FCH" && isLastBranch && (
+                            <>
+                                <tr>
+                                <td className="invisible">s</td>
+                                </tr>
+
+                                <tr className="bg-red-200 font-bold border-t-2">
+                                <td className="py-2">TOTAL FCH</td>
+
+                                <td className="text-center">
+                                    {formatCurrency(companyTotals.cash_allowance)}
+                                </td>
+
+                                <td className="text-center">
+                                    {formatCurrency(companyTotals.computed_ecola)}
+                                </td>
+
+                                <td className="text-center">
+                                    {formatCurrency(
+                                    companyTotals.cash_allowance +
+                                    companyTotals.computed_ecola
+                                    )}
+                                </td>
+
+                                <td colSpan={3}></td>
+                                </tr>
+                            </>
+                            )}
+
+
+                             {company === "ELC" && isLastBranch && (
+                                <>
+                                    <tr>
+                                    <td className="invisible">s</td>
+                                    </tr>
+
+                                    <tr className="bg-red-200 font-bold border-t-2">
+                                    <td className="py-2">TOTAL ELC</td>
+
+                                    <td className="text-center">
+                                        {formatCurrency(companyTotals.cash_allowance)}
+                                    </td>
+
+                                    <td className="text-center">
+                                        {formatCurrency(companyTotals.computed_ecola)}
+                                    </td>
+
+                                    <td className="text-center">
+                                        {formatCurrency(
+                                        companyTotals.cash_allowance +
+                                        companyTotals.computed_ecola
+                                        )}
+                                    </td>
+
+                                    <td colSpan={3}></td>
+                                    </tr>
+                                </>
+                                )}
+
+                                {company === "PSPMI" && isLastBranch && (
+                                <>
+                                    <tr>
+                                    <td className="invisible">s</td>
+                                    </tr>
+
+                                    <tr className="bg-red-200 font-bold border-t-2">
+                                    <td className="py-2">TOTAL PSPMI</td>
+
+                                    <td className="text-center">
+                                        {formatCurrency(companyTotals.cash_allowance)}
+                                    </td>
+
+                                    <td className="text-center">
+                                        {formatCurrency(companyTotals.computed_ecola)}
+                                    </td>
+
+                                    <td className="text-center">
+                                        {formatCurrency(
+                                        companyTotals.cash_allowance +
+                                        companyTotals.computed_ecola
+                                        )}
+                                    </td>
+
+                                    <td colSpan={3}></td>
+                                    </tr>
+                                </>
+                                )}
+
+
+
                     </tbody>
-                </table>
+                    </table>
+
                 </div>
-            ))}
+                );
+            })}
             </div>
+        ))}
+        </div>
 
 
 
