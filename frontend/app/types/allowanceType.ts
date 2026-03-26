@@ -114,6 +114,7 @@ export interface LoanItem{
   Firstname:string;
   Lastname:string;
   per_payroll_deduct:number;
+  BranchCodeId:string;
 }
 
 export interface ViewAllResponse {

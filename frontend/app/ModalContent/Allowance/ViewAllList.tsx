@@ -2,7 +2,8 @@ import { useFetchViewAll } from "@/app/hooks/useAllowance";
 import { LoanItem, ViewAllItem } from "@/app/types/allowanceType";
 import { formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
-import { tr } from "zod/v4/locales";
+
+
 
 
 
@@ -56,11 +57,30 @@ export default function ViewAllList({selectedMonth}:Props){
       const mancomTotals = computeTotals(mancom);
       const loanTotals = computeLoanTotal(loans);
 
-      const embBranches = branches["EMB"] ?? {};
-      const embEmployees = Object.values(embBranches).flat();
-      const embTotals = computeTotals(embEmployees);
+    //   const embBranches = branches["EMB"] ?? {};
+    //   const embEmployees = Object.values(embBranches).flat();
 
-      
+    //   const embTotals = computeTotals(embEmployees);
+
+     const computeCompanyTotals = (company: string) => {
+        const companyBranches = branches[company] ?? {};
+        const employees = Object.values(companyBranches).flat();
+        return computeTotals(employees);
+        };
+    const companies = Object.keys(branches);
+    
+    const grandTotals = companies.reduce(
+        (acc, company) => {
+            const totals = computeCompanyTotals(company);
+
+            acc.cash += totals.cash_allowance;
+            acc.ecola += totals.computed_ecola;
+
+            return acc;
+        },
+        { cash: 0, ecola: 0 }
+        );
+
 
     return(
         <>
@@ -77,12 +97,12 @@ export default function ViewAllList({selectedMonth}:Props){
                     <thead>
                         <tr className="bg-gray-300">
                             <th className="py-2">BOARD</th>
-                            <th>CASH ASSITANCE</th>
+                            <th>CASH ASSISTANCE</th>
                             <th>ECOLA</th>
                             <th>ABSENCES</th>
                             <th>LOANS</th>
                             <th>TOTAL DEDUCTIONS</th>
-                            <th>TOTAL</th>
+                            <th>NET TOTAL</th>
                         </tr>
                     </thead>
 
@@ -117,12 +137,12 @@ export default function ViewAllList({selectedMonth}:Props){
                     <thead>
                         <tr className="bg-gray-300">
                             <th className="py-2">MANCOM</th>
-                            <th>CASH ASSITANCE</th>
+                            <th>CASH ASSISTANCE</th>
                             <th>ECOLA</th>
                             <th>ABSENCES</th>
                             <th>LOANS</th>
                             <th>TOTAL DEDUCTIONS</th>
-                            <th>TOTAL</th>
+                            <th>NET TOTAL</th>
                         </tr>
                     </thead>
 
@@ -180,7 +200,7 @@ export default function ViewAllList({selectedMonth}:Props){
                         <th>ABSENCES</th>
                         <th>LOANS</th>
                         <th>TOTAL DEDUCTIONS</th>
-                        <th>TOTAL</th>
+                        <th>NET TOTAL</th>
                         </tr>
                     </thead>
 
@@ -217,23 +237,20 @@ export default function ViewAllList({selectedMonth}:Props){
                             </tr>
 
                             <tr className="border-t font-semibold">
-                            <td>TOTAL MH</td>
-                            <td>{formatCurrency(branchTotals.cash_allowance)}</td>
+                            <td className="py-1">TOTAL MH</td>
+                            <td>{formatCurrency(branchTotals.cash_allowance - branchTotals.totalDeduction)}</td>
                             <td>{formatCurrency(branchTotals.computed_ecola)}</td>
                             <td>
-                                {formatCurrency(
-                                branchTotals.cash_allowance +
-                                branchTotals.computed_ecola
-                                )}
+                                {formatCurrency(branchTotals.cash_allowance + branchTotals.computed_ecola - branchTotals.totalDeduction)}
                             </td>
                             <td colSpan={3}></td>
                             </tr>
 
                             <tr className="border-t font-semibold">
-                            <td>TOTAL BOARD & MANCOM</td>
+                            <td className="py-1">TOTAL BOARD & MANCOM</td>
                             <td>
                                 {formatCurrency(
-                                mancomTotals.cash_allowance + boardTotals.cash_allowance
+                                mancomTotals.cash_allowance + boardTotals.cash_allowance - mancomTotals.totalDeduction
                                 )}
                             </td>
                             <td>
@@ -247,19 +264,16 @@ export default function ViewAllList({selectedMonth}:Props){
                                 boardTotals.cash_allowance +
                                 mancomTotals.computed_ecola +
                                 boardTotals.computed_ecola
+                                - mancomTotals.totalDeduction
                                 )}
                             </td>
                             <td colSpan={3}></td>
                             </tr>
 
                             <tr className="font-semibold bg-gray-200">
-                            <td>TOTAL</td>
+                            <td className="py-1">TOTAL</td>
                             <td>
-                                {formatCurrency(
-                                embTotals.cash_allowance +
-                                mancomTotals.cash_allowance +
-                                boardTotals.cash_allowance
-                                )}
+                                {formatCurrency(boardTotals.cash_allowance + (mancomTotals.cash_allowance - mancomTotals.totalDeduction) + (branchTotals.cash_allowance - branchTotals.totalDeduction))}
                             </td>
                             <td>
                                 {formatCurrency(
@@ -270,12 +284,14 @@ export default function ViewAllList({selectedMonth}:Props){
                             </td>
                             <td>
                                 {formatCurrency(
-                                embTotals.cash_allowance +
+                            
+                                (branchTotals.cash_allowance - branchTotals.totalDeduction) +
                                 branchTotals.computed_ecola +
-                                mancomTotals.cash_allowance +
+                                (mancomTotals.cash_allowance - mancomTotals.totalDeduction) +
                                 mancomTotals.computed_ecola +
                                 boardTotals.cash_allowance +
                                 boardTotals.computed_ecola
+                          
                                 )}
                             </td>
                             <td colSpan={3}></td>
@@ -290,7 +306,7 @@ export default function ViewAllList({selectedMonth}:Props){
                                 <td className="invisible">s</td>
                                 </tr>
 
-                                <tr className="bg-red-200 font-bold border-t-2">
+                                <tr className="bg-yellow-200 font-bold border-t-2">
                                 <td className="py-2">TOTAL EMB</td>
 
                                 <td className="text-center">
@@ -319,7 +335,7 @@ export default function ViewAllList({selectedMonth}:Props){
                                 <td className="invisible">s</td>
                                 </tr>
 
-                                <tr className="bg-red-200 font-bold border-t-2">
+                                <tr className="bg-yellow-200 font-bold border-t-2">
                                 <td className="py-2">TOTAL FCH</td>
 
                                 <td className="text-center">
@@ -349,7 +365,7 @@ export default function ViewAllList({selectedMonth}:Props){
                                     <td className="invisible">s</td>
                                     </tr>
 
-                                    <tr className="bg-red-200 font-bold border-t-2">
+                                    <tr className="bg-yellow-200 font-bold border-t-2">
                                     <td className="py-2">TOTAL ELC</td>
 
                                     <td className="text-center">
@@ -378,7 +394,7 @@ export default function ViewAllList({selectedMonth}:Props){
                                     <td className="invisible">s</td>
                                     </tr>
 
-                                    <tr className="bg-red-200 font-bold border-t-2">
+                                    <tr className="bg-yellow-200 font-bold border-t-2">
                                     <td className="py-2">TOTAL PSPMI</td>
 
                                     <td className="text-center">
@@ -403,6 +419,9 @@ export default function ViewAllList({selectedMonth}:Props){
 
 
 
+                               
+
+
                     </tbody>
                     </table>
 
@@ -414,15 +433,73 @@ export default function ViewAllList({selectedMonth}:Props){
         </div>
 
 
+      <div>
+            <table className="border-collapse w-full border border-gray-300 text-center">
+                <thead>
+                <tr>
+                    <th className="p-1 border border-gray-300">Company</th>
+                    <th className="p-1 border border-gray-300">Cash Assistance</th>
+                    <th className="p-1 border border-gray-300">Ecola</th>
+                    <th className="p-1 border border-gray-300">Total</th>
+                     
+                </tr>
+                </thead>
 
-            <div>
+                <tbody>
+                {companies.map((company) => {
+                    const totals = computeCompanyTotals(company);
+
+                    return (
+                    <tr key={company}>
+                        <td className="p-1 border border-gray-300">{company}</td>
+                        <td className="p-1 border border-gray-300">
+                        {formatCurrency(totals.cash_allowance)}
+                        </td>
+                        <td className="p-1 border border-gray-300">
+                        {formatCurrency(totals.computed_ecola)}
+                        </td>
+                        <td className="p-1 border border-gray-300">
+                        {formatCurrency(
+                            totals.cash_allowance + totals.computed_ecola
+                        )}
+                        </td>
+                        
+                    </tr>
+                    );
+                    
+                })}
+
+                   <tr className="bg-gray-200 font-bold">
+                        <td className="p-1 border border-gray-300">Grand Total</td>
+
+                        <td className="p-1 border border-gray-300">
+                            {formatCurrency(grandTotals.cash)}
+                        </td>
+
+                        <td className="p-1 border border-gray-300">
+                            {formatCurrency(grandTotals.ecola)}
+                        </td>
+
+                        <td className="p-1 border border-gray-300">
+                            {formatCurrency(grandTotals.cash + grandTotals.ecola)}
+                        </td>
+                        </tr>
+                </tbody>
+            </table>
+            </div>
+
+
+
+            <div className="mt-4">
             <h2 className="font-semibold text-lg">LOANS</h2>
             <div className="pt-2">
                 <table className="border-collapse w-12/12 border border-gray-300 text-left">
                     <thead>
                         <tr className="bg-gray-300 uppercase">
                             <th className="p-2">NAME</th>
+                            <th className="p-2">Branch</th>
                             <th className="p-2">Deduction</th>
+                 
                       
                         </tr>
                     </thead>
@@ -431,16 +508,52 @@ export default function ViewAllList({selectedMonth}:Props){
                     {loans.map((emp) => (
                         <tr key={emp.EmpCode}>
                             <td className="py-1 px-2 border border-gray-300">{emp.Lastname}, {emp.Firstname}</td>
+                            <td className="px-2 border border-gray-300">{emp.BranchCodeId}</td>
                             <td className="py-1 px-2 border border-gray-300">{emp.per_payroll_deduct}</td>
+                   
                         </tr>
                         ))}
                     <tr className="bg-gray-200 font-bold">
-                        <td className="py-1 px-2 border border-gray-300">GRAND TOTAL</td>
+                        <td className="py-1 px-2 border border-gray-300" colSpan={2}>GRAND TOTAL</td>
                         <td className="py-1 px-2 border border-gray-300">{formatCurrency(loanTotals)}</td>
+                  
                     </tr>
                     </tbody>
                 </table>
             </div>
+            </div>
+
+
+
+
+            <div className="mt-4">
+                <h2 className="font-semibold text-lg">VARIANCE</h2>
+                <div className="mt-2 space-y-2">
+                        <div className="grid grid-cols-4 font-semibold">
+                            <h2>MONTH & YEAR</h2>
+                            <h2>CASH ASSISTANCE</h2>
+                            <h2>ECOLA</h2>
+                            <h2>TOTAL</h2>
+                        </div>
+                          <div className="grid grid-cols-4">
+                            <h2>FEBRUARY 2026</h2>
+                            <h2>321432</h2>
+                            <h2>5132</h2>
+                            <h2>5132</h2>
+                        </div>
+                          <div className="grid grid-cols-4">
+                            <h2 className="uppercase"> {formatMonthYear(selectedMonth)}</h2>
+                            <h2>321432</h2>
+                            <h2>5132</h2>
+                            <h2>5132</h2>
+                        </div>
+                          <div className="grid grid-cols-4">
+                            <h2 className="font-semibold border-t pt-2">VARIANCE</h2>
+                            <h2 className="border-t pt-2">{formatCurrency(510000)}</h2>
+                            <h2 className="border-t pt-2">{formatCurrency(210000)}</h2>
+                            <h2 className="border-t pt-2">{formatCurrency(730000)}</h2>
+                        </div>
+                </div>
             </div>
                     
         

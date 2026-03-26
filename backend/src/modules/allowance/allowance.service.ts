@@ -762,6 +762,7 @@ export async function getLoanFor() {
             EmpCode: true,
             Firstname: true,
             Lastname: true,
+            BranchCodeId:true,
           },
         },
         per_payroll_deduct: true,
@@ -773,6 +774,7 @@ export async function getLoanFor() {
       Firstname: loan.EmpCode.Firstname,
       Lastname: loan.EmpCode.Lastname,
       per_payroll_deduct: loan.per_payroll_deduct?.toNumber() ?? 0,
+      BranchCodeId:loan.EmpCode.BranchCodeId,
     }));
   } catch (error) {
     console.error("Error occured", error);
@@ -831,14 +833,11 @@ export async function ViewAllList(selectedMonth: string) {
       (row) => row.bod_member !== "Mancom" && row.Department !== "M2"
     );
 
-    const branchesByCompany: Record<
-      string,
-      Record<string, AllowanceRow[]>
-    > = {};
+    const branchesByCompany: Record<string,Record<string, AllowanceRow[]>> = {};
 
     const COMPANY_ORDER = ["EMB", "FCH", "RFC", "ELC","PSPMI"];
 
-    // ✅ GROUP BY COMPANY → BRANCH
+   
     for (const employee of regularEmployees) {
       const company = employee.company_id ?? "UNKNOWN";
       const branch = employee.branch_code ?? "NO_BRANCH";
@@ -854,7 +853,6 @@ export async function ViewAllList(selectedMonth: string) {
       branchesByCompany[company][branch].push(employee);
     }
 
-    // ✅ SORT EMPLOYEES INSIDE EACH BRANCH (optional)
     for (const company of Object.keys(branchesByCompany)) {
       for (const branch of Object.keys(branchesByCompany[company])) {
         branchesByCompany[company][branch].sort((a, b) => {
