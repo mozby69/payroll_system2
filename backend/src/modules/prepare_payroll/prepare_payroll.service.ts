@@ -126,6 +126,7 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
           basic_salary: true,
           cash_assistance: true,
           ecola: true,
+          include_payroll:true,
         },
       },
       BranchCode: {
@@ -280,6 +281,7 @@ export async function updateEmployeeSalary({
   remarks,
   changed_by,
   cash_assistance,
+
 }: {
   empCode: string;
   old_salary: number;
@@ -287,6 +289,7 @@ export async function updateEmployeeSalary({
   remarks: string;
   changed_by: string;
   cash_assistance: number;
+
 }) {
   return await prisma.$transaction(async (tx) => {
 
@@ -307,7 +310,7 @@ export async function updateEmployeeSalary({
       where: { EmpCodeId: empCode },
       data: {
         basic_salary: new_salary,
-        cash_assistance,
+        cash_assistance:cash_assistance,
       },
     });
   });
@@ -317,29 +320,35 @@ export async function updateEmployeeSalary({
 export async function updateEmployeePayrollFields({
   empCode,
   basic_salary,
-  cash_assistance,
+
   pagibig_employee_share,
+  include_payroll,
 }: {
   empCode: string;
   basic_salary?: number;
-  cash_assistance?: number;
+
   pagibig_employee_share?: number;
+  include_payroll?: boolean;
 }) {
   return await prisma.$transaction(async (tx) => {
 
-    if (
-      basic_salary !== undefined ||
-      cash_assistance !== undefined
-    ) {
-      await tx.employee_payroll.update({
+   
+
+      await tx.employee_payroll.upsert({
         where: { EmpCodeId: empCode },
-        data: {
+        update: {
           ...(basic_salary !== undefined && { basic_salary }),
-          ...(cash_assistance !== undefined && { cash_assistance }),
+          include_payroll, 
+        },
+        create: {
+          EmpCodeId: empCode,
+          basic_salary: basic_salary ?? 0,
+          include_payroll: include_payroll ?? true,
         },
       });
-    }
+    
 
+    // ✅ 2. HANDLE pagibig separately (correct)
     if (pagibig_employee_share !== undefined) {
       await tx.pagIbig_List.upsert({
         where: { EmpCodeId: empCode },
@@ -352,6 +361,7 @@ export async function updateEmployeePayrollFields({
         },
       });
     }
+
   });
 }
 

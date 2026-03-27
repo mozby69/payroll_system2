@@ -1,44 +1,31 @@
 "use client";
 
 import "flatpickr/dist/flatpickr.min.css";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { DateRange } from "../../types/utilsTypes";
-import { useFetchApiAttendance } from "../../hooks/useApiProcess";
-import { ProcessingOverlay } from "../../ui/loader/ProcessingOverlay";
-import SweetAlert from "../../components/Swal";
 import Stepper, { Step } from "../../components/Stepper";
 import StepConfirmEmployees from "../../components/payroll/StepConfirmEmployees";
 import StepComputePayroll from "../../components/payroll/StepComputePayroll";
 import StepReviewSave from "../../components/payroll/StepReviewSave";
-import { useEmployeesByCycle, useImportBranches } from "../../hooks/usePreparePayroll";
+import { useEmployeesByCycle } from "../../hooks/usePreparePayroll";
 import { useDebounce } from "../../utils/useDebounce";
-import { useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
-import SideModalLayout from "../../components/SideModal";
-import { useUpdateEmployeeSetup } from "@/app/hooks/disburse";
+
 import { useAuth } from "@/app/components/UserContext";
 
 type PayrollStep = 1 | 2 | 3;
 
-type SetupState = {
-    EmpCode: string;
-    Disbursing: boolean;
-    WithAtm: boolean;
-    Taxable: boolean;
-};
+
 
 export default function PreparePayroll() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const [range, setDateRange] = useState<DateRange | null>(null);
-  const [branchCycle, setBranchCycle] = useState("");
+  const [branchCycle] = useState("");
   const [currentStep, setCurrentStep] = useState<PayrollStep>(1);
-  const { mutate, isPending} = useImportBranches();
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
 
-  const { hasPermission,user } = useAuth()
+
+  const { user } = useAuth()
 
 
   const companyId = user?.company_id;

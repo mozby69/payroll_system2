@@ -62,8 +62,12 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
   //   }
   // }, [rows]);
 
+  // const currentSelectedRow = selectedRow
+  // ? data.find(r => r.EmpCode === selectedRow.EmpCode) ?? selectedRow
+  // : null;
+
   const currentSelectedRow = selectedRow
-  ? data.find(r => r.EmpCode === selectedRow.EmpCode) ?? selectedRow
+  ? data.find(r => r.EmpCode === selectedRow.EmpCode)
   : null;
   
 
@@ -113,10 +117,16 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
   const savePayrollSilently = async (payload: PayrollSavePayload) => {
     if (!selectedRow) return;
 
+    // await updatePayrollMutation.mutateAsync({
+    //   empCode: selectedRow.EmpCode,
+    //   ...payload,
+    // });
+
     await updatePayrollMutation.mutateAsync({
-      empCode: selectedRow.EmpCode,
       ...payload,
+      empCode: selectedRow.EmpCode, 
     });
+
 
     await queryClient.invalidateQueries({
       queryKey: ["employees"],
@@ -129,9 +139,9 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
   const handleSavePayroll = async (payload: PayrollSavePayload) => {
     await savePayrollSilently(payload);
-
-    SweetAlert.successAlert("Saved successfully");
     closeModal();
+    SweetAlert.successAlert("Saved successfully");
+
   };
   
   
@@ -179,7 +189,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
      {isModalOpen && currentSelectedRow && (
       <RequestModal size="xxxl" title={`Employee:${currentSelectedRow.Firstname}, ${currentSelectedRow.Lastname}`} onClose={closeModal}>
         <ViewEmployeePayroll
-           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.basic_salary}`}
+           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.include_payroll}`}
           employeeSummary={currentSelectedRow}
           onFinalSave={handleSavePayroll}
           onQuickSave={savePayrollSilently}

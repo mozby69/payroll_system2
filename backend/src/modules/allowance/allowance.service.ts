@@ -584,6 +584,8 @@ export async function saveAllowanceArchive(selectedMonth: string) {
   });
 }
 
+
+
 type UpdateAllowanceBranchParams = {
   EmpCode: string;
   selectedMonth: string;

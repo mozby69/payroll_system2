@@ -147,7 +147,7 @@ export function useComputedPayroll(params: { company_id: string; page: number; l
 
 
 
-export function usefetchInitializePayroll(
+export function useFetchInitializePayroll(
   params: {
     cycle: string | null;
     page: number;

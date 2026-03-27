@@ -42,7 +42,7 @@ export type Column<T> = {
     WithAtm:boolean;
     Disbursing:boolean;
     Taxable:boolean;
-    
+    include_payroll:boolean | null;
     // Loan Code ↓
     fch_loan: number;
     sss_loan: number;

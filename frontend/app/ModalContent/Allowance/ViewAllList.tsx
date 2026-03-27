@@ -23,6 +23,11 @@ export default function ViewAllList({selectedMonth}:Props){
     const mancom = data?.MANCOM ?? [];
     const branches = data?.BRANCHES ?? {};
     const loans = data?.LOANS ?? [];
+    const variance = data?.VARIANCE;
+
+    const prev = variance?.previous;
+    const curr = variance?.current;
+    const diff = variance?.variance;
 
     function computeTotals(list: ViewAllItem[]) {
         return list.reduce(
@@ -526,37 +531,58 @@ export default function ViewAllList({selectedMonth}:Props){
 
 
 
-            <div className="mt-4">
-                <h2 className="font-semibold text-lg">VARIANCE</h2>
-                <div className="mt-2 space-y-2">
-                        <div className="grid grid-cols-4 font-semibold">
-                            <h2>MONTH & YEAR</h2>
-                            <h2>CASH ASSISTANCE</h2>
-                            <h2>ECOLA</h2>
-                            <h2>TOTAL</h2>
-                        </div>
-                          <div className="grid grid-cols-4">
-                            <h2>FEBRUARY 2026</h2>
-                            <h2>321432</h2>
-                            <h2>5132</h2>
-                            <h2>5132</h2>
-                        </div>
-                          <div className="grid grid-cols-4">
-                            <h2 className="uppercase"> {formatMonthYear(selectedMonth)}</h2>
-                            <h2>321432</h2>
-                            <h2>5132</h2>
-                            <h2>5132</h2>
-                        </div>
-                          <div className="grid grid-cols-4">
-                            <h2 className="font-semibold border-t pt-2">VARIANCE</h2>
-                            <h2 className="border-t pt-2">{formatCurrency(510000)}</h2>
-                            <h2 className="border-t pt-2">{formatCurrency(210000)}</h2>
-                            <h2 className="border-t pt-2">{formatCurrency(730000)}</h2>
-                        </div>
+        <div className="mt-4">
+            <h2 className="font-semibold text-lg text-center bg-gray-200 py-1">VARIANCE</h2>
+
+            <div className="mt-2 space-y-2">
+
+            
+                <div className="grid grid-cols-4 font-semibold">
+                <h2>MONTH & YEAR</h2>
+                <h2>CASH ASSISTANCE</h2>
+                <h2>ECOLA</h2>
+                <h2>TOTAL</h2>
                 </div>
+
+                
+                <div className="grid grid-cols-4">
+                <h2 className="uppercase">{formatMonthYear(prev?.selectedMonth ?? "")}</h2>
+                <h2>{formatCurrency(prev?.cash_assistance ?? 0)}</h2>
+                <h2>{formatCurrency(prev?.ecola ?? 0)}</h2>
+                <h2>{formatCurrency(prev?.grand_total ?? 0)}</h2>
+                </div>
+
+          
+                <div className="grid grid-cols-4">
+                <h2 className="uppercase">
+                    {formatMonthYear(curr?.selectedMonth ?? "")}
+                </h2>
+                <h2>{formatCurrency(curr?.cash_assistance ?? 0)}</h2>
+                <h2>{formatCurrency(curr?.ecola ?? 0)}</h2>
+                <h2>{formatCurrency(curr?.grand_total ?? 0)}</h2>
+                </div>
+
+                
+                <div className="grid grid-cols-4">
+                <h2 className="font-semibold border-t pt-2">VARIANCE</h2>
+
+                <h2 className="border-t pt-2">
+                    {formatCurrency(diff?.cash_assistance ?? 0)}
+                </h2>
+
+                <h2 className="border-t pt-2">
+                    {formatCurrency(diff?.ecola ?? 0)}
+                </h2>
+
+                <h2 className="border-t pt-2">
+                    {formatCurrency(diff?.grand_total ?? 0)}
+                </h2>
+                </div>
+
             </div>
+            </div>
+                                
                     
-        
    
 
 
