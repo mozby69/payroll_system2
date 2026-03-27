@@ -786,15 +786,69 @@ export async function getLoanFor() {
 
 
 
+function getPreviousMonth2(selectedMonth: string) {
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const date = new Date(year, month - 2);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
 
+export async function getVarianceForAllowance(selectedMonth: string) {
+  try {
+    const prevMonth = getPreviousMonth2(selectedMonth);
 
+    // CURRENT (computed)
+    const { summary } = await computeAllowanceForMonth(selectedMonth);
 
+    // PREVIOUS (DB)
+    const previous = await prisma.archive_allowance_summary.findUnique({
+      where: { selectedMonth: prevMonth },
+    });
+
+    if (!previous) {
+      return null;
+    }
+
+    const currentCash = Number(summary.cash_allowance ?? 0);
+    const currentEcola = Number(summary.ecola ?? 0);
+    const currentGrandTotal = currentCash + currentEcola;
+
+    const prevCash = Number(previous.total_cash_allowance ?? 0);
+    const prevEcola = Number(previous.total_ecola ?? 0);
+    const prevGrandTotal = prevCash + prevEcola;
+
+    return {
+      previous: {
+        selectedMonth: prevMonth,
+        cash_assistance: prevCash,
+        ecola: prevEcola,
+        grand_total: prevGrandTotal,
+      },
+      current: {
+        selectedMonth,
+        cash_assistance: currentCash,
+        ecola: currentEcola,
+        grand_total: currentGrandTotal,
+      },
+      variance: {
+        cash_assistance: currentCash - prevCash,
+        ecola: currentEcola - prevEcola,
+        grand_total: currentGrandTotal - prevGrandTotal,
+      },
+    };
+  } catch (error) {
+    console.error("Error occurred", error);
+    throw error;
+  }
+}
 
 
 export async function ViewAllList(selectedMonth: string) {
   try {
     const { rows } = await computeAllowanceForMonth(selectedMonth);
     const loan_list = await getLoanFor();
+    const variance_allowance = await getVarianceForAllowance(selectedMonth);
 
     const branches = await prisma.branch.findMany({
       select: {
@@ -900,6 +954,7 @@ export async function ViewAllList(selectedMonth: string) {
       MANCOM: mancom,
       BRANCHES: orderedBranches,
       LOANS: loan_list ?? [],
+      VARIANCE: variance_allowance ?? null
     };
   } catch (error) {
     console.error("Error Occured", error);

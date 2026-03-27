@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, saveAllowanceArchive, updateAllowanceBranch, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getVarianceForAllowance, saveAllowanceArchive, updateAllowanceBranch, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -217,3 +217,7 @@ export async function updateAllowanceBranchController(req:Request, res:Response)
 
   res.json({ success: true });
 }
+
+
+
+
