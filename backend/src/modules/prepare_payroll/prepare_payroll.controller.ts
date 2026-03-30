@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, updateEmployeePayrollFields, updateEmployeeSalary } from "./prepare_payroll.service";
+import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, updateEmployeePayrollFields, updateEmployeeSalary, ViewDeduction } from "./prepare_payroll.service";
 
 
 
@@ -39,6 +39,16 @@ export const saveEmployeePayrollController = async (req: Request,res: Response) 
       return res.status(400).json({ message: "empCode is required" });
     }
 
+    //startget user
+     if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+    const approvedBy = req.user.username
+    //end get user
+
+
     if (
       basic_salary !== undefined &&
       old_salary !== undefined &&
@@ -55,7 +65,7 @@ export const saveEmployeePayrollController = async (req: Request,res: Response) 
         new_salary: Number(basic_salary),
         cash_assistance: Number(cash_assistance ?? 0),
         remarks,
-        changed_by: req.user?.username ?? "SYSTEM",
+        changed_by: approvedBy ?? "SYSTEM",
       });
     }
 
@@ -171,3 +181,21 @@ export const InitializeEmployeesbyCycleController = async (req: Request,res: Res
 
   res.json(result);
 };
+
+
+
+export const ViewDeductionController = async (req:Request, res:Response) => {
+  try{
+    const company_id = req.query.company_id as string;
+    
+    if(!company_id){
+      return res.status(400).json({message:"company required"});
+    }
+      
+    const data = await ViewDeduction(company_id);
+    return res.status(200).json(data);
+  }
+  catch(error){
+    return res.status(500).json({message:`Error occured ${error}`});
+  }
+}

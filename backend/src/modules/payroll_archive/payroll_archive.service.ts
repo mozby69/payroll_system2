@@ -64,11 +64,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
       const baseFilter = {
         EmpCode: {
-          BranchCode: {
-            company_id: company_id,
+            employeepayroll:{
+            include_payroll: true,
+            },
+            BranchCode: {
+              company_id: company_id,
+            },
           },
-        },
-      };
+        };
 
 
 
@@ -352,7 +355,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
     
         // Loan Code ↓
-
         const loans = loanByEmp[emp.EmpCodeId] ?? {};
         const fch_loan = loanDeduct(loans.FCH_LOAN);
         const sss_loan = loanDeduct(loans.SSS_LOAN);
@@ -1212,11 +1214,17 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
         where,
         include: {
           EmpCode: {
+      
             select: {
               Firstname: true,
               Middlename: true,
               Lastname: true,
               BranchCodeId: true,
+              employeepayroll:{
+                select:{
+                  gmail_account:true,
+                },
+              },
             }
           }
         },

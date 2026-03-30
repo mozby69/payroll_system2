@@ -2,9 +2,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
-import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
+import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP, PayrollDeductions } from "./prepare_payroll.types";
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
+import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
 
 export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
   { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
@@ -192,7 +193,7 @@ const bodMap = new Map(
   const pagibigId = emp.pagibig_list[0]?.pagibig_id ?? 'N/A';
   const isNewProbi = emp.EmploymentStatus === "Probationary" && emp.isNewEmployee;
   const isBod = emp.bod_member === "bod1";
-
+  const includePayroll = emp.employeepayroll?.include_payroll ?? false;
 
   const bodShare = bodMap.get(emp.EmpCode) ?? 0;
 
@@ -249,6 +250,7 @@ const bodMap = new Map(
     // loan Code ↓
     next_payroll: nextPayrollCycle ,
     month_pay:payPeriod,
+     include_payroll: includePayroll, 
     // loan Code ↑
   };
 });
@@ -413,11 +415,23 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 
   const baseFilter = {
     EmpCode: {
+      employeepayroll:{
+      include_payroll: true,
+      },
       BranchCode: {
         company_id: company_id,
       },
+      
     },
   };
+
+//   const includePayrollFilter = {
+//   EmpCode: {
+//     employeepayroll: {
+//       include_payroll: true,
+//     },
+//   },
+// };
 
   const searchFilter = search
   ? {
@@ -455,6 +469,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       {
         AND: [
           baseFilter,
+          
           { status: { in: ["PENDING"] } },
           searchFilter,
           statusOverride,
@@ -587,7 +602,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 //payroll initialize ***********************************************************
 
 export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
-  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
+  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean }) {
 
     const baseFilter = {
         BranchCode: {
@@ -838,7 +853,6 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
         TotalUndertime:true,
         NightShiftOtAtt: true,
         EmpCode: {
-          
           select: {
             Firstname: true,
             Lastname: true,
@@ -897,3 +911,59 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
   };
 }
   
+
+
+
+export async function ViewDeduction(company_id:string){
+  try{
+    const computed = await displayCompletePayroll(["PENDING"]);
+    if (!computed || computed.length === 0) return 0;
+
+      const filtered = computed.filter((row) => {
+      const emp = row.EmpCode;
+      const normalMatch = emp?.BranchCode?.company_id === company_id;
+      const alienMatch = emp?.isAlien && emp?.secondaryBranch?.company_id === company_id;
+      return normalMatch || alienMatch;
+    });
+
+      const normalized: PayrollDeductions[] = filtered.map((row) => {
+        
+        const total_deductions =
+          (row.sss_contrib_employee ?? 0) +
+          (row.philhealth_contrib_employee ?? 0) +
+          (row.pagibig_contrib_employee ?? 0) +
+          (row.wtax ?? 0) +
+          (row.fch_loan ?? 0) +
+          (row.sss_loan ?? 0) +
+          (row.pagibig_loan ?? 0) +
+          (row.rfc_loan ?? 0) +
+          (row.are_loan ?? 0);
+
+        return {
+
+          EmpCodeId: row.EmpCodeId,
+          EmpCode: {
+            Firstname: row.EmpCode.Firstname,
+            Lastname: row.EmpCode.Lastname,
+          },
+          sss_contrib_employee: row.sss_contrib_employee,
+          philhealth_contrib_employee: row.philhealth_contrib_employee,
+          pagibig_contrib_employee: row.pagibig_contrib_employee,
+          wtax: row.wtax,
+          fch_loan: row.fch_loan,
+          sss_loan: row.sss_loan,
+          pagibig_loan: row.pagibig_loan,
+          rfc_loan: row.rfc_loan,
+          are_loan: row.are_loan,
+          total_deductions, 
+          
+        };
+      });
+
+    return normalized;
+  }
+
+  catch(error){
+    console.error("error occured",error);
+  }
+}

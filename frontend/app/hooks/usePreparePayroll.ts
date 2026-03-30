@@ -1,8 +1,9 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, fetchInitializeComputedPayroll, fetchInitializePayroll, importAttendanceCount, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
-import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
+import { DeductionsOnlyProps, EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
+import api from "../services/axios";
 
 
 
@@ -189,5 +190,23 @@ export function useInitializeComputedPayroll(params: { cycle: string; page: numb
       fetchInitializeComputedPayroll(params),
 
     enabled: !!params.cycle, 
+  });
+}
+
+
+
+
+
+
+export function useDeductionsOnly(company_id?: string) {
+  return useQuery<DeductionsOnlyProps[]>({
+    queryKey: ["deductions-payroll-display", company_id],
+    enabled: !!company_id,
+    queryFn: async () => {
+      const res = await api.get("/prepare-payroll/get-deductions-only", {
+        params: { company_id },
+      });
+      return res.data;
+    },
   });
 }

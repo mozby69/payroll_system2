@@ -3,16 +3,17 @@
 import {  useState } from "react";
 import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
 import { printPayroll } from "@/app/utils/printPayrollUtils";
-import { dummySummary } from "@/app/types/dummyData";
+//import { dummySummary } from "@/app/types/dummyData";
 import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
 
 import SweetAlert from "../Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
-import CompanyFilter from "../CompanyFilter";
+//import CompanyFilter from "../CompanyFilter";
 import RequestModal from "../Modal";
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import GenButton from "../Buttons";
 import { useAuth } from "../UserContext";
+import ViewDeductionsOnly from "@/app/ModalContent/PreparePayroll/ViewDeductionsOnly";
 
 
 
@@ -23,7 +24,7 @@ interface Props {
 }
 
 export default function StepReviewSave({ onBack }: Props) {
-  const [selectedCompany, setSelectedCompany] = useState("");
+  const [selectedCompany] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -192,6 +193,14 @@ export default function StepReviewSave({ onBack }: Props) {
   };
   
 
+    const openModal2 = () => {
+      setIsModalOpen2(true);
+    };
+
+    const closeModal2 = () => {
+      setIsModalOpen2(false);
+    };
+
   return (
     <div className="space-y-4">
 
@@ -223,7 +232,7 @@ export default function StepReviewSave({ onBack }: Props) {
       {hasPermission("SAVE_PAYROLL") && (
            <div className="flex gap-x-2">
                 <GenButton variant="primary" onClick={openModal}>View Variance</GenButton>
-                <GenButton variant="danger" onClick={openModal}>Deductions</GenButton>
+                <GenButton variant="danger" onClick={openModal2}>Deductions</GenButton>
                 <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
                   {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                 </GenButton>
@@ -287,6 +296,12 @@ export default function StepReviewSave({ onBack }: Props) {
             </RequestModal>
           )}
 
+
+        {isModalOpen2 && (
+            <RequestModal size="xxxl" title="VIEW DEDUCTIONS" onClose={closeModal2}>
+              <ViewDeductionsOnly/>
+            </RequestModal>
+          )}
 
 
 

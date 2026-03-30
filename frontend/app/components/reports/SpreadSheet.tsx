@@ -80,7 +80,7 @@ function EditableWtax({
   const saveOverride = useSaveWtaxOverride();
 
   const handleSave = async () => {
-    // 🚫 DO NOT SAVE if no change
+   
     if (value === emp.computedWtax) {
       return;
     }
@@ -231,7 +231,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{row.pagibigSalaryLoan}</td>
 
                 <td className="py-2 text-center font-semibold bg-blue-50">
-                  {row.netPayable}
+                  {row.netPayable.toFixed(2)}
                 </td>
 
                 <td className="py-2 text-center">{row.sssEmployer}</td>
