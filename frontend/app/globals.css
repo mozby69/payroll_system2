@@ -178,7 +178,7 @@
  */
 
 
- @media print {
+ /* @media print {
   .print-deductions thead {
     display: table-row-group;
   }
@@ -190,4 +190,4 @@
   .print-deductions table {
     page-break-inside: auto;
   }
-}
+} */
