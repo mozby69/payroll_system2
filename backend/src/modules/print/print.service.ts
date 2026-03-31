@@ -113,3 +113,78 @@ export function printPayroll(rows: any[]) {
     }
   })
 }
+
+
+
+
+
+
+
+
+//xyryl
+
+  export type EmployeeArchivedType = {
+    id: number
+    PayCode: string
+    Late: string
+    Absent: string
+    cycle_category: string
+    payroll_period: string
+    selected_payroll_date: string
+    undertime: string
+    Overtime: string
+    Grosspay: string
+    w_tax: string
+    Netpay: string
+    Basic_salary: string
+    SSS_employee_share: string
+    SSS_employer_share: string
+    Pagibig_employee_share: string
+    Pagibig_employer_share: string
+    philhealth_employee_share: string
+    philhealth_employer_share: string
+    ar_e: string
+    fch_loan: string
+    rfc_loan: string
+    pagibig_loan: string
+    sss_loan: string
+    sss_calamity_loan: string
+    status: string
+    created_at: string
+    totalPayrollId: number
+    total_deductions:number;
+    EmpCodeId: string
+    
+    EmpCode: {
+      Firstname: string
+      Middlename: string
+      Lastname: string
+      BranchCodeId: string
+      employeepayroll:{
+      gmail_account:string;
+    }
+    }
+  }
+
+
+export async function generatePayslipPDF(data: EmployeeArchivedType[]) {
+  const res = await fetch(`${process.env.FRONTEND_URL}/api/print/payroll`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "payslip",
+      paper: "A4",
+      orientation: "portrait",
+      data,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to generate PDF");
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}

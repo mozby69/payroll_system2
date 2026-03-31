@@ -54,6 +54,7 @@ export interface ArchiveAllowance {
   totalDeduction: number | null;
   total: number | null;
   createdAt: string;
+  branchCode:string;
 }
 
 
@@ -113,11 +114,32 @@ export interface LoanItem{
   Firstname:string;
   Lastname:string;
   per_payroll_deduct:number;
+  BranchCodeId:string;
 }
 
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
-  BRANCHES: Record<string, ViewAllItem[]>;
+  BRANCHES: Record<string, Record<string, ViewAllItem[]>>;
   LOANS: LoanItem[];
+  VARIANCE:VarianceAllowance;
+}
+
+
+interface VarianceAllowanceField{
+  selectedMonth:string;
+  cash_assistance:number;
+  ecola:number;
+  grand_total:number;
+}
+interface VarianceAllowanceGrandTotal{
+  cash_assistance:number;
+  ecola:number;
+  grand_total:number;
+}
+
+export interface VarianceAllowance{
+  previous: VarianceAllowanceField;
+  current: VarianceAllowanceField;
+  variance: VarianceAllowanceGrandTotal;
 }

@@ -62,11 +62,15 @@ export type TotalPayroll = {
     totalPayrollId: number
     total_deductions:number;
     EmpCodeId: string
+    
     EmpCode: {
       Firstname: string
       Middlename: string
       Lastname: string
       BranchCodeId: string
+      employeepayroll:{
+      gmail_account:string;
+    }
     }
   }
 

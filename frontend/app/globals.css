@@ -177,3 +177,18 @@
 }
 
  */
+
+
+ @media print {
+  .print-deductions thead {
+    display: table-row-group;
+  }
+
+  .print-deductions tr {
+    page-break-inside: avoid;
+  }
+
+  .print-deductions table {
+    page-break-inside: auto;
+  }
+}

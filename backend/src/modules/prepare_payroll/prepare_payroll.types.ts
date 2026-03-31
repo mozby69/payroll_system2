@@ -26,8 +26,24 @@ export type TaxField = {
 
 
 
+export type PayrollDeductions = {
+  EmpCodeId: string;
+  EmpCode: {
+    Firstname: string | null;
+    Lastname: string | null;
+  };
+  sss_contrib_employee:number;
+  philhealth_contrib_employee:number;
+  pagibig_contrib_employee:number;
+  wtax:number;
+  fch_loan:number;
+  sss_loan:number;
+  pagibig_loan:number;
+  rfc_loan:number;
+  are_loan:number;
+  total_deductions:number;
 
-
+};
 
 
 

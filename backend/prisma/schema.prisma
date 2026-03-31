@@ -280,6 +280,8 @@ model Employee_payroll{
   ecola Decimal? @default(500) @db.Decimal(10,2)
   with_ecola Boolean? @default(true)
   bank_account String? @db.VarChar(200)
+  include_payroll Boolean @default(true)
+  gmail_account String? @db.VarChar(100)
 
   EmpCodeId String @unique @db.VarChar(20)
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])

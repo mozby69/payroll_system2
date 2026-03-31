@@ -127,7 +127,7 @@ export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],b
 
 
 
-  export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
+export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
     const records = await prisma.totalPayroll.findMany({
       where: {
         cycle_category: cycleCategory,
@@ -147,5 +147,5 @@ export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],b
           "start_date" in r &&
           "end_date" in r
       );
-  }
+}
   

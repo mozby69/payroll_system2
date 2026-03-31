@@ -42,7 +42,7 @@ export type Column<T> = {
     WithAtm:boolean;
     Disbursing:boolean;
     Taxable:boolean;
-    
+    include_payroll:boolean | null;
     // Loan Code ↓
     fch_loan: number;
     sss_loan: number;
@@ -188,4 +188,24 @@ export interface PayrollEmployee {
   sss_loan:number;
   are_loan:number;
   // Loan Code ↑
+}
+
+
+
+export interface DeductionsOnlyProps{
+  EmpCodeId:string;
+  EmpCode:{
+    Firstname:string;
+    Lastname:string;
+  }
+  sss_contrib_employee: number,
+  philhealth_contrib_employee: number;
+  pagibig_contrib_employee: number;
+  wtax: number;
+  fch_loan: number;
+  sss_loan: number;
+  pagibig_loan: number;
+  rfc_loan: number;
+  are_loan: number;
+  total_deductions:number;
 }

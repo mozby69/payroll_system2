@@ -6,7 +6,7 @@ import { useGetEmployeeArchived } from "@/app/hooks/usePayrollArchive"
 import { useDebounce } from "@/app/utils/useDebounce"
 import Datatable from "@/app/components/Datatable"
 import { Pagination } from "@/app/components/Pagination"
-import { Eye, Printer } from "lucide-react"
+import { Eye, Mail, Printer } from "lucide-react"
 import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
@@ -15,6 +15,7 @@ import { useFetchBranchesByCompany, useFetchCompanies } from "@/app/hooks/useAll
 import { printEmployeeArchivedService } from "@/app/services/archive.services"
 import RequestModal from "../Modal"
 import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
+import EmployeeGmail from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewGmail"
 
 type PayslipProps = {
   totalPayrollId: number
@@ -29,6 +30,7 @@ export default function GeneratePayslipModal({
   const [loading, setLoading] = useState(false)
   const debouncedSearch = useDebounce(search, 400)
   const [isModalViewOpen, setIsModalViewOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeArchivedType | null>(null);
 
   const [selectedCompany, setSelectedCompany] = useState<string>("");
@@ -138,6 +140,16 @@ export default function GeneratePayslipModal({
 
 
 
+  const handleOpenModal = (row: EmployeeArchivedType) => {
+    setSelectedEmployee(row);
+    setIsModalOpen(true);
+  };
+
+  const closeModal3 = () => {
+    setIsModalOpen(false);
+  }
+
+
 
   const closeModal2 = () => {
     setIsModalViewOpen(false);
@@ -188,6 +200,13 @@ export default function GeneratePayslipModal({
           >
             <Printer size={16} />
           </button>
+
+          <button
+            onClick={() => handleOpenModal(row)}
+            className="p-2 text-cyan-600 hover:text-cyan-400 hover:cursor-pointer rounded-md transition">
+            <Mail size={16}/>
+          </button>
+
         </div>
       ),
     },
@@ -315,6 +334,12 @@ export default function GeneratePayslipModal({
             </RequestModal>
           )}
 
+
+      {isModalOpen && selectedEmployee &&(
+            <RequestModal size="sm" title={`VIEW GMAIL`} onClose={closeModal3}>
+                <EmployeeGmail employee={selectedEmployee}/>
+            </RequestModal>
+          )}
   
     </div>
   );
