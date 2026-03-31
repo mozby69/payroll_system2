@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -413,3 +413,29 @@ export async function getPayrollArchiveReportController(
     }
   }
 }
+
+
+
+
+
+
+
+
+export const sendPayslipController = async (req: Request, res: Response) => {
+  try {
+    const { employee } = req.body;
+
+    console.log("EMPLOYEE:", employee);
+
+    await sendPayslipEmailService(employee);
+
+    return res.json({ success: true, message: "Payslip sent" });
+  } catch (error) {
+    console.error("FULL ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to send payslip",
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+};

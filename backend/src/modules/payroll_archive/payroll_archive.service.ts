@@ -8,7 +8,8 @@ import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow } f
 import { Console } from "console";
 import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 import { logs_action_type } from "@prisma/client";
-
+import nodemailer from "nodemailer";
+import { EmployeeArchivedType, generatePayslipPDF } from "../print/print.service";
 
 export async function employeeProbationary(){
 
@@ -1753,3 +1754,49 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 
 
 
+
+
+
+
+//
+
+// services/email.service.ts
+
+
+
+export async function sendPayslipEmailService(employee: EmployeeArchivedType) {
+
+  const email = employee.EmpCode?.employeepayroll?.gmail_account;
+
+  if (!email) {
+    throw new Error("No email found");
+  }
+
+  
+  const pdfBuffer = await generatePayslipPDF([employee]);
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Your Payslip",
+    html: `
+      <p>Dear ${employee.EmpCode.Firstname},</p>
+      <p>Please find your payslip attached.</p>
+      <p>Regards,<br/>Payroll Department</p>
+    `,
+    attachments: [
+      {
+        filename: `Payslip-${employee.EmpCodeId}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
+}

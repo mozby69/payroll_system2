@@ -336,7 +336,7 @@ export default function GeneratePayslipModal({
 
 
       {isModalOpen && selectedEmployee &&(
-            <RequestModal size="md" title={`VIEW GMAIL`} onClose={closeModal3}>
+            <RequestModal size="sm" title={`VIEW GMAIL`} onClose={closeModal3}>
                 <EmployeeGmail employee={selectedEmployee}/>
             </RequestModal>
           )}
