@@ -234,6 +234,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         EmpCodeId: true,
         loan_type: true,
         per_payroll_deduct: true,
+        others_types: true,
       },
     });
 
@@ -269,11 +270,30 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loanByEmp[loan.EmpCodeId] = {};
       }
 
-      loanByEmp[loan.EmpCodeId][loan.loan_type] = {
-        amount: Number(loan.per_payroll_deduct),
-        alreadyDeducted,
-      };
+      let key = loan.loan_type;
 
+      if (
+        loan.others_types === "Calamity" &&
+        (loan.loan_type === "SSS_LOAN" || loan.loan_type === "PAGIBIG_LOAN")
+      ) {
+        if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
+        if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
+      }
+
+      if (!loanByEmp[loan.EmpCodeId][key]) {
+        loanByEmp[loan.EmpCodeId][key] = {
+          amount: 0,
+          alreadyDeducted: false,
+        };
+      }
+
+      if (!alreadyDeducted) {
+        loanByEmp[loan.EmpCodeId][key].amount += Number(loan.per_payroll_deduct);
+      }
+
+      // mark deducted if ANY record is deducted
+      loanByEmp[loan.EmpCodeId][key].alreadyDeducted =
+        loanByEmp[loan.EmpCodeId][key].alreadyDeducted || alreadyDeducted;
       
     }
 
@@ -281,8 +301,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       loan && !loan.alreadyDeducted ? loan.amount : 0;
 
 // loans fetch and query here ↑
-
-
 
 
       //wtax override 
@@ -359,9 +377,13 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const pagibig_loan = loanDeduct(loans.PAGIBIG_LOAN);
         const rfc_loan = loanDeduct(loans.RFC_LOAN);
         const are_loan = loanDeduct(loans.ARE_LOAN);
+        const calamity_loan =
+                      loanDeduct(loans.Pag_IBIG_Cal) +
+                      loanDeduct(loans.SSS_Cal);
         // Loan Code ↑
 
-        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan;
+
+        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan + calamity_loan;
 
 
         const overTime = computeOvertime(basicSalary, {
@@ -402,6 +424,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           pagibig_loan,
           rfc_loan,
           are_loan,
+          calamity_loan,
           // Loan Code ↑
 
           sss_contrib_employee:sssContribEmployee,
@@ -532,7 +555,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           status: "ACTIVE",
           loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"] },
         },
-        select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true },
+        select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true,others_types: true, },
       });
   
       const loanIds = loans.map((l) => l.loan_id);
@@ -563,6 +586,24 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           amount: Number(loan.per_payroll_deduct),
           alreadyDeducted,
         };
+
+        
+
+        // let key = loan.loan_type;
+
+
+        // if (
+        //   loan.others_types === "Calamity" &&
+        //   (loan.loan_type === "SSS_LOAN" || loan.loan_type === "PAGIBIG_LOAN")
+        // ) {
+        //   if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
+        //   if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
+        // }
+        // loanByEmp[loan.EmpCodeId][key] = {
+        //   loan_id: loan.loan_id,
+        //   amount: Number(loan.per_payroll_deduct),
+        //   alreadyDeducted,
+        // };
       }
   
       const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>

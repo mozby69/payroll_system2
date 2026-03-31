@@ -187,5 +187,6 @@ export interface PayrollEmployee {
   pagibig_loan:number;
   sss_loan:number;
   are_loan:number;
+  calamity_loan:number;
   // Loan Code ↑
 }
