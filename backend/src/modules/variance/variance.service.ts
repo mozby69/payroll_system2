@@ -659,9 +659,12 @@ export async function fetchVarianceEmp(userAcc:String,companyId: string) {
 
   if (shouldComputeSSSPhil) {
 
+    
+
     for (const [empId, row] of currentMap) {
 
       const employee = row.EmpCode
+      
 
       if (
         (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
@@ -675,8 +678,12 @@ export async function fetchVarianceEmp(userAcc:String,companyId: string) {
 
       const prev = previousMapSSS.get(empId)
 
+      
+
       const currentSSS = Number(row.sss_contrib_employee ?? 0)
       const previousSSS = Number(prev?.SSS_employee_share ?? 0)
+
+      
 
       if (currentSSS !== previousSSS) {
         varianceAnalysis.sssVariance.push({
@@ -732,6 +739,98 @@ export async function fetchVarianceEmp(userAcc:String,companyId: string) {
   }
 
   //--------------------------------
+  // MISSING EMPLOYEES (SSS + PHIL)
+  //--------------------------------
+    for (const [empId, prevRow] of previousMapSSS) {
+
+      // skip if still exists in current
+      if (currentMap.has(empId)) continue
+
+      const employee = prevRow.EmpCode
+
+      // --------------------------------
+      // APPLY SAME FILTER LOGIC
+      // --------------------------------
+      if (
+        (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
+        (
+          employee?.EmploymentStatus !== "Probationary" ||
+          employee?.isNewEmployee !== true
+        )
+      ) {
+        continue
+      }
+
+      const fullName = `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`
+
+      // --------------------------------
+      // SSS EMPLOYEE
+      // --------------------------------
+      const previousSSS = Number(prevRow?.SSS_employee_share ?? 0)
+      const currentSSS = 0
+
+      if (previousSSS !== 0) {
+        varianceAnalysis.sssVariance.push({
+          empId,
+          name: fullName,
+          previousSSS,
+          currentSSS,
+          difference: currentSSS - previousSSS
+        })
+      }
+
+      // --------------------------------
+      // SSS EMPLOYER
+      // --------------------------------
+      const previousSSSEmployer = Number(prevRow?.SSS_employer_share ?? 0)
+      const currentSSSEmployer = 0
+
+      if (previousSSSEmployer !== 0) {
+        varianceAnalysis.sssEmployerVariance.push({
+          empId,
+          name: fullName,
+          previousSSSEmployer,
+          currentSSSEmployer,
+          difference: currentSSSEmployer - previousSSSEmployer
+        })
+      }
+
+      // --------------------------------
+      // PHIL EMPLOYEE
+      // --------------------------------
+      const previousPhil = Number(prevRow?.philhealth_employee_share ?? 0)
+      const currentPhil = 0
+
+      if (previousPhil !== 0) {
+        varianceAnalysis.philVariance.push({
+          empId,
+          name: fullName,
+          previousPhil,
+          currentPhil,
+          difference: currentPhil - previousPhil
+        })
+      }
+
+      // --------------------------------
+      // PHIL EMPLOYER
+      // --------------------------------
+      const previousPhilEmployer = Number(prevRow?.philhealth_employer_share ?? 0)
+      const currentPhilEmployer = 0
+
+      if (previousPhilEmployer !== 0) {
+        varianceAnalysis.philEmployerVariance.push({
+          empId,
+          name: fullName,
+          previousPhilEmployer,
+          currentPhilEmployer,
+          difference: currentPhilEmployer - previousPhilEmployer
+        })
+      }
+
+    }
+
+
+  //--------------------------------
   // PAGIBIG + TAX (25 / 30 cycle)
   //--------------------------------
 
@@ -777,6 +876,63 @@ export async function fetchVarianceEmp(userAcc:String,companyId: string) {
           previousTaxEmploye: previousTax,
           currentTaxEmploye: currentTax,
           difference: currentTax - previousTax
+        })
+      }
+
+    }
+
+    //--------------------------------
+    // MISSING EMPLOYEES (PAGIBIG + TAX)
+    //--------------------------------
+      for (const [empId, prevRow] of previousMapSSS) {
+
+      if (currentMap.has(empId)) continue
+
+      const employee = prevRow.EmpCode
+      const fullName = `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`
+
+      // --------------------------------
+      // PAGIBIG EMPLOYEE
+      // --------------------------------
+      const previousPag = Number(prevRow?.Pagibig_employee_share ?? 0)
+
+      if (previousPag !== 0) {
+        varianceAnalysis.pagVariance.push({
+          empId,
+          name: fullName,
+          previousPag,
+          currentPag: 0,
+          difference: -previousPag
+        })
+      }
+
+      // --------------------------------
+      // PAGIBIG EMPLOYER
+      // --------------------------------
+      const previousPagEmployer = Number(prevRow?.Pagibig_employer_share ?? 0)
+
+      if (previousPagEmployer !== 0) {
+        varianceAnalysis.pagEmployerVariance.push({
+          empId,
+          name: fullName,
+          previousPagEmployer,
+          currentPagEmployer: 0,
+          difference: -previousPagEmployer
+        })
+      }
+
+      // --------------------------------
+      // TAX
+      // --------------------------------
+      const previousTax = Number(prevRow?.w_tax ?? 0)
+
+      if (previousTax !== 0) {
+        varianceAnalysis.taxVariance.push({
+          empId,
+          name: fullName,
+          previousTaxEmploye: previousTax,
+          currentTaxEmploye: 0,
+          difference: -previousTax
         })
       }
 

@@ -1,11 +1,14 @@
 import { useDisplayVariance, useDisplayVarianceEmp } from "@/app/hooks/useVariance"
 import { VarianceEmployee } from "@/app/types/varianceType"
+import VariancePrintable from "@/app/components/PrintTemplates"
+import { useRef } from "react"
+import { useReactToPrint } from "react-to-print"
+import GenButton from "@/app/components/Buttons"
 
 interface Props {
   companyCode: string
   paycode: string
 }
-
 export default function CompanyVariance({ companyCode }: Props) {
 
   const { data: varianceData } = useDisplayVariance(companyCode)
@@ -14,6 +17,13 @@ export default function CompanyVariance({ companyCode }: Props) {
   const company = varianceData?.company_variance?.[0]
   const includePagibigAndTax = varianceData?.includePagibigAndTax
   const varianceAnalysis = varianceEmpData?.variance_analysis
+
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const handlePrint = useReactToPrint({
+    documentTitle: "Breakdown Report Sheet",
+    contentRef: printRef,
+  })
 
   const currencyFormatter = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
@@ -28,21 +38,25 @@ export default function CompanyVariance({ companyCode }: Props) {
 
   return (
     <div className="mt-6">
+
+      
+
+      {/* ===================== TABLE ===================== */}
       <table className="w-full border-collapse text-[.8rem] text-center">
         <thead>
           <tr className="bg-mainLightGray text-mainLight">
-            <th className="border p-2">Payroll Period</th>
-            <th className="border p-2">Total Basic</th>
-            <th className="border p-2">SSS Employee</th>
-            <th className="border p-2">SSS Employer</th>
-            <th className="border p-2">Philhealth Employee</th>
-            <th className="border p-2">Philhealth Employer</th>
+            <th className="border p-2 border-mainGray">Payroll Period</th>
+            <th className="border p-2 border-mainGray">Total Basic</th>
+            <th className="border p-2 border-mainGray">SSS Employee</th>
+            <th className="border p-2 border-mainGray">SSS Employer</th>
+            <th className="border p-2 border-mainGray">Philhealth Employee</th>
+            <th className="border p-2 border-mainGray">Philhealth Employer</th>
 
             {includePagibigAndTax && (
               <>
-                <th className="border p-2">Pagibig Employee</th>
-                <th className="border p-2">Pagibig Employer</th>
-                <th className="border p-2">Withholding Tax</th>
+                <th className="border p-2 border-mainGray">Pagibig Employee</th>
+                <th className="border p-2 border-mainGray">Pagibig Employer</th>
+                <th className="border p-2 border-mainGray">Withholding Tax</th>
               </>
             )}
           </tr>
@@ -52,40 +66,17 @@ export default function CompanyVariance({ companyCode }: Props) {
           {company.rows.map((row, i) => (
             <tr key={i}>
               <td className="border p-2">{row.PayCycle}</td>
-
-              <td className="border p-2">
-                {formatCurrency(row.total_basic_salary)}
-              </td>
-
-              <td className="border p-2">
-                {formatCurrency(row.Total_SSSContributionEmployee)}
-              </td>
-
-              <td className="border p-2">
-                {formatCurrency(row.Total_SSSContributionEmployer)}
-              </td>
-
-              <td className="border p-2">
-                {formatCurrency(row.Total_PhilhealthContributionEmployee)}
-              </td>
-
-              <td className="border p-2">
-                {formatCurrency(row.Total_PhilhealthContributionEmployer)}
-              </td>
+              <td className="border p-2">{formatCurrency(row.total_basic_salary)}</td>
+              <td className="border p-2">{formatCurrency(row.Total_SSSContributionEmployee)}</td>
+              <td className="border p-2">{formatCurrency(row.Total_SSSContributionEmployer)}</td>
+              <td className="border p-2">{formatCurrency(row.Total_PhilhealthContributionEmployee)}</td>
+              <td className="border p-2">{formatCurrency(row.Total_PhilhealthContributionEmployer)}</td>
 
               {includePagibigAndTax && (
                 <>
-                  <td className="border p-2">
-                    {formatCurrency(row.Total_PagibigContributionEmployee)}
-                  </td>
-
-                  <td className="border p-2">
-                    {formatCurrency(row.Total_PagibigContributionEmployer)}
-                  </td>
-
-                  <td className="border p-2">
-                    {formatCurrency(row.total_wtax)}
-                  </td>
+                  <td className="border p-2">{formatCurrency(row.Total_PagibigContributionEmployee)}</td>
+                  <td className="border p-2">{formatCurrency(row.Total_PagibigContributionEmployer)}</td>
+                  <td className="border p-2">{formatCurrency(row.total_wtax)}</td>
                 </>
               )}
             </tr>
@@ -94,161 +85,162 @@ export default function CompanyVariance({ companyCode }: Props) {
       </table>
 
 
+      {/* PRINT BUTTON */}
+      <div className="w-full flex justify-end">
+        <GenButton
+          variant="main"
+          onClick={handlePrint}
+          className="mt-4 cursor-pointer"
+        >
+          Print Breakdown
+        </GenButton>
+      </div>
+
+      {/* ===================== PRINTABLE SECTION ===================== */}
+          
 
 
-
-
-
-
-
-
-
-
-     {/* Ang Breakdown display */}
-
-
-      {varianceAnalysis && (
-        <div className="mt-6 text-left">
-
-          <h3 className="font-semibold text-lg text-mainGray mb-3">
-            Variance Breakdown
-          </h3>
-
-          <div className="w-full grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-            {/* NEW EMPLOYEES */}
-            {varianceAnalysis.newEmployees.length > 0 && (
-              <VarianceList
-                title="New Employees"
-                employees={varianceAnalysis.newEmployees}
-                color="text-mainhighlight"
-                render={(emp) =>
-                  `${emp.name} – ${formatCurrency(emp.currentBasic)}`
-                }
-              />
-            )}
-            {/* SALARY INCREASE */}
-            {varianceAnalysis.salaryIncrease.length > 0 && (
-              <VarianceList
-                title="Salary Increase"
-                employees={varianceAnalysis.salaryIncrease}
-                color="text-mainhighlight"
-                render={(emp) =>
-                  `${emp.name} – Increase: ${formatCurrency(emp.difference)}`
-                }
-              />
-            )}
-            {/* RESIGNED */}
-            {varianceAnalysis.resignedEmployees.length > 0 && (
-              <VarianceList
-                title="Resigned Employees"
-                employees={varianceAnalysis.resignedEmployees}
-                color="text-mainhighlight"
-                render={(emp) =>
-                  `${emp.name} – Previous: ${formatCurrency(emp.previousBasic)}`
-                }
-              />
-            )}
-
-            {varianceAnalysis?.specialLeaveEmployees?.length > 0 && (
-              <VarianceList
-                title="Special Leave Employees"
-                employees={varianceAnalysis.specialLeaveEmployees}
-                color="text-mainhighlight"
-                render={(emp) =>
-                  `${emp.name} – ${emp.leaveType} (${formatCurrency(emp.previousBasic ?? emp.currentBasic)})`
-                }
-              />
-            )}
-
+        {varianceAnalysis && (
+          <div>
+            <div ref={printRef} className="print-only">
+                <VariancePrintable
+                    varianceAnalysis={varianceAnalysis}
+                    formatCurrency={formatCurrency}
+                  />
+            </div>
+            <div className="mt-6 text-left">
             
-            {varianceAnalysis?.sssVariance?.length > 0 && (
-              <VarianceList
-                title="SSS Employee Variance"
-                employees={varianceAnalysis.sssVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                  `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                }
-              />
-            )}
-            {varianceAnalysis?.sssEmployerVariance?.length > 0 && (
-              <VarianceList
-                title="SSS Employer Variance"
-                employees={varianceAnalysis.sssEmployerVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                    `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                  }
-              />
-            )}
-             {varianceAnalysis?.philVariance?.length > 0 && (
-              <VarianceList
-                title="Philhealth Employee Variance"
-                employees={varianceAnalysis.philVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                    `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                  }
-              />
-            )}
-            {varianceAnalysis?.philEmployerVariance?.length > 0 && (
-              <VarianceList
-                title="Philhealth Employer Variance"
-                employees={varianceAnalysis.philEmployerVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                    `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                  }
-              />
-            )}
-            
-             {varianceAnalysis?.pagVariance?.length > 0 && (
-              <VarianceList
-                title="Pag-ibig Employee Variance"
-                employees={varianceAnalysis.pagVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                    `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                  }
-              />
-            )}
-
-              {varianceAnalysis?.pagEmployerVariance?.length > 0 && (
-              <VarianceList
-                title="Pag-ibig Employer Variance"
-                employees={varianceAnalysis.pagEmployerVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                    `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                  }
-              />
-            )}
-
-              {varianceAnalysis?.taxVariance?.length > 0 && (
-              <VarianceList
-                title="With Holding Tax Employee Variance"
-                employees={varianceAnalysis.taxVariance}
-                color="text-mainhighlight"
-                render={(emp) =>
-                    `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
-                  }
-              />
-            )}
+              <h3 className="font-semibold text-lg text-mainGray mb-3">
+                Variance Breakdown
+              </h3>
+              <div className="w-full grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
+                {/* NEW EMPLOYEES */}
+                {varianceAnalysis.newEmployees.length > 0 && (
+                  <VarianceList
+                    title="New Employees"
+                    employees={varianceAnalysis.newEmployees}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – ${formatCurrency(emp.currentBasic)}`
+                    }
+                  />
+                )}
+                {/* SALARY INCREASE */}
+                {varianceAnalysis.salaryIncrease.length > 0 && (
+                  <VarianceList
+                    title="Salary Increase"
+                    employees={varianceAnalysis.salaryIncrease}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Increase: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {/* RESIGNED */}
+                {varianceAnalysis.resignedEmployees.length > 0 && (
+                  <VarianceList
+                    title="Resigned Employees"
+                    employees={varianceAnalysis.resignedEmployees}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Previous: ${formatCurrency(emp.previousBasic)}`
+                    }
+                  />
+                )}
+                {/* SPECIAL LEAVE */}
+                {varianceAnalysis?.specialLeaveEmployees?.length > 0 && (
+                  <VarianceList
+                    title="Special Leave Employees"
+                    employees={varianceAnalysis.specialLeaveEmployees}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – ${emp.leaveType} (${formatCurrency(emp.previousBasic ?? emp.currentBasic)})`
+                    }
+                  />
+                )}
+                {/* SSS */}
+                {varianceAnalysis?.sssVariance?.length > 0 && (
+                  <VarianceList
+                    title="SSS Employee Variance"
+                    employees={varianceAnalysis.sssVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {varianceAnalysis?.sssEmployerVariance?.length > 0 && (
+                  <VarianceList
+                    title="SSS Employer Variance"
+                    employees={varianceAnalysis.sssEmployerVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {/* PHIL */}
+                {varianceAnalysis?.philVariance?.length > 0 && (
+                  <VarianceList
+                    title="Philhealth Employee Variance"
+                    employees={varianceAnalysis.philVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {varianceAnalysis?.philEmployerVariance?.length > 0 && (
+                  <VarianceList
+                    title="Philhealth Employer Variance"
+                    employees={varianceAnalysis.philEmployerVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {/* PAGIBIG */}
+                {varianceAnalysis?.pagVariance?.length > 0 && (
+                  <VarianceList
+                    title="Pag-ibig Employee Variance"
+                    employees={varianceAnalysis.pagVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {varianceAnalysis?.pagEmployerVariance?.length > 0 && (
+                  <VarianceList
+                    title="Pag-ibig Employer Variance"
+                    employees={varianceAnalysis.pagEmployerVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+                {/* TAX */}
+                {varianceAnalysis?.taxVariance?.length > 0 && (
+                  <VarianceList
+                    title="Withholding Tax Employee Variance"
+                    employees={varianceAnalysis.taxVariance}
+                    color="text-mainhighlight"
+                    render={(emp) =>
+                      `${emp.name} – Difference: ${formatCurrency(emp.difference)}`
+                    }
+                  />
+                )}
+              </div>
+            </div>
           </div>
+        )}
 
-        </div>
-      )}
-
-
-
-
-    </div>
+      </div>
+   
   )
 }
-
-
-
-
 
 
 

@@ -117,7 +117,7 @@ export default function StepReviewSave({ onBack }: Props) {
       rfc: emp.rfc_loan,
       fch: emp.fch_loan,
       salaryLoan: emp.sss_loan,
-      calamityLoan: 0,
+      calamityLoan: emp.calamity_loan,
       pagibigSalaryLoan: emp.pagibig_loan,
       netPayable: net,
       sssEmployer: emp.sss_contrib_employer,
