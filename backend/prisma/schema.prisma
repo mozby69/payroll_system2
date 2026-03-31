@@ -573,6 +573,9 @@ model BonusSummary {
   releasePeriod   String 
   asOfDate        DateTime
   generateDate    DateTime
+
+  batchId         String?
+
   totalEmployees  Int?
   totalAmount     Decimal? @db.Decimal(14,2)
   status          BonusStatus @default(GENERATED)

@@ -13,11 +13,13 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
       BranchCode: {
         company_id: company_id
       },
+       isAlien: false ,
         ...(onlyNew && { isNewEmployee: true }), 
         ...(onlyMissingSetup && {
           Disbursing: true,
           isNewEmployee:false
         }),
+      
       };
 
   const searchFilter = search
@@ -406,6 +408,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       BranchCode: {
         company_id: company_id,
       },
+       isAlien: false ,
     },
   };
 

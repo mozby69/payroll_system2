@@ -67,6 +67,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           BranchCode: {
             company_id: company_id,
           },
+          isAlien: false,
         },
       };
 
@@ -459,7 +460,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             EmpCode:{
              BranchCode:{
                company_id:company_id,
-             }
+             },
+             isAlien: false,
             } 
           },
              {
@@ -504,7 +506,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       if (!allComputed || allComputed.length === 0) return 0;
   
       const computed = allComputed.filter((e) => 
-        e.company_id === companyId
+        (e.company_id === companyId && e.EmpCode?.isAlien === false)
                ||
        ( e.EmpCode?.isAlien === true &&
         e.EmpCode?.secondaryBranch?.company_id === companyId)
@@ -811,7 +813,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
                 {
                   EmpCode: {
-                    BranchCode: { CompanyCode: { CompanyCode: companyId } }
+                    BranchCode: { CompanyCode: { CompanyCode: companyId } },
+                    isAlien: false,
                   },
                 },
 

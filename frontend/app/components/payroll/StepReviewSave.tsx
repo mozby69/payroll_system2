@@ -1,6 +1,6 @@
 "use client";
 
-import {  useState } from "react";
+import {  useRef, useState } from "react";
 import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
 import { printPayroll } from "@/app/utils/printPayrollUtils";
 import { dummySummary } from "@/app/types/dummyData";
@@ -13,6 +13,8 @@ import RequestModal from "../Modal";
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import GenButton from "../Buttons";
 import { useAuth } from "../UserContext";
+import { useReactToPrint } from "react-to-print";
+import PayrollSpreadsheetPrint from "../reports/PrintPayrollSpreadsheet";
 
 
 
@@ -41,6 +43,8 @@ export default function StepReviewSave({ onBack }: Props) {
   const companyCode = data?.data?.[0]?.EmpCode.BranchCode.company_id ?? "-";
 
   const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
+
+  const printRef = useRef<HTMLDivElement>(null)
 
   const [editedWtax, setEditedWtax] = useState<Record<string, number>>({});
 
@@ -190,9 +194,15 @@ export default function StepReviewSave({ onBack }: Props) {
   const closeModal = () => {
     setIsModalOpen(false);
   };
+
+      const handlePrint1 = useReactToPrint({
+            contentRef: printRef,
+            documentTitle: `Payroll-${payCode}`,
+          })
+  
   
 
-  return (
+  return (  
     <div className="space-y-4">
 
       <div className="print:hidden flex justify-between">
@@ -227,6 +237,13 @@ export default function StepReviewSave({ onBack }: Props) {
                 <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
                   {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                 </GenButton>
+                  <GenButton
+                        variant="main"
+                        onClick={handlePrint1}
+                        disabled={loading}
+                        >
+                        {loading ? "Generating PDF..." : "Print Payroll"}
+                    </GenButton>
             </div>
         )}
       </div>
@@ -279,7 +296,9 @@ export default function StepReviewSave({ onBack }: Props) {
         </div>
       </div>
 
-
+        <div className="hidden print:block">
+                <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={companyId} />
+            </div>
 
         {isModalOpen && (
             <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
