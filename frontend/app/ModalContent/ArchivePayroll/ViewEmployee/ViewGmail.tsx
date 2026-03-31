@@ -7,6 +7,7 @@ import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay";
 
 
 import { Mail, BadgeCheck, User } from "lucide-react";
+import { useState } from "react";
 
 
 interface ViewEmployeeListProps {
@@ -15,9 +16,13 @@ interface ViewEmployeeListProps {
 
 
 export default function EmployeeGmail({ employee }: ViewEmployeeListProps) {
+    const [showProcessing, setShowProcessing] = useState(false);
 
-const handleSendPayslip = async () => {
+
+  const handleSendPayslip = async () => {
   try {
+    setShowProcessing(true); // 🔥 START LOADING
+
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-email-payslip`,
       {
@@ -35,7 +40,6 @@ const handleSendPayslip = async () => {
       throw new Error(data.message || "Failed to send payslip");
     }
 
-    // ✅ Success
     SweetAlert.successAlert("Payslip sent successfully");
 
   } catch (error) {
@@ -44,6 +48,8 @@ const handleSendPayslip = async () => {
     SweetAlert.errorAlert(
       error instanceof Error ? error.message : "Something went wrong"
     );
+  } finally {
+    setShowProcessing(false); // 🔥 STOP LOADING
   }
 };
 
@@ -57,7 +63,7 @@ const handleSendPayslip = async () => {
 
 
                     {showProcessing && (
-                            <ProcessingOverlay message="Fetching HR data and computing payroll…" />
+                       <ProcessingOverlay message="Sending payslip via email…" />
                           )}
                           
 
@@ -115,7 +121,9 @@ const handleSendPayslip = async () => {
         
             {email !== "—" && (
 
-               <button onClick={handleSendPayslip} className="bg-green-800 text-white px-4 py-2 rounded hover:bg-green-600">
+               <button
+                 disabled={showProcessing}
+                onClick={handleSendPayslip} className="bg-green-800 text-white px-4 py-2 rounded hover:bg-green-600">
                 Send Payslip
                 </button>
             //   <a

@@ -990,3 +990,20 @@ export const importSQLService = async (filePath:string | undefined, originalFile
     "start": "tsx src/server.ts",
     "build": "tsc"
   },
+
+
+
+********************************** march 31 **********************
+
+
+  if (include_payroll === false) {
+            await tx.employeeSummary.updateMany({
+              where: {
+                EmpCodeId: empCode,
+                status: "PENDING",
+              },
+              data: {
+                status: "EXCLUDED", 
+              },
+            });
+          }

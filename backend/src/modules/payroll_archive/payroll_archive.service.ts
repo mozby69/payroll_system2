@@ -326,7 +326,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           overrideMap.set(key, Number(o.edited_value));
         }
       }
-      //wtax override
+  
 
       const normalized = employeeList.map((emp) => {
         
@@ -341,6 +341,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
         const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
         const isTaxable = emp.EmpCode.Taxable;
+
+   
 
         const bodMap = new Map(
           bodPhil.map((b) => [
@@ -361,7 +363,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
-        const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes,);
+        const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes);
         const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
         const philhealthRateEmployer = computePhilRateEmployer(basicSalary, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
         const pagibigEmployeeShare = computePagibig(rawPagibigEmployee,Paycodes);
