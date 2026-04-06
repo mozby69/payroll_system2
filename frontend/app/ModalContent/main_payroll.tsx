@@ -142,7 +142,7 @@ const areloan =
           onChange={(e) => setPagibigEmployeeShare(e.target.value)}
           className="border py-2 px-2 rounded-lg"
         />
-    </div>
+      </div>
 
     <div className="grid">
         <label className="font-bold">CASH ASSISTANCE</label>
