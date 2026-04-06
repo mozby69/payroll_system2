@@ -113,7 +113,7 @@ export const displayForApprovalController = async (req: Request, res: Response) 
     const data = await displayCompletePayroll([status],company_id);
     const availableCompany = await getAvailableCompanyCyclesService([status]);
 
-    console.log(availableCompany)
+    //console.log(availableCompany)
 
     return res.status(200).json({
       status: "SUCCESS",
