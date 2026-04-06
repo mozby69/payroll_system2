@@ -3,7 +3,7 @@ export function generatePayCode(
     referenceDate: string
   ): string {
     const date = new Date(referenceDate);
-  
+    date.setDate(date.getDate() + 1);
     const month = date.toLocaleString("en-US", { month: "long" });
     const year = date.getFullYear();
   

@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { EmployeeSummaryTypes } from "../api/api.types";
 import { nowPH } from "../../utils/timezone";
+import { parsePayCodeRange } from "../../utils/payrollDate";
 
 
 export async function getCompanyDetailsServices() {
@@ -99,6 +100,81 @@ export async function appendMissingBodEmployees(
       createdAt: nowPH(),
     }));
   }
+
+
+  export async function probitionaryEmployees(
+    tx: Prisma.TransactionClient,
+    employees: EmployeeSummaryTypes[]
+  ) {
+    if (!employees.length) return [];
+  
+    const template = employees[0];
+  
+    //  1. Get date range
+    const { start, end } = parsePayCodeRange(template.PayCode);
+  
+    //  2. Get probationary employees within range
+    const probiEmployees = await tx.employee.findMany({
+      where: {
+        BranchCode: {
+          CompanyCode: {
+            CompanyCycle: template.CycleCategory,
+          },
+        },
+  
+        EmployeeStatus: "Probationary",
+  
+        EmployementDate: {
+          gte: start,
+          lte: end,
+        },
+      },
+      select: {
+        EmpCode: true,
+      },
+    });
+  
+    if (!probiEmployees.length) return [];
+  
+    const empCodes = probiEmployees.map(e => e.EmpCode);
+  
+    // 3. Get already existing archive records
+    const existing = await tx.employeePayrollArchive.findMany({
+      where: {
+        EmpCodeId: { in: empCodes },
+        PayCode: template.PayCode,
+      },
+      select: {
+        EmpCodeId: true,
+      },
+    });
+  
+    const existingSet = new Set(existing.map(e => e.EmpCodeId));
+  
+    //  4. Filter missing employees
+    const missing = probiEmployees.filter(
+      e => !existingSet.has(e.EmpCode)
+    );
+  
+    //5. Create payload
+    return missing.map((e) => ({
+      EmpCodeId: e.EmpCode,
+      PayCode: template.PayCode,
+      CycleCategory: template.CycleCategory,
+      PayrollPeriod: template.PayrollPeriod,
+      LateCount: 0,
+      TotalAbsentHours: 0,
+      TotalUndertime: 0,
+      TotalOvertime: 0,
+      RegularAtt: {},
+      OvertimeAtt: {},
+      NightShiftAtt: {},
+      NightShiftOtAtt: {},
+      selected_payroll_date: template.selected_payroll_date,
+      createdAt: nowPH(),
+    }));
+  }
+    
   
 
 
