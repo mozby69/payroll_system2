@@ -246,18 +246,20 @@ export default function StepReviewSave({ onBack }: Props) {
                 <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
                   {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                 </GenButton>
-                  <GenButton
+                
+            </div>
+        )}
+      </div>
+      <div className="flex gap-5 justify-center items-center">
+
+            <h2><span className="font-bold">Company:</span> {companyCode}</h2>
+            <GenButton
                         variant="main"
                         onClick={handlePrint1}
                         disabled={loading}
                         >
                         {loading ? "Generating PDF..." : "Print Payroll"}
                     </GenButton>
-            </div>
-        )}
-      </div>
-      <div>
-            <h2><span className="font-bold">Company:</span> {companyCode}</h2>
       </div> 
 
       </div>
@@ -291,7 +293,7 @@ export default function StepReviewSave({ onBack }: Props) {
           className="rounded-lg border px-5 py-2 text-sm">
           Back
         </button>
-
+{/* 
         <div className="flex gap-2">
 
           <button
@@ -302,7 +304,7 @@ export default function StepReviewSave({ onBack }: Props) {
           </button>
 
 
-        </div>
+        </div> */}
       </div>
 
         <div className="hidden print:block">

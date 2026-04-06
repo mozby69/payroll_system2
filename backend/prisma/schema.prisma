@@ -87,6 +87,8 @@ model Branch {
   company_id String? @db.VarChar(20) @map("company_id")
   CompanyCode   company_details? @relation(fields: [company_id], references: [CompanyCode])
 
+  archiveBranch  EmployeePayrollArchive[]
+
   @@map("branches")
 }
 
@@ -366,12 +368,17 @@ model EmployeePayrollArchive {
   isNewEmployee Boolean @default(false)
   created_at DateTime @default(now())
   total_deductions Decimal? @db.Decimal(10,2) @map("total_deductions")
+  PayrollBranchId  String? 
+
 
   totalPayrollId Int @map("total_payroll_id")
   totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  payrollBranch  Branch?   @relation(fields: [PayrollBranchId], references: [branchCode])
+
 
   empDisburses emp_disburse[] 
 

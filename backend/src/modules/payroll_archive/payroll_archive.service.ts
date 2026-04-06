@@ -172,6 +172,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               bod_member:true,
               Taxable:true,
               isAlien: true,
+              BranchCodeId: true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -759,6 +760,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           EmpCodeId:                 emp.EmpCodeId,
           totalPayrollId:            totalPayrollRecord.id,
           total_deductions:          emp.total_deductions,
+          PayrollBranchId:           emp.EmpCode.isAlien
+                                         ? emp.EmpCode.secondaryBranch?.branchCode ?? null
+                                         : emp.EmpCode.BranchCodeId ?? null
         };
       });
 
@@ -769,6 +773,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         data: archivePayload,
         skipDuplicates: true,
       });
+
+      console.log(archivePayload)
   
       // ── Loan ledger entries ─────────────────────────────────────────────────
       const transaction_date = nowPH();
@@ -1662,14 +1668,15 @@ export async function getPayrollArchiveReportService(
         philhealthEmployeer: payroll?.philhealth_employer_share ?? 0,
         reason,
         leaveInfo,
-        secondBranch: emp.isAlien ? emp.secondaryBranch?.company_id : ""
+        secondBranch: emp.isAlien ? emp.secondaryBranch?.company_id : "",
+        secondBranchId: emp.isAlien ? emp.secondaryBranchId : ""
       };
     });
 
 
     // Board Employees (bod1 / bod2)
     const boardEmployees = rows.filter(
-      r => r.board === "bod2" 
+      r => r.board === "bod1" 
     );
 
     // Main Holding Employees
@@ -1679,9 +1686,7 @@ export async function getPayrollArchiveReportService(
              &&
       (r.department !== "M2" && (r.branch === "EMB-MAIN"))
                ||
-         (r.branch === "ASS")
-               ||
-      (r.secondBranch === company_id)
+      (r.secondBranch === company_id && r.secondBranchId === "EMB-MAIN")
     );
 
       // Mancom Employees 
@@ -1698,17 +1703,19 @@ export async function getPayrollArchiveReportService(
         (r.branch !== "EMB-MAIN" &&  r.branch !== "ASS")
                    ||   
      (r.department === "M2" && (r.branch === "EMB-MAIN"))
-          
     )
-             &&
-    (r.secondBranch === '')
+             ||
+    (r.secondBranch === company_id &&  r.branch === "ASS")
     );
 
     type BranchGroup = Record<string, typeof branchEmployees>;
 
     const branchGroups = branchEmployees.reduce<BranchGroup>((acc, emp) => {
     
-      const branchKey = emp.branch ?? "UNKNOWN";
+      const branchKey =
+      emp.branch === "ASS"
+      ? emp.secondBranchId ?? "UNKNOWN"
+      : emp.branch ?? "UNKNOWN";
     
       acc[branchKey] ??= [];
       acc[branchKey].push(emp);
@@ -1716,6 +1723,12 @@ export async function getPayrollArchiveReportService(
       return acc;
     
     }, {});
+    // ✅ Sort each group
+    Object.keys(branchGroups).forEach((key) => {
+      branchGroups[key].sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "")
+      );
+    });
 
 
     const summaries = {

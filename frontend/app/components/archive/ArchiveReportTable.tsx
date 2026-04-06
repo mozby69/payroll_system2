@@ -10,6 +10,8 @@ type Employee = {
   overtime: number
   late: number
   absences: number
+  undertime: number
+  branch: string | null
   total: number
   pagIbigEmployeer: number
   sssEmployeer: number
@@ -87,7 +89,7 @@ export default function ArchiveReportTable({ title, employees }: Props) {
         {index + 1}
       </td>
 
-      <td className="border px-2 py-1 print-name">{emp.name}</td>
+      <td className={`border px-2 py-1 print-name ${emp.branch==="ASS" ? "text-red-600" : "" }`}>{emp.name}</td>
 
       <td className="border px-2 py-1 text-right">
         {formatCurrency(emp.halfBasic)}
@@ -98,7 +100,7 @@ export default function ArchiveReportTable({ title, employees }: Props) {
       </td>
 
       <td className="border px-2 py-1 text-right">
-        {formatCurrency(emp.late)}
+        {formatCurrency(emp.late + emp.undertime)}
       </td>
 
       <td className="border px-2 py-1 text-right">
