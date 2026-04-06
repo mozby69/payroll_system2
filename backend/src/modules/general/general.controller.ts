@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { fetchCompanyCycles, getAllCompanies, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan } from "./general.services";
+import { fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan, reorderBranchesService } from "./general.services";
 import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
+
 
 export async function getCompanyDetailsController(
    req: Request,
@@ -152,3 +153,75 @@ export const getUniqueLoanController = async (
     });
   }
 };
+
+
+export async function getBranchesDetailsController(
+  req: Request,
+  res: Response
+) {
+
+  try{
+    const branches = await getBranchesDetailsService()
+    res.status(200).json({
+      success: true,
+      data: branches
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch branches"
+    });
+  }
+  
+}
+
+
+export const reorderBranchesController = async (
+  req: Request,
+  res: Response
+) => {
+
+  try {
+
+    const { company_id, branchCodes } = req.body
+
+    if (!company_id || !branchCodes) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request payload"
+      })
+    }
+
+    await reorderBranchesService(company_id, branchCodes)
+
+    res.json({
+      success: true,
+      message: "Branch order updated"
+    })
+
+  } catch (error: any) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+
+  }
+
+}
+
+
+
+
+
+
+export const getBranchController = async (req:Request, res:Response) => {
+  try{
+    const data = await getBranch();
+
+    return res.status(200).json(data);
+  }
+  catch(error){
+    console.error("error occured",error);
+  }
+}

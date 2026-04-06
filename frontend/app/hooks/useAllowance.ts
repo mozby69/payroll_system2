@@ -7,6 +7,25 @@ import { AxiosError } from "axios";
 
 
 
+export function useUpdateBranch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      EmpCode: string;
+      branchCode: string;
+      selectedMonth: string;
+    }) => {
+      await api.post("/allowance/update-branch", payload);
+    },
+    onSuccess: () => {
+      SweetAlert.successAlert("Branch updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["allowance-list"] });
+        queryClient.invalidateQueries({ queryKey: ["fetch-view-all"] });
+    },
+  });
+}
+
 
 export function useFetchAllowance(params: {page: number; limit: number; search?: string; month?:string}) {
     return useQuery<AllowanceListResponse>({

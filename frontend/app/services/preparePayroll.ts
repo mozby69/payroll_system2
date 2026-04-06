@@ -74,6 +74,7 @@ export interface UpdateEmployeePayrollPayload {
   basic_salary?: number;
   pagibig_employee_share?: number;
   pagibig_employer_share?:number;
+  include_payroll?:boolean;
 }
 
 export const updateEmployeePayroll = async (

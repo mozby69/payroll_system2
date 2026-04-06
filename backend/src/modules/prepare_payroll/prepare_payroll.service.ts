@@ -2,9 +2,10 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
-import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
+import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP, PayrollDeductions } from "./prepare_payroll.types";
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
+import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
 
 export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
   { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
@@ -13,11 +14,13 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
       BranchCode: {
         company_id: company_id
       },
+       isAlien: false ,
         ...(onlyNew && { isNewEmployee: true }), 
         ...(onlyMissingSetup && {
           Disbursing: true,
           isNewEmployee:false
         }),
+      
       };
 
   const searchFilter = search
@@ -47,12 +50,32 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
   };
 
   const where = {
-    AND: [
-      baseFilter,
-      searchFilter,
-      statusFilter,
-    ],
+    OR: [
+      {
+        AND: [
+          baseFilter,
+          searchFilter,
+          statusFilter,
+        ],
+      },
+
+      {
+        AND: [
+          { isAlien: true },
+            {secondaryBranch:{
+             company_id: company_id,
+            }
+          },
+          searchFilter,
+          statusFilter,
+        ],
+      },
+
+    ]
+  
   };
+
+
 
   const total = await prisma.employee.count({ where });
   const bodPhil = await getBodPhilhealth();
@@ -106,6 +129,7 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
           basic_salary: true,
           cash_assistance: true,
           ecola: true,
+          include_payroll:true,
         },
       },
       BranchCode: {
@@ -171,6 +195,7 @@ const bodMap = new Map(
   const pagibigId = emp.pagibig_list[0]?.pagibig_id ?? 'N/A';
   const isNewProbi = emp.EmploymentStatus === "Probationary" && emp.isNewEmployee;
   const isBod = emp.bod_member === "bod1";
+  const includePayroll = emp.employeepayroll?.include_payroll ?? false;
 
 
   const bodShare = bodMap.get(emp.EmpCode) ?? 0;
@@ -228,6 +253,7 @@ const bodMap = new Map(
     // loan Code ↓
     next_payroll: nextPayrollCycle ,
     month_pay:payPeriod,
+     include_payroll: includePayroll, 
     // loan Code ↑
   };
 });
@@ -260,6 +286,7 @@ export async function updateEmployeeSalary({
   remarks,
   changed_by,
   cash_assistance,
+
 }: {
   empCode: string;
   old_salary: number;
@@ -267,6 +294,7 @@ export async function updateEmployeeSalary({
   remarks: string;
   changed_by: string;
   cash_assistance: number;
+
 }) {
   return await prisma.$transaction(async (tx) => {
 
@@ -287,38 +315,76 @@ export async function updateEmployeeSalary({
       where: { EmpCodeId: empCode },
       data: {
         basic_salary: new_salary,
-        cash_assistance,
+        cash_assistance:cash_assistance,
       },
     });
   });
 }
 
 
-export async function updateEmployeePayrollFields({
-  empCode,
-  basic_salary,
-  cash_assistance,
-  pagibig_employee_share,
-}: {
-  empCode: string;
-  basic_salary?: number;
-  cash_assistance?: number;
-  pagibig_employee_share?: number;
-}) {
-  return await prisma.$transaction(async (tx) => {
+export async function updateEmployeePayrollFields({empCode,basic_salary,pagibig_employee_share,include_payroll}: {
+      empCode: string;
+      basic_salary?: number;
+      pagibig_employee_share?: number;
+      include_payroll?: boolean;
+    }) {
 
-    if (
-      basic_salary !== undefined ||
-      cash_assistance !== undefined
-    ) {
-      await tx.employee_payroll.update({
+      return await prisma.$transaction(async (tx) => {
+
+      await tx.employee_payroll.upsert({
         where: { EmpCodeId: empCode },
-        data: {
+        update: {
           ...(basic_salary !== undefined && { basic_salary }),
-          ...(cash_assistance !== undefined && { cash_assistance }),
+          include_payroll, 
+          excluded_date: include_payroll === false ? new Date() : null,
+        },
+        create: {
+          EmpCodeId: empCode,
+          basic_salary: basic_salary ?? 0,
+          include_payroll: include_payroll ?? true,
+          excluded_date: include_payroll === false ? new Date() : null,
         },
       });
-    }
+
+
+       if (include_payroll === false) {   
+
+        const pendingRecord = await tx.employeeSummary.findFirst({
+          where: {
+            EmpCodeId: empCode,
+            status: "PENDING",
+          },
+          select: {
+            PayCode: true,
+            CycleCategory: true,
+          },
+        });
+
+  
+        if (pendingRecord) {
+          await tx.includePayrollLogs.create({
+            data: {
+              EmpCodeId: empCode,
+              PayCode: pendingRecord.PayCode,
+              CycleCategory: pendingRecord.CycleCategory,
+            },
+          });
+        }
+      }
+
+      if(include_payroll === false){
+          await tx.employeeSummary.updateMany({
+          where: {
+            EmpCodeId: empCode,
+            status: "PENDING",
+          },
+          data: {
+            status: "EXCLUDED",
+          },
+        });
+      }
+    
+
 
     if (pagibig_employee_share !== undefined) {
       await tx.pagIbig_List.upsert({
@@ -332,6 +398,7 @@ export async function updateEmployeePayrollFields({
         },
       });
     }
+
   });
 }
 
@@ -383,11 +450,23 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 
   const baseFilter = {
     EmpCode: {
+      employeepayroll:{
+      include_payroll: true,
+      },
       BranchCode: {
         company_id: company_id,
       },
+       isAlien: false ,
     },
   };
+
+//   const includePayrollFilter = {
+//   EmpCode: {
+//     employeepayroll: {
+//       include_payroll: true,
+//     },
+//   },
+// };
 
   const searchFilter = search
   ? {
@@ -418,14 +497,43 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     ],
   };
 
-  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
-    AND: [
-      baseFilter,
-      { status: { in: ["PENDING"] } },
-      searchFilter,
-      statusOverride,
 
-    ],
+
+  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
+    OR: [
+      {
+        AND: [
+          baseFilter,
+          
+          { status: { in: ["PENDING"] } },
+          searchFilter,
+          statusOverride,
+    
+        ],
+      },
+
+      {
+        AND: [
+          { 
+            EmpCode:{
+            isAlien: true
+            }
+          },
+
+          {
+              EmpCode:{
+                secondaryBranch:{
+                company_id: company_id,
+              }
+            }
+          },
+        searchFilter,
+        statusOverride,
+        { status: { in: ["PENDING"] } },
+      ],
+      }
+    ]
+    
   };
   
 
@@ -529,7 +637,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 //payroll initialize ***********************************************************
 
 export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
-  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
+  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean }) {
 
     const baseFilter = {
         BranchCode: {
@@ -537,6 +645,8 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
             CompanyCycle: cycle,
           },
         },
+        isAlien: false,
+
         ...(onlyNew && { isNewEmployee: true }), 
         ...(onlyMissingSetup && {
           Disbursing: true,
@@ -571,11 +681,31 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
       };
 
       const where = {
-        AND: [
-          baseFilter,
-          searchFilter,
-          statusFilter,
-        ],
+        OR: [
+          {
+            AND: [
+              baseFilter,
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+          {
+            AND: [
+              { isAlien: true },
+                {secondaryBranch:{
+                  CompanyCode: {
+                    CompanyCycle: cycle,
+                  },
+                }
+              },
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+        ]
+      
       };
 
   const total = await prisma.employee.count({ where });
@@ -691,23 +821,51 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
     ],
   };
 
+  
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
-    AND: [
-      { CycleCategory: cycle },
+    OR: [
       {
-        EmpCode: {
-          BranchCode: {
-            CompanyCode: {
-              CompanyCycle: cycle,
+        AND: [
+          { CycleCategory: cycle },
+          {
+            EmpCode: {
+              BranchCode: {
+                CompanyCode: {
+                  CompanyCycle: cycle,
+                },
+              },
             },
           },
-        },
+          { status: { in: ["PENDING"] } },
+          searchFilter,
+          statusOverride,
+    
+        ],
       },
-      { status: { in: ["PENDING"] } },
-      searchFilter,
-      statusOverride,
 
-    ],
+      {
+    AND: [
+          { 
+            EmpCode:{
+            isAlien: true
+            }
+          },
+
+          {
+              EmpCode:{
+              secondaryBranch:{
+                CompanyCode: {
+                  CompanyCycle: cycle,
+                },
+              }
+            }
+          },
+        searchFilter,
+        statusOverride,
+      ],
+      },
+    ]
+  
   };
   
 
@@ -730,7 +888,6 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
         TotalUndertime:true,
         NightShiftOtAtt: true,
         EmpCode: {
-          
           select: {
             Firstname: true,
             Lastname: true,
@@ -789,3 +946,59 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
   };
 }
   
+
+
+
+export async function ViewDeduction(company_id:string){
+  try{
+    const computed = await displayCompletePayroll(["PENDING"]);
+    if (!computed || computed.length === 0) return 0;
+
+      const filtered = computed.filter((row) => {
+      const emp = row.EmpCode;
+      const normalMatch = emp?.BranchCode?.company_id === company_id;
+      const alienMatch = emp?.isAlien && emp?.secondaryBranch?.company_id === company_id;
+      return normalMatch || alienMatch;
+    });
+
+      const normalized: PayrollDeductions[] = filtered.map((row) => {
+        
+        const total_deductions =
+          (row.sss_contrib_employee ?? 0) +
+          (row.philhealth_contrib_employee ?? 0) +
+          (row.pagibig_contrib_employee ?? 0) +
+          (row.wtax ?? 0) +
+          (row.fch_loan ?? 0) +
+          (row.sss_loan ?? 0) +
+          (row.pagibig_loan ?? 0) +
+          (row.rfc_loan ?? 0) +
+          (row.are_loan ?? 0);
+
+        return {
+
+          EmpCodeId: row.EmpCodeId,
+          EmpCode: {
+            Firstname: row.EmpCode.Firstname,
+            Lastname: row.EmpCode.Lastname,
+          },
+          sss_contrib_employee: row.sss_contrib_employee,
+          philhealth_contrib_employee: row.philhealth_contrib_employee,
+          pagibig_contrib_employee: row.pagibig_contrib_employee,
+          wtax: row.wtax,
+          fch_loan: row.fch_loan,
+          sss_loan: row.sss_loan,
+          pagibig_loan: row.pagibig_loan,
+          rfc_loan: row.rfc_loan,
+          are_loan: row.are_loan,
+          total_deductions, 
+          
+        };
+      });
+
+    return normalized;
+  }
+
+  catch(error){
+    console.error("error occured",error);
+  }
+}

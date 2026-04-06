@@ -3,6 +3,7 @@ import { PayrollDateRange } from "../api/api.types";
 import { BankFileRow, PayrollRow } from "./payroll_archive.types";
 import ExcelJS from "exceljs";
 import path from "path";
+import { nowPH } from "../../utils/timezone";
 
 
 export function isPayrollDateRange(value: Prisma.JsonValue): value is PayrollDateRange {
@@ -67,14 +68,13 @@ export async function generatePNBExcel(rows: BankFileRow[]) {
 
   const worksheet = workbook.worksheets[0];
 
-  // 🔥 1️⃣ Remove all existing data rows (keep header row only)
+ 
   const lastRow = worksheet.lastRow?.number ?? 1;
 
   if (lastRow > 1) {
     worksheet.spliceRows(2, lastRow - 1);
   }
 
-  // 🔥 2️⃣ Start writing fresh at row 2
   let startRow = 2;
 
   rows.forEach((row) => {
@@ -83,10 +83,32 @@ export async function generatePNBExcel(rows: BankFileRow[]) {
     startRow++;
   });
 
-  // 🔥 3️⃣ Update totals
+  const date = new Date();
+  const formattedDate = new Intl.DateTimeFormat('en-US').format(date);
+
   const total = rows.reduce((sum, r) => sum + r.amount, 0);
-  worksheet.getCell("K2").value = total;
-  worksheet.getCell("M2").value = rows.length;
+  worksheet.getCell("L1").value = total;
+  worksheet.getCell("N1").value = rows.length;
+  worksheet.getCell("H1").value = formattedDate;
+  const manilaNow = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" })
+  );
+  
+  const minutes = manilaNow.getMinutes();
+  const flooredMinutes = Math.floor(minutes / 30) * 30;
+  
+  manilaNow.setMinutes(flooredMinutes);
+  manilaNow.setSeconds(0);
+  manilaNow.setMilliseconds(0);
+  
+  worksheet.getCell("J1").value = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).format(manilaNow);
 
   return workbook.xlsx.writeBuffer();
 }
+
+

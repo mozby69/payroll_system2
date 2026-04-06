@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
-import { getEmployeeArchivedService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
-import { BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
+import { getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
+import { BankProps, BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
 import { ApiErrorResponse, ErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
+import { PayrollArchiveReport } from "../types/archiveTypes";
 
 
 
@@ -44,12 +45,12 @@ export function useDisplayPayroll(company_id?: string) {
 
 
 
-export function useDisplayForApprovalPayroll(status: "FOR_CHECKER" | "FOR_APPROVER") {
+export function useDisplayForApprovalPayroll(status: "FOR_CHECKER" | "FOR_APPROVER",company_id:string) {
   return useQuery<PayrollResponse>({
-    queryKey: ["payroll-display-for-approval",status],
+    queryKey: ["payroll-display-for-approval",status,company_id],
     queryFn: async () => {
       const res = await api.get("/payroll-archive/for-approval",{
-        params: { status },
+        params: { status,company_id },
       });
       return res.data;
     },
@@ -101,9 +102,9 @@ export function useSaveFinalPayroll(onSuccess?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (cycle:string) => {
+    mutationFn: async ({cycle,companyId}:{cycle:string; companyId:string}) => {
       const res = await api.post("/payroll-archive/archived-final-payroll",null,{
-        params:{cycle},
+        params:{cycle, companyId},
       });
       return res.data;
     },
@@ -145,8 +146,10 @@ export function useReCheckPayroll(onSuccess?: () => void) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const res = await api.post("/payroll-archive/recheck-payroll");
+    mutationFn: async (company_id:string) => {
+      const res = await api.post("/payroll-archive/recheck-payroll",null,{
+        params:{company_id},
+      });
       return res.data;
     },
     onSuccess: async () => {
@@ -174,6 +177,47 @@ export function useReCheckPayroll(onSuccess?: () => void) {
     },
   });
 }
+
+
+
+
+
+export function useReCheckPayrollToChecker(onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (company_id:string) => {
+      const res = await api.post("/payroll-archive/recheck-back-to-checker",null,{
+        params:{company_id},
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      SweetAlert.successAlert("Recheck successful");
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display-for-approval"],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["payroll-display"],
+      });
+      
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "employees-computed",
+      });
+    
+
+      onSuccess?.();
+    },
+    onError: () => {
+      SweetAlert.errorAlert("Failed to recheck payroll");
+    },
+  });
+}
+
 
 export function useTotalPayroll(
   page: number,
@@ -239,22 +283,27 @@ export function usePrintEmployeeArchived(
 
 
 
-export function useFetchBank(PayCode: string | null,cycle_category:string | null) {
-  return useQuery<BankResponse>({
-    queryKey: ['fetch-bank-list', PayCode,cycle_category],
+export function useFetchBank(
+  PayCode: string | null,
+  cycle_category: string | null,
+  company_id: string | null
+) {
+  return useQuery<BankProps[]>({
+    queryKey: ["fetch-bank-list", PayCode, cycle_category, company_id],
     queryFn: async () => {
-
-      if (!PayCode || !cycle_category) {
-        throw new Error('PayCode is required');
+      if (!PayCode || !cycle_category || !company_id) {
+        throw new Error("Missing required params");
       }
 
-      const response = await api.get<BankResponse>(`/payroll-archive/employee-bank-list?PayCode=${PayCode}&cycle_category=${cycle_category}`);
+      const response = await api.get<BankProps[]>(
+        `/payroll-archive/employee-bank-list?PayCode=${PayCode}&cycle_category=${cycle_category}&company_id=${company_id}`
+      );
+
       return response.data;
     },
-    enabled: Boolean(PayCode && cycle_category), 
+    enabled: Boolean(PayCode && cycle_category && company_id),
   });
 }
-
 
 
 // interface BankFileRow {
@@ -264,10 +313,11 @@ export function useFetchBank(PayCode: string | null,cycle_category:string | null
 export function useGenerateBankFile() {
   const generate = async (
     bank: "BDO" | "PNB",
-    rows: { bankAccount: string; amount: number }[]
+    rows: { bankAccount: string; amount: number }[],
+    company: string,
   ) => {
     const response = await api.post(
-      `/payroll-archive/generate-bank-file?bank=${bank}`,
+      `/payroll-archive/generate-bank-file?bank=${bank}&company_id=${company}`,
       rows
     );
 
@@ -357,3 +407,26 @@ export function useSaveToApproverPayroll(onSuccess?: () => void) {
     },
   });
 }
+
+
+export function usePayrollArchiveReport(
+  totalPayrollId: number,
+  company_id: string
+) {
+  return useQuery<PayrollArchiveReport>({
+    queryKey: ["payroll-archive-report", totalPayrollId, company_id],
+
+    queryFn: () =>
+      getPayrollArchiveReportService({
+        totalPayrollId,
+        company_id,
+      }),
+      enabled: !!company_id && !!totalPayrollId,
+      staleTime: 1000 * 60 * 5,
+  });
+}
+
+
+
+
+

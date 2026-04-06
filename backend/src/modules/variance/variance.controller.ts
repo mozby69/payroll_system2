@@ -1,22 +1,30 @@
-import {  fetchEmployeeVariance, fetchVariance } from "./variance.service";
+import {  fetchEmployeeVariance, fetchVariance, fetchVarianceEmp } from "./variance.service";
 import { Request, Response } from "express";
 
 
 
-
 export async function fetchVarianceController(req: Request, res: Response) {
-    try {
+  try {
+    const company_id = req.query.company_id as string;
 
-      const result = await fetchVariance();
-
-      return res.json(  result  );
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Failed to save payroll" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-  }
-  
 
+    const roles = Array.isArray(req.user.roles)
+      ? req.user.roles
+      : [req.user.roles];
+
+    const userAcc = roles[0];
+
+    const result = await fetchVariance(userAcc, company_id);
+
+    return res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch variance" });
+  }
+}
 
 export async function fetchEmployeeVarianceController(req:Request, res:Response){
   try{
@@ -29,3 +37,42 @@ export async function fetchEmployeeVarianceController(req:Request, res:Response)
     res.status(500).json({message:"failed to save payroll"});
   }
 } 
+
+
+
+export async function fetchVarianceControllerEmp(req: Request, res: Response) {
+  try {
+
+    const companyId = req.query.company_id as string;
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "company_id is required"
+      });
+    }
+    
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    
+    const roles = Array.isArray(req.user.roles)
+      ? req.user.roles
+      : [req.user.roles];
+
+    const userAcc = roles[0];
+
+    const result = await fetchVarianceEmp(userAcc,companyId);
+
+    return res.json(result);
+
+  } catch (error) {
+
+    console.error("Variance Controller Error:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch variance"
+    });
+
+  }
+}

@@ -1,18 +1,21 @@
 "use client";
 
-import {  useState } from "react";
+import {  useRef, useState } from "react";
 import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
 import { printPayroll } from "@/app/utils/printPayrollUtils";
-import { dummySummary } from "@/app/types/dummyData";
+//import { dummySummary } from "@/app/types/dummyData";
 import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
 
 import SweetAlert from "../Swal";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
-import CompanyFilter from "../CompanyFilter";
+//import CompanyFilter from "../CompanyFilter";
 import RequestModal from "../Modal";
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
 import GenButton from "../Buttons";
 import { useAuth } from "../UserContext";
+import { useReactToPrint } from "react-to-print";
+import PayrollSpreadsheetPrint from "../reports/PrintPayrollSpreadsheet";
+import ViewDeductionsOnly from "@/app/ModalContent/PreparePayroll/ViewDeductionsOnly";
 
 
 
@@ -23,11 +26,11 @@ interface Props {
 }
 
 export default function StepReviewSave({ onBack }: Props) {
-  const [selectedCompany, setSelectedCompany] = useState("");
+  const [selectedCompany] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const [isModalOpen2, setIsModalOpen2] = useState(false);
 
   const { hasPermission,user } = useAuth()
 
@@ -41,6 +44,8 @@ export default function StepReviewSave({ onBack }: Props) {
   const companyCode = data?.data?.[0]?.EmpCode.BranchCode.company_id ?? "-";
 
   const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
+
+  const printRef = useRef<HTMLDivElement>(null)
 
   const [editedWtax, setEditedWtax] = useState<Record<string, number>>({});
 
@@ -112,7 +117,7 @@ export default function StepReviewSave({ onBack }: Props) {
       rfc: emp.rfc_loan,
       fch: emp.fch_loan,
       salaryLoan: emp.sss_loan,
-      calamityLoan: 0,
+      calamityLoan: emp.calamity_loan,
       pagibigSalaryLoan: emp.pagibig_loan,
       netPayable: net,
       sssEmployer: emp.sss_contrib_employer,
@@ -183,14 +188,28 @@ export default function StepReviewSave({ onBack }: Props) {
     }
   };
 
-  const openModal = () => {;
+  const openModal = () => {
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {;
+  const closeModal = () => {
     setIsModalOpen(false);
   };
+
+      const handlePrint1 = useReactToPrint({
+            contentRef: printRef,
+            documentTitle: `Payroll-${payCode}`,
+          })
   
+  
+
+    const openModal2 = () => {
+      setIsModalOpen2(true);
+    };
+
+    const closeModal2 = () => {
+      setIsModalOpen2(false);
+    };
 
   return (
     <div className="space-y-4">
@@ -223,14 +242,24 @@ export default function StepReviewSave({ onBack }: Props) {
       {hasPermission("SAVE_PAYROLL") && (
            <div className="flex gap-x-2">
                 <GenButton variant="primary" onClick={openModal}>View Variance</GenButton>
+                <GenButton variant="danger" onClick={openModal2}>Deductions</GenButton>
                 <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
                   {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                 </GenButton>
+                
             </div>
         )}
       </div>
-      <div>
+      <div className="flex gap-5 justify-center items-center">
+
             <h2><span className="font-bold">Company:</span> {companyCode}</h2>
+            <GenButton
+                        variant="main"
+                        onClick={handlePrint1}
+                        disabled={loading}
+                        >
+                        {loading ? "Generating PDF..." : "Print Payroll"}
+                    </GenButton>
       </div> 
 
       </div>
@@ -264,7 +293,7 @@ export default function StepReviewSave({ onBack }: Props) {
           className="rounded-lg border px-5 py-2 text-sm">
           Back
         </button>
-
+{/* 
         <div className="flex gap-2">
 
           <button
@@ -275,17 +304,25 @@ export default function StepReviewSave({ onBack }: Props) {
           </button>
 
 
-        </div>
+        </div> */}
       </div>
 
-
+        <div className="hidden print:block">
+                <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={companyId} />
+            </div>
 
         {isModalOpen && (
-            <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
-              <FinancialVarianceModal paycode={payCode} cycle={currentCycle}/>
+            <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
+              <FinancialVarianceModal paycode={payCode} cycle={currentCycle} company_id={companyId}/>
             </RequestModal>
           )}
 
+
+        {isModalOpen2 && (
+            <RequestModal size="xxxl" title="VIEW DEDUCTIONS" onClose={closeModal2}>
+              <ViewDeductionsOnly/>
+            </RequestModal>
+          )}
 
 
 

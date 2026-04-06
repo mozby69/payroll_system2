@@ -12,6 +12,7 @@ if (!JWT_SECRET) {
 export interface AuthPayload {
   id: number
   username: string
+  roles:string
 }
 
 declare global {
@@ -46,7 +47,8 @@ export function authenticateToken(
 
     req.user = {
       id: decoded.id,
-      username: decoded.username
+      username: decoded.username,
+      roles: decoded.roles
     }
 
     next()

@@ -175,12 +175,16 @@ export async function generateBonusForAllEmployees({
   companyCode, 
   asOfDate,
   generateDate,
+  batchId,
+  tx
 }: {
   bonusRuleId: number
   releasePeriod: string
   companyCode?: string
   asOfDate: Date
   generateDate: Date
+  batchId: string
+  tx: Prisma.TransactionClient
 }) {
   return prisma.$transaction(async tx => {
     const rule = await tx.bonusRule.findUnique({
@@ -199,11 +203,7 @@ export async function generateBonusForAllEmployees({
   
    
 
-    const pendingChecker = await tx.employeeBonus.findMany({
-        where: {
-          status: "GENERATED"
-        }
-    })
+ 
     const blockingSummary = await tx.bonusSummary.findFirst({
       where: {
         bonusRuleId,
@@ -231,13 +231,7 @@ export async function generateBonusForAllEmployees({
       }
     }
 
-    if(pendingChecker.length > 0 || blockingSummary){
-      throw {
-        code: "PENDING_BONUS",
-        status: 409,
-        message: "A bonus generation is already pending. Please complete or cancel the existing process before generating a new bonus."
-      }
-    } 
+  
 
     if (blockingSummary) {
       throw {
@@ -281,6 +275,10 @@ export async function generateBonusForAllEmployees({
               { EmployeeStatus: "Active" },
               { bod_member: "bod1" },
               { bod_member: "bod2" },
+              {EndDate: {
+                gte: generateDate
+              }},
+           
             ],
           },
         ],
@@ -349,7 +347,8 @@ export async function generateBonusForAllEmployees({
         asOfDate,
         generateDate,
         totalAmount: 0,
-        totalEmployees: 0
+        totalEmployees: 0,
+        batchId
       }
     })
 
@@ -1038,26 +1037,41 @@ export async function getEmployeesByBonusSummarySerive(
   const employees = await tx.employee.findMany({
     where: {
       AND: [
-        {
-          BranchCode: {
-            CompanyCode: {
-              CompanyCode: selectedCompanyCode
+          {
+            BranchCode: {
+              CompanyCode: {
+                CompanyCode: selectedCompanyCode
+              },
             },
           },
-         
-        },
-      {
-        EmployementDate: {
-          lte: summary.generateDate
-        }
-      },
-        {
-          OR: [
-            { EmployeeStatus: "Active" },
-            { bod_member: "bod1" },
-            { bod_member: "bod2" },
-          ],
-        },
+
+          { 
+            OR: [
+              {
+                EmployeeStatus: "Active",
+                EmployementDate: {
+                  lte: summary.generateDate
+                }
+              },
+
+              {
+                EmployeeStatus: "Resigned",
+                EmployementDate: {
+                  lte: summary.generateDate
+                },
+                EndDate:{
+                  gte: summary.generateDate
+                }
+              },
+
+              {
+                OR: [
+                  { bod_member: "bod1" },
+                  { bod_member: "bod2" }
+                ],
+              },
+            ],
+          },
       ],
     },
     include: {
@@ -1081,7 +1095,10 @@ export async function getEmployeesByBonusSummarySerive(
         },
       },
     },
-    orderBy: { Lastname: "asc" },
+    orderBy: [
+      { Lastname: "asc" },
+      { Firstname: "asc" }
+    ]
   })
 
      const variance = await prisma.$transaction(async (tx) => {
@@ -1593,4 +1610,84 @@ export async function reconcileEmployeePayrollBonus(
   }
 }
 
+
+export async function generateMultipleBonuses({
+  bonusRuleIds,
+  releasePeriod,
+  asOfDate,
+  generateDate,
+  companyCode,
+  batchId
+}: {
+  bonusRuleIds: number[]
+  releasePeriod: string
+  asOfDate: Date
+  generateDate: Date
+  companyCode?: string
+  batchId: string
+}) {
+  return prisma.$transaction(async tx => {
+
+    const results = []
+
+    for (const ruleId of bonusRuleIds) {
+      const res = await generateBonusForAllEmployees({
+        bonusRuleId: ruleId,
+        releasePeriod,
+        asOfDate,
+        generateDate,
+        companyCode,
+        batchId,
+        tx
+      })
+
+      results.push({ ruleId, ...res })
+    }
+
+    return results
+  })
+}
+
+
+type ResolveBonusRulesParams = {
+  asOfDate: Date
+  providedRuleIds?: number[]
+}
+
+export async function resolveBonusRuleIds({
+  asOfDate,
+  providedRuleIds
+}: ResolveBonusRulesParams): Promise<number[]> {
+
+  // ✅ If user already selected rules → use them
+  if (providedRuleIds && providedRuleIds.length > 0) {
+    return providedRuleIds
+  }
+
+  const month = asOfDate.getMonth() + 1
+
+  // ✅ Determine bonus types based on month
+  const types =
+    month === 6
+      ? ["MIDYEAR", "QUARTERLY"]
+      : ["QUARTERLY"]
+
+  // ✅ Fetch active rules
+  const rules = await prisma.bonusRule.findMany({
+    where: {
+      bonusType: { in: types as any },
+      isActive: true
+    },
+    select: { id: true }
+  })
+
+  if (rules.length === 0) {
+    throw {
+      code: "NO_ACTIVE_RULE",
+      message: "No active bonus rules found for this period"
+    }
+  }
+
+  return rules.map(r => r.id)
+}
 

@@ -34,6 +34,7 @@ export const ViewEmployeeListAllowance:React.FC<ViewEmployeeListAllowanceProps> 
               <tr className="bg-slate-100">
                 <th className="p-2 text-left">Emp Code</th>
                 <th className="p-2 text-left">Name</th>
+                <th className="p-2 text-left">Branch</th>
                 <th className="p-2 text-right">Cash</th>
                 <th className="p-2 text-right">Ecola</th>
                 <th className="p-2 text-right">Deduction</th>
@@ -45,6 +46,7 @@ export const ViewEmployeeListAllowance:React.FC<ViewEmployeeListAllowanceProps> 
                 <tr key={`${row.EmpCodeId}`}>
                   <td className="p-2">{row.EmpCodeId}</td>
                   <td className="p-2">{row.name}</td>
+                        <td className="p-2">{row.branchCode}</td>
                   <td className="p-2 text-right">{row.cash_allowance ?? 0}</td>
                   <td className="p-2 text-right">{row.ecola ?? 0}</td>
                   <td className="p-2 text-right">{row.totalDeduction ?? 0}</td>

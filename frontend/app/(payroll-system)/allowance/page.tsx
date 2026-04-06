@@ -11,6 +11,8 @@ import AllowanceArchiveTab from "@/app/components/allowance/archiveTab";
 import { TabItem, Tabs } from "@/app/components/Tab";
 import RequestModal from "@/app/components/Modal";
 import ViewAllList from "@/app/ModalContent/Allowance/ViewAllList";
+import { Pencil } from "lucide-react";
+import EditBranchAllowance from "@/app/ModalContent/Allowance/EditBranch";
 
 
 
@@ -26,6 +28,8 @@ export default function AllowancePage(){
         const [month, setMonth] = useState("");
         const saveAllowance = useSaveAllowance(month);
         const [isModalOpen, setIsModalOpen] = useState(false);
+        const [isModalOpen2, setIsModalOpen2] = useState(false);
+        const [selectedAllowance, setSelectedAllowance] = useState<AllowanceProps | null>(null);
         const { data: allowance_data } = useFetchAllowance({
                 page,
                 limit: 10,
@@ -59,15 +63,17 @@ export default function AllowancePage(){
 
             },
             {
+              header: "Branch",
+              render: (row) => `${row.BranchCode.branchCode}`,
+
+            },
+            {
               header: "EMPCODE",
               accessor: (row) => row.EmpCode,
             },
+           
             {
-              header: "DEDUCTIONS",
-              accessor: (row) => row.deduct ?? '0',
-            },
-            {
-              header: "Cash Allowance",
+              header: "Allowance",
               render: (row) => `${row.cash_assistance}`,
            
             },
@@ -77,20 +83,39 @@ export default function AllowancePage(){
       
             },
             {
+              header: "DEDUCTIONS",
+              accessor: (row) => row.deduct ?? '0',
+            },
+            {
               header: "Loan",
               render: (row) => `${row.loan ?? '0'}`,
       
             },
-            {
-              header:"TOTAL DEDUCTION",
-              render: (row) => `${row.totalDeduction}`,
+            // {
+            //   header:"TOTAL DEDUCTION",
+            //   render: (row) => `${row.totalDeduction}`,
            
-            },
+            // },
             {
               header: "TOTAL",
               accessor: (row) => row.total ?? '0',
             
             },
+            {
+              header:"Actions",
+              render: (row) => (
+                <div className="flex gap-2">
+                  <button
+                  onClick={() =>{
+                    openModal2();
+                    setSelectedAllowance(row);
+                  } }
+                  className="px-3 py-2.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
+                  <Pencil/>
+                  </button>
+                </div>
+              ),
+            }
           ];
           
 
@@ -112,6 +137,14 @@ export default function AllowancePage(){
           
             const closeModal = () => {
               setIsModalOpen(false);
+            };
+
+            const openModal2 = () => {
+              setIsModalOpen2(true);
+            };
+          
+            const closeModal2 = () => {
+              setIsModalOpen2(false);
             };
 
       
@@ -165,8 +198,9 @@ export default function AllowancePage(){
                   </div>
 
                 
-          
+                   
                   <Datatable columns={columns} data={tableData} showFooter/>
+                    
             
                   <Pagination
                       page={page}
@@ -190,6 +224,19 @@ export default function AllowancePage(){
                         <ViewAllList selectedMonth={month}/>
                     </RequestModal>
                   )}
+
+              {isModalOpen2 && (
+                    <RequestModal size="sm" title={`EDIT BRANCH`} onClose={closeModal2}>
+                        <EditBranchAllowance onClose={closeModal2}  data={selectedAllowance} selectedMonth={month}/>
+                    </RequestModal>
+                  )}
+
+
+              {/* {isModalOpen2 &&(
+                  <RequestModal size="md" title={`Edit Branch`} onClose={closeModal2}>
+                    <EditBranchAllowance data={selectedAllowance} selectedMonth={month} onClose={closeModal} />
+                  </RequestModal>
+                )} */}
 
 
                   

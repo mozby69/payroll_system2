@@ -20,6 +20,18 @@ async function main() {
     { code: "SAVE_TO_APPROVER", name: "Save Payroll to Approver" },
     { code: "SAVE_FINAL_PAYROLL", name: "Save Final Payroll" },
 
+    { code: "VIEW_LOANS", name: "View Loans" },
+    
+    { code: "DEDUCTION_VIEW", name: "Access Deduction" },
+
+    { code: "DISBURSEMENT_VIEW", name: "Access Disbursement" },
+
+    { code: "EMPLOYEE_VIEW", name: "Access Employees" },
+
+    { code: "ALLOWANCE_VIEW", name: "Access Allowance" },
+
+    { code: "CONVERSION_VIEW", name: "Access Conversion" },
+
     { code: "USER_MANAGE", name: "Manage Users" },
     { code: "ADMIN_MANAGE", name: "Manage Admin" }
   ]

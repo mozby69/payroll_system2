@@ -1,4 +1,4 @@
-import {  useState } from "react";
+import {   useState } from "react";
 import { EmployeeRow } from "../types/preparePayroll";
 import RequestModal from "../components/Modal";
 import SweetAlert from "../components/Swal";
@@ -7,12 +7,13 @@ import { EditBasicSalaryModal } from "./EditBasicSalary";
 
 
 export type PayrollSavePayload = {
-  empCode?: string;
+  empCode: string;
   basic_salary?: number;
   old_salary?: number;
   cash_assistance?: number;
   pagibig_employee_share?: number;
   remarks?: string;
+  include_payroll?:boolean;
 };
 
 
@@ -33,7 +34,9 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
   const [cashAssistance, setCashAssistance] = useState<string>(employeeSummary.cash_assistance?.toString() ?? "");
   const [sss] = useState<number>(Number(employeeSummary.sss_contrib ?? 0));
   const [philHealth] = useState<number>(Number(employeeSummary.phil_rate ?? 0));
+  const [includePayroll, setIncludePayroll] = useState<boolean>(employeeSummary.include_payroll ?? true);
 
+  
   
   const [hasBasicSalary] = useState(employeeSummary.basic_salary > 0);
 
@@ -146,6 +149,7 @@ const areloan =
            <input
             type="number"
             value={cashAssistance}
+            readOnly
             onChange={(e) => setCashAssistance(e.target.value)}
             className={`border py-2 px-2 rounded-lg bg-gray-100`}
           />
@@ -226,6 +230,21 @@ const areloan =
 
         {/* Loan Code ↑ */}
 
+
+      <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-xl border border-gray-200 mt-2">
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+            type="checkbox"
+            className="w-5 h-5 accent-green-600 cursor-pointer"
+            checked={includePayroll}
+            onChange={(e) => setIncludePayroll(e.target.checked)}
+          />
+            <span className="text-sm font-semibold text-gray-700">
+              INCLUDE PAYROLL
+            </span>
+          </label>
+      </div>
+
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
@@ -234,12 +253,14 @@ const areloan =
     
         onClick={() =>
           onFinalSave({
+              empCode: employeeSummary.EmpCode,
             ...(hasBasicSalary && {
               basic_salary: basicSalary,
               cash_assistance:cashAssistance !== "" ? Number(cashAssistance) : undefined,
             }),
-
-            pagibig_employee_share:pagibigEmployeeShare !== "" ? Number(pagibigEmployeeShare) : undefined
+            pagibig_employee_share:pagibigEmployeeShare !== "" ? Number(pagibigEmployeeShare) : undefined,
+            include_payroll: includePayroll
+           
           })
         }
         className={`px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500`}>

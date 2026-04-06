@@ -105,8 +105,12 @@ export const computePhilRateEmployer = (basicPay: number | null,philPercentage: 
 
   
   if (isBod) {
+    console.log("true")
     const res = basicPay * philPercentage;
     const final = res - bodEmployeeShare;
+
+    console.log("Formula", basicPay, " ", philPercentage,  bodEmployeeShare , "Final", final)
+    
     return Number(final.toFixed(2));
   }
 

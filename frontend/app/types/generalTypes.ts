@@ -77,3 +77,24 @@ export type FecthCompany = {
 };
 
 export type LoanTypeResponse = string[];
+
+
+export type BranchesType = {
+  branchCode: string;
+  Location: string;
+  company_id: string;
+  position: number;
+  Company?: string
+}
+
+export type ReorderBranchesPayload = {
+  company_id: string
+  branchCodes: string[]
+}
+
+
+export type ApiResponse<T> = {
+  success: boolean
+  message?: string
+  data: T
+}

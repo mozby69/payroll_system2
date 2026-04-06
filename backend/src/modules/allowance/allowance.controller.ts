@@ -1,4 +1,5 @@
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, saveAllowanceArchive, ViewAllList } from "./allowance.service";
+import { getBranch } from "../general/general.services";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getVarianceForAllowance, saveAllowanceArchive, updateAllowanceBranch, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -203,4 +204,20 @@ export const fetchViewAllListController = async (req: Request, res: Response) =>
 
   res.json(data);
 };
+
+
+export async function updateAllowanceBranchController(req:Request, res:Response) {
+  const { EmpCode, selectedMonth, branchCode } = req.body;
+
+  await updateAllowanceBranch({
+    EmpCode,
+    selectedMonth,
+    branchCode,
+  });
+
+  res.json({ success: true });
+}
+
+
+
 

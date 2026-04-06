@@ -137,3 +137,8 @@ export function countEligibleMonthsWithHalfRule(
 
   return total
 }
+
+export function generateBatchId(releasePeriod: string) {
+  const timestamp = Date.now()
+  return `BONUS-${releasePeriod}-${timestamp}`
+}

@@ -60,12 +60,17 @@ export type TotalPayroll = {
     status: string
     created_at: string
     totalPayrollId: number
+    total_deductions:number;
     EmpCodeId: string
+    
     EmpCode: {
       Firstname: string
       Middlename: string
       Lastname: string
       BranchCodeId: string
+      employeepayroll:{
+      gmail_account:string;
+    }
     }
   }
 
@@ -92,6 +97,7 @@ export interface BankProps {
   cycle_category:"10-25-Cycle" | "15-30-Cycle";
   Netpay:number;
   BranchCodeId:string;
+  EmpCodeId:string;
   EmpCode:{
     Firstname:string;
     Lastname:string;

@@ -9,10 +9,10 @@ import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadShee
 import SweetAlert from "@/app/components/Swal";
 import { useAuth } from "@/app/components/UserContext";
 import { toNumber } from "@/app/helper/SpreadsheetHelper";
-import {  useDisplayForApprovalPayroll, useReCheckPayroll, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
+import {  useDisplayForApprovalPayroll, useReCheckPayroll, useReCheckPayrollToChecker, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print"
 
 
@@ -24,6 +24,7 @@ export default function FinancialPage(){
   
       const savePayroll = useSaveFinalPayroll();
       const recheckPayroll = useReCheckPayroll();
+      const recheckPayrollToChecker = useReCheckPayrollToChecker();
       const saveToApprover = useSaveToApproverPayroll()
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
@@ -45,14 +46,38 @@ export default function FinancialPage(){
         status = "FOR_CHECKER"; 
       }
       
-      const { data, isLoading } = useDisplayForApprovalPayroll(status);
+      const { data, isLoading } = useDisplayForApprovalPayroll(status,company);
 
   
 
    
       const payCode = data?.data?.[0]?.PayCode ?? "-";
-      const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
       const isEmpty = !data || !data.data || data.data.length === 0;
+
+      const availableCompany = data?.availableCompany ?? [];
+
+        const cycles = useMemo(() => {
+          return [...new Set(availableCompany.map(c => c.cycle))];
+        }, [availableCompany]);
+
+        const companies = useMemo(() => {
+          if (!cycle) return [];
+
+          return [
+            ...new Set(
+              availableCompany
+                .filter(c => c.cycle === cycle)
+                .map(c => c.company_id)
+            ),
+          ];
+        }, [cycle, availableCompany]);
+
+
+      const filteredData = data?.data?.filter(
+        (item) => item.CycleCategory === cycle
+      ) ?? [];
+
+      const isEmpty2 = filteredData.length === 0;
 
       const [editedWtax, setEditedWtax] = useState<Record<string, number>>({});
 
@@ -65,15 +90,15 @@ export default function FinancialPage(){
 
 
         const rows: SpreadsheetRow[] = !cycle ? [] : (data?.data ?? [])
-        .filter((emp) => {
-          if (cycle && emp.CycleCategory !== cycle) return false;
+        // .filter((emp) => {
+        //   if (cycle && emp.CycleCategory !== cycle) return false;
       
-          if (company && emp.EmpCode.BranchCode?.company_id !== company) {
-            return false;
-          }
+        //   if (company && emp.EmpCode.BranchCode?.company_id !== company) {
+        //     return false;
+        //   }
       
-          return true;
-        })
+        //   return true;
+        // })
       .map((emp) => {
         const key = buildKey(
           emp.PayCode,
@@ -96,6 +121,10 @@ export default function FinancialPage(){
             Number(emp.sss_loan) +
             Number(emp.pagibig_loan)
           );
+
+
+
+
     
         return {
           name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
@@ -113,7 +142,7 @@ export default function FinancialPage(){
           rfc: emp.rfc_loan,
           fch: emp.fch_loan,
           salaryLoan: emp.sss_loan,
-          calamityLoan: 0,
+          calamityLoan: emp.calamity_loan,
           pagibigSalaryLoan: emp.pagibig_loan,
           netPayable: net,
           sssEmployer: emp.sss_contrib_employer,
@@ -137,7 +166,7 @@ export default function FinancialPage(){
           "Confirm Save Payroll",
           "Are you sure you want to save this payroll?",
           () => {
-            savePayroll.mutate(cycle);
+            savePayroll.mutate({cycle,companyId:company});
           }
         );
       };
@@ -149,7 +178,17 @@ export default function FinancialPage(){
           "Confirm Reopen Payroll",
           "Are you sure you want to this recheck payroll?",
           () => {
-            recheckPayroll.mutate();
+            recheckPayroll.mutate(company);
+          }
+        );
+      };
+
+      const handleRecheckToChecker = () => {
+        SweetAlert.confirmationAlert(
+          "Confirm Reopen Payroll",
+          "Are you sure you want to this recheck payroll?",
+          () => {
+            recheckPayrollToChecker.mutate(company);
           }
         );
       };
@@ -166,10 +205,8 @@ export default function FinancialPage(){
       };
     
     
-      const handleCycleChange = (value: string) => {
-        setCycle(value);
-        setCompany("");
-      };
+   
+
     
       const totals = rows.reduce(
           (acc, row) => {
@@ -222,17 +259,23 @@ export default function FinancialPage(){
           documentTitle: `Payroll-${payCode}`,
         })
 
+
+
+
+
     return ( 
         <div className="py-8 px-4">
          
        
             <div className="flex justify-between px-4 gap-x-4">
               <div className="inline-flex justify-start items-center gap-8">
-                <GenButton
-                variant="primary"
-                 disabled={isLoading || isEmpty}
-                 onClick={openModal}
-                 >View Variance</GenButton>
+              <GenButton
+                  variant="primary"
+                  disabled={isLoading || isEmpty || !company}
+                  onClick={openModal}
+                >
+                  View Variance
+                </GenButton>
                  <GenButton
                     variant="main"
                     onClick={handlePrint1}
@@ -248,22 +291,31 @@ export default function FinancialPage(){
               {hasRole("FINANCIAL_CHECKER") && (
                 <GenButton onClick={handleRecheck}
                         variant="edit"
-                        disabled={recheckPayroll.isPending || isLoading || isEmpty}>
+                        disabled={recheckPayroll.isPending || isLoading || isEmpty || !company}>
                         {recheckPayroll.isPending ? "Saving..." : "Reopen Payroll"}
                 </GenButton>
               )}
 
                 {hasPermission("SAVE_FINAL_PAYROLL") && (
+                  <>
                   <GenButton onClick={handleSave}
                           variant="positive"
-                          disabled={savePayroll.isPending || isLoading || isEmpty || !cycle}>
+                          disabled={savePayroll.isPending || isLoading || isEmpty2 || !cycle || !company}>
                           {savePayroll.isPending ? "Saving..." : "Save Payroll"}
                   </GenButton>
+
+                  <GenButton onClick={handleRecheckToChecker}
+                          variant="edit"
+                          disabled={savePayroll.isPending || isLoading || isEmpty2 || !cycle || !company}>
+                          {savePayroll.isPending ? "Saving..." : "Reopen Payroll"}
+                  </GenButton>
+
+                  </>
                 )}
 
               {hasPermission("SAVE_TO_APPROVER") && (
                   <button onClick={handleSaveToApprover}
-                   disabled={!cycle || !company}
+                   disabled={!cycle || !company || isEmpty}
                   className="bg-amber-800 px-4 rounded-md text-white cursor-pointer disabled:opacity-50 disabled:hover:cursor-not-allowed">Save Payroll</button>
                 )}
 
@@ -277,13 +329,43 @@ export default function FinancialPage(){
                 </div>
 
                 <div>
-                <CompanyCycleFilter
-                    cycle={cycle}
-                    company={company}
-                    onCycleChange={handleCycleChange}
-                    onCompanyChange={setCompany}
-                  />
+              
                 </div>
+                <div className="flex gap-4 px-4 mt-4">
+
+                    {/* Cycle */}
+                    <select
+                      className="border px-3 py-2 rounded"
+                      value={cycle}
+                      onChange={(e) => {
+                        setCycle(e.target.value);
+                        setCompany(""); // reset company
+                      }}
+                    >
+                      <option value="">Select Cycle</option>
+                      {cycles.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Company */}
+                    <select
+                      className="border px-3 py-2 rounded"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      disabled={!cycle}
+                    >
+                      <option value="">Select Company</option>
+                      {companies.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+
+            </div>
             </div>
 
               <SpreadSheet
@@ -297,12 +379,15 @@ export default function FinancialPage(){
                       }
                     />
 
-
-                 {/* {isModalOpen && (
-                        <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
-                          <FinancialVarianceModal/>
-                        </RequestModal>
-                      )} */}
+              {isModalOpen && (
+                <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
+                  <FinancialVarianceModal
+                    paycode={payCode}
+                    cycle={cycle}
+                    company_id={company}
+                  />
+                </RequestModal>
+              )}
 
 
             <div className="hidden print:block">

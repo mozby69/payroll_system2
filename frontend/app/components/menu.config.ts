@@ -58,7 +58,7 @@ export const MENU_SECTIONS: MenuSection[] = [
           label:"Disbursement",
           path:"/disburse-payroll",
           icon: CreditCard,
-          permission: "BONUS_GENERATE",
+          permission: "DEDUCTION_VIEW",
         }
       ]
     },
@@ -70,7 +70,7 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees List",
           path: "/employee-list",
           icon: User,
-          permission: "BONUS_GENERATE"
+          permission: "EMPLOYEE_VIEW"
         },
      
       ]
@@ -82,13 +82,13 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Statutory Deductions",
           path: "/statutory-deductions",
           icon: ShieldCheck,
-          permission: "BONUS_GENERATE"
+          permission: "DEDUCTION_VIEW"
         },
         {
           label: "Employees Loan",
           path: "/employee-loan",
           icon: HandCoins,
-          permission: "BONUS_GENERATE"
+          permission: "VIEW_LOANS"
         }
       ]
     },
@@ -105,13 +105,13 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees Allowance",
           path: "/allowance",
           icon: PhilippinePeso,
-          permission: "PAYROLL_LIST"
+          permission: "ALLOWANCE_VIEW"
         },
         {
           label: "Employees Conversion",
           path: "/conversion",
           icon: FilePlus,
-          permission: "BONUS_GENERATE"
+          permission: "CONVERSION_VIEW"
         },
       ]
     }

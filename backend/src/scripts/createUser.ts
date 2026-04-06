@@ -11,7 +11,8 @@ async function main() {
       name: "Trial User",
       username: "admin1234",
       password: Password,
-      roleIds: [1]
+      roleIds: [1],
+      company_id: null,
   });
 
 }
@@ -24,3 +25,7 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+
+  

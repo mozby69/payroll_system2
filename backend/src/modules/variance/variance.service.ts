@@ -1,20 +1,37 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
 import { parsePayCycleToDate } from "./variance.helper";
 
 
-export async function fetchVariance() {
-  const computed = await displayCompletePayroll(["PENDING"]);
+export async function fetchVariance(userAcc:string ,companyId: string) {
+  let computed: any[] = [];
 
-  if (!computed || computed.length === 0) {
-    return { total_variance: [], company_variance: [] };
+  if (userAcc === "PAYROLL_CHECKER") {
+    computed = (await displayCompletePayroll(["PENDING"])) ?? [];
   }
+
+  if (userAcc === "FINANCIAL_CHECKER") {
+    computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
+  }
+
+  if (userAcc === "FINANCE_APPROVER") {
+    computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+  }
+
+  computed = computed.filter(
+    r => r.EmpCode?.BranchCode?.company_id === companyId
+  );
+
 
   const { CycleCategory } = computed[0];
   const payrollPeriod = computed[0].PayrollPeriod;
 
   const includePagibigAndTax =
     payrollPeriod === "25-pay-cycle" || payrollPeriod === "30-pay-cycle";
+
+
+  
 
   // -----------------------------
   // PREVIOUS TOTAL PAYROLL
@@ -127,29 +144,21 @@ export async function fetchVariance() {
   // -----------------------------
   // GROUP CURRENT BY COMPANY
   // -----------------------------
-  const companyGroups: Record<string, typeof computed> = {};
-
-  for (const row of computed) {
-    const company = row.EmpCode?.BranchCode?.company_id || "UNKNOWN";
-
-    if (!companyGroups[company]) {
-      companyGroups[company] = [];
-    }
-
-    companyGroups[company].push(row);
-  }
-
+  const companyGroups = {
+    [companyId ?? "UNKNOWN"]: computed
+  };
+  
   // -----------------------------
   // PREVIOUS COMPANY TOTALS
   // -----------------------------
   const previousCompanyTotals = await prisma.totalPayrollByCompany.findMany({
     where: {
+      ...(companyId && { company_id: companyId }),
       total_payroll_id: {
         in: [olderPrevious?.id, recentPrevious?.id].filter(Boolean) as number[]
       }
     }
   });
-
   // -----------------------------
   // COMPANY VARIANCE
   // -----------------------------
@@ -297,6 +306,7 @@ export async function fetchVariance() {
   }
   
   return {
+    includePagibigAndTax,
     total_variance: totalRows,
     company_variance: companyVariance
   };
@@ -314,16 +324,632 @@ export async function fetchVariance() {
 
 
 
+interface VarianceEmployee {
+  empId: string
+  name: string
+
+  previousBasic?: number
+  currentBasic?: number
+
+  previousSSS?: number
+  currentSSS?: number
+
+  previousSSSEmployer?: number
+  currentSSSEmployer?: number
+
+  previousPhil?: number
+  currentPhil?: number
+
+  previousPhilEmployer?: number
+  currentPhilEmployer?: number
+
+  previousPag?: number
+  currentPag?: number
+
+  previousPagEmployer?: number
+  currentPagEmployer?: number
+
+  previousTaxEmploye?: number
+  currentTaxEmploye?: number
+  
+  leaveType?: string
 
 
+  difference?: number
+}
+
+interface VarianceAnalysis {
+  newEmployees: VarianceEmployee[]
+  salaryIncrease: VarianceEmployee[]
+  resignedEmployees: VarianceEmployee[]
+
+  sssVariance: VarianceEmployee[]
+  sssEmployerVariance: VarianceEmployee[]
+  philEmployerVariance: VarianceEmployee[]
+  philVariance: VarianceEmployee[]
+  pagEmployerVariance: VarianceEmployee[]
+  pagVariance: VarianceEmployee[]
+  taxVariance: VarianceEmployee[]
+  specialLeaveEmployees: VarianceEmployee[]
+}
+
+export async function fetchVarianceEmp(userAcc:String,companyId: string) {
+
+   let computed: any[] = [];
+
+  if (userAcc === "PAYROLL_CHECKER") {
+    computed = (await displayCompletePayroll(["PENDING"])) ?? [];
+  }
+
+  if (userAcc === "FINANCIAL_CHECKER") {
+    computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
+  }
+
+  if (userAcc === "FINANCE_APPROVER") {
+    computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+  }
+
+  computed = computed.filter(
+    r => r.EmpCode?.BranchCode?.company_id === companyId
+  );
+
+  if (computed.length === 0) {
+    return {
+      includePagibigAndTax: false,
+      total_variance: [],
+      company_variance: [],
+      variance_analysis: {
+        newEmployees: [],
+        salaryIncrease: [],
+        resignedEmployees: [],
+        sssVariance: [],
+        sssEmployerVariance: [],
+        philEmployerVariance: [],
+        philVariance: [],
+        pagEmployerVariance: [],
+        pagVariance: [],
+        taxVariance: [],
+        specialLeaveVarian: [],
+      }
+    }
+  }
+
+  const { CycleCategory, PayrollPeriod, PayCode } = computed[0]
+
+  
+
+  const includePagibigAndTax =
+    PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle"
+
+  //--------------------------------
+  // Detect probationary new employees
+  //--------------------------------
+
+  const probationaryNewEmployees = computed.filter(
+    r =>
+      r.EmpCode?.EmploymentStatus === "Probationary" &&
+      r.EmpCode?.isNewEmployee === true
+  )
+
+  const hasProbationaryNewEmployees = probationaryNewEmployees.length > 0
+
+  //--------------------------------
+  // Determine if SSS/Phil should compute
+  //--------------------------------
+
+  const shouldComputeSSSPhil =
+    PayrollPeriod === "10-pay-cycle" ||
+    PayrollPeriod === "15-pay-cycle" ||
+    (
+      (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
+      hasProbationaryNewEmployees
+    )
+
+  //--------------------------------
+  // CURRENT TOTAL BASIC
+  //--------------------------------
+
+  const currentTotals = computed.reduce(
+    (acc, row) => {
+      acc.total_basic_salary += Number(row.semi_monthly ?? 0)
+      return acc
+    },
+    { total_basic_salary: 0 }
+  )
+
+  //--------------------------------
+  // GET CURRENT PAYROLL RECORD
+  //--------------------------------
+
+  const currentPayroll = await prisma.totalPayroll.findFirst({
+    where: {
+      cycle_category: CycleCategory,
+      PayCycle: PayCode
+    },
+    orderBy: { id: "desc" }
+  })
+
+  //--------------------------------
+  // PREVIOUS PAYROLL
+  //--------------------------------
+
+  const previousPayrollBasic = await prisma.totalPayroll.findFirst({
+    where: {
+      cycle_category: CycleCategory,
+      id: { lt: currentPayroll?.id }
+    },
+    orderBy: { id: "desc" }
+  })
+
+  const previousPayrollSSS = await prisma.totalPayroll.findFirst({
+    where: {
+      cycle_category: CycleCategory,
+      payroll_period: PayrollPeriod,
+      id: { lt: currentPayroll?.id }
+    },
+    orderBy: { id: "desc" }
+  })
+
+  //--------------------------------
+  // PREVIOUS EMPLOYEES
+  //--------------------------------
+
+  const previousEmployeesBasic = await prisma.employeePayrollArchive.findMany({
+    where: {
+      totalPayrollId: previousPayrollBasic?.id,
+      EmpCode: { BranchCode: { company_id: companyId } }
+    },
+    include: {
+      EmpCode: {
+        include: {
+          specialLeaves: true
+        }
+      }
+    }
+  })
 
 
+  const previousEmployeesSSS = await prisma.employeePayrollArchive.findMany({
+    where: {
+      totalPayrollId: previousPayrollSSS?.id,
+      EmpCode: { BranchCode: { company_id: companyId } }
+    },
+    include: { EmpCode: true }
+  })
+
+  //--------------------------------
+  // MAPS
+  //--------------------------------
+
+  const currentMap = new Map<string, typeof computed[0]>()
+
+  for (const row of computed) {
+    if (!row.EmpCodeId) continue
+    currentMap.set(row.EmpCodeId, row)
+  }
+
+  const previousMapBasic = new Map<string, typeof previousEmployeesBasic[0]>()
+
+  for (const row of previousEmployeesBasic) {
+    previousMapBasic.set(row.EmpCodeId, row)
+  }
+
+  const previousMapSSS = new Map<string, typeof previousEmployeesSSS[0]>()
+
+  for (const row of previousEmployeesSSS) {
+    previousMapSSS.set(row.EmpCodeId, row)
+  }
+
+  //--------------------------------
+  // VARIANCE ANALYSIS
+  //--------------------------------
+
+  const varianceAnalysis: VarianceAnalysis = {
+    newEmployees: [],
+    salaryIncrease: [],
+    resignedEmployees: [],
+    sssVariance: [],
+    sssEmployerVariance: [],
+    philEmployerVariance: [],
+    philVariance: [],
+    pagEmployerVariance: [],
+    pagVariance: [],
+    taxVariance: [],
+    specialLeaveEmployees: [],
+  }
+
+  const specialLeaveTypes = ["Maternity", "Paternity", "Health"]
+
+  //--------------------------------
+  // NEW EMPLOYEES
+  //--------------------------------
+
+  for (const [empId, row] of currentMap) {
+    if (
+      !previousMapBasic.has(empId) &&
+      row.EmpCode?.EmploymentStatus === "Active"
+    ) {
+      varianceAnalysis.newEmployees.push({
+        empId,
+        name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
+        currentBasic: Number(row.semi_monthly ?? 0)
+      })
+    }
+  }
+
+  //--------------------------------
+  // MISSING EMPLOYEES (LEFT PAYROLL)
+  //--------------------------------
+
+  for (const [empId, prevRow] of previousMapBasic) {
+
+    if (!currentMap.has(empId)) {
+
+        const employee = prevRow.EmpCode
+
+        const leave = employee?.specialLeaves?.find(l =>
+          specialLeaveTypes.includes(l.leaveName)
+        )
+
+        if (leave) {
+          varianceAnalysis.specialLeaveEmployees.push({
+            empId,
+            name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
+            leaveType: leave.leaveName,
+            previousBasic: Number(prevRow.Basic_salary ?? 0)
+          })
+        }
+
+    }
+
+  }
+  
+  //--------------------------------
+  // SALARY INCREASE
+  //--------------------------------
+  for (const [empId, row] of currentMap) {
+
+    const prev = previousMapBasic.get(empId)
+    if (!prev) continue
+
+    const currentBasic = Number(row.semi_monthly ?? 0)
+    const previousBasic = Number(prev.Basic_salary ?? 0)
+
+    if (currentBasic > previousBasic) {
+
+      varianceAnalysis.salaryIncrease.push({
+        empId,
+        name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
+        previousBasic,
+        currentBasic,
+        difference: currentBasic - previousBasic
+      })
+
+    }
+
+  }
+  //--------------------------------
+  // RESIGNED EMPLOYEES
+  //--------------------------------
+
+  for (const [empId, prevRow] of previousMapBasic) {
+
+    const currentRow = currentMap.get(empId)
+
+    const employee = prevRow.EmpCode
+
+    const isResigned =
+       employee?.EmployeeStatus === "RESIGNED"
+
+    if (isResigned) {
+
+      varianceAnalysis.resignedEmployees.push({
+        empId,
+        name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
+        previousBasic: Number(prevRow.Basic_salary ?? 0)
+      })
+
+    }
+
+  }
+
+  //--------------------------------
+  // SSS + PHIL (conditional)
+  //--------------------------------
+
+  if (shouldComputeSSSPhil) {
+
+    
+
+    for (const [empId, row] of currentMap) {
+
+      const employee = row.EmpCode
+      
+
+      if (
+        (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
+        (
+          employee?.EmploymentStatus !== "Probationary" ||
+          row.EmpCode?.isNewEmployee !== true
+        )
+      ) {
+        continue
+      }
+
+      const prev = previousMapSSS.get(empId)
+
+      
+
+      const currentSSS = Number(row.sss_contrib_employee ?? 0)
+      const previousSSS = Number(prev?.SSS_employee_share ?? 0)
+
+      
+
+      if (currentSSS !== previousSSS) {
+        varianceAnalysis.sssVariance.push({
+          empId,
+          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
+          previousSSS,
+          currentSSS,
+          difference: currentSSS - previousSSS
+        })
+      }
+
+      const currentSSSEmployer = Number(row.sss_contrib_employer ?? 0)
+      const previousSSSEmployer = Number(prev?.SSS_employer_share ?? 0)
+
+      if (currentSSSEmployer !== previousSSSEmployer) {
+        varianceAnalysis.sssEmployerVariance.push({
+          empId,
+          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
+          previousSSSEmployer,
+          currentSSSEmployer,
+          difference: currentSSSEmployer - previousSSSEmployer
+        })
+      }
+
+      const currentPhil = Number(row.philhealth_contrib_employee ?? 0)
+      const previousPhil = Number(prev?.philhealth_employee_share ?? 0)
+
+      if (currentPhil !== previousPhil) {
+        varianceAnalysis.philVariance.push({
+          empId,
+          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
+          previousPhil,
+          currentPhil,
+          difference: currentPhil - previousPhil
+        })
+      }
+
+      const currentPhilEmployer = Number(row.philhealth_contrib_employer ?? 0)
+      const previousPhilEmployer = Number(prev?.philhealth_employer_share ?? 0)
+
+      if (currentPhilEmployer !== previousPhilEmployer) {
+        varianceAnalysis.philEmployerVariance.push({
+          empId,
+          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
+          previousPhilEmployer,
+          currentPhilEmployer,
+          difference: currentPhilEmployer - previousPhilEmployer
+        })
+      }
+
+    }
+
+  }
+
+  //--------------------------------
+  // MISSING EMPLOYEES (SSS + PHIL)
+  //--------------------------------
+    for (const [empId, prevRow] of previousMapSSS) {
+
+      // skip if still exists in current
+      if (currentMap.has(empId)) continue
+
+      const employee = prevRow.EmpCode
+
+      // --------------------------------
+      // APPLY SAME FILTER LOGIC
+      // --------------------------------
+      if (
+        (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
+        (
+          employee?.EmploymentStatus !== "Probationary" ||
+          employee?.isNewEmployee !== true
+        )
+      ) {
+        continue
+      }
+
+      const fullName = `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`
+
+      // --------------------------------
+      // SSS EMPLOYEE
+      // --------------------------------
+      const previousSSS = Number(prevRow?.SSS_employee_share ?? 0)
+      const currentSSS = 0
+
+      if (previousSSS !== 0) {
+        varianceAnalysis.sssVariance.push({
+          empId,
+          name: fullName,
+          previousSSS,
+          currentSSS,
+          difference: currentSSS - previousSSS
+        })
+      }
+
+      // --------------------------------
+      // SSS EMPLOYER
+      // --------------------------------
+      const previousSSSEmployer = Number(prevRow?.SSS_employer_share ?? 0)
+      const currentSSSEmployer = 0
+
+      if (previousSSSEmployer !== 0) {
+        varianceAnalysis.sssEmployerVariance.push({
+          empId,
+          name: fullName,
+          previousSSSEmployer,
+          currentSSSEmployer,
+          difference: currentSSSEmployer - previousSSSEmployer
+        })
+      }
+
+      // --------------------------------
+      // PHIL EMPLOYEE
+      // --------------------------------
+      const previousPhil = Number(prevRow?.philhealth_employee_share ?? 0)
+      const currentPhil = 0
+
+      if (previousPhil !== 0) {
+        varianceAnalysis.philVariance.push({
+          empId,
+          name: fullName,
+          previousPhil,
+          currentPhil,
+          difference: currentPhil - previousPhil
+        })
+      }
+
+      // --------------------------------
+      // PHIL EMPLOYER
+      // --------------------------------
+      const previousPhilEmployer = Number(prevRow?.philhealth_employer_share ?? 0)
+      const currentPhilEmployer = 0
+
+      if (previousPhilEmployer !== 0) {
+        varianceAnalysis.philEmployerVariance.push({
+          empId,
+          name: fullName,
+          previousPhilEmployer,
+          currentPhilEmployer,
+          difference: currentPhilEmployer - previousPhilEmployer
+        })
+      }
+
+    }
 
 
+  //--------------------------------
+  // PAGIBIG + TAX (25 / 30 cycle)
+  //--------------------------------
 
+  if (includePagibigAndTax) {
 
+    for (const [empId, row] of currentMap) {
 
+      const prev = previousMapSSS.get(empId)
 
+      const currentPag = Number(row.pagibig_contrib_employee ?? 0)
+      const previousPag = Number(prev?.Pagibig_employee_share ?? 0)
+
+      if (currentPag !== previousPag) {
+        varianceAnalysis.pagVariance.push({
+          empId,
+          name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
+          previousPag,
+          currentPag,
+          difference: currentPag - previousPag
+        })
+      }
+
+      const currentPagEmployer = Number(row.pagibig_contrib_employer ?? 0)
+      const previousPagEmployer = Number(prev?.Pagibig_employer_share ?? 0)
+
+      if (currentPagEmployer !== previousPagEmployer) {
+        varianceAnalysis.pagEmployerVariance.push({
+          empId,
+          name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
+          previousPagEmployer,
+          currentPagEmployer,
+          difference: currentPagEmployer - previousPagEmployer
+        })
+      }
+
+      const currentTax = Number(row.wtax ?? 0)
+      const previousTax = Number(prev?.w_tax ?? 0)
+
+      if (currentTax !== previousTax) {
+        varianceAnalysis.taxVariance.push({
+          empId,
+          name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
+          previousTaxEmploye: previousTax,
+          currentTaxEmploye: currentTax,
+          difference: currentTax - previousTax
+        })
+      }
+
+    }
+
+    //--------------------------------
+    // MISSING EMPLOYEES (PAGIBIG + TAX)
+    //--------------------------------
+      for (const [empId, prevRow] of previousMapSSS) {
+
+      if (currentMap.has(empId)) continue
+
+      const employee = prevRow.EmpCode
+      const fullName = `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`
+
+      // --------------------------------
+      // PAGIBIG EMPLOYEE
+      // --------------------------------
+      const previousPag = Number(prevRow?.Pagibig_employee_share ?? 0)
+
+      if (previousPag !== 0) {
+        varianceAnalysis.pagVariance.push({
+          empId,
+          name: fullName,
+          previousPag,
+          currentPag: 0,
+          difference: -previousPag
+        })
+      }
+
+      // --------------------------------
+      // PAGIBIG EMPLOYER
+      // --------------------------------
+      const previousPagEmployer = Number(prevRow?.Pagibig_employer_share ?? 0)
+
+      if (previousPagEmployer !== 0) {
+        varianceAnalysis.pagEmployerVariance.push({
+          empId,
+          name: fullName,
+          previousPagEmployer,
+          currentPagEmployer: 0,
+          difference: -previousPagEmployer
+        })
+      }
+
+      // --------------------------------
+      // TAX
+      // --------------------------------
+      const previousTax = Number(prevRow?.w_tax ?? 0)
+
+      if (previousTax !== 0) {
+        varianceAnalysis.taxVariance.push({
+          empId,
+          name: fullName,
+          previousTaxEmploye: previousTax,
+          currentTaxEmploye: 0,
+          difference: -previousTax
+        })
+      }
+
+    }
+
+  }
+
+  //--------------------------------
+  // RETURN
+  //--------------------------------
+
+  return {
+    includePagibigAndTax,
+    variance_analysis: varianceAnalysis
+  }
+
+}
 
 
 
@@ -508,3 +1134,7 @@ export async function fetchEmployeeVariance() {
     return { employees_with_variance: [] };
   }
 }
+
+
+
+

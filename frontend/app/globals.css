@@ -164,47 +164,6 @@
 }
 
 
-@media print {
-  .no-print {
-    display: none !important;
-  }
-
-  .print-only {
-    display: block !important;
-  }
-
-  body {
-    background: white !important;
-    padding-inline: 1rem;
-  }
-
-  .print-container {
-    background: white !important;
-    box-shadow: none !important;
-    border: none !important;
-    width: 100%;
-    overflow: visible !important;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  th, td {
-    font-size: 11px;
-    padding: 6px;
-    word-break: break-word;
-  }
-
-  thead {
-    display: table-header-group;
-  }
-
-  tr {
-    page-break-inside: avoid;
-  }
-}
-
 .print-only {
   display: none;
 }
@@ -217,3 +176,18 @@
 }
 
  */
+
+
+ @media print {
+  .print-deductions thead {
+    display: table-row-group;
+  }
+
+  .print-deductions tr {
+    page-break-inside: avoid;
+  }
+
+  .print-deductions table {
+    page-break-inside: auto;
+  }
+}

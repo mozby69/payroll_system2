@@ -1,7 +1,9 @@
 import { Request, Response } from "express"
-import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
+import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, generateMultipleBonuses, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, resolveBonusRuleIds, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema, updateBonusSchema } from "./bonus.schema"
 import z, { json } from "zod";
+import { generateBatchId } from "./bonus.utils";
+import { prisma } from "../../config/prismaClient";
 
 
 
@@ -185,49 +187,104 @@ export async function updateBonusRuleController(
 
 //Gerate Bonus Controller
 
+  // export async function generateBonusController(
+  //   req: Request,
+  //   res: Response
+  // ) {
+  //   try {
+  //     const { bonusRuleId, releasePeriod, asOfDate, generateDate } = req.body
+
+  //     if (!bonusRuleId || !releasePeriod || !asOfDate) {
+  //       return res.status(400).json({
+  //         message: "Missing required fields"
+  //       })
+  //     }
+ 
+
+  //    const bonus = await generateBonusForAllEmployees({
+  //       bonusRuleId: Number(bonusRuleId),
+  //       releasePeriod,
+  //       asOfDate: new Date(asOfDate),
+  //       generateDate: new Date(generateDate),
+  //     })
+  
+  //     return res.status(200).json({
+  //       message: "Bonuses generated successfully 1",
+  //       data: bonus
+  //     })
+  //   } catch (err: any) {
+  //     switch (err?.code) {
+  //       case "INVALID_BONUS_AMOUNT":
+  //         return res.status(400).json(err)
+    
+  //       case "PENDING_BONUS":
+  //         return res.status(409).json(err)
+
+  //     case "NO_COMPANY_ASSIGNED":
+  //           return res.status(409).json(err)
+    
+  //       default:
+  //         return res.status(500).json({
+  //           message: "Internal server error"
+  //         })
+  //     }
+  //   }
+    
+  // }
+
+
   export async function generateBonusController(
     req: Request,
     res: Response
   ) {
     try {
-      const { bonusRuleId, releasePeriod, asOfDate, generateDate } = req.body
+      console.log("BODY:", req.body)
 
-      if (!bonusRuleId || !releasePeriod || !asOfDate) {
+      let { bonusRuleIds, releasePeriod, asOfDate, generateDate, companyCode } = req.body
+  
+      if (!releasePeriod || !asOfDate) {
         return res.status(400).json({
-          message: "Missing required fields"
+          message: "Missing required fields1"
         })
       }
+  
+      const asOf = new Date(asOfDate)
+      const genDate = generateDate ? new Date(generateDate) : new Date()
+  
  
 
-     const bonus = await generateBonusForAllEmployees({
-        bonusRuleId: Number(bonusRuleId),
+        // ✅ FIX: reassign instead of redeclare
+    bonusRuleIds = await resolveBonusRuleIds({
+      asOfDate: asOf,
+      providedRuleIds: bonusRuleIds
+    })
+  
+      // ✅ CREATE BATCH ID
+      const batchId = generateBatchId(releasePeriod)
+  
+      const result = await generateMultipleBonuses({
+        bonusRuleIds,
         releasePeriod,
-        asOfDate: new Date(asOfDate),
-        generateDate: new Date(generateDate),
+        asOfDate: asOf,
+        generateDate: genDate,
+        companyCode,
+        batchId
       })
   
       return res.status(200).json({
-        message: "Bonuses generated successfully 1",
-        data: bonus
+        message: "Bonuses generated successfully",
+        batchId,
+        data: result
       })
-    } catch (err: any) {
-      switch (err?.code) {
-        case "INVALID_BONUS_AMOUNT":
-          return res.status(400).json(err)
+  
+    }catch (err: any) {
+      console.error("ERROR:", err) // ✅ ADD THIS
     
-        case "PENDING_BONUS":
-          return res.status(409).json(err)
-
-      case "NO_COMPANY_ASSIGNED":
-            return res.status(409).json(err)
-    
-        default:
-          return res.status(500).json({
-            message: "Internal server error"
-          })
-      }
+      return res.status(500).json({
+        message: err?.message || "Internal server error",
+        error: err // optional (for debugging)
+      })
     }
-    
   }
   
 

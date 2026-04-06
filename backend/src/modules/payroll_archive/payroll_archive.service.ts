@@ -7,7 +7,9 @@ import { groupByCompany, isPayrollDateRange } from "./payroll_archive.helper";
 import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow } from "./payroll_archive.types";
 import { Console } from "console";
 import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
-
+import { logs_action_type } from "@prisma/client";
+import nodemailer from "nodemailer";
+import { EmployeeArchivedType, generatePayslipPDF } from "../print/print.service";
 
 export async function employeeProbationary(){
 
@@ -52,7 +54,7 @@ export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId:
 
 
 
-export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER")[] ,company_id?:string) {
+export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER" )[] ,company_id?:string) {
   
     try{
       const sssTable = await getSSSContributions();
@@ -63,39 +65,83 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
       const baseFilter = {
         EmpCode: {
-          BranchCode: {
-            company_id: company_id,
+            employeepayroll:{
+            include_payroll: true,
+            },
+            BranchCode: {
+              company_id: company_id,
+            },
+            isAlien: false,
           },
-        },
-      };
-
-
-
+        }
+  
 
       const employeeList = await prisma.employeeSummary.findMany({
         where: {
           AND: [
-            baseFilter,
             {
               status: {
                 in: statuses,
               },
             },
+        
             {
               OR: [
+                // NORMAL
                 {
-                  EmpCode: {
-                    EmployeeStatus: {
-                      notIn: ["Resigned", "Inactive", "Terminate"],
+                  AND: [
+                    baseFilter,
+                    {
+                      OR: [
+                        {
+                          EmpCode: {
+                            EmployeeStatus: {
+                              notIn: ["Resigned", "Inactive", "Terminate"],
+                            },
+                          },
+                        },
+                        {
+                          EmpCode: {
+                            bod_member: {
+                              in: ["bod1", "bod2"],
+                            },
+                          },
+                        },
+                      ],
                     },
-                  },
+                  ],
                 },
+        
+                // ALIEN
                 {
-                  EmpCode: {
-                    bod_member: {
-                      in: ["bod1", "bod2"],
+                  AND: [
+                    {
+                      EmpCode: {
+                        isAlien: true,
+                        secondaryBranch:{
+                          company_id: company_id
+                        }
+                      },
                     },
-                  },
+                    {
+                      OR: [
+                        {
+                          EmpCode: {
+                            EmployeeStatus: {
+                              notIn: ["Resigned", "Inactive", "Terminate"],
+                            },
+                          },
+                        },
+                        {
+                          EmpCode: {
+                            bod_member: {
+                              in: ["bod1", "bod2"],
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  ],
                 },
               ],
             },
@@ -116,6 +162,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           NightShiftOtAtt:true,
           EmpCodeId:true,
           selected_payroll_date:true,
+        
           EmpCode:{
             select:{
               Firstname:true,
@@ -124,6 +171,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               isNewEmployee:true,
               bod_member:true,
               Taxable:true,
+              isAlien: true,
+              BranchCodeId: true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -134,6 +183,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                   basic_salary: true,
                 }
               },
+              secondaryBranch: true,
                   
             pagibig_list:{
               select:{
@@ -142,6 +192,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 pagibig_employer_share:true,
               }
             },
+            specialLeaves:{
+              select:{
+                leaveName: true,
+                status:true,
+              }
+            }
             },
             
           },
@@ -156,6 +212,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       if (!employeeList || employeeList.length === 0) {
         return [];
       }
+
       
 
 // loans fetch and query here ↓
@@ -181,6 +238,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         EmpCodeId: true,
         loan_type: true,
         per_payroll_deduct: true,
+        others_types: true,
       },
     });
 
@@ -216,11 +274,30 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loanByEmp[loan.EmpCodeId] = {};
       }
 
-      loanByEmp[loan.EmpCodeId][loan.loan_type] = {
-        amount: Number(loan.per_payroll_deduct),
-        alreadyDeducted,
-      };
+      let key = loan.loan_type;
 
+      if (
+        loan.others_types === "Calamity" &&
+        (loan.loan_type === "SSS_LOAN" || loan.loan_type === "PAGIBIG_LOAN")
+      ) {
+        if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
+        if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
+      }
+
+      if (!loanByEmp[loan.EmpCodeId][key]) {
+        loanByEmp[loan.EmpCodeId][key] = {
+          amount: 0,
+          alreadyDeducted: false,
+        };
+      }
+
+      if (!alreadyDeducted) {
+        loanByEmp[loan.EmpCodeId][key].amount += Number(loan.per_payroll_deduct);
+      }
+
+      // mark deducted if ANY record is deducted
+      loanByEmp[loan.EmpCodeId][key].alreadyDeducted =
+        loanByEmp[loan.EmpCodeId][key].alreadyDeducted || alreadyDeducted;
       
     }
 
@@ -228,8 +305,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       loan && !loan.alreadyDeducted ? loan.amount : 0;
 
 // loans fetch and query here ↑
-
-
 
 
       //wtax override 
@@ -252,7 +327,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           overrideMap.set(key, Number(o.edited_value));
         }
       }
-      //wtax override
+  
 
       const normalized = employeeList.map((emp) => {
         
@@ -267,6 +342,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
         const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
         const isTaxable = emp.EmpCode.Taxable;
+
+   
 
         const bodMap = new Map(
           bodPhil.map((b) => [
@@ -287,7 +364,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
-        const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes,);
+        const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes);
         const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
         const philhealthRateEmployer = computePhilRateEmployer(basicSalary, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
         const pagibigEmployeeShare = computePagibig(rawPagibigEmployee,Paycodes);
@@ -299,16 +376,21 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
     
         // Loan Code ↓
-
         const loans = loanByEmp[emp.EmpCodeId] ?? {};
         const fch_loan = loanDeduct(loans.FCH_LOAN);
         const sss_loan = loanDeduct(loans.SSS_LOAN);
         const pagibig_loan = loanDeduct(loans.PAGIBIG_LOAN);
         const rfc_loan = loanDeduct(loans.RFC_LOAN);
         const are_loan = loanDeduct(loans.ARE_LOAN);
+        const calamity_loan =
+                      loanDeduct(loans.Pag_IBIG_Cal) +
+                      loanDeduct(loans.SSS_Cal);
+        const pag_ibig_cal = loanDeduct(loans.Pag_IBIG_Cal);
+        const sss_cal = loanDeduct(loans.SSS_Cal);
         // Loan Code ↑
 
-        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan;
+
+        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan + calamity_loan;
 
 
         const overTime = computeOvertime(basicSalary, {
@@ -329,6 +411,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
+
+        const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee;
+
+        // console.log("total",emp.EmpCode.Firstname,'totaldeduct-',totalDeductions);
       
         return {
           ...emp,
@@ -345,6 +431,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           pagibig_loan,
           rfc_loan,
           are_loan,
+          calamity_loan,
+          pag_ibig_cal,
+          sss_cal,
           // Loan Code ↑
 
           sss_contrib_employee:sssContribEmployee,
@@ -357,6 +446,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           wtax: finalWtax,          
           computedWtax: computedWtax,
           company_id:companyId,
+          total_deductions:totalDeductions,
       
         };
  
@@ -395,12 +485,33 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
    
     const result = await prisma.employeeSummary.updateMany({
       where: {
-         status: "PENDING",
-         EmpCode:{
-          BranchCode:{
-            company_id:company_id,
-          }
-         }        
+        OR:[
+          {
+            status: "PENDING",
+            EmpCode:{
+             BranchCode:{
+               company_id:company_id,
+             },
+             isAlien: false,
+            } 
+          },
+             {
+              AND: [
+                { 
+                  EmpCode:{
+                  isAlien: true,
+                  secondaryBranch: {
+                    company_id: company_id,
+                  },
+                  }
+                },
+      
+                {
+                  status: "PENDING",
+                }
+              ]
+            }
+        ]
         },
       data: { status: "FOR_CHECKER" },
     });
@@ -416,144 +527,190 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
 
-  export async function saveComputedFinalPayroll(cycle: "10-25-Cycle" | "15-30-Cycle") {
-    
-  
+  export async function saveComputedFinalPayroll(cycle: "10-25-Cycle" | "15-30-Cycle",companyId: string,approvedBy:number) {
     return await prisma.$transaction(async (tx) => {
-
-
-      const pending = await tx.employeeSummary.findFirst({
+  
+     
+  
+      // ── Filter computed payroll to this company only ────────────────────────
+      const allComputed = await displayCompletePayroll(["FOR_APPROVER"]);
+      if (!allComputed || allComputed.length === 0) return 0;
+  
+      const computed = allComputed.filter((e) => 
+        (e.company_id === companyId && e.EmpCode?.isAlien === false)
+               ||
+       ( e.EmpCode?.isAlien === true &&
+        e.EmpCode?.secondaryBranch?.company_id === companyId)
+      );
+      if (computed.length === 0) return 0;
+  
+      const empCodes        = computed.map((e) => e.EmpCodeId);
+      const payrollPeriod   = computed[0].PayCode;
+      const payCycle        = computed[0].PayrollPeriod;
+      const payrollCycle    = payCycle.split("-")[0];
+      const cycleCategory   = cycle;
+  
+      const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod);
+      const [payYear, payMonth]  = currentPayrollPeriod.split("-").map(Number);
+  
+      const rawSelectedPayrollDate = computed[0]?.selected_payroll_date;
+      if (!rawSelectedPayrollDate || !isPayrollDateRange(rawSelectedPayrollDate)) {
+        throw new Error("Invalid selected_payroll_date");
+      }
+  
+      // ── Loans ───────────────────────────────────────────────────────────────
+      const loans = await tx.loan_details.findMany({
         where: {
-          status: {
-            in: ["PENDING", "FOR_CHECKER"],
-          },
-          CycleCategory:cycle,
+          EmpCodeId: { in: empCodes },
+          status: "ACTIVE",
+          loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"] },
+        },
+        select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true,others_types: true, },
+      });
+  
+      const loanIds = loans.map((l) => l.loan_id);
+      const ledgers = await tx.loan_ledger.findMany({
+        where: { loan_id: { in: loanIds } },
+        orderBy: { transaction_date: "desc" },
+      });
+  
+      const latestLedger = new Map<number, any>();
+      for (const l of ledgers) {
+        if (!latestLedger.has(l.loan_id)) latestLedger.set(l.loan_id, l);
+      }
+  
+      const loanByEmp: Record<string, any> = {};
+      for (const loan of loans) {
+        const ledger = latestLedger.get(loan.loan_id);
+        let alreadyDeducted = false;
+        if (ledger) {
+          const d = ledger.transaction_date;
+          alreadyDeducted =
+            d.getFullYear() === payYear &&
+            d.getMonth() + 1 === payMonth &&
+            ledger.payroll_cycle === payrollCycle;
+        }
+        if (!loanByEmp[loan.EmpCodeId]) loanByEmp[loan.EmpCodeId] = {};
+        loanByEmp[loan.EmpCodeId][loan.loan_type] = {
+          loan_id: loan.loan_id,
+          amount: Number(loan.per_payroll_deduct),
+          alreadyDeducted,
+        };
+
+        
+
+        let key = loan.loan_type;
+
+
+        if (
+          loan.others_types === "Calamity" &&
+          (loan.loan_type === "SSS_LOAN" || loan.loan_type === "PAGIBIG_LOAN")
+        ) {
+          if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
+          if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
+        }
+        loanByEmp[loan.EmpCodeId][key] = {
+          loan_id: loan.loan_id,
+          amount: Number(loan.per_payroll_deduct),
+          alreadyDeducted,
+        };
+      }
+  
+      const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>
+        loan && !loan.alreadyDeducted ? loan.amount : 0;
+  
+      const companyTotals = computed.reduce(
+        (acc, emp) => {
+          acc.gross       += Number(emp.gross_pay ?? 0);
+          acc.net         += Number(emp.net_pay ?? 0);
+          acc.late        += Number(emp.late_count ?? 0);
+          acc.undertime   += Number(emp.undertime ?? 0);
+          acc.absent      += Number(emp.absence ?? 0);
+          acc.overtime    += Number(emp.overtime ?? 0);
+          acc.sssEmp      += Number(emp.sss_contrib_employee ?? 0);
+          acc.sssEr       += Number(emp.sss_contrib_employer ?? 0);
+          acc.pagibigEmp  += Number(emp.pagibig_contrib_employee ?? 0);
+          acc.pagibigEr   += Number(emp.pagibig_contrib_employer ?? 0);
+          acc.philEmp     += Number(emp.philhealth_contrib_employee ?? 0);
+          acc.philEr      += Number(emp.philhealth_contrib_employer ?? 0);
+          acc.wtax        += Number(emp.wtax ?? 0);
+          acc.basic       += Number(emp.semi_monthly ?? 0);
+          return acc;
+        },
+        {
+          gross: 0, net: 0, late: 0, undertime: 0, absent: 0, overtime: 0,
+          sssEmp: 0, sssEr: 0, pagibigEmp: 0, pagibigEr: 0,
+          philEmp: 0, philEr: 0, wtax: 0, basic: 0,
+        }
+      );
+  
+
+      const existingTotal = await tx.totalPayroll.findFirst({
+        where: {
+          PayCycle: payrollPeriod,
+          cycle_category: cycleCategory,
         },
       });
-      
-      if (pending) {
-        throw new Error("CANNOT_SAVE_FINAL_PAYROLL");
-      }
-    
-      const computed = await displayCompletePayroll(["FOR_APPROVER"]);
-
   
-    if (!computed || computed.length === 0) return 0;
-    
-    const empCodes = computed.map(e => e.EmpCodeId);
-    const payrollPeriod = computed[0].PayCode;
-    const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod)
-    const payCycle = computed[0].PayrollPeriod;
-
-    const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
-    const payrollCycle = payCycle.split("-")[0];
-
-    const cycleCategory = cycle;
-    const rawSelectedPayrollDate = computed[0]?.selected_payroll_date;
-    
-    const loans = await tx.loan_details.findMany({
-      where: {
-        EmpCodeId: { in: empCodes },
-        status: "ACTIVE",
-        loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"] },
-      },
-      select: {
-        loan_id: true,
-        EmpCodeId: true,
-        loan_type: true,
-        per_payroll_deduct: true,
-      },
-    });
-
-    const loanIds = loans.map((l) => l.loan_id);
-
-    const ledgers = await tx.loan_ledger.findMany({
-      where: { loan_id: { in: loanIds } },
-      orderBy: { transaction_date: "desc" },
-    });
-
-    const latestLedger = new Map<number, any>();
-    for (const l of ledgers) {
-      if (!latestLedger.has(l.loan_id)) {
-        latestLedger.set(l.loan_id, l);
-      }
-    }
-
-    const loanByEmp: Record<string, any> = {};
-
-    for (const loan of loans) {
-      const ledger = latestLedger.get(loan.loan_id);
-
-      let alreadyDeducted = false;
-      if (ledger) {
-        const d = ledger.transaction_date;
-        alreadyDeducted =
-          d.getFullYear() === payYear &&
-          d.getMonth() + 1 === payMonth &&
-          ledger.payroll_cycle === payrollCycle;
-      }
-
-      if (!loanByEmp[loan.EmpCodeId]) {
-        loanByEmp[loan.EmpCodeId] = {};
-      }
-
-      loanByEmp[loan.EmpCodeId][loan.loan_type] = {
-        loan_id: loan.loan_id,
-        amount: Number(loan.per_payroll_deduct),
-        alreadyDeducted,
-      };
-    }
-
-    const loanDeduct = (loan?: {
-      amount: number;
-      alreadyDeducted: boolean;
-    }) => (loan && !loan.alreadyDeducted ? loan.amount : 0);
-
-    if (!rawSelectedPayrollDate || !isPayrollDateRange(rawSelectedPayrollDate)) {
-      throw new Error("Invalid selected_payroll_date");
-    }
-
-    
+      let totalPayrollRecord;
   
-    // ================= AGGREGATE TOTALS =================
-    const totals = computed.reduce(
-      (acc, emp) => {
-        acc.gross += Number(emp.gross_pay ?? 0);
-        acc.net += Number(emp.net_pay ?? 0);
-        acc.late += Number(emp.late_count ?? 0);
-        acc.undertime += Number(emp.undertime ?? 0);
-        acc.absent += Number(emp.absence ?? 0);
-        acc.overtime += Number(emp.overtime ?? 0);
-        acc.sssEmployee += Number(emp.sss_contrib_employee ?? 0);
-        acc.sssEmployer += Number(emp.sss_contrib_employer ?? 0);
-        acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
-        acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
-        acc.philEmployee += Number(emp.philhealth_contrib_employee ?? 0);
-        acc.philEmployer += Number(emp.philhealth_contrib_employer ?? 0);
-        acc.wtax += Number(emp.wtax ?? 0);
-        acc.basic += Number(emp.semi_monthly ?? 0);
-        return acc;
-      },
-      {
-        gross: 0,
-        net: 0,
-        late: 0,
-        undertime: 0,
-        absent: 0,
-        overtime: 0,
-        sssEmployee: 0,
-        sssEmployer: 0,
-        pagibigEmployee: 0,
-        pagibigEmployer: 0,
-        philEmployee: 0,
-        philEmployer:0,
-        wtax: 0,
-        basic: 0,
+      if (!existingTotal) {
+        // First company saving — create the totalPayroll row
+        totalPayrollRecord = await tx.totalPayroll.create({
+          data: {
+            PayCycle: payrollPeriod,
+            cycle_category: cycleCategory,
+            payroll_period: payCycle,
+            status: "IN_PROGRESS",
+            selected_payroll_date: {
+              start_date: rawSelectedPayrollDate.start_date,
+              end_date: rawSelectedPayrollDate.end_date,
+            },
+            Total_GrossPay:                    companyTotals.gross,
+            Total_NetPay:                      companyTotals.net,
+            Total_Late:                        companyTotals.late,
+            Total_Absent:                      companyTotals.absent,
+            Total_OverTimePay:                 companyTotals.overtime,
+            Total_SSSContributionEmployee:     companyTotals.sssEmp,
+            Total_SSSContributionEmployer:     companyTotals.sssEr,
+            Total_PagibigContributionEmployee: companyTotals.pagibigEmp,
+            Total_PagibigContributionEmployer: companyTotals.pagibigEr,
+            Total_PhilhealthContributionEmployee: companyTotals.philEmp,
+            Total_PhilhealthContributionEmployer: companyTotals.philEr,
+            total_wtax:                        companyTotals.wtax,
+            total_basic_salary:                companyTotals.basic,
+            Total_Undertime:                   companyTotals.undertime,
+            createdAt: nowPH(),
+          },
+        });
+      } else {
+        // Subsequent company — accumulate totals into the existing row
+        totalPayrollRecord = await tx.totalPayroll.update({
+          where: { id: existingTotal.id },
+          data: {
+            Total_GrossPay:                    { increment: companyTotals.gross },
+            Total_NetPay:                      { increment: companyTotals.net },
+            Total_Late:                        { increment: companyTotals.late },
+            Total_Absent:                      { increment: companyTotals.absent },
+            Total_OverTimePay:                 { increment: companyTotals.overtime },
+            Total_SSSContributionEmployee:     { increment: companyTotals.sssEmp },
+            Total_SSSContributionEmployer:     { increment: companyTotals.sssEr },
+            Total_PagibigContributionEmployee: { increment: companyTotals.pagibigEmp },
+            Total_PagibigContributionEmployer: { increment: companyTotals.pagibigEr },
+            Total_PhilhealthContributionEmployee: { increment: companyTotals.philEmp },
+            Total_PhilhealthContributionEmployer: { increment: companyTotals.philEr },
+            total_wtax:                        { increment: companyTotals.wtax },
+            total_basic_salary:                { increment: companyTotals.basic },
+            Total_Undertime:                   { increment: companyTotals.undertime },
+          },
+        });
       }
-    );
-      // ================= 1️⃣ CREATE TOTAL PAYROLL =================
-      const total = await tx.totalPayroll.create({
+  
+      // ── 2️⃣ Create totalPayrollByCompany for this company ───────────────────
+      await tx.totalPayrollByCompany.create({
         data: {
+          total_payroll_id: totalPayrollRecord.id,
+          company_id: companyId,
           PayCycle: payrollPeriod,
           cycle_category: cycleCategory,
           payroll_period: payCycle,
@@ -561,267 +718,254 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             start_date: rawSelectedPayrollDate.start_date,
             end_date: rawSelectedPayrollDate.end_date,
           },
-          Total_GrossPay: totals.gross,
-          Total_NetPay: totals.net,
-          Total_Late: totals.late,
-          Total_Absent: totals.absent,
-          Total_OverTimePay: totals.overtime,
-          Total_SSSContributionEmployee: totals.sssEmployee,
-          Total_SSSContributionEmployer: totals.sssEmployer,
-          Total_PagibigContributionEmployee: totals.pagibigEmployee,
-          Total_PagibigContributionEmployer: totals.pagibigEmployer,
-          Total_PhilhealthContributionEmployee: totals.philEmployee,
-          Total_PhilhealthContributionEmployer: totals.philEmployer,
-          total_wtax: totals.wtax,
-          total_basic_salary: totals.basic,
-          Total_Undertime:totals.undertime,
+          Total_GrossPay:                    companyTotals.gross,
+          Total_NetPay:                      companyTotals.net,
+          Total_Late:                        companyTotals.late,
+          Total_Absent:                      companyTotals.absent,
+          Total_OverTimePay:                 companyTotals.overtime,
+          Total_SSSContributionEmployee:     companyTotals.sssEmp,
+          Total_SSSContributionEmployer:     companyTotals.sssEr,
+          Total_PagibigContributionEmployee: companyTotals.pagibigEmp,
+          Total_PagibigContributionEmployer: companyTotals.pagibigEr,
+          Total_PhilhealthContributionEmployee: companyTotals.philEmp,
+          Total_PhilhealthContributionEmployer: companyTotals.philEr,
+          total_wtax:                        companyTotals.wtax,
+          total_basic_salary:                companyTotals.basic,
+          Total_Undertime:                   companyTotals.undertime,
           createdAt: nowPH(),
         },
       });
-
-  // ================= 1️⃣ CREATE TOTAL PAYROLL PER COMPANY =================
-      const groupedByCompany = computed.reduce((acc, emp) => {
-        const companyId = emp.company_id;
-      
-        if (!companyId) return acc;
-      
-        if (!acc[companyId]) {
-          acc[companyId] = [];
-        }
-      
-        acc[companyId].push(emp);
-        return acc;
-      }, {} as Record<string, typeof computed>);
-
-
-      const companyTotalsData = Object.entries(groupedByCompany).map(
-        ([companyId, employees]) => {
-          const totals = employees.reduce(
-            (acc, emp) => {
-              acc.gross += Number(emp.gross_pay ?? 0);
-              acc.net += Number(emp.net_pay ?? 0);
-              acc.late += Number(emp.late_count ?? 0);
-              acc.absent += Number(emp.absence ?? 0);
-              acc.overtime += Number(emp.overtime ?? 0);
-              acc.sssEmployee += Number(emp.sss_contrib_employee ?? 0);
-              acc.sssEmployer += Number(emp.sss_contrib_employer ?? 0);
-              acc.pagibigEmployee += Number(emp.pagibig_contrib_employee ?? 0);
-              acc.pagibigEmployer += Number(emp.pagibig_contrib_employer ?? 0);
-              acc.philEmployee += Number(emp.philhealth_contrib_employee ?? 0);
-              acc.wtax += Number(emp.wtax ?? 0);
-              acc.basic += Number(emp.semi_monthly ?? 0);
-              acc.undertime += Number(emp.undertime ?? 0);
-              return acc;
-            },
-            {
-              gross: 0,
-              net: 0,
-              late: 0,
-              absent: 0,
-              overtime: 0,
-              sssEmployee: 0,
-              sssEmployer: 0,
-              pagibigEmployee: 0,
-              pagibigEmployer: 0,
-              philEmployee: 0,
-              wtax: 0,
-              basic: 0,
-              undertime: 0,
-            }
-          );
-      
-          return {
-            total_payroll_id: total.id,
-            company_id: companyId,
-            PayCycle: payrollPeriod,
-            cycle_category: cycleCategory,
-            payroll_period: payCycle,
-            selected_payroll_date: {
-              start_date: rawSelectedPayrollDate.start_date,
-              end_date: rawSelectedPayrollDate.end_date,
-            },
-            Total_GrossPay: totals.gross,
-            Total_NetPay: totals.net,
-            Total_Late: totals.late,
-            Total_Absent: totals.absent,
-            Total_OverTimePay: totals.overtime,
-            Total_SSSContributionEmployee: totals.sssEmployee,
-            Total_SSSContributionEmployer: totals.sssEmployer,
-            Total_PagibigContributionEmployee: totals.pagibigEmployee,
-            Total_PagibigContributionEmployer: totals.pagibigEmployer,
-            Total_PhilhealthContributionEmployee: totals.philEmployee,
-            Total_PhilhealthContributionEmployer: totals.philEmployee,
-            total_wtax: totals.wtax,
-            total_basic_salary: totals.basic,
-            Total_Undertime: totals.undertime,
-            createdAt: nowPH(),
-          };
-        }
-      );
-
-
-
-
   
-      // ================= 2️⃣ INSERT EMPLOYEE ARCHIVES =================
-      
+      // ── 3️⃣ Employee archives (this company only) ───────────────────────────
       const archivePayload = computed.map((emp) => {
         const empLoans = loanByEmp[emp.EmpCodeId] ?? {};
-      
         return {
-          PayCode: emp.PayCode,
-          Late: emp.late_count,
-          undertime:emp.undertime,
-          Absent: emp.absence,
-          cycle_category: emp.CycleCategory,
-          payroll_period: emp.PayrollPeriod,
-          Overtime: emp.overtime,
-          Grosspay: emp.gross_pay,
-          w_tax: emp.wtax,
-          Netpay: Number(emp.net_pay),
-          Basic_salary: Number(emp.semi_monthly),
-      
-          SSS_employee_share: emp.sss_contrib_employee,
-          SSS_employer_share: emp.sss_contrib_employer,
-      
-          Pagibig_employee_share: emp.pagibig_contrib_employee,
-          Pagibig_employer_share: emp.pagibig_contrib_employer,
-      
+          PayCode:                   emp.PayCode,
+          Late:                      emp.late_count,
+          undertime:                 emp.undertime,
+          Absent:                    emp.absence,
+          cycle_category:            emp.CycleCategory,
+          payroll_period:            emp.PayrollPeriod,
+          Overtime:                  emp.overtime,
+          Grosspay:                  emp.gross_pay,
+          w_tax:                     emp.wtax,
+          Netpay:                    Number(emp.net_pay),
+          Basic_salary:              Number(emp.semi_monthly),
+          SSS_employee_share:        emp.sss_contrib_employee,
+          SSS_employer_share:        emp.sss_contrib_employer,
+          Pagibig_employee_share:    emp.pagibig_contrib_employee,
+          Pagibig_employer_share:    emp.pagibig_contrib_employer,
           philhealth_employee_share: emp.philhealth_contrib_employee,
           philhealth_employer_share: emp.philhealth_contrib_employer,
-          
-      
-          // Loan Code ↓
-          fch_loan: loanDeduct(empLoans.FCH_LOAN),
-          sss_loan: loanDeduct(empLoans.SSS_LOAN),
-          pagibig_loan: loanDeduct(empLoans.PAGIBIG_LOAN),
-          rfc_loan: loanDeduct(empLoans.RFC_LOAN),
-          ar_e: loanDeduct(empLoans.ARE_LOAN),
-          // Loan Code ↑
-
-          isNewEmployee:emp.EmpCode.isNewEmployee,
-          EmpCodeId: emp.EmpCodeId,
-          totalPayrollId: total.id,
+          fch_loan:                  loanDeduct(empLoans.FCH_LOAN),
+          sss_loan:                  loanDeduct(empLoans.SSS_LOAN),
+          pagibig_loan:              loanDeduct(empLoans.PAGIBIG_LOAN),
+          rfc_loan:                  loanDeduct(empLoans.RFC_LOAN),
+          ar_e:                      loanDeduct(empLoans.ARE_LOAN),
+          sss_calamity_loan:         loanDeduct(empLoans.SSS_Cal),
+          pagibig_calamity_loan:     loanDeduct(empLoans.Pag_IBIG_Cal),      
+          isNewEmployee:             emp.EmpCode.isNewEmployee,
+          EmpCodeId:                 emp.EmpCodeId,
+          totalPayrollId:            totalPayrollRecord.id,
+          total_deductions:          emp.total_deductions,
+          PayrollBranchId:           emp.EmpCode.isAlien
+                                         ? emp.EmpCode.secondaryBranch?.branchCode ?? null
+                                         : emp.EmpCode.BranchCodeId ?? null
         };
       });
-      
 
 
   
-
-
-
-      // Loan Code ↓
-
-            const transaction_date = nowPH();
-
-            for (const emp of computed) {
-              const empLoans = loanByEmp[emp.EmpCodeId];
-              if (!empLoans) continue;
-      
-              for (const loanType of Object.keys(empLoans)) {
-                const loan = empLoans[loanType];
-                if (loan.alreadyDeducted) continue;
-      
-                await tx.loan_ledger.create({
-                  data: {
-                    loan_id: loan.loan_id,
-                    EmpCodeId: emp.EmpCodeId,
-                    transaction_date,
-                    payroll_cycle: payrollCycle,
-                    transaction_type: "PAYROLL_DEDUCT",
-                    debit_amount: 0,
-                    credit_amount: loan.amount,
-                    remarks: "Loan Credited to Payroll",
-                    payment_status: "PAID",
-                  },
-                });
-              }
-            }
-            
-          // Loan Code ↑ 
   
-      // ================= 3️⃣ UPDATE SUMMARY =================
-
-      await tx.totalPayrollByCompany.createMany({
-        data: companyTotalsData,
-      });
-
       await tx.employeePayrollArchive.createMany({
         data: archivePayload,
         skipDuplicates: true,
       });
 
+      console.log(archivePayload)
+  
+      // ── Loan ledger entries ─────────────────────────────────────────────────
+    const transaction_date = nowPH();
 
+    for (const emp of computed) {
+      const empLoans = loanByEmp[emp.EmpCodeId];
+      if (!empLoans) continue;
 
-            // Disburse code ↓
+      const processedLoanIds = new Set<number>(); // ✅ ADD THIS
 
-      const disbursingEmployees = await tx.employee.findMany({
-        where:{
-          EmpCode: {in: empCodes},
-          Disbursing:true
-        },
-        select:{
-          EmpCode:true
-        }
-      })
+      for (const loanType of Object.keys(empLoans)) {
+        const loan = empLoans[loanType];
 
-    
-      if (disbursingEmployees.length !== 0){
+        if (loan.alreadyDeducted) continue;
 
-        const disbursingEmpCodes = disbursingEmployees.map(e => e.EmpCode);
+        // ✅ PREVENT DUPLICATES
+        if (processedLoanIds.has(loan.loan_id)) continue;
+        processedLoanIds.add(loan.loan_id);
 
-        const disburseArchives = await tx.employeePayrollArchive.findMany({
-          where: {
-            EmpCodeId: { in: disbursingEmpCodes },
-            totalPayrollId: total.id,
-          },
-          select: {
-            id: true,
-            Netpay: true,
-            EmpCodeId: true,
+        await tx.loan_ledger.create({
+          data: {
+            loan_id:          loan.loan_id,
+            EmpCodeId:        emp.EmpCodeId,
+            transaction_date,
+            payroll_cycle:    payrollCycle,
+            transaction_type: "PAYROLL_DEDUCT",
+            debit_amount:     0,
+            credit_amount:    loan.amount,
+            remarks:          "Loan Credited to Payroll",
+            payment_status:   "PAID",
           },
         });
-
+      }
+    }
+      const disbursingEmployees = await tx.employee.findMany({
+        where: { EmpCode: { in: empCodes }, Disbursing: true },
+        select: { EmpCode: true },
+      });
+  
+      if (disbursingEmployees.length !== 0) {
+        const disbursingEmpCodes = disbursingEmployees.map((e) => e.EmpCode);
+        const disburseArchives = await tx.employeePayrollArchive.findMany({
+          where: { EmpCodeId: { in: disbursingEmpCodes }, totalPayrollId: totalPayrollRecord.id },
+          select: { id: true, Netpay: true, EmpCodeId: true },
+        });
+  
         const totalDisburseAmount = disburseArchives.reduce(
-          (sum, emp) => sum + Number(emp.Netpay ?? 0),
-          0
+          (sum, emp) => sum + Number(emp.Netpay ?? 0), 0
         );
-
+  
         const mainDisburse = await tx.main_disburse.create({
           data: {
-            typeDisburse: "PAYROLL", 
-            payrollPeriod: payrollPeriod,
-            payrollCycle: cycleCategory,
-            createdAt: nowPH(),
-            totalDisburse: totalDisburseAmount,
+            typeDisburse:   "PAYROLL",
+            payrollPeriod:  payrollPeriod,
+            payrollCycle:   cycleCategory,
+            createdAt:      nowPH(),
+            totalDisburse:  totalDisburseAmount,
           },
         });
-
+  
         await tx.emp_disburse.createMany({
           data: disburseArchives.map((archive) => ({
-            empArchiveId: archive.id,
-            mainDisburseId: mainDisburse.mainDisburseID,
+            empArchiveId:    archive.id,
+            mainDisburseId:  mainDisburse.mainDisburseID,
           })),
         });
-
       }
-      
-      // Disburse code ↑
 
+
+      await prisma.payrollProcessingLog.create({
+        data: {
+          PayCode: payrollPeriod,
+          PayrollPeriod: payCycle,
+          CycleCategory: cycleCategory,
+          action: logs_action_type.SAVE_FINAL_PAYROLL,
+          userId:approvedBy,
+          companyCode:companyId,
+        }
+      });
 
   
+   
       await tx.employeeSummary.updateMany({
-        where: { status: "FOR_APPROVER" },
+        where: {
+          AND: [
+            {
+              status: "FOR_APPROVER",
+              CycleCategory: cycle,
+            },
+            
+            {
+              OR:[
+
+                {
+                  EmpCode: {
+                    BranchCode: { CompanyCode: { CompanyCode: companyId } },
+                    isAlien: false,
+                  },
+                },
+
+                {
+                  AND: [
+                    {
+                      EmpCode: {
+                        isAlien: true,
+                        secondaryBranch:{
+                          company_id: companyId
+                        }
+                      },
+                    },
+                  ]
+                }
+
+              ]
+            }
+          ]
+        },
         data: { status: "DONE" },
       });
+  
 
-      await tx.employee.updateMany({
-        where: { isNewEmployee: true },
-        data: { isNewEmployee:false  },
+     await tx.employee.updateMany({
+    where: {
+      AND: [
+        {
+          isNewEmployee: true,
+        }, 
+
+        {
+
+          OR: [
+            {
+              BranchCode: {
+                CompanyCode: {
+                  is: {
+                    CompanyCycle: cycle,
+                    CompanyCode: companyId,
+                  },
+                },
+              },
+            },
+            {
+              AND: [
+                {
+                    isAlien: true,
+                    secondaryBranch:{
+                      company_id: companyId
+                  },
+                },
+              ]
+            }
+          ]
+        }
+      ]
+
+   
+    },
+
+
+    data: {
+      isNewEmployee: false,
+    },
+  });
+  
+
+      const remainingForApprover = await tx.employeeSummary.findFirst({
+        where: {
+          status: {
+            in: ["PENDING", "FOR_CHECKER", "FOR_APPROVER"]
+          },
+          CycleCategory: cycle,
+        },
       });
   
+      if (!remainingForApprover) {
+        await tx.totalPayroll.update({
+          where: { id: totalPayrollRecord.id },
+          data: { status: "COMPLETED" },
+        });
+      }
+  
       return archivePayload.length;
+  
     }).then((count) => {
       io.emit("payroll:calendarUpdate");
       return count;
@@ -834,10 +978,35 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
 
-  export async function reCheckPayroll(){
+  export async function reCheckPayroll(company_id:string){
    
     const data = await prisma.employeeSummary.updateMany({
-      where: { status: "FOR_CHECKER" },
+       where: { 
+        AND:[
+          {
+            status: "FOR_CHECKER",
+          },
+          {
+            OR: [
+              { 
+              EmpCode:{
+                BranchCode:{
+                  company_id:company_id,
+                }
+              }
+              },
+              {
+                EmpCode:{
+                  secondaryBranch:{
+                    company_id: company_id
+                  }
+                }
+              }
+            ]
+          }
+        ]
+       
+       },
       data: { status: "PENDING" },
     });
 
@@ -845,22 +1014,133 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
   
     return data;
 }
+
+
+export async function reCheckPayrollToChecker(company_id:string,approvedBy:number){
+
+  const computed = await displayCompletePayroll(["FOR_APPROVER"]);
+  if (!computed || computed.length === 0) return 0;
+
+  const paycode = computed[0].PayCode;
+  const payrollperiod = computed[0].PayrollPeriod;
+  const cycle = computed[0].CycleCategory;
+
+  await prisma.payrollProcessingLog.create({
+    data: {
+      PayCode: paycode,
+      PayrollPeriod: payrollperiod,
+      CycleCategory: cycle,
+      action: logs_action_type.REOPEN_TO_CHECKER,
+      userId:approvedBy,
+      companyCode:company_id,
+    }
+  });
+
+   
+  const data = await prisma.employeeSummary.updateMany({
+    where: { 
+      AND:[
+        {
+          status: "FOR_APPROVER",
+        },
+        {
+          OR: [
+            { 
+            EmpCode:{
+              BranchCode:{
+                company_id:company_id,
+              }
+            }
+            },
+            {
+              EmpCode:{
+                secondaryBranch:{
+                  company_id: company_id
+                }
+              }
+            }
+          ]
+        }
+      ]
+     
+     },
+    data: { status: "FOR_CHECKER" },
+  });
+
+
+ 
+
+
+  io.emit("payroll:changed");
+
+  return data;
+}
+
   
 
 
-export async function SaveToApproverPayroll(company_id:string){
+export async function SaveToApproverPayroll(company_id:string,approvedBy:number){
+  const computed = await displayCompletePayroll(["FOR_CHECKER"]);
+  if (!computed || computed.length === 0) return 0;
+
+  const paycode = computed[0].PayCode;
+  const payrollperiod = computed[0].PayrollPeriod;
+  const cycle = computed[0].CycleCategory;
+
+  if (!paycode || !payrollperiod || !cycle) {
+    throw new Error("Invalid payroll data for logging");
+  }
+
+  await prisma.payrollProcessingLog.create({
+    data: {
+      PayCode: paycode,
+      PayrollPeriod: payrollperiod,
+      CycleCategory: cycle,
+      action: logs_action_type.SAVE_TO_APPROVER,
+      userId:approvedBy,
+      companyCode:company_id,
+    }
+  });
+
    
   const data = await prisma.employeeSummary.updateMany({
     where: {
-      status: "FOR_CHECKER",
-      EmpCode:{
-       BranchCode:{
-         company_id:company_id,
-       }
-      }        
+      AND: [
+        {
+          status: "FOR_CHECKER",
+        },
+        {
+          OR: [
+            {
+              EmpCode:{
+                BranchCode:{
+                  company_id:company_id,
+                }
+                } 
+            },
+            {
+              AND: [
+                {
+                  EmpCode: {
+                    isAlien: true,
+                    secondaryBranch:{
+                      company_id: company_id
+                    }
+                  },
+                },
+              ],
+            }
+          ]
+        }
+       
+      ]
+           
      },
     data: { status: "FOR_APPROVER" },
   });
+
+
+   
 
   io.emit("payroll:changed");
 
@@ -1000,11 +1280,17 @@ export async function SaveToApproverPayroll(company_id:string){
         where,
         include: {
           EmpCode: {
+      
             select: {
               Firstname: true,
               Middlename: true,
               Lastname: true,
-              BranchCodeId: true
+              BranchCodeId: true,
+              employeepayroll:{
+                select:{
+                  gmail_account:true,
+                },
+              },
             }
           }
         },
@@ -1119,29 +1405,55 @@ export async function displayBankAdminBDO(){
 }
 
 
-  export async function ViewEmployeeBankAccounts({PayCode,cycle_category}: EmployeeBankAccountsParams) {
+  export async function ViewEmployeeBankAccounts({PayCode,cycle_category,company_id}: EmployeeBankAccountsParams) {
     try {
       const employeeList = await prisma.employeePayrollArchive.findMany({
         where: {
           PayCode,
           cycle_category,
-          EmpCode: {
-            Disbursing: {
-              not: true,
+          OR:[
+            {
+              EmpCode:{
+                BranchCode:{
+                  company_id:company_id,
+                },
+                Disbursing:{
+                  not:true,
+                },
+              },
             },
-          },
+            {
+              EmpCode:{
+                isAlien:true,
+                secondaryBranch:{
+                  company_id:company_id,
+                },
+                Disbursing:{
+                  not:true,
+                },
+              },
+            },
+          ]
+         
+
+       
         },
         select: {
           id:true,
           PayCode: true,
           cycle_category: true,
           Netpay: true,
+          EmpCodeId:true,
           EmpCode: {
+            
             select: {
               Firstname: true,
               Lastname: true,
               BranchCodeId:true,
               Disbursing:true,
+              isAlien:true,
+              secondaryBranch:true,
+              secondaryBranchId:true,
               employeepayroll:{
                 select:{
                   bank_account:true,
@@ -1171,7 +1483,8 @@ export async function displayBankAdminBDO(){
         PayCode: row.PayCode,
         cycle_category: row.cycle_category,
         Netpay: row.Netpay?.toNumber() ?? 0,
-        BranchCodeId:row.EmpCode.BranchCodeId,
+        BranchCodeId: row.EmpCode.isAlien ? row.EmpCode.secondaryBranchId  : row.EmpCode.BranchCodeId,
+        EmpCodeId:row.EmpCodeId,
         EmpCode: {
           Firstname: row.EmpCode.Firstname,
           Lastname: row.EmpCode.Lastname,
@@ -1181,11 +1494,381 @@ export async function displayBankAdminBDO(){
         },
       }));
   
-      const grouped = groupByCompany(normalized);
+     // const grouped = groupByCompany(normalized);
   
-      return grouped;
+      return normalized;
     } catch (error) {
       console.error("Error occured", error);
       throw error;
     }
   }
+
+
+
+
+
+
+//// KIM PAYROLL REPORT
+type PayrollDate = {
+  start_date: string
+  end_date: string
+}
+
+export async function getPayrollArchiveReportService(
+  payrollId: number,
+  company_id: string
+) {
+  try {
+
+    const totalPayroll = await prisma.totalPayroll.findUnique({
+      where:{
+        id: payrollId
+      }
+    });
+
+    const companyDetails = await prisma.company_details.findUnique({
+      where:{
+        CompanyCode: company_id
+      }
+    });
+
+    if (!companyDetails) {
+      throw {
+        code: "COMPANY_NOT_FOUND",  
+        status: 409,
+        message: "Error bonus not found"
+      }
+    }
+
+    if (!totalPayroll) {
+      throw {
+        code: "PAYROLL_NOT_FOUND",  
+        status: 409,
+        message: "Error bonus not found"
+      }
+    }
+
+    const payrollDate = totalPayroll?.selected_payroll_date as PayrollDate;
+
+    const endDate = payrollDate?.end_date
+      ? new Date(payrollDate.end_date)
+      : undefined;
+    
+
+    const employees = await prisma.employee.findMany({
+      where: {
+        AND: [
+          {
+            EmployeeStatus: {
+              not: "Resigned"
+            } 
+            ,
+            EmployementDate: {
+              lte: endDate
+            },
+          },
+          {
+            OR: [
+                {
+                  BranchCode: {
+                      company_id: company_id
+                  }
+               },
+               {
+                isAlien: true,
+                secondaryBranch:{
+                  company_id: company_id
+                }
+               }
+            ]
+          }
+        ]
+     
+      },
+      include: {
+        BranchCode: true,
+        archive_employee_payroll: {
+          where: {
+            totalPayrollId: payrollId
+          }
+        },
+        employeepayroll: {
+          select:{
+            basic_salary: true
+          }
+        },
+        secondaryBranch: true,
+        specialLeaves: true
+      },
+      orderBy: [
+        { bod_member: "desc" },
+        { BranchCode: { position: "asc" } },
+        { Lastname: "asc" }
+      ]
+    });
+
+    // Normalize payroll values
+    const rows = employees.map(emp => {
+      const payroll = emp.archive_employee_payroll[0];
+      let reason: string | null = null;
+      let leaveInfo = null;
+    
+      const payrollStart = new Date(payrollDate.start_date);
+      const payrollEnd = new Date(payrollDate.end_date);
+    
+      if ((payroll?.Netpay ?? 0) === 0) {
+    
+        const leave = emp.specialLeaves?.find(l => {
+          const leaveStart =
+          l.status === "Expected"
+            ? l.expectedStart
+              ? new Date(l.expectedStart)
+              : null
+            : l.start
+              ? new Date(l.start)
+              : null;
+        const leaveEnd =
+          l.status === "Expected"
+            ? l.expectedEnd
+              ? new Date(l.expectedEnd)
+              : null
+            : l.end
+              ? new Date(l.end)
+              : null;
+        
+        if (!leaveStart || !leaveEnd) return false;
+        
+        return leaveStart <= payrollEnd && leaveEnd >= payrollStart;
+        });
+    
+        if (leave) {
+    
+          const leaveStart =
+            leave.status === "Expected"
+              ? leave.expectedStart
+              : leave.start;
+    
+          const leaveEnd =
+            leave.status === "Expected"
+              ? leave.expectedEnd
+              : leave.end;
+    
+          reason = "ON_LEAVE";
+
+          if (leaveStart && leaveEnd) {
+    
+            leaveInfo = {
+              type: leave.leaveName,
+              start:   new Date(leaveStart).toLocaleDateString(),
+              end:  new Date(leaveEnd).toLocaleDateString(),
+              status: leave.status
+            };
+          }
+        }
+      }
+    
+      return {
+        empCode: emp.EmpCode,
+        name: `${emp.Lastname}, ${emp.Firstname}`,
+        board: emp.bod_member,
+        branch: emp.BranchCode?.branchCode ?? null,
+        department: emp.Department ?? null,
+        basic: emp.employeepayroll?.basic_salary ?? 0,
+        halfBasic: payroll?.Basic_salary ?? 0,
+        overtime: payroll?.Overtime ?? 0,
+        late: payroll?.Late ?? 0,
+        undertime: payroll?.undertime ?? 0,
+        absences: payroll?.Absent ?? 0,
+        total: payroll?.Grosspay ?? 0,
+        pagIbigEmployeer: payroll?.Pagibig_employer_share ?? 0,
+        sssEmployeer: payroll?.SSS_employer_share ?? 0,
+        philhealthEmployeer: payroll?.philhealth_employer_share ?? 0,
+        reason,
+        leaveInfo,
+        secondBranch: emp.isAlien ? emp.secondaryBranch?.company_id : "",
+        secondBranchId: emp.isAlien ? emp.secondaryBranchId : ""
+      };
+    });
+
+
+    // Board Employees (bod1 / bod2)
+    const boardEmployees = rows.filter(
+      r => r.board === "bod1" 
+    );
+
+    // Main Holding Employees
+    const holdingEmployees = rows.filter(
+      r =>
+        (!r.board || r.board === "") 
+             &&
+      (r.department !== "M2" && (r.branch === "EMB-MAIN"))
+               ||
+      (r.secondBranch === company_id && r.secondBranchId === "EMB-MAIN")
+    );
+
+      // Mancom Employees 
+
+      const mancomEmployees = rows.filter(
+        r => r.board === "Mancom"
+      )
+
+    // 3️⃣ Branch Employees
+    const branchEmployees = rows.filter(
+      r =>
+      (  (!r.board || r.board === "")
+                  &&
+        (r.branch !== "EMB-MAIN" &&  r.branch !== "ASS")
+                   ||   
+     (r.department === "M2" && (r.branch === "EMB-MAIN"))
+    )
+             ||
+    (r.secondBranch === company_id &&  r.branch === "ASS")
+    );
+
+    type BranchGroup = Record<string, typeof branchEmployees>;
+
+    const branchGroups = branchEmployees.reduce<BranchGroup>((acc, emp) => {
+    
+      const branchKey =
+      emp.branch === "ASS"
+      ? emp.secondBranchId ?? "UNKNOWN"
+      : emp.branch ?? "UNKNOWN";
+    
+      acc[branchKey] ??= [];
+      acc[branchKey].push(emp);
+    
+      return acc;
+    
+    }, {});
+    // ✅ Sort each group
+    Object.keys(branchGroups).forEach((key) => {
+      branchGroups[key].sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "")
+      );
+    });
+
+
+    const summaries = {
+      company: companyDetails.CompanyName,
+      PayCycle: totalPayroll.PayCycle
+    }
+    return {
+      summaries,
+      boardEmployees,
+      mancomEmployees,
+      holdingEmployees,
+      branchGroups
+    };
+
+  } catch (error) {
+    console.error("Error occurred", error);
+    throw error;
+  }
+}
+
+
+export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER")[]) {
+  try {
+    const data = await prisma.employeeSummary.findMany({
+      where: {
+        status: {
+          in: statuses,
+        },
+
+        EmpCode: {
+          isNot:{
+            isAlien: true
+          }
+        }
+      },
+      select: {
+        CycleCategory: true,
+        EmpCode: {
+          select: {
+            BranchCode: {
+              select: {
+                company_id: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy:{
+        CycleCategory: "asc"
+      }
+    });
+
+    const map = new Map<string, { company_id: string; cycle: string }>();
+
+    for (const row of data) {
+      const company = row.EmpCode?.BranchCode?.company_id;
+      const cycle = row.CycleCategory;
+
+      if (!company || !cycle) continue;
+
+      const key = `${company}_${cycle}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          company_id: company,
+          cycle,
+        });
+      }
+    }
+
+    return Array.from(map.values());
+
+  } catch (error) {
+    console.error("Error fetching company cycles:", error);
+    throw error;
+  }
+}
+
+
+
+
+
+
+
+//
+
+// services/email.service.ts
+
+
+
+export async function sendPayslipEmailService(employee: EmployeeArchivedType) {
+
+  const email = employee.EmpCode?.employeepayroll?.gmail_account;
+
+  if (!email) {
+    throw new Error("No email found");
+  }
+
+  
+  const pdfBuffer = await generatePayslipPDF([employee]);
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Your Payslip",
+    html: `
+      <p>Dear ${employee.EmpCode.Firstname},</p>
+      <p>Please find your payslip attached.</p>
+      <p>Regards,<br/>Payroll Department</p>
+    `,
+    attachments: [
+      {
+        filename: `Payslip-${employee.EmpCodeId}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
+}

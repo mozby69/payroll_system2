@@ -1,8 +1,9 @@
 // modules/import/import.service.ts
 import axios from "axios";
 import { prisma } from "../../config/prismaClient";
-import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO } from "./import.types";
+import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO, SpecialleavesDTO } from "./import.types";
 import { Prisma } from "@prisma/client";
+import { mapLeaveName, mapLeaveStatus } from "./import.helper";
 
 
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
@@ -75,7 +76,59 @@ export const saveBranches = async (branches: BranchDTO[]): Promise<number> => {
     )
   );
 
+   // assign positions for new branches
+   await assignBranchPositions();
+
   return branches.length;
+};
+
+export const assignBranchPositions = async () => {
+
+  const branches = await prisma.branch.findMany({
+    orderBy: [
+      { company_id: "asc" },
+      { position: "asc" }
+    ]
+  });
+
+  const grouped: Record<string, typeof branches> = {};
+
+  for (const branch of branches) {
+    const key = branch.company_id ?? "UNKNOWN";
+
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(branch);
+  }
+
+  const updates: Prisma.PrismaPromise<any>[] = [];
+
+  for (const companyId in grouped) {
+
+    const companyBranches = grouped[companyId];
+
+    const maxPosition = Math.max(
+      ...companyBranches.map(b => b.position || 0)
+    );
+
+    let nextPosition = maxPosition + 1;
+
+    companyBranches
+      .filter(b => b.position === 0)
+      .forEach(branch => {
+
+        updates.push(
+          prisma.branch.update({
+            where: { branchCode: branch.branchCode },
+            data: { position: nextPosition++ }
+          })
+        );
+
+      });
+  }
+
+  if (updates.length > 0) {
+    await prisma.$transaction(updates);
+  }
 };
 
 
@@ -113,7 +166,10 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmployeeStatus: e.EmployeeStatus,
             isNewEmployee: true,
             Position:e.Position,
-            Department: e.Department
+            Department: e.Department,
+            secondaryBranchId: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
+            isAlien:e.isAlien,
+            EndDate:toDateOrNull(e.EndDate),
           },
           update: {
             Firstname: e.Firstname,
@@ -125,7 +181,10 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmploymentStatus: e.EmploymentStatus,
             EmployeeStatus: e.EmployeeStatus,
             Position: e.Position,
-            Department: e.Department
+            Department: e.Department,
+            secondaryBranchId: e.SecondaryBranch && e.SecondaryBranch !== "N/A"? e.SecondaryBranch : null,
+            isAlien:e.isAlien,
+            EndDate:toDateOrNull(e.EndDate),
           },
         });
 
@@ -146,7 +205,7 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
           create: {
             EmpCodeId: e.EmpCode,
             pagibig_employee_share: new Prisma.Decimal(0),
-            pagibig_employer_share: new Prisma.Decimal(0),
+            pagibig_employer_share: 200,
           },
           update: {},
         });
@@ -217,9 +276,48 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
 
   
 
+
+  export const saveSpecialLeaves = async (
+    details: SpecialleavesDTO[]
+  ): Promise<number> => {
+    if (!Array.isArray(details) || details.length === 0) return 0;
+  
+    await prisma.$transaction(
+      details.map((d) =>
+        prisma.specialLeaves.upsert({
+          where: {
+            id: d.id
+          },
+          create: {
+            id: d.id,
+            empCodeId: d.EmpCode__EmpCode,
+            leaveName: mapLeaveName(d.leaveName),
+            start: d.start ? new Date(d.start) : null,
+            end: d.end ? new Date(d.end) : null,
+            expectedStart: d.expectedStart ? new Date(d.expectedStart) : null,
+            expectedEnd: d.expectedEnd ? new Date(d.expectedEnd) : null,
+            status: mapLeaveStatus(d.status),
+            created_at: new Date()
+          },
+          update: {
+            leaveName: mapLeaveName(d.leaveName),
+            start: d.start ? new Date(d.start) : null,
+            end: d.end ? new Date(d.end) : null,
+            expectedStart: d.expectedStart ? new Date(d.expectedStart) : null,
+            expectedEnd: d.expectedEnd ? new Date(d.expectedEnd) : null,
+            status: mapLeaveStatus(d.status)
+          }
+        })
+      )
+    );
+  
+    return details.length;
+  };
+
+
   
   export const importBranchesService = async () => {
-    const { branches, employees,employees_details,company_details } = await fetchFromDjango();
+    const { branches, employees,employees_details,company_details,special_leaves } = await fetchFromDjango();
   
     if (!Array.isArray(branches)) {
       throw new Error("Branches payload is invalid");
@@ -229,15 +327,26 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
     await saveBranches(branches);
     const employeeCount = await saveEmployees(employees);
     const detailsCount = await saveEmployeeDetails(employees_details);
+    const specialleaves = await saveSpecialLeaves(special_leaves);
   
     return {
       branches: branches.length,
       employees: employeeCount,
       employeeDetails: detailsCount,
       companyDetails: company_details.length,
+      special_leaves:specialleaves,
     };
   };
   
+
+
+
+
+
+
+
+
+
 
 
 

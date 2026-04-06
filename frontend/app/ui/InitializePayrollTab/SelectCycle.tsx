@@ -3,7 +3,7 @@ import Datatable from "@/app/components/Datatable";
 import { Pagination } from "@/app/components/Pagination";
 import SideModalLayout from "@/app/components/SideModal";
 import SweetAlert from "@/app/components/Swal";
-import { TabItem, Tabs } from "@/app/components/Tab";
+
 import { useAuth } from "@/app/components/UserContext";
 import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 import { useDebounce } from "@/app/helper/useDebounce";
@@ -11,22 +11,22 @@ import { useDisburseCompanies, useUpdateCompanySetup, useUpdateEmployeeSetup } f
 import { useRouter, useSearchParams } from "next/navigation";
 import { PayrollCycle } from "@/app/types/disburseType";
 import { useDisabledPayrollDates, useFetchApiAttendance } from "@/app/hooks/useApiProcess";
-import {  usefetchInitializePayroll, useImportBranches } from "@/app/hooks/usePreparePayroll";
+import {   useFetchInitializePayroll, useImportBranches } from "@/app/hooks/usePreparePayroll";
 import { Column, EmployeeRow } from "@/app/types/preparePayroll";
 import { DateRange } from "@/app/types/utilsTypes";
-import DateRangePicker from "@/app/ui/DateRangePicker";
-import SelectPayroll from "@/app/ui/InitializePayrollTab/SelectDate";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { ProcessingOverlay } from "../loader/ProcessingOverlay";
+
 
 type SideModalTabKey = "employees" | "branches";
 
-const SIDEMODALTABS : {key:SideModalTabKey; label:string}[] = [
+const SIDEMODALTABS : { key:SideModalTabKey; label:string }[] = [
     { key: "employees", label: "Employees" },
     { key: "branches", label: "Branches" },
 ];
+
 
 type SetupState = {
     EmpCode: string;
@@ -35,7 +35,9 @@ type SetupState = {
     Taxable: boolean;
 };
 
-type Setupcompanies ={
+
+
+type Setupcompanies = {
     CompanyCode:number;
     isDisburse: boolean;
 }
@@ -71,7 +73,7 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
     const [shouldCheckModal, setShouldCheckModal] = useState(false);
 
 
-    const { data: newEmployee, isFetching: isFetchingNew } = usefetchInitializePayroll({
+    const { data: newEmployee, isFetching: isFetchingNew } = useFetchInitializePayroll({
       cycle: branchCycle,
       page,
       limit: 500,
@@ -79,7 +81,7 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
       onlyNew: true,
     });
 
-    const { data: setupEmployee, isFetching: isFetchingSetup } = usefetchInitializePayroll({
+    const { data: setupEmployee, isFetching: isFetchingSetup } = useFetchInitializePayroll({
       cycle: branchCycle,
       page,
       limit: 500,
@@ -153,7 +155,7 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
 
 
       
-      const { data: employee } = usefetchInitializePayroll({
+      const { data: employee } = useFetchInitializePayroll({
           cycle: branchCycle,
           page,
           limit: 6,
@@ -434,8 +436,8 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
           },
         ]
       
-        const { data: disabledRanges = [] } = useDisabledPayrollDates(branchCycle);
-        const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
+      //  const { data: disabledRanges = [] } = useDisabledPayrollDates(branchCycle);
+        //const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
       
     
 
@@ -678,7 +680,7 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
                                 </td>
                               </tr>
                             ))}
-                            {setupEmployee?.data.length === 0 && (
+                            {setupEmployee?.data?.length === 0 && (
                               <tr>
                                 <td colSpan={4} className="text-center p-4 text-gray-500">
                                   No matching employees found.
