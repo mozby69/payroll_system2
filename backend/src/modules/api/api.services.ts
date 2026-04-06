@@ -131,6 +131,7 @@ export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
     const records = await prisma.totalPayroll.findMany({
       where: {
         cycle_category: cycleCategory,
+        status:"COMPLETED",
         selected_payroll_date: {
           not: Prisma.JsonNull,
         },
