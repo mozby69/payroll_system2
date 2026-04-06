@@ -1,6 +1,7 @@
 import { useAuth } from "@/app/components/UserContext";
 
 import { useDeductionsOnly } from "@/app/hooks/usePreparePayroll";
+import { formatCurrency } from "@/app/utils/currencyConverter";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
@@ -79,7 +80,7 @@ export default function ViewDeductionsOnly() {
                   <td>{emp.rfc_loan}</td>
                   <td>{emp.are_loan}</td>
                   <td className="font-semibold">
-                    {emp.total_deductions}
+                    {formatCurrency(emp.total_deductions)}
                   </td>
                 </tr>
               ))

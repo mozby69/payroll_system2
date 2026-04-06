@@ -135,6 +135,8 @@ model Employee {
   specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount[] @relation()
 
+  includePayrollLogs IncludePayrollLogs[] @relation()
+
   @@map("employee")
 }
 
@@ -284,6 +286,7 @@ model Employee_payroll{
   bank_account String? @db.VarChar(200)
   include_payroll Boolean @default(true)
   gmail_account String? @db.VarChar(100)
+  excluded_date DateTime? @db.Date
 
   EmpCodeId String @unique @db.VarChar(20)
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -876,4 +879,17 @@ model PayrollWtaxOverride {
   employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId, PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
 
   @@index([PayCode, EmpCodeId, PayrollPeriod])
+}
+
+
+
+model IncludePayrollLogs{
+  id Int @id @default(autoincrement())
+  PayCode String  @db.VarChar(20)
+  CycleCategory String @db.VarChar(50)
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+ @@map("include_payroll_logs") 
 }

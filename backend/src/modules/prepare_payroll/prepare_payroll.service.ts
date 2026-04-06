@@ -197,6 +197,7 @@ const bodMap = new Map(
   const isBod = emp.bod_member === "bod1";
   const includePayroll = emp.employeepayroll?.include_payroll ?? false;
 
+
   const bodShare = bodMap.get(emp.EmpCode) ?? 0;
 
   const semiPay = computeSemiMonthlySalary(basicSalary);
@@ -321,38 +322,70 @@ export async function updateEmployeeSalary({
 }
 
 
-export async function updateEmployeePayrollFields({
-  empCode,
-  basic_salary,
+export async function updateEmployeePayrollFields({empCode,basic_salary,pagibig_employee_share,include_payroll}: {
+      empCode: string;
+      basic_salary?: number;
+      pagibig_employee_share?: number;
+      include_payroll?: boolean;
+    }) {
 
-  pagibig_employee_share,
-  include_payroll,
-}: {
-  empCode: string;
-  basic_salary?: number;
-
-  pagibig_employee_share?: number;
-  include_payroll?: boolean;
-}) {
-  return await prisma.$transaction(async (tx) => {
-
-   
+      return await prisma.$transaction(async (tx) => {
 
       await tx.employee_payroll.upsert({
         where: { EmpCodeId: empCode },
         update: {
           ...(basic_salary !== undefined && { basic_salary }),
           include_payroll, 
+          excluded_date: include_payroll === false ? new Date() : null,
         },
         create: {
           EmpCodeId: empCode,
           basic_salary: basic_salary ?? 0,
           include_payroll: include_payroll ?? true,
+          excluded_date: include_payroll === false ? new Date() : null,
         },
       });
+
+
+       if (include_payroll === false) {   
+
+        const pendingRecord = await tx.employeeSummary.findFirst({
+          where: {
+            EmpCodeId: empCode,
+            status: "PENDING",
+          },
+          select: {
+            PayCode: true,
+            CycleCategory: true,
+          },
+        });
+
+  
+        if (pendingRecord) {
+          await tx.includePayrollLogs.create({
+            data: {
+              EmpCodeId: empCode,
+              PayCode: pendingRecord.PayCode,
+              CycleCategory: pendingRecord.CycleCategory,
+            },
+          });
+        }
+      }
+
+      if(include_payroll === false){
+          await tx.employeeSummary.updateMany({
+          where: {
+            EmpCodeId: empCode,
+            status: "PENDING",
+          },
+          data: {
+            status: "EXCLUDED",
+          },
+        });
+      }
     
 
-    // ✅ 2. HANDLE pagibig separately (correct)
+
     if (pagibig_employee_share !== undefined) {
       await tx.pagIbig_List.upsert({
         where: { EmpCodeId: empCode },
