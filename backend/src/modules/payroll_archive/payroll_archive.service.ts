@@ -232,6 +232,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loan_type: {
           in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"],
         },
+        start_date: {
+          lte: new Date(payYear, payMonth, 0),
+        },
       },
       select: {
         loan_id: true,
@@ -564,6 +567,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           EmpCodeId: { in: empCodes },
           status: "ACTIVE",
           loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"] },
+          start_date: {
+            lte: new Date(payYear, payMonth, 0),
+          },
         },
         select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true,others_types: true, },
       });
