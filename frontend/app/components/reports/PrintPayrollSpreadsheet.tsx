@@ -73,88 +73,89 @@ const period = parsePayCode(payCode)
       <style>{`
         @media print {
 
-  @page {
-    size: 15in 11in landscape;
-    margin: 0;
-  }
+        @page {
+          size: 15in 11in landscape;
+          margin: 0;
+        }
 
-  body {
-    margin: 0;
-    font-family: "Courier New", monospace !!important;
-  }
+        body {
+          margin: 0;
+          font-family: "Courier New", monospace !!important;
+        }
 
-  .print-area {
-    width: 14.7in;
-    margin: 0.1in auto;
-    font-size: 8pt;
-  }
+        .print-area {
+          width: 14.7in;
+          margin: 0.1in auto;
+          font-size: 8pt;
+        }
 
-table {
-  border-collapse: collapse;
-    width: 13.5in;      
-}
+      table {
+        border-collapse: collapse;
+          width: 13.5in;      
+      }
 
-  th, td {
-    padding: 2px 3px;
-    border-bottom: 1px solid #999;
-    white-space: nowrap;
-  }
+        th, td {
+          padding: 2px 3px;
+          border-bottom: 1px solid #999;
+          white-space: nowrap;
+        }
 
-  th {
-    border-bottom: 2px solid #000;
-    text-align: center;
-  }
+        th {
+          border-bottom: 2px solid #000;
+          text-align: center;
+        }
 
-  td {
-    text-align: right;
-  }
+        td {
+          text-align: right;
+        }
 
-  /* No column */
-  th:nth-child(1),
-  td:nth-child(1) {
-    width: 40px;
-    text-align: center;
-  }
+        /* No column */
+        th:nth-child(1),
+        td:nth-child(1) {
+          width: 40px;
+          text-align: center;
+        }
 
-  /* Name column — FIXED PROPERLY */
-  th:nth-child(2),
-  td:nth-child(2) {
-    width: 200px;          /* increase width */
-    text-align: left;
-    overflow: hidden;      /* prevent overlap */
-    text-overflow: ellipsis;
-  }
-    th:nth-child(2){
-        text-align: center;
-    }
+        /* Name column — FIXED PROPERLY */
+        th:nth-child(2),
+        td:nth-child(2) {
+          width: 200px;          /* increase width */
+          text-align: left;
+          overflow: hidden;      /* prevent overlap */
+          text-overflow: ellipsis;
+        }
+          th:nth-child(2){
+              text-align: center;
+          }
 
-  /* All numeric columns */
-  th:nth-child(n+2),
-  td:nth-child(n+2) {
-    width: 40px;
-  }
+        /* All numeric columns */
+        th:nth-child(n+2),
+        td:nth-child(n+2) {
+          width: 40px;
+        }
 
-  .group-header {
-    border-bottom: 2px solid #000;
-    text-align: center;
-    font-weight: bold;
-  }
+        .group-header {
+          border-bottom: 2px solid #000;
+          text-align: center;
+          font-weight: bold;
+        }
 
-  .grand td {
-    font-weight: bold;
-    border-top: 2px solid #000;
-    border-bottom: 2px solid #000;
-  }
-    .matrix-title{
-      margin-top: 40px;
-      font-weight: bold;
-    }
+        .grand td {
+          font-weight: bold;
+          border-top: 2px solid #000;
+          border-bottom: 2px solid #000;
+        }
+          .matrix-title{
+            margin-top: 40px;
+            font-weight: bold;
+          }
 
-    .matrix-title .company{
-        text-transform: uppercase;
-    }
-}
-      `}</style>
+          .matrix-title .company{
+              text-transform: uppercase;
+          }
+      }
+
+  `}</style>
 
       <div className="print-area">
         <div className="matrix-title ">

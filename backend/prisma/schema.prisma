@@ -361,6 +361,7 @@ model EmployeePayrollArchive {
   pagibig_loan Decimal? @db.Decimal(10,2)
   sss_loan Decimal? @db.Decimal(10,2)
   sss_calamity_loan Decimal? @db.Decimal(10,2)
+  pagibig_calamity_loan Decimal? @db.Decimal(10,2)
   isNewEmployee Boolean @default(false)
   created_at DateTime @default(now())
   total_deductions Decimal? @db.Decimal(10,2) @map("total_deductions")

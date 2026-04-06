@@ -380,6 +380,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const calamity_loan =
                       loanDeduct(loans.Pag_IBIG_Cal) +
                       loanDeduct(loans.SSS_Cal);
+        const pag_ibig_cal = loanDeduct(loans.Pag_IBIG_Cal);
+        const sss_cal = loanDeduct(loans.SSS_Cal);
         // Loan Code ↑
 
 
@@ -425,6 +427,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           rfc_loan,
           are_loan,
           calamity_loan,
+          pag_ibig_cal,
+          sss_cal,
           // Loan Code ↑
 
           sss_contrib_employee:sssContribEmployee,
@@ -589,21 +593,21 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         
 
-        // let key = loan.loan_type;
+        let key = loan.loan_type;
 
 
-        // if (
-        //   loan.others_types === "Calamity" &&
-        //   (loan.loan_type === "SSS_LOAN" || loan.loan_type === "PAGIBIG_LOAN")
-        // ) {
-        //   if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
-        //   if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
-        // }
-        // loanByEmp[loan.EmpCodeId][key] = {
-        //   loan_id: loan.loan_id,
-        //   amount: Number(loan.per_payroll_deduct),
-        //   alreadyDeducted,
-        // };
+        if (
+          loan.others_types === "Calamity" &&
+          (loan.loan_type === "SSS_LOAN" || loan.loan_type === "PAGIBIG_LOAN")
+        ) {
+          if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
+          if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
+        }
+        loanByEmp[loan.EmpCodeId][key] = {
+          loan_id: loan.loan_id,
+          amount: Number(loan.per_payroll_deduct),
+          alreadyDeducted,
+        };
       }
   
       const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>
@@ -752,6 +756,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           pagibig_loan:              loanDeduct(empLoans.PAGIBIG_LOAN),
           rfc_loan:                  loanDeduct(empLoans.RFC_LOAN),
           ar_e:                      loanDeduct(empLoans.ARE_LOAN),
+          sss_calamity_loan:         loanDeduct(empLoans.SSS_Cal),
+          pagibig_calamity_loan:     loanDeduct(empLoans.Pag_IBIG_Cal),      
           isNewEmployee:             emp.EmpCode.isNewEmployee,
           EmpCodeId:                 emp.EmpCodeId,
           totalPayrollId:            totalPayrollRecord.id,
@@ -768,29 +774,38 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       });
   
       // ── Loan ledger entries ─────────────────────────────────────────────────
-      const transaction_date = nowPH();
-      for (const emp of computed) {
-        const empLoans = loanByEmp[emp.EmpCodeId];
-        if (!empLoans) continue;
-        for (const loanType of Object.keys(empLoans)) {
-          const loan = empLoans[loanType];
-          if (loan.alreadyDeducted) continue;
-          await tx.loan_ledger.create({
-            data: {
-              loan_id:          loan.loan_id,
-              EmpCodeId:        emp.EmpCodeId,
-              transaction_date,
-              payroll_cycle:    payrollCycle,
-              transaction_type: "PAYROLL_DEDUCT",
-              debit_amount:     0,
-              credit_amount:    loan.amount,
-              remarks:          "Loan Credited to Payroll",
-              payment_status:   "PAID",
-            },
-          });
-        }
-      }
+    const transaction_date = nowPH();
 
+    for (const emp of computed) {
+      const empLoans = loanByEmp[emp.EmpCodeId];
+      if (!empLoans) continue;
+
+      const processedLoanIds = new Set<number>(); // ✅ ADD THIS
+
+      for (const loanType of Object.keys(empLoans)) {
+        const loan = empLoans[loanType];
+
+        if (loan.alreadyDeducted) continue;
+
+        // ✅ PREVENT DUPLICATES
+        if (processedLoanIds.has(loan.loan_id)) continue;
+        processedLoanIds.add(loan.loan_id);
+
+        await tx.loan_ledger.create({
+          data: {
+            loan_id:          loan.loan_id,
+            EmpCodeId:        emp.EmpCodeId,
+            transaction_date,
+            payroll_cycle:    payrollCycle,
+            transaction_type: "PAYROLL_DEDUCT",
+            debit_amount:     0,
+            credit_amount:    loan.amount,
+            remarks:          "Loan Credited to Payroll",
+            payment_status:   "PAID",
+          },
+        });
+      }
+    }
       const disbursingEmployees = await tx.employee.findMany({
         where: { EmpCode: { in: empCodes }, Disbursing: true },
         select: { EmpCode: true },
