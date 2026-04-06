@@ -40,6 +40,8 @@ const period = parsePayCode(payCode)
       salaryLoan: acc.salaryLoan + Number(row.salaryLoan || 0),
       calamityLoan: acc.calamityLoan + Number(row.calamityLoan || 0),
 
+      pagibigSalaryLoan: acc.pagibigSalaryLoan + Number(row.pagibigSalaryLoan || 0),
+
       netPayable: acc.netPayable + Number(row.netPayable || 0),
       sssEmployer: acc.sssEmployer + Number(row.sssEmployer || 0),
       philEmployer: acc.philEmployer + Number(row.philEmployer || 0),
@@ -60,6 +62,8 @@ const period = parsePayCode(payCode)
       fch: 0,
       salaryLoan: 0,
       calamityLoan: 0,
+
+      pagibigSalaryLoan: 0,
 
       netPayable: 0,
       sssEmployer: 0,
@@ -173,6 +177,7 @@ const period = parsePayCode(payCode)
     <th colSpan={14}></th>
     <th colSpan={2}>SSS LOANS</th>
     <th></th>
+    <th></th>
     <th colSpan={3}>EMPLOYER SHARE</th>
   </tr>
 
@@ -194,6 +199,9 @@ const period = parsePayCode(payCode)
 
     <th>Salary</th>
     <th>Calamity</th>
+
+    <th>Pag. Sal. Ln</th>
+
 
     <th>Net Pay</th>
 
@@ -221,6 +229,7 @@ const period = parsePayCode(payCode)
                 <td>{format(row.fch)}</td>
                 <td>{format(row.salaryLoan)}</td>
                 <td>{format(row.calamityLoan)}</td>
+                <td>{format(row.pagibigSalaryLoan)}</td>
                 <td>{format(row.netPayable)}</td>
                 <td>{format(row.sssEmployer)}</td>
                 <td>{format(row.philEmployer)}</td>
@@ -244,6 +253,7 @@ const period = parsePayCode(payCode)
               <td>{format(totals.fch)}</td>
               <td>{format(totals.salaryLoan)}</td>
               <td>{format(totals.calamityLoan)}</td>
+              <td>{format(totals.pagibigSalaryLoan)}</td>
               <td>{format(totals.netPayable)}</td>
               <td>{format(totals.sssEmployer)}</td>
               <td>{format(totals.philEmployer)}</td>

@@ -145,7 +145,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
       <table className="w-full border-collapse text-[9pt] table-auto">
         <thead>
           <tr className="border border-gray-300">
-            <th colSpan={14}></th>
+            <th colSpan={15}></th>
             <th
               colSpan={2}
               className="text-center py-2 border border-gray-300 align-middle bg-gray-50"
