@@ -172,11 +172,11 @@ export async function getBonusCompanyRuleServices(bonusRuleId: number) {
 export async function generateBonusForAllEmployees({
   bonusRuleId,
   releasePeriod,
-  companyCode, 
+  companyCode,
   asOfDate,
   generateDate,
   batchId,
-  tx
+  tx,
 }: {
   bonusRuleId: number
   releasePeriod: string
@@ -189,78 +189,46 @@ export async function generateBonusForAllEmployees({
   return prisma.$transaction(async tx => {
     const rule = await tx.bonusRule.findUnique({
       where: { id: bonusRuleId },
-      include: {
-        companyRule: true
-      }
+      include: { companyRule: true },
     })
 
-    if (!rule) {
-      throw new Error("Bonus rule not found")
-    }
-    const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
+    if (!rule) throw new Error("Bonus rule not found")
 
-
-  
-   
-
- 
+    // 🚫 BLOCK duplicate generation
     const blockingSummary = await tx.bonusSummary.findFirst({
       where: {
         bonusRuleId,
         releasePeriod,
-        status: {
-          in: ["GENERATED", "PENDING", "RELEASED", "APPROVED"]
-        }
-      }
+        status: { in: ["GENERATED", "PENDING", "APPROVED", "RELEASED"] },
+      },
     })
 
-
-    if (blockingSummary?.status === "RELEASED") {
-      throw {
-        code: "PENDING_BONUS",  
-        status: 409,
-        message: "A bonus generation is already released."
-      }
-    }
-
-    if (blockingSummary?.status === "APPROVED") {
-      throw {
-        code: "PENDING_BONUS",
-        status: 409,
-        message: "A bonus generation is already approved."
-      }
-    }
-
-  
-
     if (blockingSummary) {
-      throw {
-        code: "PENDING_BONUS",
-        status: 409,
-        message: "Bonus already generated for this period."
-      }
+      throw new Error("Bonus already generated for this period")
     }
 
-
-  
- 
+    // ✅ COMPANY FILTER
     const companies = await tx.bonusRuleCompany.findMany({
       where: {
         bonusRuleId,
-        ...(companyCode ? { companyCode } : {})
-      }
+        ...(companyCode ? { companyCode } : {}),
+      },
     })
 
-    if (companies.length === 0) {
-      throw new Error("NO_COMPANY_ASSIGNED")
-    }
+    if (!companies.length) throw new Error("NO_COMPANY_ASSIGNED")
 
     const companyCodes = companies.map(c => c.companyCode)
 
- 
+    // ✅ FETCH EMPLOYEES
     const employees = await tx.employee.findMany({
       where: {
         AND: [
+          {
+              EmployementDate: {
+                lte: generateDate
+              }
+          },
+
           {
             BranchCode: {
               CompanyCode: {
@@ -272,7 +240,9 @@ export async function generateBonusForAllEmployees({
           },
           {
             OR: [
-              { EmployeeStatus: "Active" },
+              {  EmployeeStatus: {
+                in: ["Active", "Inactive"],
+              },},
               { bod_member: "bod1" },
               { bod_member: "bod2" },
               {EndDate: {
@@ -294,261 +264,97 @@ export async function generateBonusForAllEmployees({
     })
 
 
-
-    const invalidEmployees: Array<{
-      empCode: string
-      name: string | null
-      basicSalary: number
-      amount: number
-    }> = []
-
-    for (const emp of employees) {
-      if (!emp.EmployementDate) continue
-
-      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureYear) continue
-      const payroll = emp.employeepayroll
-      if (!payroll || !payroll.basic_salary){
-        invalidEmployees.push({
-          empCode: emp.EmpCode,
-          name: emp.Firstname,
-          basicSalary: 0,
-          amount: 0
-        })
-        continue
-      } 
-      const basicSalary = Number(payroll.basic_salary)
-      const amount = calculateBonusAmount(rule.formulaType, basicSalary)
-      if (amount <= 0) {
-        invalidEmployees.push({
-          empCode: emp.EmpCode,
-          name: emp.Firstname,
-          basicSalary,
-          amount
-        })
-      }
-    }
-
-
-    // if (invalidEmployees.length > 0) {
-    //   throw new Error(
-    //     JSON.stringify({
-    //       code: "INVALID_BONUS_AMOUNT",
-    //       invalidEmployees
-    //     })
-    //   )
-    // }
-
- 
-    const bonusSummary = await tx.bonusSummary.create({
+    // ✅ CREATE SUMMARY
+    const summary = await tx.bonusSummary.create({
       data: {
         bonusRuleId,
         releasePeriod,
         asOfDate,
         generateDate,
         totalAmount: 0,
-        totalEmployees: 0,
-        batchId
-      }
+        totalEmployees: employees.length, // ✅ ALL employees counted
+        batchId,
+      },
     })
 
-    let totalEmployees = 0
     let totalAmount = 0
 
-
-    const existingBonuses = await tx.employeeBonus.findMany({
-      where: {
-        bonusRuleId: rule.id,
-        releasePeriod,
-        bonusSummaryId: bonusSummary.id
-      },
-      select: {
-        employeeCode: true
-      }
-    }) 
-    
-
-    const existingEmployeeCodes = new Set(
-      existingBonuses.map(b => b.employeeCode)
-    )
-
-    const bonusStart = new Date(startAndEnd.bonusStart)
-    const bonusEnd   = new Date(startAndEnd.bonusEnd)
-    
-    const employeesWithLeave = await tx.employee.findMany({
-      where: {
-        specialLeaves: {
-          some: {
-            OR: [
-              // Normal leave (Active, etc.)
-              {
-                status: { not: "Expected" },
-                start: { not: null, lte: bonusEnd },
-                end:   { not: null, gte: bonusStart }
-              },
-    
-              // Expected leave
-              {
-                status: "Expected",
-                expectedStart: { not: null, lte: bonusEnd },
-                expectedEnd:   { not: null, gte: bonusStart }
-              }
-            ]
-          }
-        }
-      },
-      include: {
-        specialLeaves: {
-          where: {
-            OR: [
-              {
-                status: { not: "Expected" },
-                start: { not: null, lte: bonusEnd },
-                end:   { not: null, gte: bonusStart }
-              },
-              {
-                status: "Expected",
-                expectedStart: { not: null, lte: bonusEnd },
-                expectedEnd:   { not: null, gte: bonusStart }
-              }
-            ]
-          }
-        }
-      }
-    })
-
-    const leaveMap = new Map(
-      employeesWithLeave.map(emp => [
-        emp.EmpCode,
-        emp.specialLeaves
-      ])
-    )
-
-
-
-
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
-    
-    let remarks = ""
-    let hasLeave = false
 
     for (const emp of employees) {
-      if (!emp.EmployementDate) continue
-    
-      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureYear) continue
-    
       const payroll = emp.employeepayroll
-      if (!payroll?.basic_salary) continue
-    
-      if (existingEmployeeCodes.has(emp.EmpCode)) continue
+      const basicSalary = Number(payroll?.basic_salary ?? 0)
 
-      const employeeLeaves = leaveMap.get(emp.EmpCode)
+      const tenure = emp.EmployementDate
+        ? getTenureInYears(emp.EmployementDate, asOfDate)
+        : 0
+
+      const isEligible =
+        emp.EmployementDate &&
+        tenure >= rule.minTenureYear &&
+        basicSalary > 0
 
       let amount = 0
-      
-      if (employeeLeaves && employeeLeaves.length > 0) {
-          employeeLeaves.forEach(leave => {
-            if (!leave.start && !leave.expectedStart) return
-            if (!leave.end && !leave.expectedEnd) return
+      let remarks = ""
+      let hasLeave = false
 
-            const leaveStart =
-              leave.status === "Expected" && leave.expectedStart
-                ? new Date(leave.expectedStart)
-                : leave.start
-                  ? new Date(leave.start)
-                  : null
-              
-            const leaveEnd =
-              leave.status === "Expected" && leave.expectedEnd
-                ? new Date(leave.expectedEnd)
-                : leave.end
-                  ? new Date(leave.end)
-                  : null
-
-              const  eligibleMonth = countEligibleMonthsWithHalfRule(
-                    bonusStart,
-                    bonusEnd,
-                    leaveStart,
-                    leaveEnd
-                  )
-                  hasLeave= true
-
-                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(payroll.basic_salary))
-                  amount = res.amount
-
-                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(payroll.basic_salary) / 2} X ${eligibleMonth} / ${res.count})` 
-        })
-      
-      } else {
-        amount = calculateBonusAmount(
-          rule.formulaType,
-          Number(payroll.basic_salary)
-        )
-
-        remarks = ""
-        hasLeave= false
+      // ✅ CALCULATE BONUS ONLY IF ELIGIBLE
+      if (isEligible) {
+        amount = calculateBonusAmount(rule.formulaType, basicSalary)
       }
 
-
-      // Find matching active loans
+      // ✅ LOAN DEDUCTION
       const matchingLoans = emp.loan_details.filter(
-        loan =>
-          loan.status === "ACTIVE" &&
-          loan.others_types === rule.code
+        loan => loan.others_types === rule.code
       )
-      
-      // Compute total principal
-      const totalPrincipal = matchingLoans.reduce(
+
+      const totalLoan = matchingLoans.reduce(
         (sum, loan) => sum + Number(loan.principal),
         0
       )
-      
-      // Deduct from bonus
-      let finalAmount = amount - totalPrincipal
-      
-      // Prevent negative bonus
-      if (finalAmount < 0) {
-        finalAmount = 0
-      }
-    
-      if (amount <= 0) continue
 
+      let netAmount = amount - totalLoan
+      if (netAmount < 0) netAmount = 0
+
+      // ✅ ALWAYS PUSH (even if amount = 0)
       rows.push({
         employeeCode: emp.EmpCode,
         bonusRuleId: rule.id,
-        amount: amount,
-        bonusSummaryId: bonusSummary.id,
+        bonusSummaryId: summary.id,
+        amount,
         generatedForMonth: rule.eligibleMonth,
-        loanDeduction: totalPrincipal,
-        netAmount: finalAmount,
+        loanDeduction: totalLoan,
+        netAmount,
         releasePeriod,
         status: "GENERATED",
         hasLeave,
-        remarks
+        remarks,
       })
-    
-      totalEmployees++
+
       totalAmount += amount
     }
 
+    // ✅ BULK INSERT
     if (rows.length > 0) {
       await tx.employeeBonus.createMany({
         data: rows,
-        skipDuplicates: true
+        skipDuplicates: true,
       })
     }
-    
- 
+
+    // ✅ UPDATE SUMMARY
     await tx.bonusSummary.update({
-      where: { id: bonusSummary.id },
+      where: { id: summary.id },
       data: {
-        totalEmployees,
-        totalAmount
-      }
+        totalAmount,
+      },
     })
 
-    return { success: true }
+    return {
+      success: true,
+      totalEmployees: rows.length,
+      totalAmount,
+    }
   })
 }
 
@@ -1048,7 +854,9 @@ export async function getEmployeesByBonusSummarySerive(
           { 
             OR: [
               {
-                EmployeeStatus: "Active",
+                EmployeeStatus: {
+                  in: ["Active", "Inactive"],
+                },
                 EmployementDate: {
                   lte: summary.generateDate
                 }
@@ -1109,7 +917,7 @@ export async function getEmployeesByBonusSummarySerive(
       )
     })
 
-    console.log("test: ", variance)
+    // console.log("test: ", variance)
 
 
     const result = employees.map(emp => {
@@ -1140,6 +948,7 @@ export async function getEmployeesByBonusSummarySerive(
         notes: bonus?.notes ?? null,
       }
     })
+    
 
     return {
       summary,
