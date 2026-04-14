@@ -133,7 +133,7 @@ model Employee {
   archive_allowance archive_allowance[] @relation()
 
   specialLeaves SpecialLeaves[]
-  attendance_count AttendanceCount[] @relation()
+  attendance_count AttendanceCount?
 
   includePayrollLogs IncludePayrollLogs[] @relation()
 
@@ -713,7 +713,7 @@ model archive_allowance {
   loan Decimal? @db.Decimal(10,2)
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
   createdAt DateTime @map("created_at")
-  branch String? @db.VarChar(100) 
+//  branch String? @db.VarChar(100) 
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
   branchCode  String
@@ -833,6 +833,7 @@ enum LeaveName {
   Maternity
   Paternity
   Health
+  SpecialChild
 }
 
 model SpecialLeaves {
@@ -856,7 +857,7 @@ model AttendanceCount {
   ID Int @id @default(autoincrement())
   Vacation Decimal @db.Decimal(10,2)
   Sick Decimal @db.Decimal(10,2)
-  leave_convert Boolean @default(false)
+  leave_convert Int? 
 
   EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -893,4 +894,13 @@ model IncludePayrollLogs{
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
  @@map("include_payroll_logs") 
+}
+
+
+model conversionAsOfDate{
+  id Int @id @default(autoincrement())
+  as_of_date DateTime @db.Date
+  created_at DateTime @default(now())
+
+  @@map("conversion_as_of_date")
 }

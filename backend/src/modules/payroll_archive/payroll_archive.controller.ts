@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendBulkPayslipService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
 import { BankFileRow } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -425,8 +425,6 @@ export const sendPayslipController = async (req: Request, res: Response) => {
   try {
     const { employee } = req.body;
 
-    console.log("EMPLOYEE:", employee);
-
     await sendPayslipEmailService(employee);
 
     return res.json({ success: true, message: "Payslip sent" });
@@ -437,5 +435,24 @@ export const sendPayslipController = async (req: Request, res: Response) => {
       message: "Failed to send payslip",
       error: error instanceof Error ? error.message : error,
     });
+  }
+};
+
+export const sendBulkPayslipController = async (req: Request, res: Response) => {
+  try {
+    const { totalPayrollId, selectedCompany, selectedBranch, search } = req.body;
+
+    await sendBulkPayslipService({
+      totalPayrollId,
+      selectedCompany,
+      selectedBranch,
+      search,
+    });
+
+    return res.json({ success: true });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to send bulk payslips" });
   }
 };

@@ -541,7 +541,7 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         totalDeduction: emp.deduct + emp.fch_rfc_deducted,
         // totalAbsentHours: emp.totalDeduction,
         selectedMonth, // FK
-        branch: emp.branch_code,
+       // branch: emp.branch_code,
         loan: emp.fch_rfc_deducted,
         branchCode: emp.branch_code,
 
@@ -592,11 +592,7 @@ type UpdateAllowanceBranchParams = {
   branchCode: string;
 };
 
-export async function updateAllowanceBranch({
-  EmpCode,
-  selectedMonth,
-  branchCode,
-}: UpdateAllowanceBranchParams) {
+export async function updateAllowanceBranch({EmpCode,selectedMonth,branchCode}: UpdateAllowanceBranchParams) {
   await prisma.allowance_branch_override.upsert({
     where: {
       EmpCode_selectedMonth: {
@@ -615,11 +611,8 @@ export async function updateAllowanceBranch({
   });
 }
 
-export async function displayAllowanceList({
-  page,
-  limit,
-  search,
-}: SummaryAllowanceProps) {
+export async function displayAllowanceList({page,limit,search}: SummaryAllowanceProps) {
+
   const allowanceWhere: Prisma.archive_allowance_summaryWhereInput = {
     ...(search && {
       OR: [{ allowance_name: { contains: search } }],

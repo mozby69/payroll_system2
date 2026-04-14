@@ -79,7 +79,7 @@ import {
   }
   
   export default function ViewEmployeeList({ employee }: ViewEmployeeListProps) {
-    const fullName = `${employee.EmpCode.Lastname}, ${employee.EmpCode.Middlename} ${employee.EmpCode.Firstname}`;
+    const fullName = `${employee.EmpCode.Firstname}, ${employee.EmpCode.Middlename} ${employee.EmpCode.Lastname}`;
     const initials = `${employee.EmpCode.Firstname?.[0] ?? ""}${employee.EmpCode.Middlename?.[0] ?? ""}${employee.EmpCode.Lastname?.[0] ?? ""}`.toUpperCase();
   
     const fmt = (val: string) =>

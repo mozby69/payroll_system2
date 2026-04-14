@@ -6,7 +6,7 @@ import { useGetEmployeeArchived } from "@/app/hooks/usePayrollArchive"
 import { useDebounce } from "@/app/utils/useDebounce"
 import Datatable from "@/app/components/Datatable"
 import { Pagination } from "@/app/components/Pagination"
-import { Eye, Mail, Printer } from "lucide-react"
+import {  Eye, Mail, Printer } from "lucide-react"
 import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
@@ -16,13 +16,12 @@ import { printEmployeeArchivedService } from "@/app/services/archive.services"
 import RequestModal from "../Modal"
 import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
 import EmployeeGmail from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewGmail"
+import SweetAlert from "../Swal"
 
 type PayslipProps = {
   totalPayrollId: number
 }
-export default function GeneratePayslipModal({
-  totalPayrollId,
-}: PayslipProps) {
+export default function GeneratePayslipModal({totalPayrollId}: PayslipProps) {
 
   const PAGE_SIZE = 10
   const [page, setPage] = useState(1)
@@ -46,7 +45,45 @@ export default function GeneratePayslipModal({
     selectedBranch
   })
 
+
+
+  const handleSendBulkEmail = async () => {
+  try {
+    setLoading(true);
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-bulk-email-payslip`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          totalPayrollId,
+          selectedCompany,
+          selectedBranch,
+          search,
+        }),
+      }
+    );
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message);
+
+      SweetAlert.successAlert("Payslips sent successfully");
+
+    } catch (error) {
+      console.error(error);
+      SweetAlert.errorAlert("Failed to send payslips");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const preselectedbranch = branches.length === 1 ? branches[0].branchCode : selectedBranch;
+
+
   const handlePrint = async () => {
     try {
       setLoading(true);
@@ -236,14 +273,20 @@ export default function GeneratePayslipModal({
             </p>
           </div>
   
+          <div className="flex gap-x-2">
           <GenButton
             variant="positive"
-            onClick={handlePrint}
-            className="flex items-center gap-2"
-          >
+            onClick={handlePrint}>
             <Printer size={16} />
             Print All
           </GenButton>
+
+          <button
+          onClick={handleSendBulkEmail} 
+          className="flex items-center gap-x-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 hover:cursor-pointer rounded text-white shadow">
+              <Mail size={16}/>Send email
+          </button>
+          </div>
   
         </div>
   
@@ -259,14 +302,12 @@ export default function GeneratePayslipModal({
             }}
             className="w-full rounded-lg border border-slate-300 px-4 py-2.5 
                        text-sm bg-white focus:outline-none focus:ring-2 
-                       focus:ring-blue-500 focus:border-blue-500 transition"
-          >
+                       focus:ring-blue-500 focus:border-blue-500 transition">
             <option value="">Choose Company</option>
             {companies.map((company) => (
               <option
                 key={company.CompanyCode}
-                value={company.CompanyCode}
-              >
+                value={company.CompanyCode}>
                 {company.CompanyName}
               </option>
             ))}

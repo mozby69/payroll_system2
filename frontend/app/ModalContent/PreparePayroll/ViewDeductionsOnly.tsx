@@ -43,6 +43,7 @@ export default function ViewDeductionsOnly() {
         <table className="min-w-full text-sm text-center border border-gray-300 border-collapse">
           <thead className="bg-gray-700 text-white">
             <tr>
+              <th>No</th>
               <th className="p-2">Employee</th>
               <th>SSS</th>
               <th>PhilHealth</th>
@@ -65,9 +66,11 @@ export default function ViewDeductionsOnly() {
                 </td>
               </tr>
             ) : (
-              deductions.map((emp) => (
+              deductions.map((emp,index) => (
+                
                 <tr key={emp.EmpCodeId} className="border-t border-gray-300">
-                  <td className="p-2 text-left">
+                  <td className="border border-gray-300">{index + 1}</td>
+                  <td className="p-2 text-center">
                     {emp.EmpCode.Lastname}, {emp.EmpCode.Firstname}
                   </td>
                   <td>{emp.sss_contrib_employee}</td>

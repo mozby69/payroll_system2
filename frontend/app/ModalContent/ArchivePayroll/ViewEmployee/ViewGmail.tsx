@@ -2,12 +2,10 @@
 import SweetAlert from "@/app/components/Swal";
 import { EmployeeArchivedType } from "@/app/types/totalPayroll";
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay";
-
-
-
-
 import { Mail, BadgeCheck, User } from "lucide-react";
 import { useState } from "react";
+
+
 
 
 interface ViewEmployeeListProps {
@@ -21,7 +19,7 @@ export default function EmployeeGmail({ employee }: ViewEmployeeListProps) {
 
   const handleSendPayslip = async () => {
   try {
-    setShowProcessing(true); // 🔥 START LOADING
+    setShowProcessing(true);
 
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-email-payslip`,
@@ -49,7 +47,7 @@ export default function EmployeeGmail({ employee }: ViewEmployeeListProps) {
       error instanceof Error ? error.message : "Something went wrong"
     );
   } finally {
-    setShowProcessing(false); // 🔥 STOP LOADING
+    setShowProcessing(false); 
   }
 };
 
@@ -62,10 +60,10 @@ export default function EmployeeGmail({ employee }: ViewEmployeeListProps) {
     <div className="min-w-[320px] p-1 font-sans">
 
 
-                    {showProcessing && (
-                       <ProcessingOverlay message="Sending payslip via email…" />
-                          )}
-                          
+    {showProcessing && (
+      <ProcessingOverlay message="Sending payslip via email…" />
+    )}
+          
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-5">

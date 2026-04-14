@@ -1,6 +1,7 @@
 import { writeFileSync, unlinkSync } from "fs"
 import { exec } from "child_process"
 import path from "path"
+import { Decimal } from "@prisma/client/runtime/library"
 
 function padRight(text: any, width: number) {
   return String(text ?? "").padEnd(width, " ").substring(0, width)
@@ -123,13 +124,23 @@ export function printPayroll(rows: any[]) {
 
 //xyryl
 
+export type SendPayslipType = {
+  EmpCodeId: string;
+  EmpCode: {
+    Firstname: string | null;
+    employeepayroll?: {
+      gmail_account?: string | null;
+    };
+  };
+};
+
   export type EmployeeArchivedType = {
     id: number
-    PayCode: string
-    Late: string
-    Absent: string
-    cycle_category: string
-    payroll_period: string
+    PayCode: string | null;
+    Late: Decimal | null;
+    Absent: Decimal | null;
+    cycle_category: string | null;
+    payroll_period: string | null;
     selected_payroll_date: string
     undertime: string
     Overtime: string
@@ -149,7 +160,7 @@ export function printPayroll(rows: any[]) {
     pagibig_loan: string
     sss_loan: string
     sss_calamity_loan: string
-    status: string
+    status?: string
     created_at: string
     totalPayrollId: number
     total_deductions:number;
@@ -167,7 +178,7 @@ export function printPayroll(rows: any[]) {
   }
 
 
-export async function generatePayslipPDF(data: EmployeeArchivedType[]) {
+export async function generatePayslipPDF(data: unknown[]) {
   const res = await fetch(`${process.env.FRONTEND_URL}/api/print/payroll`, {
     method: "POST",
     headers: {
@@ -188,3 +199,4 @@ export async function generatePayslipPDF(data: EmployeeArchivedType[]) {
   const arrayBuffer = await res.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }
+

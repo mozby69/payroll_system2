@@ -8,6 +8,8 @@ export function mapLeaveName(value: string | null): LeaveName {
       return LeaveName.Paternity;
     case "Health":
       return LeaveName.Health;
+    case "SpecialChild":
+      return LeaveName.SpecialChild;
     default:
       throw new Error(`Invalid leaveName: ${value}`);
   }

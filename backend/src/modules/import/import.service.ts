@@ -387,7 +387,7 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             ID: r.ID,
             Vacation: new Prisma.Decimal(r.Vacation),
             Sick: new Prisma.Decimal(r.Sick),
-            EmpCodeId: r.EmpCode__EmpCode, // ✅ FIXED
+            EmpCodeId: r.EmpCode__EmpCode, 
           },
           update: {
             Vacation: new Prisma.Decimal(r.Vacation),

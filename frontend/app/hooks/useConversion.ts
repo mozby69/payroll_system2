@@ -9,7 +9,7 @@ import SweetAlert from "../components/Swal";
 
 
 export function useFetchConversion(
-    params: { page: number; limit: number; search?: string },
+    params: { page: number; limit: number; search?: string; company_id?:string },
 
   ) {
     return useQuery<conversionResponse>({
@@ -18,6 +18,7 @@ export function useFetchConversion(
         params.page,
         params.limit,
         params.search ?? "",
+        params.company_id,
       ],
       queryFn: async () => {
         const res = await api.get("/conversion/fetch-conversion-list", {
@@ -25,7 +26,6 @@ export function useFetchConversion(
         });
         return res.data;
       },
-
     });
   }
 
@@ -38,7 +38,7 @@ export function useFetchConversion(
     return useMutation({
       mutationFn: async (payload: {
         id: number;
-        leave_convert: boolean;
+        leave_convert: number;
         Vacation: number;
 
       }) => {
@@ -56,3 +56,32 @@ export function useFetchConversion(
       },
     });
   }
+
+interface ConversionReportResponse{
+  Sick:number;
+  Vacation:number;
+  EmployementDate:string;
+  basic_salary:number;
+  fullname:string;
+  daily_rate:number;
+  tenure:number;
+  leave_convert:number;
+  total_leave_for_conversion:number;
+  leave_amount_for_conversion:number;
+}
+
+
+
+export function useConversionReport(company_id?:string) {
+      return useQuery<ConversionReportResponse[]>({
+        queryKey: ["conversion-report-list",company_id],
+        queryFn: async () => {
+          const res = await api.get("/conversion/fetch-reports", {
+          params: { company_id }, 
+      });
+          return res.data;
+        
+        },
+        enabled: !!company_id,
+      });
+}
