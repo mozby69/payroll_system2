@@ -6,9 +6,7 @@ import { LoanLimitError } from "./loan.error";
 
 export async function saveEmployeeLoan(data: loanProps){
 
-  const totalTerms = 
-    data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
-  
+
   const sssTable = await getSSSContributions();
 
     // Phil health code ↓
@@ -16,26 +14,49 @@ export async function saveEmployeeLoan(data: loanProps){
   const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
     // Phil health code ↑
 
-  if (totalTerms <= 0) {
-    throw new Error("Invalid loan terms");
-  }
 
-  const divisor = data.deduct_allowance ? 3 : 2;
+  let perPayroll: number = 0;
 
-  const rawPerPayroll =
-    Number(data.principal) / totalTerms / divisor;
+  if (data.loan_type !== "OTHERS") {
 
-  let perPayroll: number;
+    const totalTerms = 
+      data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
 
-  if (data.loan_type === "ARE_LOAN") {
+    if (totalTerms <= 0) {
+      throw new Error("Invalid loan terms");
+    }
 
-    perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+    if (data.loan_type === "ARE_LOAN") {
+
+      const divisor =
+        Number(data.deduct_allowance) +
+        Number(data.deduct_first_pay) +
+        Number(data.deduct_sec_pay);
+
+      if (divisor <= 0) {
+        throw new Error("At least one deduction option must be selected");
+      }
+
+      const rawPerPayroll =
+        Number(data.principal) / totalTerms / divisor;
+
+      perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+
+    } else {
+
+      const divisor = data.deduct_allowance ? 3 : 2;
+
+      const rawPerPayroll =
+        Number(data.principal) / totalTerms / divisor;
+
+      perPayroll = Math.floor(rawPerPayroll * 100) / 100;
+    }
+
   } else {
 
-    perPayroll = Math.floor(rawPerPayroll * 100) / 100;
+    perPayroll = Number(0);
   }
 
-    
   const startDate = new Date(data.start_date);
 
   return await prisma.$transaction(async (tx) =>{
@@ -135,7 +156,7 @@ export async function saveEmployeeLoan(data: loanProps){
         pagibigEmployeeShare;
 
       const netPerPayroll =
-        semiMonthly - totalGovernmentDeductions;
+        basicSalary - totalGovernmentDeductions;
 
 
       const totalExistingLoanDeduction = existingLoan.reduce(
@@ -151,7 +172,7 @@ export async function saveEmployeeLoan(data: loanProps){
       const excessAmount =
        totalLoanDeductionWithNew - maxAllowedLoanDeduction;
 
-    if (totalLoanDeductionWithNew > maxAllowedLoanDeduction) {
+    if (totalLoanDeductionWithNew > maxAllowedLoanDeduction && data.loan_type in ["PAGIBIG_LOAN", "SSS_LOAN", "FCH_LOAN", "RFC_LOAN", "ARE_LOAN"]) {
       throw new LoanLimitError({
         employee: {
           empCode: existingEmp?.EmpCode,
@@ -180,6 +201,17 @@ export async function saveEmployeeLoan(data: loanProps){
           term_unit: data.term_unit,
           start_date: startDate,
           deduct_allowance: data.deduct_allowance,
+          deduct_first_pay:
+          data.loan_type === "ARE_LOAN"
+            ? data.deduct_first_pay
+            : data.loan_type === "OTHERS"
+              ? false
+              : true,
+          deduct_second_pay: data.loan_type === "ARE_LOAN" 
+            ? data.deduct_sec_pay 
+            : data.loan_type === "OTHERS"
+                ? false
+                : true,
           per_payroll_deduct: perPayroll,
           cycle_category:existingEmp?.BranchCode?.CompanyCode?.CompanyCycle,
           others_types: data.others_type,

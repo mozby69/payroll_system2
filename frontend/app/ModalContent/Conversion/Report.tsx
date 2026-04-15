@@ -36,14 +36,24 @@ export default function ConversionReport() {
 
       const printRef = useRef<HTMLDivElement>(null);
     
-        const handlePrint = useReactToPrint({
-        contentRef: printRef,
-        documentTitle: `conversion report`,
-        });
+    const handlePrint = useReactToPrint({
+  contentRef: printRef,
+  documentTitle: "conversion report",
+  pageStyle: `
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+    body {
+      -webkit-print-color-adjust: exact;
+    }
+  `,
+});
+        
 
     return (
         <>
-            <div ref={printRef} className="p-4 print-deductions">
+            <div ref={printRef} className="p-2 print-deductions print:bg-white print:shadow-none print:p-2">
 
                 <div className="flex justify-between">
                     <div  >
@@ -91,7 +101,7 @@ export default function ConversionReport() {
                                         {item.total_leave_for_conversion}
                                     </td>
                                     <td className="p-2 border border-gray-200 text-right">
-                                        {(item.leave_amount_for_conversion)}
+                                        {formatCurrency(item.leave_amount_for_conversion)}
                                     </td>
                                 </tr>
                             ))}

@@ -14,10 +14,25 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
       term_unit,
       start_date,
       deduct_allowance,
+      deduct_first_pay,
+      deduct_sec_pay,
       others_type,
     } = req.body;
 
-    if (!empCode || !loan_type || !principal || !term_value || !term_unit || !start_date) {
+    const startDateValue =
+      loan_type === "OTHERS"
+        ? new Date()
+        : new Date(start_date || new Date());
+
+    const termValueFinal =
+      loan_type === "OTHERS"
+        ? 1
+        : Number(term_value || 1);
+
+    const termUnitFinal =
+      loan_type === "OTHERS" ? "BONUS" : term_unit;
+
+    if (!empCode || !loan_type || !principal) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -25,10 +40,12 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
       empCode,
       loan_type,
       principal: Number(principal),
-      term_value: Number(term_value),
-      term_unit,
-      start_date: new Date(start_date),
+      term_value: termValueFinal,
+      term_unit: termUnitFinal,
+      start_date: startDateValue,
       deduct_allowance: Boolean(deduct_allowance),
+      deduct_first_pay: Boolean(deduct_first_pay),
+      deduct_sec_pay: Boolean(deduct_sec_pay),
       others_type,
     });
 

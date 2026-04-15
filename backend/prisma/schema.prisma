@@ -134,6 +134,7 @@ model Employee {
 
   specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount?
+  conversionArchive conversionArchive?
 
   includePayrollLogs IncludePayrollLogs[] @relation()
 
@@ -418,9 +419,11 @@ model loan_details {
   principal            Decimal  @db.Decimal(10,2)
   loan_type            String   @db.VarChar(100)
   term_value           Int
-  term_unit            String   @db.VarChar(10) 
+  term_unit            String  @db.VarChar(10) 
   start_date           DateTime @db.Date
   deduct_allowance     Boolean  @default(true)
+  deduct_first_pay     Boolean  @default(true)
+  deduct_second_pay     Boolean  @default(true)
   per_payroll_deduct   Decimal  @db.Decimal(10,2)
   status               String   @db.VarChar(50) 
   created_at           DateTime @default(now())
@@ -905,4 +908,24 @@ model conversionAsOfDate{
   created_at DateTime @default(now())
 
   @@map("conversion_as_of_date")
+}
+
+model conversionArchive{
+  id Int @id @default(autoincrement())
+  Sick Int
+  Vacation Int
+  EmployementDate DateTime @db.Date
+  basic_salary Decimal @db.Decimal(10,2)
+
+  daily_rate Decimal @db.Decimal(10,2)
+  tenure Int 
+  leave_convert Int
+  total_leave_for_conversion Int
+  leave_amount_for_conversion Decimal @db.Decimal(10,2)
+  as_of_date DateTime @db.Date
+
+  EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("conversion_archive")
 }

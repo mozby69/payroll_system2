@@ -1,20 +1,22 @@
   export interface loanProps{
     empCode: string;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN";
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN" | "OTHERS";
     principal: number;
     term_value: number;
-    term_unit: "MONTHS" | "YEARS";
+    term_unit: "MONTHS" | "YEARS" | "BONUS";
     start_date: Date;
     deduct_allowance:boolean;
+    deduct_first_pay?:boolean;
+    deduct_sec_pay?:boolean;
     others_type:string;
   }
 
 export interface updateLoanProps{
     loan_id: number;
-    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN";
+    loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN" | "OTHERS";
     principal: number;
     term_value: number;
-    term_unit: "MONTHS" | "YEARS";
+    term_unit: "MONTHS" | "YEARS" | "BONUS";
     start_date: Date;
     deduct_allowance:boolean;
   }

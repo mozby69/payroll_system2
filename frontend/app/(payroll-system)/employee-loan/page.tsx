@@ -96,7 +96,7 @@ function LoanApplyContent() {
 
 
   const handleSave = async () => {
-    if (!selectedEmp || !principal || !startDate)
+    if (!selectedEmp || !principal)
       return;
 
     try {
@@ -300,7 +300,7 @@ function LoanApplyContent() {
                               />
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                      { loanType !== "OTHERS" && (<div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                                 Start Date
                             </label>
@@ -310,9 +310,9 @@ function LoanApplyContent() {
                                 onChange={e => setStartDate(e.target.value)}
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                             />
-                        </div>
+                        </div>)}
 
-                        <div className="flex flex-col gap-2">
+                        { loanType !== "OTHERS" && (<div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                                 Term 
                             </label>
@@ -324,9 +324,9 @@ function LoanApplyContent() {
                                 onChange={e => setTermValue(Number(e.target.value))}
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                             />
-                        </div>
+                        </div>)}
 
-                        <div className="flex flex-col gap-2">
+                        { loanType !== "OTHERS" && (<div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                                 Term Unit
                             </label>
@@ -339,7 +339,7 @@ function LoanApplyContent() {
                                 <option value="MONTHS">Months</option>
                                 <option value="YEARS">Years</option>
                             </select>
-                        </div>
+                        </div>)}
 
                               
                         { loanType === "OTHERS" && (
@@ -434,6 +434,8 @@ function AreApplyContent(){
     const [startDate, setStartDate] = useState("");
     const [loanPurpose, setLoanPurpose] = useState("");
     const [deductAllowance, setDeductAllowance] = useState(false);
+    const [deductFirstPay, setDeductFirstPay] = useState(true);
+    const [deductSecPay, setDeductSecPay] = useState(true);
 
     const { data: employeesAre } = useEmployeeSearch(searchloanare);
 
@@ -452,6 +454,8 @@ function AreApplyContent(){
             term_unit: termUnit,
             start_date: startDate,
             deduct_allowance: deductAllowance,
+            deduct_first_pay: deductFirstPay,
+            deduct_sec_pay: deductSecPay,
             others_type: areType + "" + loanPurpose
           });
 
@@ -630,17 +634,30 @@ function AreApplyContent(){
                     </select>
                 </div>
 
+                          
+                <div className="flex flex-col gap-4 col-span-full">
+                  <label className="text-sm font-semibold">
+                    Where do you want to deduct it?
+                  </label>
 
-                <div className="inline-flex gap-2 w-full items-end">
-                    <input
-                        type="checkbox"
-                        checked={deductAllowance}
-                        onChange={(e) => setDeductAllowance(e.target.checked)}
-                        className="h-4 w-4"
-                    />
-                    <label className="text-sm font-semibold">
-                        Do you want to deduct in allowance?
-                    </label>
+                  <div className="flex flex-wrap gap-8 w-full">
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={deductFirstPay} onChange={(e) => setDeductFirstPay(e.target.checked)} className="h-4 w-4" />
+                      <label className="text-sm font-semibold">Deduct in First Pay?</label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={deductSecPay} onChange={(e) => setDeductSecPay(e.target.checked)} className="h-4 w-4" />
+                      <label className="text-sm font-semibold">Deduct in Second Pay?</label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={deductAllowance} onChange={(e) => setDeductAllowance(e.target.checked)} className="h-4 w-4" />
+                      <label className="text-sm font-semibold">Deduct in Allowance?</label>
+                    </div>
+
+                   
+                  </div>
                 </div>
 
                 
