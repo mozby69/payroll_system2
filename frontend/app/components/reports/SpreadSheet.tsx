@@ -227,7 +227,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{row.rfc}</td>
                 <td className="py-2 text-center">{row.fch}</td>
                 <td className="py-2 text-center">{row.salaryLoan}</td>
-                <td className="py-2 text-center">{row.calamityLoan}</td>
+                <td className="py-2 text-center">{row.calamityLoan.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.pagibigSalaryLoan}</td>
 
                 <td className="py-2 text-center font-semibold bg-blue-50">
