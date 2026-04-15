@@ -393,6 +393,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         EmpCodeId: true,
         loan_type: true,
         per_payroll_deduct: true,
+        deduct_first_pay: true,
+        deduct_second_pay: true,
         cycle_category: true,
       },
     });
@@ -452,7 +454,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
       const fch = loanDeduct(empLoans["FCH_LOAN"]);
       const rfc = loanDeduct(empLoans["RFC_LOAN"]);
-      const totalLoanDeduction = fch + rfc;
+      const are = loanDeduct(empLoans["ARE_LOAN"]);
+      const totalLoanDeduction = fch + rfc + are;
 
       rows[i] = {
         ...row,

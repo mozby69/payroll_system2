@@ -10,6 +10,8 @@ export type AddLoanPayload = {
   term_unit: "MONTHS" | "YEARS";
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay?:boolean;
+  deduct_sec_pay?:boolean;
   others_type:string;
 };
 
