@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { approveBonusController, checkPayroll, creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getBonusSummaryController, getEmployeeBonusBySummaryIdController, getEmployeeBonusController, getEmployeesByBonusSummaryController, rejectBonusController, releaseBonusController, resetBonusController, submitBonusController, updateBonusController, updateBonusRuleController } from "./bonus.controller";
+import { approveBonusController, checkPayroll, creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, exportBonusExcelController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getBonusSummaryController, getEmployeeBonusBySummaryIdController, getEmployeeBonusController, getEmployeesByBonusSummaryController, rejectBonusController, releaseBonusController, resetBonusController, submitBonusController, updateBonusController, updateBonusRuleController } from "./bonus.controller";
 import { authenticateToken } from "../../middleware/authMiddleware";
 import { getEmployeeBonusServiceBySummaryIdService } from "./bonus.services";
 
@@ -29,6 +29,9 @@ router.post("/approve/:id", authenticateToken, approveBonusController)
 router.post("/release/:id", authenticateToken, releaseBonusController)
 router.post("/reject/:id", authenticateToken, rejectBonusController)
 router.put("/update-bonus/:id", authenticateToken, updateBonusController)
+
+//Utils
+router.post("/export-bonus", exportBonusExcelController)
 
 router.get("/employee-bonuses/", getEmployeesByBonusSummaryController)
 router.get("/test", checkPayroll)

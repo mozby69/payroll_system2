@@ -1,9 +1,10 @@
 import { Request, Response } from "express"
-import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, generateMultipleBonuses, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, resolveBonusRuleIds, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
+import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, exportBonusExcelServices, generateBonusForAllEmployees, generateMultipleBonuses, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, resolveBonusRuleIds, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema, updateBonusSchema } from "./bonus.schema"
 import z, { json } from "zod";
 import { generateBatchId } from "./bonus.utils";
 import { prisma } from "../../config/prismaClient";
+import ExcelJS from "exceljs"
 
 
 
@@ -585,6 +586,38 @@ export async function checkPayroll(req: Request, res: Response) {
 }
 
 
+
+
+
+export const exportBonusExcelController = async (req: Request, res: Response) => {
+  try {
+    const { bonusSummaryId, companyCode } = req.body
+    const { workbook, fileName } =
+      await exportBonusExcelServices({
+        bonusSummaryId,
+        companyCode,
+      })
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${fileName}`
+    )
+
+    await workbook.xlsx.write(res)
+    res.end()
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({
+      message: "Failed to export Excel",
+    })
+  }
+}
 
 
 

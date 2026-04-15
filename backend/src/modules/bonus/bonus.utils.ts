@@ -18,7 +18,10 @@ export function getTenureInMonths(hireDate: Date, asOf: Date): number {
     return years >= 1 ? years : 0
   }
   
-  
+  export function getLastDayOfMonth(period: string): Date {
+    const [year, month] = period.split("-").map(Number)
+    return new Date(year, month, 0)
+  }
 
 
 export function calculateBonusAmount(

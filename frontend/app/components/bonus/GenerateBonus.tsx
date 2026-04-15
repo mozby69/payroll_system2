@@ -16,6 +16,7 @@ import { handleApiError } from "@/app/utils/handleApiError"
 import GenButton from "../Buttons"
 import { useReactToPrint } from "react-to-print"
 import PrintBonusReport from "../reports/BonusReport/PrintBonusReport"
+import { useExportBonusExcel } from "@/app/hooks/useConversion"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
@@ -23,8 +24,7 @@ export default function GenerateBonusPage() {
   const [selectedBonus, setSelectedBonus] = useState<EmployeBonusType | null>(null)
   const [selectedCompany, setSelectedCompany] = useState<string | undefined>()
   const printRef = useRef<HTMLDivElement>(null)
-
-
+  const exportExcelMutation = useExportBonusExcel()
 
   const resetBonusMutation = useResetBonus()
   const submitBonusMutation = useSubmitBonus()
@@ -112,7 +112,7 @@ export default function GenerateBonusPage() {
       setSelectedBonus(bonus)
       setIsOpenEditModal(true)
     }
-    
+  
       
     const varianceEmployees = variance?.varianceEmployees ?? []
 
@@ -133,6 +133,29 @@ export default function GenerateBonusPage() {
               contentRef: printRef,
               documentTitle: `Bonus`,
             })
+
+            const handleExportExcel = async () => {
+              if (!summary?.id || !activeCompany) return
+            
+              try {
+                const blob = await exportExcelMutation.mutateAsync({
+                  bonusSummaryId: summary.id,
+                  companyCode: activeCompany,
+                })
+            
+                const url = window.URL.createObjectURL(blob)
+            
+                const a = document.createElement("a")
+                a.href = url
+                a.download = `Bonus_${activeCompany}.xlsx`
+                a.click()
+            
+                window.URL.revokeObjectURL(url)
+              } catch (error) {
+                console.error(error)
+              }
+            }
+       
 
   return (
 
@@ -228,13 +251,16 @@ export default function GenerateBonusPage() {
           </div>
 
           {companies.length > 0 && (
-          <div className="div">
+          <div className="flex gap-2">
                 <GenButton
                           variant="main"
                           onClick={handlePrint1}
                           >
                           Print Bonus
               </GenButton>
+              <GenButton variant="primary" onClick={handleExportExcel}>
+                 Export Excel
+            </GenButton>
           </div>
           )}
       </div>

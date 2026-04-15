@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
 import { conversionResponse } from "../types/conversionType";
 import SweetAlert from "../components/Swal";
+import { exportBonusExcelService } from "../services/bonus.services";
 
 
 
@@ -55,4 +56,10 @@ export function useFetchConversion(
 
       },
     });
+  }
+
+  export function useExportBonusExcel() {
+    return useMutation({
+      mutationFn: exportBonusExcelService,
+    })
   }

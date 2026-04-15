@@ -106,3 +106,14 @@ export async function deleteBonusRuleServices(id: number) {
         })
         return res.data        
       }
+
+      export async function exportBonusExcelService(payload: {
+        bonusSummaryId: number
+        companyCode: string
+      }) {
+        const res = await api.post("/bonus/export-bonus", payload, {
+          responseType: "blob",
+        })
+      
+        return res.data
+      }
