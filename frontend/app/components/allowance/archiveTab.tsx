@@ -99,7 +99,7 @@ export default function AllowanceArchiveTab(){
 
             return(
         
-                <div className="p-4">
+                <div className="px-4 py-8">
 
                     <input
                       type="text"

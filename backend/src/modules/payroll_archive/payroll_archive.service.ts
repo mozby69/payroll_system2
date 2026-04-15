@@ -9,7 +9,7 @@ import { Console } from "console";
 import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
-import { EmployeeArchivedType, generatePayslipPDF } from "../print/print.service";
+import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 
 export async function employeeProbationary(){
 
@@ -1836,13 +1836,20 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 
 
 
-//
 
 // services/email.service.ts
 
 
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
-export async function sendPayslipEmailService(employee: EmployeeArchivedType) {
+
+export async function sendPayslipEmailService(employee: SendPayslipType) {
 
   const email = employee.EmpCode?.employeepayroll?.gmail_account;
 
@@ -1853,13 +1860,6 @@ export async function sendPayslipEmailService(employee: EmployeeArchivedType) {
   
   const pdfBuffer = await generatePayslipPDF([employee]);
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
 
   await transporter.sendMail({
     from: `"Payroll System" <${process.env.EMAIL_USER}>`,
@@ -1877,4 +1877,59 @@ export async function sendPayslipEmailService(employee: EmployeeArchivedType) {
       },
     ],
   });
+}
+
+
+
+
+
+
+//send email per branch
+
+export async function sendBulkPayslipService({totalPayrollId,selectedCompany,selectedBranch,search}: {
+  totalPayrollId: number;
+  selectedCompany?: string;
+  selectedBranch?: string;
+  search?: string;
+  }) {
+
+  const employees = await prisma.employeePayrollArchive.findMany({
+    where: {
+      totalPayrollId,
+      ...(selectedBranch && {
+        EmpCode: {
+          BranchCodeId: selectedBranch,
+        },
+      }),
+      ...(search && {
+        OR: [
+          { EmpCodeId: { contains: search } },
+          { EmpCode: { Firstname: { contains: search } } },
+          { EmpCode: { Lastname: { contains: search } } },
+        ],
+      }),
+    },
+    include: {
+      EmpCode: {
+        include: {
+          employeepayroll: true,
+        },
+      },
+    },
+  });
+
+  for (const emp of employees) {
+
+    const email = emp.EmpCode?.employeepayroll?.gmail_account;
+
+    if (!email) continue;
+
+    try {
+    
+      await sendPayslipEmailService(emp as unknown as SendPayslipType);
+
+    } catch (err) {
+      console.error(`Failed for ${emp.EmpCodeId}`, err);
+    }
+  }
 }

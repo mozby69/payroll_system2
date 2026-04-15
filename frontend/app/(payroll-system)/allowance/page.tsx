@@ -160,7 +160,7 @@ export default function AllowancePage(){
 
             {activeTab === "current" && (
               <>
-                  <div className="mb-4">
+                  <div className="py-4">
                       <h1 className="font-semibold text-xl text-gray-800">BENEFITS</h1>
                       <h1 className="text-md text-gray-600">Employees Allowance</h1>
                   </div>
