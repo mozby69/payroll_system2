@@ -1,4 +1,4 @@
-import getAttendanceCount, { conversionReport, updateVacationLeave } from "./conversion.service";
+import getAttendanceCount, { conversionReport, saveConversionArchive, updateVacationLeave } from "./conversion.service";
 import { Request,Response } from "express";
 
 
@@ -49,3 +49,34 @@ export const conversionReportController = async (req:Request, res:Response) => {
     return res.status(500).json({message:`server error ${error}`})
   }
 }
+
+
+
+
+
+
+
+export const saveConversionArchiveController = async (req: Request, res: Response) => {
+  try {
+    const company_id = req.query.company_id as string;
+
+    if (!company_id) {
+      return res.status(400).json({ message: "company_id is required" });
+    }
+
+    const result = await saveConversionArchive({ company_id });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.message === "Conversion_Exists") {
+      return res.status(409).json({
+        message: "Conversion for this year has already been saved.",
+      });
+    }
+
+    console.error("SAVE ALLOWANCE ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to save allowance",
+    });
+  }
+};

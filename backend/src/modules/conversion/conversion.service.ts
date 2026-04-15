@@ -10,7 +10,7 @@ import { computeTenure } from "./conversion.helper";
 
 
 
-export default async function getAttendanceCount({ page, limit, search,company_id }: ConversionProps) {
+export default async function getAttendanceCount({ page, limit, search, company_id }: ConversionProps) {
   try {
 
     const searchFilter = search
@@ -23,33 +23,33 @@ export default async function getAttendanceCount({ page, limit, search,company_i
       }
       : {};
 
-   const statusOverride: Prisma.AttendanceCountWhereInput = {
-  OR: [
-    {
-      EmpCode: {
-        is: {
-          EmployeeStatus: {
-            notIn: ["Resigned", "Inactive", "Terminate"],
-          },
-          BranchCode: {
-            company_id: company_id,
-          },
-        },
-      },
-    },
-        (company_id === "EMB" ) ?
+    const statusOverride: Prisma.AttendanceCountWhereInput = {
+      OR: [
         {
           EmpCode: {
-            bod_member: {
-              in: ["bod1", "bod2"],
-            },
-             BranchCode: {
-              company_id: "EMB",
+            is: {
+              EmployeeStatus: {
+                notIn: ["Resigned", "Inactive", "Terminate"],
+              },
+              BranchCode: {
+                company_id: company_id,
+              },
             },
           },
-        } : {}
-  ],
-};
+        },
+        (company_id === "EMB") ?
+          {
+            EmpCode: {
+              bod_member: {
+                in: ["bod1", "bod2"],
+              },
+              BranchCode: {
+                company_id: "EMB",
+              },
+            },
+          } : {}
+      ],
+    };
 
     const finalWhere: Prisma.AttendanceCountWhereInput = {
       AND: [
@@ -73,8 +73,8 @@ export default async function getAttendanceCount({ page, limit, search,company_i
           select: {
             Lastname: true,
             Firstname: true,
-            EmployeeStatus:true,
-            BranchCode:true,
+            EmployeeStatus: true,
+            BranchCode: true,
             employeepayroll: {
               select: {
                 basic_salary: true,
@@ -109,12 +109,12 @@ export default async function getAttendanceCount({ page, limit, search,company_i
       //   total_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
       // }
 
-      if(leave_convert != 0){
+      if (leave_convert != 0) {
         const sick_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
-         const leave_for_convert = dailyRate * (item.leave_convert ?? 0);
-         total_amount = sick_amount + leave_for_convert;
+        const leave_for_convert = dailyRate * (item.leave_convert ?? 0);
+        total_amount = sick_amount + leave_for_convert;
       }
-      else{
+      else {
         total_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
       }
 
@@ -158,7 +158,7 @@ export async function updateVacationLeave(ID: number, data: { leave_convert: num
   return prisma.attendanceCount.update({
     where: { ID },
     data: {
-     leave_convert: data.leave_convert,
+      leave_convert: data.leave_convert,
       Vacation: data.Vacation,
     },
   });
@@ -166,34 +166,34 @@ export async function updateVacationLeave(ID: number, data: { leave_convert: num
 
 
 
-export async function conversionReport({ company_id }:conversionReport) {
+export async function conversionReport({ company_id }: conversionReport) {
   try {
 
-      const statusOverride = {
-        OR: [
-          {
-          EmpCode: {
-          is: {
-            EmployeeStatus: {
-              notIn: ["Resigned", "Inactive", "Terminate"],
-            },
-            BranchCode: {
-              company_id: company_id,
-            },
-          },
-        },
-        },
-        (company_id === "EMB" ) ?
+    const statusOverride = {
+      OR: [
         {
           EmpCode: {
-            bod_member: {
-              in: ["bod1", "bod2"],
-            },
-             BranchCode: {
-              company_id: "EMB",
+            is: {
+              EmployeeStatus: {
+                notIn: ["Resigned", "Inactive", "Terminate"],
+              },
+              BranchCode: {
+                company_id: company_id,
+              },
             },
           },
-        } : {}
+        },
+        (company_id === "EMB") ?
+          {
+            EmpCode: {
+              bod_member: {
+                in: ["bod1", "bod2"],
+              },
+              BranchCode: {
+                company_id: "EMB",
+              },
+            },
+          } : {}
       ],
     };
 
@@ -202,14 +202,14 @@ export async function conversionReport({ company_id }:conversionReport) {
       AND: [statusOverride]
     };
 
-     const as_of_date = await prisma.conversionAsOfDate.findFirst({
-        select: {
-          as_of_date:true,
-        },
-        orderBy:{
-          created_at:'asc'
-        }
-      });
+    const as_of_date = await prisma.conversionAsOfDate.findFirst({
+      select: {
+        as_of_date: true,
+      },
+      orderBy: {
+        created_at: 'asc'
+      }
+    });
 
 
     const data = await prisma.attendanceCount.findMany({
@@ -228,12 +228,18 @@ export async function conversionReport({ company_id }:conversionReport) {
                 basic_salary: true,
               }
             },
-            attendance_count:{
-              select:{
-                leave_convert:true,
+            attendance_count: {
+              select: {
+                leave_convert: true,
               }
             }
-          }
+          },
+
+        }
+      },
+      orderBy: {
+        EmpCode: {
+          Lastname: 'asc'
         }
       }
     })
@@ -245,12 +251,12 @@ export async function conversionReport({ company_id }:conversionReport) {
       const basic = emp.EmpCode.employeepayroll?.basic_salary?.toNumber() ?? 0;
       const dailyRate = computeDailyRate(basic);
       const employmentDate = emp.EmpCode.EmployementDate;
-      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate): 0;
+      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate) : 0;
       const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert ?? 0;
       const sickLeave = emp.Sick?.toNumber?.() ?? Number(emp.Sick) ?? 0;
       const totalLeavForConversion = (leaveForConvert + sickLeave);
-      const leaveAmountForConversion = (totalLeavForConversion * dailyRate).toFixed(2);
-      
+      const leaveAmountForConversion = (totalLeavForConversion * dailyRate);
+
 
       return {
         Sick: emp.Sick,
@@ -261,9 +267,10 @@ export async function conversionReport({ company_id }:conversionReport) {
         daily_rate: dailyRate,
         tenure: tenure,
         leave_convert: emp.EmpCode?.attendance_count?.leave_convert,
-        total_leave_for_conversion:totalLeavForConversion,
-        leave_amount_for_conversion:leaveAmountForConversion,
-        as_of_date:as_of_date,
+        total_leave_for_conversion: totalLeavForConversion,
+        leave_amount_for_conversion: leaveAmountForConversion,
+        as_of_date: as_of_date,
+        EmpCode: emp.EmpCodeId
       }
     });
 
@@ -274,4 +281,85 @@ export async function conversionReport({ company_id }:conversionReport) {
   catch (error) {
     console.error("server error occured", error);
   }
+}
+
+
+
+
+
+
+
+
+
+
+export async function saveConversionArchive({ company_id }: conversionReport) {
+
+
+  const currentYear = new Date().getFullYear();
+
+  const existing = await prisma.conversionArchive.findFirst({
+    where: {
+      as_of_date: {
+        gte: new Date(currentYear, 0, 1),
+        lte: new Date(currentYear, 11, 31),
+      },
+    },
+  });
+
+  if (existing) {
+    throw new Error("Conversion_Exists");
+  }
+
+
+  const reportData = await conversionReport({ company_id });
+
+  if (!reportData || reportData.length === 0) {
+    throw new Error("No data to archive");
+  }
+
+  const archiveData = reportData.map((item) => ({
+    Sick: Number(item.Sick ?? 0),
+    Vacation: Number(item.Vacation ?? 0),
+
+    EmployementDate: item.EmployementDate
+      ? new Date(item.EmployementDate)
+      : new Date(),
+
+    basic_salary: item.basic_salary ?? new Prisma.Decimal(0),
+
+    daily_rate: new Prisma.Decimal(item.daily_rate ?? 0),
+
+    tenure: item.tenure,
+
+    leave_convert: Number(item.leave_convert ?? 0),
+
+    total_leave_for_conversion: item.total_leave_for_conversion,
+
+    leave_amount_for_conversion: new Prisma.Decimal(
+      item.leave_amount_for_conversion ?? 0
+    ),
+
+    as_of_date: item.as_of_date?.as_of_date
+      ? new Date(item.as_of_date.as_of_date)
+      : new Date(),
+
+    EmpCodeId: item.EmpCode,
+  }));
+
+ 
+  await prisma.$transaction(
+    archiveData.map((row) =>
+      prisma.conversionArchive.upsert({
+        where: { EmpCodeId: row.EmpCodeId },
+        update: row,
+        create: row,
+      })
+    )
+  );
+
+
+  return {
+    count: archiveData.length,
+  
+  };
 }
