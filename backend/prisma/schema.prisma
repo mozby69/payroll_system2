@@ -134,6 +134,7 @@ model Employee {
 
   specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount?
+  conversionArchive conversionArchive?
 
   includePayrollLogs IncludePayrollLogs[] @relation()
 
@@ -903,4 +904,24 @@ model conversionAsOfDate{
   created_at DateTime @default(now())
 
   @@map("conversion_as_of_date")
+}
+
+model conversionArchive{
+  id Int @id @default(autoincrement())
+  Sick Int
+  Vacation Int
+  EmployementDate DateTime @db.Date
+  basic_salary Decimal @db.Decimal(10,2)
+
+  daily_rate Decimal @db.Decimal(10,2)
+  tenure Int 
+  leave_convert Int
+  total_leave_for_conversion Int
+  leave_amount_for_conversion Decimal @db.Decimal(10,2)
+  as_of_date DateTime @db.Date
+
+  EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("conversion_archive")
 }

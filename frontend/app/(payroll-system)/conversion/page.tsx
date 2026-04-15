@@ -5,7 +5,7 @@ import { Pagination } from "@/app/components/Pagination";
 import SweetAlert from "@/app/components/Swal";
 import { useAuth } from "@/app/components/UserContext";
 import { useDebounce } from "@/app/helper/useDebounce";
-import { useFetchConversion } from "@/app/hooks/useConversion";
+import { useFetchConversion, useSaveConversionArchive } from "@/app/hooks/useConversion";
 import { useImportAttendanceCount } from "@/app/hooks/usePreparePayroll";
 import EditLeave from "@/app/ModalContent/Conversion/EditLeave";
 import ConversionReport from "@/app/ModalContent/Conversion/Report";
@@ -25,9 +25,9 @@ export default function ConversionPage() {
   const debouncedSearch = useDebounce(search, 400);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalOpen2, setIsModalOpen2] = useState(false);
+  const { mutate: saveArchive, isPending: isSaving } = useSaveConversionArchive();
 
-
-  const {  user } = useAuth();
+  const { user } = useAuth();
   const company_id = user?.company_id;
 
   const { data: conversion_data, } = useFetchConversion({ page, limit: 10, search: debouncedSearch, company_id });
@@ -36,6 +36,68 @@ export default function ConversionPage() {
   const [selectedRow, setSelectedRow] = useState<conversionProps | null>(null);
 
   const tableData: conversionProps[] = conversion_data?.data ?? [];
+
+
+  const handleSaveArchive = () => {
+    if (!company_id) {
+      SweetAlert.errorAlert("Error", "Company ID is missing");
+      return;
+    }
+
+    SweetAlert.confirmationAlert(
+      "Save Archive?",
+      "This will save the conversion for this year",
+      () => {
+        SweetAlert.loadingAlert(
+          "Saving Conversion...",
+          "Please wait while archiving data."
+        );
+
+        saveArchive(company_id, {
+          onSuccess: () => {
+            Swal.close();
+
+            SweetAlert.successAlert(
+              "Saved",
+              "Conversion archived successfully"
+            );
+          },
+
+          onError: (err: unknown) => {
+            Swal.close();
+
+            const error = err as {
+              response?: {
+                status: number;
+                data?: {
+                  message?: string;
+                };
+              };
+            };
+
+            const status = error.response?.status;
+            const message = error.response?.data?.message;
+
+
+            if (status === 409) {
+              SweetAlert.warningAlert(
+                "Warning",
+                message || "Conversion already exists for this year"
+              );
+              return;
+            }
+
+
+            SweetAlert.errorAlert(
+              "Error",
+              message || "Failed to save archive"
+            );
+          }
+        });
+      }
+    );
+  };
+
 
   const handleGenerate = () => {
     SweetAlert.loadingAlert(
@@ -154,7 +216,15 @@ export default function ConversionPage() {
 
             <button
               onClick={openModal2}
-              className="bg-blue-800 hover:bg-blue-600 hover:cursor-pointer text-white rounded-lg px-8 py-2">View</button>
+              className="bg-yellow-700 hover:bg-yellow-600 hover:cursor-pointer text-white rounded-lg px-8 py-2">
+              View
+            </button>
+
+
+            <button onClick={handleSaveArchive}
+              className="bg-blue-700 hover:bg-blue-600 px-8 py-2 rounded-lg text-white">
+              {isSaving ? "Saving..." : "Save"}
+            </button>
           </div>
 
         </div>

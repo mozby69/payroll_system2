@@ -88,3 +88,15 @@ export function useConversionReport(company_id?:string) {
         enabled: !!company_id,
       });
 }
+
+
+export function useSaveConversionArchive() {
+  return useMutation({
+    mutationFn: async (company_id: string) => {
+      const res = await api.post("/conversion/save-conversion", null, {
+        params: { company_id },
+      });
+      return res.data;
+    },
+  });
+}
