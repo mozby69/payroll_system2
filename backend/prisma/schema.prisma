@@ -406,9 +406,11 @@ model loan_details {
   principal            Decimal  @db.Decimal(10,2)
   loan_type            String   @db.VarChar(100)
   term_value           Int
-  term_unit            String   @db.VarChar(10) 
+  term_unit            String  @db.VarChar(10) 
   start_date           DateTime @db.Date
   deduct_allowance     Boolean  @default(true)
+  deduct_first_pay     Boolean  @default(true)
+  deduct_second_pay     Boolean  @default(true)
   per_payroll_deduct   Decimal  @db.Decimal(10,2)
   status               String   @db.VarChar(50) 
   created_at           DateTime @default(now())
@@ -818,6 +820,7 @@ enum LeaveName {
   Maternity
   Paternity
   Health
+  SpecialChild
 }
 
 model SpecialLeaves {

@@ -10,6 +10,8 @@ export type AddLoanPayload = {
   term_unit: "MONTHS" | "YEARS";
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay?:boolean;
+  deduct_sec_pay?:boolean;
   others_type:string;
 };
 
@@ -67,7 +69,7 @@ export type LedgerRow = {
   debit_amount: number;
   credit_amount: number;
   isPaid: boolean;
-  isSkipped: boolean;
+  isSkipped?: boolean;
   isDeduction:boolean;
   isCreated:boolean;
 };

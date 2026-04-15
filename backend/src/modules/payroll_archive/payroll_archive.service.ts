@@ -221,6 +221,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
     const payrollCycle = payCycle.split("-")[0];
 
+    const firstPayCycles = ["10", "15"];
+    const secondPayCycles = ["25", "30"];
+
     const loans = await prisma.loan_details.findMany({
       where: {
         EmpCodeId: { in: empCodes },
@@ -228,6 +231,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loan_type: {
           in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"],
         },
+        start_date: {
+          lte: new Date(payYear, payMonth, 0),
+        }
       },
       select: {
         loan_id: true,
@@ -235,6 +241,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loan_type: true,
         per_payroll_deduct: true,
         others_types: true,
+        deduct_first_pay: true,
+        deduct_second_pay: true,
       },
     });
 
@@ -287,7 +295,26 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         };
       }
 
-      if (!alreadyDeducted) {
+      const isFirstPay = firstPayCycles.includes(payrollCycle);
+      const isSecondPay = secondPayCycles.includes(payrollCycle);
+
+      let shouldDeduct = false;
+
+      if (loan.deduct_first_pay && loan.deduct_second_pay) {
+        // both true → allow all cycles
+        shouldDeduct = true;
+      } else if (loan.deduct_first_pay && !loan.deduct_second_pay) {
+        // only first pay
+        shouldDeduct = isFirstPay;
+      } else if (!loan.deduct_first_pay && loan.deduct_second_pay) {
+        // only second pay
+        shouldDeduct = isSecondPay;
+      } else {
+        // both false → no deduction
+        shouldDeduct = false;
+      }
+
+      if (!alreadyDeducted && shouldDeduct) {
         loanByEmp[loan.EmpCodeId][key].amount += Number(loan.per_payroll_deduct);
       }
 
@@ -544,6 +571,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       const payrollCycle    = payCycle.split("-")[0];
       const cycleCategory   = cycle;
   
+      const firstPayCycles = ["10", "15"];
+      const secondPayCycles = ["25", "30"];
+
       const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod);
       const [payYear, payMonth]  = currentPayrollPeriod.split("-").map(Number);
   
@@ -558,8 +588,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           EmpCodeId: { in: empCodes },
           status: "ACTIVE",
           loan_type: { in: ["FCH_LOAN", "SSS_LOAN", "PAGIBIG_LOAN", "RFC_LOAN", "ARE_LOAN"] },
+          start_date: {
+            lte: new Date(payYear, payMonth, 0),
+          }
         },
-        select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true,others_types: true, },
+        select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true,others_types: true,  deduct_first_pay: true,
+                deduct_second_pay: true,},
       });
   
       const loanIds = loans.map((l) => l.loan_id);
@@ -592,6 +626,15 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         };
 
         
+        const isFirstPay = firstPayCycles.includes(payrollCycle);
+        const isSecondPay = secondPayCycles.includes(payrollCycle);
+
+        const shouldDeduct =
+          !alreadyDeducted &&
+          (
+            (loan.deduct_first_pay && isFirstPay) ||
+            (loan.deduct_second_pay && isSecondPay)
+          );
 
         let key = loan.loan_type;
 
@@ -603,9 +646,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           if (loan.loan_type === "SSS_LOAN") key = "SSS_Cal";
           if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
         }
+
         loanByEmp[loan.EmpCodeId][key] = {
           loan_id: loan.loan_id,
-          amount: Number(loan.per_payroll_deduct),
+          amount: shouldDeduct ? Number(loan.per_payroll_deduct) : 0,
           alreadyDeducted,
         };
       }
@@ -786,6 +830,10 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const loan = empLoans[loanType];
 
         if (loan.alreadyDeducted) continue;
+
+        // ✅ skip if not supposed to deduct
+        if (!loan.amount || loan.amount <= 0) continue;
+
 
         // ✅ PREVENT DUPLICATES
         if (processedLoanIds.has(loan.loan_id)) continue;

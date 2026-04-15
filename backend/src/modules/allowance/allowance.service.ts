@@ -426,6 +426,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             EmpCodeId: true,
             loan_type: true,
             per_payroll_deduct: true,
+            deduct_first_pay: true,
+            deduct_second_pay: true,
             cycle_category:true,
           },
         });
@@ -455,10 +457,6 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
           if (ledger) {
             const d = ledger.transaction_date;
             let expectedPayrollCycle = "30";
-
-            // if (loan.cycle_category === "10-25-Cycle") {
-            //   expectedPayrollCycle = "30";
-            // }
 
             
             alreadyDeducted =
@@ -491,7 +489,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         
           const fch = loanDeduct(empLoans["FCH_LOAN"]);
           const rfc = loanDeduct(empLoans["RFC_LOAN"]);
-          const totalLoanDeduction = fch + rfc;
+          const are = loanDeduct(empLoans["ARE_LOAN"]);
+          const totalLoanDeduction = fch + rfc + are;
           
           rows[i] = {
             ...row,
@@ -503,10 +502,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         }
       }
 
-      // ...row,
-      // loan: loanAmount,
-      // total: row.total - loanAmount,
-      // totalDeduction: row.totalDeduction + loanAmount,
+  
 
     // loan Code ↑ 
     
@@ -635,13 +631,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     
 
 
-
-
-
   }
-
-
-
 
 
   type UpdateAllowanceBranchParams = {
