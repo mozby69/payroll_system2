@@ -1,6 +1,9 @@
 import { useAuth } from "@/app/components/UserContext";
 import { useConversionReport } from "@/app/hooks/useConversion";
+import { formatCurrency } from "@/app/utils/currencyConverter";
 import { formatDate } from "@/app/utils/DateFormatter";
+import { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
 
 
 
@@ -13,19 +16,46 @@ export default function ConversionReport() {
     const { data: conversion_report_data } = useConversionReport(company_id);
 
 
+    const totals = conversion_report_data?.reduce(
+        (acc, item) => {
+            return {
+                basic: acc.basic + Number(item.basic_salary ?? 0),
+                daily: acc.daily + Number(item.daily_rate ?? 0),
+                amount: acc.amount + Number(item.leave_amount_for_conversion ?? 0),
+            };
+        },
+        {
+            basic: 0,
+            daily: 0,
+            amount: 0,
+        }
+    );
+
+    const asOfDate = conversion_report_data?.[0]?.as_of_date?.as_of_date;
 
 
-
+      const printRef = useRef<HTMLDivElement>(null);
+    
+        const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: `conversion report`,
+        });
 
     return (
         <>
-            <div>
+            <div ref={printRef} className="p-4 print-deductions">
 
-                <div>
-                    <h2 className="font-semibold">EMB CAPITAL LENDING CORPORATION</h2>
-                    <h2>VL AND SL CREDITS PLUS SL CONVERSION</h2>
-                    <h2>LEAVE CREDITS AS OF { }</h2>
-                    <h2>Date:{ }</h2>
+                <div className="flex justify-between">
+                    <div  >
+                        <h2 className="font-semibold">EMB CAPITAL LENDING CORPORATION</h2>
+                        <h2>VL AND SL CREDITS PLUS SL CONVERSION</h2>
+                        LEAVE CREDITS AS OF: {formatDate(asOfDate)}
+                        <h2>Date: {formatDate(new Date())}</h2>
+                    </div>
+                    <div className="print:hidden">
+                        <button className="bg-blue-700 hover:bg-blue-600 px-8 py-2 text-white rounded" onClick={handlePrint}>Print</button>
+                    </div>
+
                 </div>
 
                 <div className="py-4">
@@ -65,6 +95,25 @@ export default function ConversionReport() {
                                     </td>
                                 </tr>
                             ))}
+                            <tr>
+                                <td className="font-semibold border border-gray-200 p-2" colSpan={3}>
+                                    TOTAL
+                                </td>
+
+                                <td className="font-semibold border border-gray-200 p-2 text-right">
+                                    {formatCurrency(totals?.basic)}
+                                </td>
+
+                                <td className="font-semibold border border-gray-200 p-2 text-right">
+                                    {formatCurrency(totals?.daily)}
+                                </td>
+
+                                <td className="font-semibold border border-gray-200 p-2" colSpan={4}></td>
+
+                                <td className="font-semibold border border-gray-200 p-2 text-right">
+                                    {formatCurrency(totals?.amount)}
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

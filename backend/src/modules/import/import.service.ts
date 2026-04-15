@@ -4,6 +4,7 @@ import { prisma } from "../../config/prismaClient";
 import { attendance_countDTO, BranchDTO, CompanyDTO, DjangoExportResponse, DjangoExportResponse2, EmployeeDetailsDTO, EmployeeDTO, SpecialleavesDTO } from "./import.types";
 import { Prisma } from "@prisma/client";
 import { mapLeaveName, mapLeaveStatus } from "./import.helper";
+import { nowPH } from "../../utils/timezone";
 
 
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
@@ -401,16 +402,40 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
   };
 
 
-  export const importAttendanceCountService = async () => {
-    const { attendance_count } = await fetchAttendanceCountFromDjango();
+  // export const importAttendanceCountService = async () => {
+  //   const { attendance_count } = await fetchAttendanceCountFromDjango();
   
-    if (!Array.isArray(attendance_count)) {
-      throw new Error("attendance_count payload is invalid");
-    }
+  //   if (!Array.isArray(attendance_count)) {
+  //     throw new Error("attendance_count payload is invalid");
+  //   }
   
-    const count = await saveAttendanceCount(attendance_count);
+  //   const count = await saveAttendanceCount(attendance_count);
   
-    return {
-      attendanceCount: count,
-    };
+  //   return {
+  //     attendanceCount: count,
+  //   };
+  // };
+
+
+export const importAttendanceCountService = async () => {
+  // 1. Fetch data
+  const { attendance_count } = await fetchAttendanceCountFromDjango();
+
+  if (!Array.isArray(attendance_count)) {
+    throw new Error("attendance_count payload is invalid");
+  }
+
+  // 2. Save attendance (keep your existing logic)
+  const count = await saveAttendanceCount(attendance_count);
+
+
+  await prisma.conversionAsOfDate.create({
+    data: {
+      as_of_date: nowPH(),
+    },
+  });
+
+  return {
+    attendanceCount: count,
   };
+};

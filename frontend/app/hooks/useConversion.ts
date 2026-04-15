@@ -32,7 +32,7 @@ export function useFetchConversion(
 
 
   
-  export function useUpdateVacationLeave() {
+export function useUpdateVacationLeave() {
     const queryClient = useQueryClient();
   
     return useMutation({
@@ -50,9 +50,9 @@ export function useFetchConversion(
         await queryClient.refetchQueries({
           queryKey: ["conversion-list"],
         });
-
-      
-
+        await queryClient.refetchQueries({
+          queryKey:["conversion-report-list"],
+        });
       },
     });
   }
@@ -68,6 +68,9 @@ interface ConversionReportResponse{
   leave_convert:number;
   total_leave_for_conversion:number;
   leave_amount_for_conversion:number;
+  as_of_date:{
+    as_of_date:string;
+  };
 }
 
 

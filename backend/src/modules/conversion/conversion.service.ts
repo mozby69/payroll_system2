@@ -37,15 +37,17 @@ export default async function getAttendanceCount({ page, limit, search,company_i
         },
       },
     },
-    {
-      EmpCode: {
-        is: {
-          bod_member: {
-            in: ["bod1", "bod2"],
+        (company_id === "EMB" ) ?
+        {
+          EmpCode: {
+            bod_member: {
+              in: ["bod1", "bod2"],
+            },
+             BranchCode: {
+              company_id: "EMB",
+            },
           },
-        },
-      },
-    },
+        } : {}
   ],
 };
 
@@ -170,7 +172,7 @@ export async function conversionReport({ company_id }:conversionReport) {
       const statusOverride = {
         OR: [
           {
-              EmpCode: {
+          EmpCode: {
           is: {
             EmployeeStatus: {
               notIn: ["Resigned", "Inactive", "Terminate"],
@@ -181,13 +183,17 @@ export async function conversionReport({ company_id }:conversionReport) {
           },
         },
         },
+        (company_id === "EMB" ) ?
         {
           EmpCode: {
             bod_member: {
               in: ["bod1", "bod2"],
             },
+             BranchCode: {
+              company_id: "EMB",
+            },
           },
-        },
+        } : {}
       ],
     };
 
@@ -195,6 +201,15 @@ export async function conversionReport({ company_id }:conversionReport) {
     const finalWhere: Prisma.AttendanceCountWhereInput = {
       AND: [statusOverride]
     };
+
+     const as_of_date = await prisma.conversionAsOfDate.findFirst({
+        select: {
+          as_of_date:true,
+        },
+        orderBy:{
+          created_at:'asc'
+        }
+      });
 
 
     const data = await prisma.attendanceCount.findMany({
@@ -235,6 +250,7 @@ export async function conversionReport({ company_id }:conversionReport) {
       const sickLeave = emp.Sick?.toNumber?.() ?? Number(emp.Sick) ?? 0;
       const totalLeavForConversion = (leaveForConvert + sickLeave);
       const leaveAmountForConversion = (totalLeavForConversion * dailyRate).toFixed(2);
+      
 
       return {
         Sick: emp.Sick,
@@ -247,6 +263,7 @@ export async function conversionReport({ company_id }:conversionReport) {
         leave_convert: emp.EmpCode?.attendance_count?.leave_convert,
         total_leave_for_conversion:totalLeavForConversion,
         leave_amount_for_conversion:leaveAmountForConversion,
+        as_of_date:as_of_date,
       }
     });
 
