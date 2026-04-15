@@ -1595,7 +1595,9 @@ export async function reconcileEmployeePayrollBonus(
       name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
       basic_salary: Number(emp.employeepayroll?.basic_salary) / 2,
       type: "BONUS_NO_ARCHIVE" as const,
-      remarks: leave?.leaveName ?? "",
+      remarks: leave?.leaveName === "SpecialChild"
+        ? "Special Case"
+        : (leave?.leaveName ?? ""),
       date
     }
   })
