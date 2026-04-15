@@ -1,12 +1,13 @@
 import { AuditAction, AuditModule, BonusType, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getTenureInMonths, getTenureInYears } from "./bonus.utils"
+import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
 import { formatDateToMMDDYY } from "../../utils/formatDateToMMDDYY"
 import { VarianceEmployee } from "./bonus.types"
 import { getPreviousPayrollDate } from "../../utils/getPreviousPayrollDate"
+import ExcelJS from "exceljs"
 
 //Bonus Rules
 export async function createBonusRuleService(data: CreateBonusRuleInput) {
@@ -198,11 +199,6 @@ export async function generateBonusForAllEmployees({
       throw new Error("Bonus rule not found")
     }
     const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
-
-
-  
-   
-
  
     const blockingSummary = await tx.bonusSummary.findFirst({
       where: {
@@ -213,7 +209,6 @@ export async function generateBonusForAllEmployees({
         }
       }
     })
-
 
     if (blockingSummary?.status === "RELEASED") {
       throw {
@@ -262,6 +257,11 @@ export async function generateBonusForAllEmployees({
       where: {
         AND: [
           {
+            EmployementDate: {
+              lte: generateDate
+            }
+        },
+          {
             BranchCode: {
               CompanyCode: {
                 CompanyCode: {
@@ -272,7 +272,9 @@ export async function generateBonusForAllEmployees({
           },
           {
             OR: [
-              { EmployeeStatus: "Active" },
+              {  EmployeeStatus: {
+                in: ["Active", "Inactive"],
+              },},
               { bod_member: "bod1" },
               { bod_member: "bod2" },
               {EndDate: {
@@ -303,11 +305,23 @@ export async function generateBonusForAllEmployees({
     }> = []
 
     for (const emp of employees) {
-      if (!emp.EmployementDate) continue
-
-      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureYear) continue
       const payroll = emp.employeepayroll
+      const basicSalary = Number(payroll?.basic_salary ?? 0)
+
+      const tenure = emp.EmployementDate
+      ? getTenureInYears(emp.EmployementDate, asOfDate)
+      : 0
+      
+      const isEligible =
+      emp.EmployementDate &&
+      tenure >= rule.minTenureYear &&
+      basicSalary > 0
+
+      let amount = 0
+      let remarks = ""
+      let hasLeave = false
+
+
       if (!payroll || !payroll.basic_salary){
         invalidEmployees.push({
           empCode: emp.EmpCode,
@@ -315,10 +329,12 @@ export async function generateBonusForAllEmployees({
           basicSalary: 0,
           amount: 0
         })
-        continue
       } 
-      const basicSalary = Number(payroll.basic_salary)
-      const amount = calculateBonusAmount(rule.formulaType, basicSalary)
+
+      if (isEligible) {
+        amount = calculateBonusAmount(rule.formulaType, basicSalary)
+      }
+      
       if (amount <= 0) {
         invalidEmployees.push({
           empCode: emp.EmpCode,
@@ -424,30 +440,36 @@ export async function generateBonusForAllEmployees({
       ])
     )
 
-
-
-
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
     
     let remarks = ""
     let hasLeave = false
 
     for (const emp of employees) {
-      if (!emp.EmployementDate) continue
-    
-      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureYear) continue
+      const tenure = emp.EmployementDate
+      ? getTenureInYears(emp.EmployementDate, asOfDate)
+      : 0
+
+      
     
       const payroll = emp.employeepayroll
-      if (!payroll?.basic_salary) continue
+      const basicSalary = Number(payroll?.basic_salary ?? 0)
     
-      if (existingEmployeeCodes.has(emp.EmpCode)) continue
-
       const employeeLeaves = leaveMap.get(emp.EmpCode)
+
+       // Skip entire employee if ANY leave is SpecialChild
+        if (employeeLeaves?.some(leave => leave.leaveName === "SpecialChild" && leave.status === "Active")) {
+          continue
+        }
+
+      const isEligible =
+      emp.EmployementDate &&
+      tenure >= rule.minTenureYear &&
+      basicSalary > 0
 
       let amount = 0
       
-      if (employeeLeaves && employeeLeaves.length > 0) {
+      if (employeeLeaves && employeeLeaves.length > 0 ) {
           employeeLeaves.forEach(leave => {
             if (!leave.start && !leave.expectedStart) return
             if (!leave.end && !leave.expectedEnd) return
@@ -473,18 +495,20 @@ export async function generateBonusForAllEmployees({
                     leaveEnd
                   )
                   hasLeave= true
+                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(basicSalary))
 
-                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(payroll.basic_salary))
-                  amount = res.amount
-
-                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(payroll.basic_salary) / 2} X ${eligibleMonth} / ${res.count})` 
+                  if(isEligible){
+                    amount = res.amount
+                  }
+                 
+                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${res.count})` 
         })
       
       } else {
-        amount = calculateBonusAmount(
-          rule.formulaType,
-          Number(payroll.basic_salary)
-        )
+        if (isEligible) {
+          amount = calculateBonusAmount(rule.formulaType, basicSalary)
+        }
+     
 
         remarks = ""
         hasLeave= false
@@ -512,7 +536,6 @@ export async function generateBonusForAllEmployees({
         finalAmount = 0
       }
     
-      if (amount <= 0) continue
 
       rows.push({
         employeeCode: emp.EmpCode,
@@ -548,9 +571,14 @@ export async function generateBonusForAllEmployees({
       }
     })
 
-    return { success: true }
+    return {
+      success: true,
+      totalEmployees: rows.length,
+      totalAmount,
+    }
   })
 }
+
 
 export async function getEmployeeBonusService() {
   const rows = await prisma.employeeBonus.findMany({
@@ -1043,12 +1071,15 @@ export async function getEmployeesByBonusSummarySerive(
                 CompanyCode: selectedCompanyCode
               },
             },
+            
           },
 
           { 
             OR: [
               {
-                EmployeeStatus: "Active",
+                EmployeeStatus: {
+                  in: ["Active", "Inactive"],
+                },
                 EmployementDate: {
                   lte: summary.generateDate
                 }
@@ -1072,6 +1103,16 @@ export async function getEmployeesByBonusSummarySerive(
               },
             ],
           },
+          {
+            NOT: {
+              specialLeaves: {
+                some: {
+                  leaveName: "SpecialChild",
+                  status: "Active"
+                }
+              }
+            }
+          }
       ],
     },
     include: {
@@ -1094,6 +1135,7 @@ export async function getEmployeesByBonusSummarySerive(
           others_types: summary.bonusRule.code,
         },
       },
+      
     },
     orderBy: [
       { Lastname: "asc" },
@@ -1109,7 +1151,7 @@ export async function getEmployeesByBonusSummarySerive(
       )
     })
 
-    console.log("test: ", variance)
+    // console.log("test: ", variance)
 
 
     const result = employees.map(emp => {
@@ -1140,6 +1182,7 @@ export async function getEmployeesByBonusSummarySerive(
         notes: bonus?.notes ?? null,
       }
     })
+    
 
     return {
       summary,
@@ -1552,7 +1595,9 @@ export async function reconcileEmployeePayrollBonus(
       name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
       basic_salary: Number(emp.employeepayroll?.basic_salary) / 2,
       type: "BONUS_NO_ARCHIVE" as const,
-      remarks: leave?.leaveName ?? "",
+      remarks: leave?.leaveName === "SpecialChild"
+        ? "Special Case"
+        : (leave?.leaveName ?? ""),
       date
     }
   })
@@ -1691,3 +1736,234 @@ export async function resolveBonusRuleIds({
   return rules.map(r => r.id)
 }
 
+
+
+
+type ExportBonusParams = {
+  bonusSummaryId: number
+  companyCode: string
+}
+
+export async function exportBonusExcelServices({
+  bonusSummaryId,
+  companyCode,
+}: ExportBonusParams) {
+
+  // =============================
+  // 📥 FETCH DATA
+  // =============================
+  const summary = await prisma.bonusSummary.findUnique({
+    where: { id: bonusSummaryId },
+    include: {
+      bonusRule: true,
+      employeeBonuses: {
+        where: {
+          employee: {
+            BranchCode: {
+              company_id: companyCode,
+            },
+          },
+        },
+        include: {
+          employee: {
+            include: {
+              BranchCode: true,
+            },
+          },
+        },
+        orderBy: [
+          { employee: { Lastname: "asc" } },
+          { employee: { Firstname: "asc" } },
+        ],
+      },
+    },
+  })
+
+  if (!summary) throw new Error("Summary not found")
+
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet("Bonus Report")
+    
+    // =============================
+    // 🧾 HEADER (TOP SECTION)
+    // =============================
+    sheet.mergeCells("A1:J1")
+    sheet.getCell("A1").value = "BONUS REPORT"
+    sheet.getCell("A1").font = { bold: true, size: 16 }
+    sheet.getCell("A1").alignment = { horizontal: "center" }
+    
+    sheet.getCell("A2").value = `Company: ${companyCode}`
+    sheet.getCell("A3").value = `Bonus: ${summary.bonusRule.name}`
+    sheet.getCell("A4").value = `Release Period: ${summary.releasePeriod}`
+    sheet.getCell("A5").value = `Generated Date: ${new Date(summary.generateDate).toLocaleDateString()}`
+    
+   // =============================
+// 📊 TABLE HEADER (FIXED)
+// =============================
+const startRow = 7
+const bonusTitle = summary.bonusRule.name.toUpperCase()
+
+// ✅ Manually create header row
+const headerRow = sheet.getRow(startRow)
+
+headerRow.values = [
+  "#",
+  "EMPLOYEE'S NAME",
+  "DATE HIRED",
+  "BASE DATE",
+  "TENURE",
+  "MONTHLY BASIC",
+  "HALF MONTH",
+  `${bonusTitle}\nBONUS`,
+  "FCH LOAN",
+  "NET BONUS",
+]
+
+// ✅ Set column widths separately
+sheet.columns = [
+  { key: "index", width: 5 },
+  { key: "name", width: 30 },
+  { key: "dateHired", width: 15 },
+  { key: "baseDate", width: 15 },
+  { key: "tenure", width: 10 },
+  { key: "basic", width: 18 },
+  { key: "half", width: 18 },
+  { key: "bonus", width: 18 },
+  { key: "loan", width: 18 },
+  { key: "net", width: 18 },
+]
+
+// =============================
+// 🎨 STYLE HEADER
+// =============================
+headerRow.font = { bold: true }
+
+headerRow.eachCell(cell => {
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+    wrapText: true,
+  }
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "D9D9D9" },
+  }
+
+  cell.border = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  }
+})
+
+headerRow.height = 30
+
+  // =============================
+  // 📥 DATA
+  // =============================
+  let totals = {
+    basic: 0,
+    half: 0,
+    bonus: 0,
+    loan: 0,
+    net: 0,
+  }
+
+  const endOfMonth = getLastDayOfMonth(summary.releasePeriod)
+
+  summary.employeeBonuses.forEach((b, index) => {
+    const basic = Number((Number(b.amount) * 2) || 0)
+    const half = basic / 2
+    const bonus = Number(b.amount || 0)
+    const loan = Number(b.loanDeduction || 0)
+    const net = Number(b.netAmount || 0)
+
+    totals.basic += basic
+    totals.half += half
+    totals.bonus += bonus
+    totals.loan += loan
+    totals.net += net
+
+    const row = sheet.addRow({
+      index: index + 1,
+      name: `${b.employee?.Lastname}, ${b.employee?.Firstname}`,
+      dateHired: b.employee?.EmployementDate
+        ? new Date(b.employee.EmployementDate).toLocaleDateString()
+        : "",
+      baseDate: summary.releasePeriod,
+      tenure: b.employee?.EmployementDate
+      ? getTenureInYears(
+          b.employee.EmployementDate,
+          endOfMonth
+        )
+      : 0,
+      basic,
+      half,
+      bonus,
+      loan,
+      net,
+    })
+
+    row.eachCell(cell => {
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      }
+
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: typeof cell.value === "number" ? "right" : "left",
+      }
+    })
+  })
+
+  // =============================
+  // 🧮 TOTAL ROW
+  // =============================
+  const totalRow = sheet.addRow({
+    name: "TOTAL",
+    basic: totals.basic,
+    half: totals.half,
+    bonus: totals.bonus,
+    loan: totals.loan,
+    net: totals.net,
+  })
+
+  totalRow.font = { bold: true }
+
+  totalRow.eachCell(cell => {
+    cell.border = {
+      top: { style: "medium" },
+      bottom: { style: "double" },
+    }
+
+    cell.alignment = {
+      horizontal: typeof cell.value === "number" ? "right" : "left",
+    }
+  })
+
+  // =============================
+  // 💰 CURRENCY FORMAT
+  // =============================
+  ;["F", "G", "H", "I", "J"].forEach(col => {
+    sheet.getColumn(col).numFmt = '"₱"#,##0.00'
+  })
+
+  // =============================
+  // ❄️ FREEZE HEADER
+  // =============================
+  sheet.views = [{ state: "frozen", ySplit: startRow }]
+
+  // =============================
+  // 📦 RETURN
+  // =============================
+  return {
+    workbook,
+    fileName: `Bonus_${companyCode}_${summary.releasePeriod}.xlsx`,
+  }
+}

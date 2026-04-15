@@ -67,7 +67,7 @@ export type LedgerRow = {
   debit_amount: number;
   credit_amount: number;
   isPaid: boolean;
-  isSkipped: boolean;
+  isSkipped?: boolean;
   isDeduction:boolean;
   isCreated:boolean;
 };
