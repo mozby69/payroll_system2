@@ -57,6 +57,7 @@ export function useUpdateVacationLeave() {
     });
   }
 
+
 interface ConversionReportResponse{
   Sick:number;
   Vacation:number;

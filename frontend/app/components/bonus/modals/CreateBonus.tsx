@@ -17,35 +17,41 @@ import SweetAlert from "../../Swal"
 
 
 function getReleasePeriodFromEligibleMonth(
-  eligibleMonth: number
+  eligibleMonth: number,
+  referenceDate: Date // ✅ add this
 ): string {
-  const now = new Date()
-  let year = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
+  let year = referenceDate.getFullYear()
+  const currentMonth = referenceDate.getMonth() + 1
 
   if (currentMonth > eligibleMonth) {
     year += 1
   }
 
-  const date = new Date(year, eligibleMonth , 1)
+  const date = new Date(year, eligibleMonth, 1)
   return date.toISOString().slice(0, 7)
 }
 
 
 function getAsOfDateFromEligibleMonth(
-  eligibleMonth: number
+  eligibleMonth: number,
+  referenceDate: Date
 ): string {
-  const now = new Date()
-  let year = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
+  let year = referenceDate.getFullYear()
+  const currentMonth = referenceDate.getMonth() + 1
 
   if (currentMonth > eligibleMonth) {
     year += 1
   }
-  const date = new Date(year, eligibleMonth, 0)
-  return date.toISOString().slice(0, 10)
-}
 
+  const date = new Date(year, eligibleMonth, 0)
+
+  // ✅ FIX: format using LOCAL date
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, "0")
+  const dd = String(date.getDate()).padStart(2, "0")
+
+  return `${yyyy}-${mm}-${dd}`
+}
 
 type CreateModalProps = {
   onClose: () => void
@@ -108,16 +114,22 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
         return
       }
     
-      setForm(prev => ({
-        ...prev, 
-        bonusRuleId: ruleId,
-        releasePeriod: getReleasePeriodFromEligibleMonth(
-          rule.eligibleMonth
-        ),
-        asOfDate: getAsOfDateFromEligibleMonth(
-          rule.eligibleMonth
-        )
-      }))
+      const referenceDate = form.generateDate
+      ? new Date(form.generateDate)
+      : new Date() // fallback if empty
+    
+    setForm(prev => ({
+      ...prev,
+      bonusRuleId: ruleId,
+      releasePeriod: getReleasePeriodFromEligibleMonth(
+        rule.eligibleMonth,
+        referenceDate
+      ),
+      asOfDate: getAsOfDateFromEligibleMonth(
+        rule.eligibleMonth,
+        referenceDate
+      )
+    }))
     
       setLockDates(true)
       setErrors(null)
