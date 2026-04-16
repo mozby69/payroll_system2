@@ -18,6 +18,9 @@ type LoanForm = {
   term_value: number;
   term_unit: "MONTHS" | "YEARS";
   deduct_allowance: boolean;
+  deduct_first_pay:boolean;
+  deduct_sec_pay:boolean;
+  others_types: string;
 };
 
 export default function ModifyLoan({ loan_id }: LoanModal) {
@@ -42,6 +45,9 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
       term_value: data.term_value,
       term_unit: data.term_unit,
       deduct_allowance: data.deduct_allowance,
+      deduct_first_pay:data.deduct_first_pay,
+      deduct_sec_pay: data.deduct_sec_pay,
+      others_types: data.others_types,
     });
     return null;
   }
@@ -81,6 +87,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
             <option value="SSS_LOAN">SSS Loan</option>
             <option value="PAGIBIG_LOAN">Pag-IBIG Loan</option>
             <option value="RFC_LOAN">RFC Housing Loan</option>
+            <option value="ARE_LOAN">ARE Loan</option>
             <option value="OTHERS">Others...</option>
           </select>
         </div>
@@ -143,19 +150,63 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
           </select>
         </div>
 
-        <div className="flex items-center gap-2 col-span-full">
-          <input
-            type="checkbox"
-            disabled={isLocked}
-            checked={form.deduct_allowance}
-            onChange={(e) =>
-              setForm({ ...form, deduct_allowance: e.target.checked })
-            }
-          />
-          <label className="text-sm font-semibold">
-            Deduct in allowance?
-          </label>
-        </div>
+        <div className="flex flex-col gap-4 col-span-full">
+           { form.loan_type === "ARE_LOAN" && (
+            <label className="text-sm font-semibold">
+              Where do you want to deduct it?
+            </label>)}
+            <div className="flex flex-wrap gap-8 w-full">
+               { form.loan_type === "ARE_LOAN" && (
+              <div className="flex items-center gap-2 col-span-full">
+                  <input
+                    type="checkbox"
+                    disabled={isLocked}
+                    checked={form.deduct_first_pay}
+                    onChange={(e) =>
+                      setForm({ ...form, deduct_first_pay : e.target.checked })
+                    }
+                  />
+                  <label className="text-sm font-semibold">
+                    Deduct in First Pay.?
+                  </label>
+
+              </div>)}
+                  
+              { form.loan_type === "ARE_LOAN" && (
+              <div className="flex items-center gap-2 col-span-full">
+                  <input
+                    type="checkbox"
+                    disabled={isLocked}
+                    checked={form.deduct_sec_pay}
+                    onChange={(e) =>
+                      setForm({ ...form, deduct_sec_pay: e.target.checked })
+                    }
+                  />
+                  <label className="text-sm font-semibold">
+                    Deduct in Second Pay?
+                  </label>
+
+              </div>)}
+
+
+              <div className="flex items-center gap-2 col-span-full">
+                <input
+                  type="checkbox"
+                  disabled={isLocked}
+                  checked={form.deduct_allowance}
+                  onChange={(e) =>
+                    setForm({ ...form, deduct_allowance: e.target.checked })
+                  }
+                />
+                <label className="text-sm font-semibold">
+                  Deduct in allowance?
+                </label>
+
+                </div>
+
+            </div>
+            
+          </div>
 
       </div>
 

@@ -1107,6 +1107,62 @@ function LoanListContent() {
                     <p className="text-gray-500">No records found.</p>
                   ) : (
                     <div ref={summaryRef} className="print-container">
+
+                         <style>{`
+                     
+                    @media print {
+
+                      @page {
+                        size: auto;          
+                        margin: 10mm;        
+                      }
+
+                      .no-print {
+                        display: none !important;
+                      }
+
+                      .print-only {
+                        display: block !important;
+                      }
+
+                      body {
+                        background: white !important;
+                      }
+
+                      .print-container {
+                        background: white !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        width: 100%;
+                        overflow: visible !important;
+                      }
+
+                      table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-block: 2rem;
+                      }
+
+                      th, td {
+                        font-size: 11px;
+                        padding:4px;
+                        word-break: break-word;
+                      }
+
+                      thead {
+                        display: table-header-group;
+                        background-color: #7c7c7c;
+                        color: white;
+                      }
+
+                      tr {
+                        page-break-inside: avoid;
+                      }
+                    }
+
+
+
+                    `}</style>
                       <div className="py-4 px-2 flex flex-col gap-2">
                         <h1 className="text-lg font-bold  text-mainGray">{companyName}</h1>
                         <h1 className="text-md font-semibold  text-mainGray">{loanType} <span>MONITORING</span></h1>

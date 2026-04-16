@@ -103,6 +103,9 @@ export type EmpLoanResponse = {
   term_unit: TermUnit;
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay:boolean;
+  deduct_sec_pay:boolean;
+  others_types: string; 
   per_payroll_deduct: number;
   status: string;
   totalPaid: number;
@@ -120,6 +123,8 @@ export type UpdateLoanPayload = {
   term_unit: TermUnit;
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay?:boolean;
+  deduct_sec_pay?:boolean;
 };
 
 export type UpdateLoanVariables = {

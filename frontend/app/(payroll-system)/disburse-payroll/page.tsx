@@ -429,7 +429,63 @@ function DisbursePage() {
               </div>
 
                     <div ref={summaryRef} className="my-8">
-                      <table  className="w-full border-separate border-spacing-0 rounded-xl overflow-hidden shadow-lg my-4">
+
+                         <style>{`
+                     
+                    @media print {
+
+                      @page {
+                        size: auto;          
+                        margin: 10mm;        
+                      }
+
+                      .no-print {
+                        display: none !important;
+                      }
+
+                      .print-only {
+                        display: block !important;
+                      }
+
+                      body {
+                        background: white !important;
+                      }
+
+                      .print-container {
+                        background: white !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        width: 100%;
+                        overflow: visible !important;
+                      }
+
+                      table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-block: 2rem;
+                      }
+
+                      th, td {
+                        font-size: 11px;
+                        padding:4px;
+                        word-break: break-word;
+                      }
+
+                      thead {
+                        display: table-header-group;
+                        background-color: #7c7c7c;
+                        color: white;
+                      }
+
+                      tr {
+                        page-break-inside: avoid;
+                      }
+                    }
+
+
+
+                    `}</style>
+                      <table  className="w-full border-separate border-spacing-0 overflow-hidden shadow-lg my-4">
                         <thead className="bg-mainBg text-mainLight uppercase text-xs">
                           <tr>
                             <th className="px-8 py-4 text-left">
