@@ -287,6 +287,30 @@ function LoanApplyContent() {
                             </select>
                         </div>
 
+                               
+                        { loanType === "OTHERS" && (
+                            <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold">
+                                Type of Bonus
+                            </label>
+
+                            <select
+                                value={selectedBonus}
+                                onChange={getBonusPrincipal}
+                                disabled={bonusLoading || bonusError}
+                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                            >
+                                <option value="">Select Bonus Type</option>
+
+                                {bonusRules?.map((rule) => (
+                                <option key={rule.code} value={rule.code}>
+                                    {rule.code} - {rule.name}
+                                </option>
+                                ))}
+                            </select>
+                        </div>
+                        )}
+
                         <div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                                 Principal Amount
@@ -341,29 +365,7 @@ function LoanApplyContent() {
                             </select>
                         </div>)}
 
-                              
-                        { loanType === "OTHERS" && (
-                            <div className="flex flex-col gap-2">
-                            <label className="text-sm font-semibold">
-                                Type of Bonus
-                            </label>
-
-                            <select
-                                value={selectedBonus}
-                                onChange={getBonusPrincipal}
-                                disabled={bonusLoading || bonusError}
-                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                            >
-                                <option value="">Select Bonus Type</option>
-
-                                {bonusRules?.map((rule) => (
-                                <option key={rule.code} value={rule.code}>
-                                    {rule.code} - {rule.name}
-                                </option>
-                                ))}
-                            </select>
-                        </div>
-                        )}
+                       
 
                         {["SSS_LOAN", "PAGIBIG_LOAN"].includes(loanType)&&(
                           <div className="flex flex-col gap-2">
