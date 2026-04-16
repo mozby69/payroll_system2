@@ -209,6 +209,8 @@ export const updateEmployeeLoanController = async (
       term_unit,
       start_date,
       deduct_allowance,
+      deduct_first_pay,
+      deduct_sec_pay
     } = req.body;
 
     if (
@@ -231,6 +233,8 @@ export const updateEmployeeLoanController = async (
       term_unit,
       start_date: new Date(start_date),
       deduct_allowance: Boolean(deduct_allowance),
+      deduct_first_pay: Boolean(deduct_first_pay),
+      deduct_sec_pay: Boolean(deduct_sec_pay)
     });
 
     return res.status(200).json(updatedLoan);

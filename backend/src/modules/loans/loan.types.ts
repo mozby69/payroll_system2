@@ -19,6 +19,8 @@ export interface updateLoanProps{
     term_unit: "MONTHS" | "YEARS" | "BONUS";
     start_date: Date;
     deduct_allowance:boolean;
+    deduct_first_pay?:boolean;
+    deduct_sec_pay?:boolean;
   }
 
 

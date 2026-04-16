@@ -40,7 +40,7 @@ export async function saveEmployeeLoan(data: loanProps){
       const rawPerPayroll =
         Number(data.principal) / totalTerms / divisor;
 
-      perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+      perPayroll = Math.floor(rawPerPayroll * 100) / 100;
 
     } else {
 
@@ -48,8 +48,15 @@ export async function saveEmployeeLoan(data: loanProps){
 
       const rawPerPayroll =
         Number(data.principal) / totalTerms / divisor;
+        
+      if(data.loan_type === "FCH_LOAN"){
+        perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+      }
+      else{
 
-      perPayroll = Math.floor(rawPerPayroll * 100) / 100;
+        perPayroll = Math.round(rawPerPayroll * 100) / 100;
+      }
+      
     }
 
   } else {
@@ -461,6 +468,8 @@ export const getEmpLoan = async (loan_id: number) => {
       term_unit: true,
       start_date: true,
       deduct_allowance: true,
+      deduct_first_pay:true,
+      deduct_second_pay:true,
       per_payroll_deduct: true,
       status: true,
       ledger: {
@@ -521,10 +530,29 @@ export const getEmpLoan = async (loan_id: number) => {
       ? empLoan.term_value * 12
       : empLoan.term_value;
 
-  const deductionsPerMonth = empLoan.deduct_allowance ? 3 : 2;
+  let deductionsPerMonth: number;
+
+    if (empLoan.loan_type === "ARE_LOAN") {
+
+      const divisor =
+        Number(empLoan.deduct_allowance) +
+        Number(empLoan.deduct_first_pay) +
+        Number(empLoan.deduct_second_pay);
+
+      if (divisor <= 0) {
+        throw new Error("At least one deduction option must be selected");
+      }
+
+      deductionsPerMonth = divisor; 
+
+    } else {
+
+      deductionsPerMonth = empLoan.deduct_allowance ? 3 : 2;
+
+    }
 
   const totalExpectedDeductions =
-    totalMonths * deductionsPerMonth;
+      totalMonths * deductionsPerMonth;
 
   const usedDeductions = ledger.filter(l => l.isPaid).length;
 
@@ -544,6 +572,8 @@ export const getEmpLoan = async (loan_id: number) => {
     term_unit: empLoan.term_unit,
     start_date: empLoan.start_date.toISOString(),
     deduct_allowance: empLoan.deduct_allowance,
+    deduct_first_pay: empLoan.deduct_first_pay,
+    deduct_sec_pay: empLoan.deduct_second_pay,
     per_payroll_deduct: Number(empLoan.per_payroll_deduct),
     status: empLoan.status,
 
@@ -569,9 +599,13 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
         term_unit: true,
         start_date: true,
         deduct_allowance: true,
+        deduct_first_pay:true,
+        deduct_second_pay:true,
       },
     });
 
+
+    console.log(data.deduct_first_pay, data.deduct_sec_pay)
     if (!existingLoan) {
       throw new Error("Loan not found");
     }
@@ -612,18 +646,49 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
       ? Number(existingLoan.principal) - totalPaid
       : Number(data.principal);
 
-    const divisor = data.deduct_allowance ? 3 : 2;
 
-    const perPayroll =
-      Math.floor(
-        (baseAmount / totalTerms / divisor) * 100
-      ) / 100;
+
+    let deductionsPerMonth: number;
+
+    if (data.loan_type === "ARE_LOAN") {
+
+      const divisor =
+        Number(data.deduct_allowance) +
+        Number(data.deduct_first_pay) +
+        Number(data.deduct_sec_pay);
+
+      if (divisor <= 0) {
+        throw new Error("At least one deduction option must be selected");
+      }
+
+      deductionsPerMonth = divisor; 
+
+    } else {
+
+      deductionsPerMonth = data.deduct_allowance ? 3 : 2;
+
+    }
+
+
+    let perPayroll: number = 0;
+
+    const rawPerPayroll =
+        Number(data.principal) / totalTerms / deductionsPerMonth;
+        
+    if(data.loan_type === "FCH_LOAN"){
+      perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+    }
+    else{
+      perPayroll = Math.round(rawPerPayroll * 100) / 100;
+    }
 
     const updatedLoan = await tx.loan_details.update({
       where: { loan_id: data.loan_id },
       data: {
         loan_type: data.loan_type,
         deduct_allowance: data.deduct_allowance,
+        deduct_first_pay: data.deduct_first_pay,
+        deduct_second_pay: data.deduct_sec_pay,
         per_payroll_deduct: perPayroll,
 
         ...(hasPayments

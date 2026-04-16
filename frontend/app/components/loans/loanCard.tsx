@@ -216,6 +216,61 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
         `}
       >
         <div ref={ledgerRef} className="print-container border rounded-lg p-4 space-y-3 bg-mainNeutral">
+             <style>{`
+                     
+                    @media print {
+
+                      @page {
+                        size: auto;          
+                        margin: 10mm;        
+                      }
+
+                      .no-print {
+                        display: none !important;
+                      }
+
+                      .print-only {
+                        display: block !important;
+                      }
+
+                      body {
+                        background: white !important;
+                      }
+
+                      .print-container {
+                        background: white !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        width: 100%;
+                        overflow: visible !important;
+                      }
+
+                      table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-block: 2rem;
+                      }
+
+                      th, td {
+                        font-size: 11px;
+                        padding:4px;
+                        word-break: break-word;
+                      }
+
+                      thead {
+                        display: table-header-group;
+                        background-color: #7c7c7c;
+                        color: white;
+                      }
+
+                      tr {
+                        page-break-inside: avoid;
+                      }
+                    }
+
+
+
+                    `}</style>
           {isLoading || !details ? (
             <p className="text-sm text-mainGray">Loading ledger...</p>
           ) : (
