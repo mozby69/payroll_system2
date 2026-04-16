@@ -88,7 +88,11 @@ export type BonusRuleList =
     generateDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Generate date is required").min(1),
-     })
+
+    companyCode: z.string().optional()
+     },
+    )
+
 
   
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { approveBonusController, checkPayroll, creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, exportBonusExcelController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getBonusSummaryController, getEmployeeBonusBySummaryIdController, getEmployeeBonusController, getEmployeesByBonusSummaryController, rejectBonusController, releaseBonusController, resetBonusController, submitBonusController, updateBonusController, updateBonusRuleController } from "./bonus.controller";
+import { approveBonusController, checkPayroll, creataBonusRuleController, createBonusRuleCompanyController, deleteBonusCompanyRuleController, deleteBonusRuleController, exportBonusExcelController, generateBonusController, getAllBonusRulesController, getBonusRuleCompanyController, getBonusSummaryController, getCompanyBonusRulesController, getEmployeeBonusBySummaryIdController, getEmployeeBonusController, getEmployeesByBonusSummaryController, rejectBonusController, releaseBonusController, resetBonusController, submitBonusController, updateBonusController, updateBonusRuleController } from "./bonus.controller";
 import { authenticateToken } from "../../middleware/authMiddleware";
 import { getEmployeeBonusServiceBySummaryIdService } from "./bonus.services";
 
@@ -11,9 +11,9 @@ router.post("/create-bonus-rules", creataBonusRuleController)
 router.put("/bonus-rules/:id", updateBonusRuleController)
 router.get("/bonus-rules", getAllBonusRulesController)
 router.delete("/bonus-rules/:id", deleteBonusRuleController)
+router.get("/bonus-rules-company", getCompanyBonusRulesController)
 
 // Company Rules 
-
 router.post("/company-rules", createBonusRuleCompanyController)
 router.delete("/company-rules/:id", deleteBonusCompanyRuleController)
 router.get("/company-rules/:bonusRuleId", getBonusRuleCompanyController)
@@ -21,9 +21,9 @@ router.get("/company-rules/:bonusRuleId", getBonusRuleCompanyController)
 // Generate Bonus
 router.post("/generate-bonus", generateBonusController)
 router.get("/employee-bonus", getEmployeeBonusController)
-router.post("/reset-bonus", resetBonusController)
-router.post("/submit-bonus", submitBonusController)
-router.get("/get-summary", getBonusSummaryController)
+router.post("/reset-bonus", authenticateToken, resetBonusController)
+router.post("/submit-bonus",authenticateToken, submitBonusController)
+router.get("/get-summary", authenticateToken, getBonusSummaryController)
 router.get("/get-summary/:id", getEmployeeBonusBySummaryIdController)
 router.post("/approve/:id", authenticateToken, approveBonusController)
 router.post("/release/:id", authenticateToken, releaseBonusController)
@@ -32,7 +32,6 @@ router.put("/update-bonus/:id", authenticateToken, updateBonusController)
 
 //Utils
 router.post("/export-bonus", exportBonusExcelController)
-
 router.get("/employee-bonuses/", getEmployeesByBonusSummaryController)
 router.get("/test", checkPayroll)
   

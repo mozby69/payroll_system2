@@ -1,6 +1,6 @@
 "use client"
 
-import { useApproveBonus, useGetBonusSummary } from "@/app/hooks/useBonus"
+import { useApproveBonus, useGetBonusSummary, useRejectBonus, useReleaseBonus } from "@/app/hooks/useBonus"
 import { statusBadge } from "@/app/helper/statusBadge"
 import { BookOpenCheck, Eye } from "lucide-react"
 import { useState } from "react"
@@ -9,14 +9,19 @@ import ViewArchiveModal from "./modals/ViewArchiveModal"
 import toast from "react-hot-toast"
 import SweetAlert from "../Swal"
 import { BonusSummaryType } from "@/app/types/bonusType"
+import { useAuth } from "../UserContext"
 
 
 export default function BonusArchivePage() {
   const { data: bonusSummary, isLoading, error } = useGetBonusSummary();
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | undefined>()
+  const [selectedId, setSelectedId] = useState<number | undefined>();
+
+  const {hasPermission} =useAuth();
 
   const approve = useApproveBonus();
+  const reject = useRejectBonus();
+  const release = useReleaseBonus();
 
   const handleViewArchive = (id: number) =>{
       setIsViewModalOpen(true)
@@ -29,6 +34,39 @@ export default function BonusArchivePage() {
       `Are you sure you want to approve this bonus ${summary.bonusRule.name}  ? This action cannot be undone.`,
       ()=>{ 
         approve.mutate(summary.id, {
+          onSuccess: (data) => {
+            toast.success(data.message, {
+              position: "top-center",
+            });
+          }
+        })
+      } )
+   
+  }
+
+  const handleReleaseBonus = (summary: BonusSummaryType) => {
+    SweetAlert.confirmationAlert(
+      "Are you sure?", 
+      `Are you sure you want to release this bonus ${summary.bonusRule.name}  ? This action cannot be undone.`,
+      ()=>{ 
+        release.mutate(summary.id, {
+          onSuccess: (data) => {
+            toast.success(data.message, {
+              position: "top-center",
+            });
+          }
+        })
+      } )
+   
+  }
+
+
+  const handleRejectBonus = (summary: BonusSummaryType) => {
+    SweetAlert.confirmationAlert(
+      "Are you sure?", 
+      `Are you sure you want to reject this bonus ${summary.bonusRule.name}  ? This action cannot be undone.`,
+      ()=>{ 
+        reject.mutate(summary.id, {
           onSuccess: (data) => {
             toast.success(data.message, {
               position: "top-center",
@@ -117,14 +155,11 @@ export default function BonusArchivePage() {
                 </td>
                 <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-1">
-                    {summary.bonusRule.companyRule.map(c => (
                         <span
-                        key={c.companyCode}
                         className="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700"
                         >
-                        {c.companyCode}
+                        {summary.companyCode}
                         </span>
-                    ))}
                     </div>
                 </td>
                 <td className="px-5 py-3 text-gray-600">
@@ -159,17 +194,52 @@ export default function BonusArchivePage() {
                         <Eye size={15} />
                         View
                       </button>
-                      <button
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
-                                  text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
-                                  border border-emerald-200 rounded-md 
-                                  transition-colors duration-200"
-                        onClick={()=>handleApproveBonus(summary)}
-                      >
-                        <BookOpenCheck size={15} />
-                        Approve
-                      </button>
-            </div>
+                      {(hasPermission("BONUS_APPROVE") || hasPermission("BONUS_RELEASE")) && (
+                        <div className="flex gap-2">
+                           {hasPermission("BONUS_APPROVE") && (
+                              <button
+                              disabled={summary.status!=="PENDING"}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                                        text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
+                                        border border-emerald-200 rounded-md 
+                                        transition-colors duration-200"
+                              onClick={()=>handleApproveBonus(summary)}
+                            >
+                              <BookOpenCheck size={15} />
+                              Approve
+                            </button>
+
+                           )}
+                            {hasPermission("BONUS_RELEASE") && (
+                              <button
+                              disabled={summary.status!=="APPROVED"}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                                        text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
+                                        border border-emerald-200 rounded-md 
+                                        transition-colors duration-200"
+                              onClick={()=>handleReleaseBonus(summary)}
+                            >
+                              <BookOpenCheck size={15} />
+                                   Release
+                            </button>
+
+                           )}
+                          <button
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                                      text-red-700 bg-red-50 hover:bg-red-100 
+                                      border border-red-200 rounded-md 
+                                      transition-colors duration-200"
+                                      disabled={summary.status!=="PENDING"}
+                            onClick={()=>handleRejectBonus(summary)}
+                          >
+                            <BookOpenCheck size={15} />
+                            Reject
+                          </button>
+                        </div>
+                          
+                          
+                      )}
+                 </div>
                 </td>
               </tr>
             ))}

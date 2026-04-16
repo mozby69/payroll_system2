@@ -17,6 +17,7 @@ import { handleApiError } from "@/app/utils/handleApiError"
 import GenButton from "../Buttons"
 import { useReactToPrint } from "react-to-print"
 import PrintBonusReport from "../reports/BonusReport/PrintBonusReport"
+import { useAuth } from "../UserContext"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
@@ -28,6 +29,9 @@ export default function GenerateBonusPage() {
 
   const resetBonusMutation = useResetBonus()
   const submitBonusMutation = useSubmitBonus()
+
+  const { user } = useAuth()
+  const companyId = user?.company_id;
 
   const handleSubmitBonus = () => {
     SweetAlert.confirmationAlert(
@@ -70,7 +74,7 @@ export default function GenerateBonusPage() {
   }
 
   const { data } =
-    useGetEmployeeGeneratedBonus(selectedCompany)
+    useGetEmployeeGeneratedBonus(companyId)
 
   const summary = data?.data.summary
   const companies = data?.data.companies ?? []
@@ -224,7 +228,7 @@ export default function GenerateBonusPage() {
       <div className="flex justify-between">
           <div>
               {/* Company Buttons */}
-              {companies.length > 0 && (
+              {/* {companies.length > 0 && (
                 <div className="flex gap-3">
                   {companies.map(company => {
                     const isActive =
@@ -247,7 +251,7 @@ export default function GenerateBonusPage() {
                     )
                   })}
                 </div>
-              )}
+              )} */}
           </div>
 
           {companies.length > 0 && (

@@ -569,7 +569,7 @@ model EmployeeBonus {
   hasLeave          Boolean      @default(false)  
   remarks           String?
   notes             String?
-
+  companyCode         String?
   resetAt     DateTime?
   updatedAt     DateTime?
 
@@ -606,6 +606,7 @@ model BonusSummary {
   resetAt          DateTime?
 
   rejectedById     Int?
+  companyCode   String? 
 
   createdAt        DateTime   @default(now())
 

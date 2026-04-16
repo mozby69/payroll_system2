@@ -1,5 +1,6 @@
 import { useGetEmployeeGeneratedBonus } from "@/app/hooks/useBonus"
 import React, { useState } from "react"
+import { useAuth } from "../../UserContext"
 
 
 type ViewProps = {
@@ -8,8 +9,10 @@ type ViewProps = {
 
 export default function ViewArchiveModal({id} : ViewProps){
     const [selectedCompany, setSelectedCompany] = useState<string | undefined>()
+    const { user } = useAuth()
+    const companyId = user?.company_id ?? "";
     const { data } =
-      useGetEmployeeGeneratedBonus(selectedCompany, id)
+      useGetEmployeeGeneratedBonus(companyId, id)
     const summary = data?.data.summary
     const companies = data?.data.companies ?? []
     const employees = data?.data.employees ?? []
@@ -78,7 +81,7 @@ export default function ViewArchiveModal({id} : ViewProps){
         )}
   
         {/* Company Buttons */}
-        {companies.length > 0 && (
+        {/* {companies.length > 0 && (
           <div className="flex gap-3">
             {companies.map(company => {
               const isActive =
@@ -101,7 +104,7 @@ export default function ViewArchiveModal({id} : ViewProps){
               )
             })}
           </div>
-        )}
+        )} */}
   
         {/* Table */}
         <div className="bg-white border rounded-xl shadow-sm flex flex-col max-h-150">
