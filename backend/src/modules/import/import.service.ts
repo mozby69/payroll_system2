@@ -223,62 +223,62 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
 
 
 
-  export const saveEmployeeDetails = async (details: EmployeeDetailsDTO[]): Promise<number> => {
-    if (!Array.isArray(details) || details.length === 0) return 0;
+  // export const saveEmployeeDetails = async (details: EmployeeDetailsDTO[]): Promise<number> => {
+  //   if (!Array.isArray(details) || details.length === 0) return 0;
   
-    await prisma.$transaction(
-      details.map((d) =>
-        prisma.empDetails.upsert({
-          where: {
-            EmpCodeId: d.EmpCode__EmpCode,
-          },
-          create: {
-            EmpCodeId: d.EmpCode__EmpCode,
+  //   await prisma.$transaction(
+  //     details.map((d) =>
+  //       prisma.empDetails.upsert({
+  //         where: {
+  //           EmpCodeId: d.EmpCode__EmpCode,
+  //         },
+  //         create: {
+  //           EmpCodeId: d.EmpCode__EmpCode,
   
-            EmpTin: d.EmpTin,
-            EmpSSSNo: d.EmpSSSNo,
-            EmpPhilhlthNo: d.EmpPhilhlthNo,
-            EmpPagibigNo: d.EmpPagibigNo,
+  //           EmpTin: d.EmpTin,
+  //           EmpSSSNo: d.EmpSSSNo,
+  //           EmpPhilhlthNo: d.EmpPhilhlthNo,
+  //           EmpPagibigNo: d.EmpPagibigNo,
   
-            EmpChildrenName:
-              d.EmpCode__familybgrnd__empchildren__EmpChildrenName,
-            EmpChildrenBirthday:
-              d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
-                ? new Date(
-                    d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
-                  )
-                : null,
-            EmpChildrenBplace:
-              d.EmpCode__familybgrnd__empchildren__EmpChildrenBplace,
-          },
-          update: {
-            EmpTin: d.EmpTin,
-            EmpSSSNo: d.EmpSSSNo,
-            EmpPhilhlthNo: d.EmpPhilhlthNo,
-            EmpPagibigNo: d.EmpPagibigNo,
+  //           EmpChildrenName:
+  //             d.EmpCode__familybgrnd__empchildren__EmpChildrenName,
+  //           EmpChildrenBirthday:
+  //             d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
+  //               ? new Date(
+  //                   d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
+  //                 )
+  //               : null,
+  //           EmpChildrenBplace:
+  //             d.EmpCode__familybgrnd__empchildren__EmpChildrenBplace,
+  //         },
+  //         update: {
+  //           EmpTin: d.EmpTin,
+  //           EmpSSSNo: d.EmpSSSNo,
+  //           EmpPhilhlthNo: d.EmpPhilhlthNo,
+  //           EmpPagibigNo: d.EmpPagibigNo,
   
-            EmpChildrenName:
-              d.EmpCode__familybgrnd__empchildren__EmpChildrenName,
-            EmpChildrenBirthday:
-              d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
-                ? new Date(
-                    d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
-                  )
-                : null,
-            EmpChildrenBplace:
-              d.EmpCode__familybgrnd__empchildren__EmpChildrenBplace,
-          },
-        })
-      )
-    );
+  //           EmpChildrenName:
+  //             d.EmpCode__familybgrnd__empchildren__EmpChildrenName,
+  //           EmpChildrenBirthday:
+  //             d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
+  //               ? new Date(
+  //                   d.EmpCode__familybgrnd__empchildren__EmpChildrenBirthday
+  //                 )
+  //               : null,
+  //           EmpChildrenBplace:
+  //             d.EmpCode__familybgrnd__empchildren__EmpChildrenBplace,
+  //         },
+  //       })
+  //     )
+  //   );
   
-    return details.length;
-  };
+  //   return details.length;
+  // };
 
   
 
 
-  export const saveSpecialLeaves = async (
+export const saveSpecialLeaves = async (
     details: SpecialleavesDTO[]
   ): Promise<number> => {
     if (!Array.isArray(details) || details.length === 0) return 0;
@@ -327,13 +327,13 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
     await saveCompany(company_details);
     await saveBranches(branches);
     const employeeCount = await saveEmployees(employees);
-    const detailsCount = await saveEmployeeDetails(employees_details);
+   // const detailsCount = await saveEmployeeDetails(employees_details);
     const specialleaves = await saveSpecialLeaves(special_leaves);
   
     return {
       branches: branches.length,
       employees: employeeCount,
-      employeeDetails: detailsCount,
+     // employeeDetails: detailsCount,
       companyDetails: company_details.length,
       special_leaves:specialleaves,
     };

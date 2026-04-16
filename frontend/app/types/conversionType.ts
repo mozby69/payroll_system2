@@ -11,6 +11,15 @@ export interface conversionProps {
     total:number;
     leave_convert:boolean;
   }
+
+  
+  export interface conversionArchiveProps {
+    created_at:number;
+    company_id:number;
+    total_amount:number;
+  }
+
+
   
   
   export interface conversionMeta {
@@ -24,3 +33,12 @@ export interface conversionProps {
     data: conversionProps[];
     meta: conversionMeta;
   }
+
+
+ 
+    
+  export interface conversionArchiveResponse {
+    data: conversionArchiveProps[];
+    meta: conversionMeta;
+  }
+

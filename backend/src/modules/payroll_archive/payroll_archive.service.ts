@@ -441,7 +441,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee;
 
-        // console.log("total",emp.EmpCode.Firstname,'totaldeduct-',totalDeductions);
+        //console.log("DATA",emp.EmpCode.Firstname,emp.EmpCode.Lastname,'loans-',calamity_loan);
       
         return {
           ...emp,
