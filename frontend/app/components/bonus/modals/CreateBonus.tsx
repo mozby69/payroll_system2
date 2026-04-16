@@ -1,36 +1,27 @@
 "use client"
 
-import { useState } from "react"
-import { ZodFormattedError } from "zod"
-
-import { useGenerateBonus, useGetAllBonusRules } from "@/app/hooks/useBonus"
-import {
-  GenerateBonusSchema,
-  GenerateBonusInput
-} from "@/app/schema/bonus.schema"
-import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
-import { delay } from "@/app/helper/delay"
-import { useGetCompanyDetails } from "@/app/hooks/useGeneral"
-import { BonusErrorResponse, InvalidEmployees } from "@/app/types/bonusType"
+import { useState, useEffect } from "react"
 import axios from "axios"
 import SweetAlert from "../../Swal"
 
+import { useGenerateBonus, useGetAllBonusRules } from "@/app/hooks/useBonus"
+import { GenerateBonusSchema, GenerateBonusInput } from "@/app/schema/bonus.schema"
+import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
+import { delay } from "@/app/helper/delay"
+import { BonusErrorResponse } from "@/app/types/bonusType"
 
 function getReleasePeriodFromEligibleMonth(
   eligibleMonth: number,
-  referenceDate: Date // ✅ add this
+  referenceDate: Date
 ): string {
   let year = referenceDate.getFullYear()
   const currentMonth = referenceDate.getMonth() + 1
 
-  if (currentMonth > eligibleMonth) {
-    year += 1
-  }
+  if (currentMonth > eligibleMonth) year += 1
 
   const date = new Date(year, eligibleMonth, 1)
   return date.toISOString().slice(0, 7)
 }
-
 
 function getAsOfDateFromEligibleMonth(
   eligibleMonth: number,
@@ -39,103 +30,108 @@ function getAsOfDateFromEligibleMonth(
   let year = referenceDate.getFullYear()
   const currentMonth = referenceDate.getMonth() + 1
 
-  if (currentMonth > eligibleMonth) {
-    year += 1
-  }
+  if (currentMonth > eligibleMonth) year += 1
 
   const date = new Date(year, eligibleMonth, 0)
 
-  // ✅ FIX: format using LOCAL date
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, "0")
-  const dd = String(date.getDate()).padStart(2, "0")
-
-  return `${yyyy}-${mm}-${dd}`
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-type CreateModalProps = {
-  onClose: () => void
-}
-
-export default function CreateBonusModal({ onClose }: CreateModalProps) {
-  const [showProcessing, setShowProcessing] = useState(false)
-  const [lockDates, setLockDates] = useState(false)
-  const [invalidDataEmployees, setInvalidEmployees] = useState<InvalidEmployees[]>([])
-
-
-  const { data: bonusRules } = useGetAllBonusRules()
-  const {data: companyDetails} = useGetCompanyDetails();
+export default function CreateBonusModal({ onClose }: { onClose: () => void }) {
+  const { data: bonusRules = [] } = useGetAllBonusRules()
   const generateBonusMutation = useGenerateBonus()
-  
-  const [form, setForm] = useState<GenerateBonusInput>({
-    bonusRuleId: 0,
 
+  const [form, setForm] = useState<GenerateBonusInput>({
+    bonusRuleIds: [],
     releasePeriod: "",
     asOfDate: "",
     generateDate: ""
   })
 
-  const [errors, setErrors] =
-    useState<ZodFormattedError<GenerateBonusInput> | null>(null)
+  const [open, setOpen] = useState(false)
+  const [showProcessing, setShowProcessing] = useState(false)
+  const [errors, setErrors] = useState<any>(null)
+  const [lockDates, setLockDates] = useState(false)
 
-
-
-    function handleChange(
-      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-    ) {
-      const { name, value, type, checked } = e.target as HTMLInputElement
-    
-      setForm(prev => ({
-        ...prev,
-        [name]:
-          type === "checkbox"
-            ? checked
-            : type === "number"
-              ? value === "" ? 0 : Number(value)
-              : value
-      }))
-    }
-    
-
-    function handleBonusRuleChange(
-      e: React.ChangeEvent<HTMLSelectElement>
-    ) {
-      const ruleId = Number(e.target.value)
-      const rule = bonusRules?.find(r => r.id === ruleId)
-    
-      if (!rule || ruleId === 0) {
-        setForm(prev => ({
-          ...prev,
-          bonusRuleId: 0,
-          releasePeriod: "",
-          asOfDate: ""
-        }))
-        setLockDates(false)
-        return
+  // ✅ Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: any) => {
+      if (!e.target.closest(".bonus-dropdown")) {
+        setOpen(false)
       }
-    
-      const referenceDate = form.generateDate
-      ? new Date(form.generateDate)
-      : new Date() // fallback if empty
-    
+    }
+    document.addEventListener("click", handleClickOutside)
+    return () => document.removeEventListener("click", handleClickOutside)
+  }, [])
+
+  function handleDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+
+    setForm({
+      bonusRuleIds: [],
+      releasePeriod: "",
+      asOfDate: "",
+      generateDate: value
+    })
+
+    setLockDates(false)
+  }
+
+  function handleSelectRule(ruleId: number) {
+    if (!form.generateDate) return
+
+    const referenceDate = new Date(form.generateDate)
+    const selectedRules = bonusRules.filter(r =>
+      form.bonusRuleIds.includes(r.id)
+    )
+
+    const referencePeriod = selectedRules.length
+      ? getReleasePeriodFromEligibleMonth(
+          selectedRules[0].eligibleMonth,
+          referenceDate
+        )
+      : null
+
+    const clickedRule = bonusRules.find(r => r.id === ruleId)
+    if (!clickedRule) return
+
+    const clickedPeriod = getReleasePeriodFromEligibleMonth(
+      clickedRule.eligibleMonth,
+      referenceDate
+    )
+
+    // ❌ prevent different period
+    if (referencePeriod && clickedPeriod !== referencePeriod) return
+
+    let updated = [...form.bonusRuleIds]
+
+    if (updated.includes(ruleId)) {
+      updated = updated.filter(id => id !== ruleId)
+    } else {
+      updated.push(ruleId)
+    }
+
+    const firstRule = bonusRules.find(r => r.id === updated[0])
+
     setForm(prev => ({
       ...prev,
-      bonusRuleId: ruleId,
-      releasePeriod: getReleasePeriodFromEligibleMonth(
-        rule.eligibleMonth,
-        referenceDate
-      ),
-      asOfDate: getAsOfDateFromEligibleMonth(
-        rule.eligibleMonth,
-        referenceDate
-      )
+      bonusRuleIds: updated,
+      releasePeriod: firstRule
+        ? getReleasePeriodFromEligibleMonth(
+            firstRule.eligibleMonth,
+            referenceDate
+          )
+        : "",
+      asOfDate: firstRule
+        ? getAsOfDateFromEligibleMonth(
+            firstRule.eligibleMonth,
+            referenceDate
+          )
+        : ""
     }))
-    
-      setLockDates(true)
-      setErrors(null)
-    }
-    
- 
+
+    setLockDates(true)
+  }
 
   function handleGenerate() {
     const result = GenerateBonusSchema.safeParse(form)
@@ -145,7 +141,6 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
       return
     }
 
-    setErrors(null)
     setShowProcessing(true)
 
     generateBonusMutation.mutate(result.data, {
@@ -155,155 +150,189 @@ export default function CreateBonusModal({ onClose }: CreateModalProps) {
         onClose()
       },
       onError: async (error) => {
+        setShowProcessing(false)
+
         if (!axios.isAxiosError<BonusErrorResponse>(error)) return
-        const data = error.response?.data
-        if (!data) return
-        if (data.code === "INVALID_BONUS_AMOUNT") {
-          setInvalidEmployees(data.invalidEmployees)
-        }
-        if(data.code === "PENDING_BONUS"){
-          await delay(800)
-          setShowProcessing(false)
-          SweetAlert.errorAlert(
-            "Bonus Generation Blocked",
-            data.message,
-          )
+
+        const err = error.response?.data?.error
+        if (!err) return
+
+        if (err.code === "PENDING_BONUS") {
+          SweetAlert.errorAlert("Blocked", err.message)
         }
       }
-      
     })
   }
 
-
-
   return (
-    <div className="relative">
-      {showProcessing && (
-        <ProcessingOverlay message="Generating employee bonus…" />
-      )}
-
-      <div className="flex flex-col gap-5 p-6 bg-white rounded-xl shadow-lg">
-        <div className="border-b pb-3">
-          <p className="text-sm text-gray-500">
-            Select bonus rule and payroll period
-          </p>
-        </div>
-
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"> 
-         {/* Generate Date */}
-        <div  >
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Generate Date
-            </label>
+    <div className="p-6 bg-white rounded-xl shadow-lg w-full max-w-2xl">
+      {showProcessing && <ProcessingOverlay message="Generating bonus..." />}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* DATE */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Generate Date</label>
             <input
               type="date"
               name="generateDate"
               value={form.generateDate}
-              onChange={handleChange}
-              className={`w-full rounded-md border px-3 py-2 text-sm
+              onChange={handleDateChange}
+              className={`w-full rounded-lg border px-3 py-2 text-sm
                 ${errors?.generateDate
                   ? "border-red-500"
-                  : "border-gray-300"
-                }`}
-            />
-            {errors?.generateDate?._errors?.[0] && ( <p className="mt-1 text-xs text-red-600"> {errors.generateDate._errors[0]} </p> )}
-          </div>
-    
- {/* BONUS RULE */}
- <div  className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Bonus Rule
-          </label>
-
-          <select
-            value={form.bonusRuleId}
-            onChange={handleBonusRuleChange}
-            className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2
-              ${errors?.bonusRuleId
-                ? "border-red-500 focus:ring-red-400"
-                : "border-gray-300 focus:ring-blue-500"
-              }`}
-          >
-            <option value={0}>Select Bonus Rule</option>
-            {bonusRules?.map(rule => (
-              <option key={rule.id} value={rule.id}>
-                {rule.name}
-              </option>
-            ))}
-          </select>
-          {errors?.bonusRuleId?._errors?.[0] && ( <p className="mt-1 text-xs text-red-600"> {errors.bonusRuleId._errors[0]} </p> )}
-        </div> 
-
-    
-    </div>
-           
-        {/* PERIODS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Release Period
-            </label>
-            <input
-              type="month"
-              name="releasePeriod"
-              value={form.releasePeriod}
-              onChange={handleChange}
-              disabled={lockDates}
-              className={`w-full rounded-md border px-3 py-2 text-sm
-                ${lockDates ? "bg-gray-100 cursor-not-allowed" : ""}
-                ${errors?.releasePeriod
-                  ? "border-red-500"
-                  : "border-gray-300"
-                }`}
-            />
-          {errors?.releasePeriod?._errors?.[0] && ( <p className="mt-1 text-xs text-red-600"> {errors.releasePeriod._errors[0]} </p> )}
-
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              As Of Date
-            </label>
-            <input
-              type="date"
-              name="asOfDate"
-              value={form.asOfDate}
-              onChange={handleChange}
-              disabled={lockDates}
-              className={`w-full rounded-md border px-3 py-2 text-sm
-                ${lockDates ? "bg-gray-100 cursor-not-allowed" : ""}
-                ${errors?.asOfDate
-                  ? "border-red-500"
-                  : "border-gray-300"
-                }`}
+                  : "border-gray-300"}
+                focus:outline-none focus:ring-2
+              `}
             />
 
-          {errors?.asOfDate?._errors?.[0] && ( <p className="mt-1 text-xs text-red-600"> {errors.asOfDate._errors[0]} </p> )}
-
-          </div>
-      
+          {errors?.generateDate?._errors?.[0] && (
+            <p className="mt-1 text-xs text-red-600">
+              {errors.generateDate._errors[0]}
+            </p>
+          )}
         </div>
 
-        {/* ACTIONS */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm hover:bg-gray-50"
-          >
-            Cancel
-          </button>
+        {/* MULTI SELECT */}
+        <div className="col-span-2 bonus-dropdown relative">
+          <label className="block text-sm font-medium text-gray-600 mb-1">Bonus Rule</label>
 
-          <button
-            disabled={generateBonusMutation.isPending}
-            onClick={handleGenerate}
-            className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold
-                       hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          <div
+            onClick={() => form.generateDate && setOpen(!open)}
+            className={`border rounded px-2 py-2 mt-1 min-h-10 flex flex-wrap gap-1 cursor-pointer
+              ${!form.generateDate && "bg-gray-100 text-gray-400 cursor-not-allowed"}
+            `}
           >
-            {generateBonusMutation.isPending ? "Processing…" : "Generate Bonus"}
-          </button>
+            {form.bonusRuleIds.length === 0 && (
+              <span className="text-gray-400 text-sm">Select rules</span>
+            )}
+
+            {form.bonusRuleIds.map(id => {
+              const rule = bonusRules.find(r => r.id === id)
+              return (
+                <span key={id} className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
+                  {rule?.name}
+                </span>
+              )
+            })}
+          </div>
+
+          {/* DROPDOWN */}
+          {open && (
+            <div className="absolute w-full bg-white border rounded mt-1 max-h-40 overflow-auto shadow">
+              {bonusRules.map(rule => {
+                const referenceDate = new Date(form.generateDate)
+                const period = getReleasePeriodFromEligibleMonth(
+                  rule.eligibleMonth,
+                  referenceDate
+                )
+
+                const selectedRules = bonusRules.filter(r =>
+                  form.bonusRuleIds.includes(r.id)
+                )
+
+                const referencePeriod = selectedRules.length
+                  ? getReleasePeriodFromEligibleMonth(
+                      selectedRules[0].eligibleMonth,
+                      referenceDate
+                    )
+                  : null
+
+                const disabled =
+                  referencePeriod && period !== referencePeriod
+
+                return (
+                  <div
+                    key={rule.id}
+                    onClick={() => !disabled && handleSelectRule(rule.id)}
+                    className={`px-3 py-2 flex justify-between text-sm
+                      ${disabled ? "text-gray-400" : "hover:bg-gray-100 cursor-pointer"}
+                    `}
+                  >
+                    <div className="flex gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.bonusRuleIds.includes(rule.id)}
+                        readOnly
+                      />
+                      {rule.name}
+                    </div>
+
+                    <span className="text-xs text-gray-500">{period}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* PERIOD */}
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Release Period</label>
+          <input
+            type="month"
+            value={form.releasePeriod}
+            disabled
+            className={`w-full rounded-lg border px-3 py-2 text-sm
+              ${errors?.releasePeriod
+                ? "border-red-500"
+                : "border-gray-300"}
+              focus:outline-none focus:ring-2
+            `}
+          />
+          {errors?.releasePeriod?._errors?.[0] && (
+            <p className="mt-1 text-xs text-red-600">
+              {errors.releasePeriod._errors[0]}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">As Of Date</label>
+          <input
+            type="date"
+            value={form.asOfDate}
+            disabled
+            className={`w-full rounded-lg border px-3 py-2 text-sm
+              ${errors?.asOfDate
+                ? "border-red-500"
+                : "border-gray-300"}
+              focus:outline-none focus:ring-2
+            `}
+          />
+            {errors?.asOfDate?._errors?.[0] && (
+            <p className="mt-1 text-xs text-red-600">
+              {errors.asOfDate._errors[0]}
+            </p>
+          )}
         </div>
       </div>
+
+   
+        <div className="flex justify-between items-center mt-8 pt-4 border-t">
+            <p className="text-xs text-gray-400">
+              Make sure all required fields are filled
+            </p>
+            <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-600
+                            hover:bg-gray-100 hover:text-gray-800 transition-all duration-150"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  disabled={generateBonusMutation.isPending}
+                  className={`px-5 py-2 rounded-lg text-sm font-semibold text-white
+                    bg-blue-600 hover:bg-blue-700
+                    shadow-sm hover:shadow-md
+                    transition-all duration-150
+                    ${generateBonusMutation.isPending ? "opacity-50 cursor-not-allowed" : ""}
+                  `}
+                >
+                  {generateBonusMutation.isPending ? "Processing..." : "Generate Bonus"}
+                </button>
+            </div>
+        </div>
     </div>
   )
 }

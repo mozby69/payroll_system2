@@ -48,6 +48,11 @@ export type InvalidEmployees = {
     code: string
     invalidEmployees: InvalidEmployees[]
     message: string
+    error: {
+      code: string
+      message: string
+      invalidEmployees?: InvalidEmployees[]
+    }
   }
 
   export type BonusCompanyRule = {

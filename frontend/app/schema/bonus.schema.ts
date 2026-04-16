@@ -68,7 +68,9 @@ export type BonusRuleList =
 
 
   export const GenerateBonusSchema = z.object({
-    bonusRuleId: z.number().int().min(1, "Bonus rule is required"),
+    bonusRuleIds: z
+    .array(z.number().int().min(1))
+    .min(1, "At least one bonus rule is required"),
 
 
 
