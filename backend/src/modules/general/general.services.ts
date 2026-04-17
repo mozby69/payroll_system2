@@ -54,6 +54,16 @@ export async function getBodPhilhealth(){
 
 
 
+export async function getOfficerAllowance() {
+    return prisma.officersAllowance.findMany({
+      select: {
+        basic_salary: true,
+        EmpCode: true,
+        EmpCodeId:true,
+      },
+    });
+  }
+
 
 export async function appendMissingBodEmployees(
   tx: Prisma.TransactionClient,

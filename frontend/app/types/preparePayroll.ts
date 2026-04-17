@@ -179,7 +179,7 @@ export interface PayrollEmployee {
   net_pay:number;
   wtax:number;
   computedWtax:number;
-
+  officers_allowance:number;
 
   // Loan Code ↓
   rfc_loan:number;

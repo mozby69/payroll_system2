@@ -129,7 +129,8 @@ export default function StepReviewSave({ onBack }: Props) {
       PayCode: emp.PayCode,
       EmpCodeId: emp.EmpCodeId,
       PayrollPeriod: emp.PayrollPeriod,
-      computedWtax: Number(emp.computedWtax)
+      computedWtax: Number(emp.computedWtax),
+      officers_allowance:emp.officers_allowance,
           };
         });
 

@@ -154,7 +154,8 @@ export default function FinancialPage(){
           PayCode: emp.PayCode,
           EmpCodeId: emp.EmpCodeId,
           PayrollPeriod: emp.PayrollPeriod,
-          computedWtax: Number(emp.computedWtax)
+          computedWtax: Number(emp.computedWtax),
+          officers_allowance:emp.officers_allowance,
               };
             });
     
@@ -220,6 +221,10 @@ export default function FinancialPage(){
             acc.sss += toNumber(row.sss);
             acc.philhealth += toNumber(row.philhealth);
             acc.pagibig += toNumber(row.pagibig);
+            acc.arE += toNumber(row.arE);
+            acc.rfc += toNumber(row.rfc);
+            acc.fch += toNumber(row.fch);
+            acc.salaryLoan += toNumber(row.salaryLoan);
             acc.netPayable += toNumber(row.netPayable);
             acc.sssEmployer += toNumber(row.sssEmployer);
             acc.philEmployer += toNumber(row.philEmployer);
@@ -237,6 +242,12 @@ export default function FinancialPage(){
             sss: 0,
             philhealth: 0,
             pagibig: 0,
+            arE:0,
+            rfc:0,
+            fch:0,
+            salaryLoan:0,
+            calamityLoan:0,
+            pagibigSalaryLoan:0,
             netPayable: 0,
             sssEmployer: 0,
             philEmployer: 0,

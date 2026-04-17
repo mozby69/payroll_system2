@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { ConversionProps, conversionReport, displayConversionProps } from "./conversion.types";
 import { computeDailyRate } from "../prepare_payroll/prepare_payroll.computation";
-import { employeeProbationary } from "../payroll_archive/payroll_archive.service";
 import { computeCustomTenure, computeTenure, getJune30 } from "./conversion.helper";
 
 
@@ -34,7 +33,16 @@ export default async function getAttendanceCount({ page, limit, search, company_
               BranchCode: {
                 company_id: company_id,
               },
+              isAlien: false,
             },
+          },
+        },
+        {
+          EmpCode: {
+            isAlien: true,
+            secondaryBranch: {
+              company_id: company_id,
+            }
           },
         },
         (company_id === "EMB") ?
@@ -43,6 +51,7 @@ export default async function getAttendanceCount({ page, limit, search, company_
               bod_member: {
                 in: ["bod1", "bod2"],
               },
+
               BranchCode: {
                 company_id: "EMB",
               },
@@ -180,6 +189,7 @@ export async function conversionReport({ company_id }: conversionReport) {
               BranchCode: {
                 company_id: company_id,
               },
+              isAlien: false,
             },
           },
         },
@@ -193,7 +203,16 @@ export async function conversionReport({ company_id }: conversionReport) {
                 company_id: "EMB",
               },
             },
-          } : {}
+          } : {},
+
+        {
+          EmpCode: {
+            isAlien: true,
+            secondaryBranch: {
+              company_id: company_id,
+            }
+          },
+        }
       ],
     };
 
@@ -301,8 +320,8 @@ export async function conversionReport({ company_id }: conversionReport) {
 
 
       return {
-        Sick: sickLeave,
-        Vacation: vacationLeave,
+        Sick: emp.Sick,
+        Vacation: emp.Vacation,
         EmployementDate: emp.EmpCode.EmployementDate,
         basic_salary: emp.EmpCode.employeepayroll?.basic_salary,
         fullname: fullName,
@@ -382,15 +401,8 @@ export async function saveConversionArchive({ company_id }: conversionReport) {
       leave_convert: Number(item.leave_convert ?? 0),
       company_id: item.company_id,
       total_leave_for_conversion: item.total_leave_for_conversion,
-
-      leave_amount_for_conversion: new Prisma.Decimal(
-        item.leave_amount_for_conversion ?? 0
-      ),
-
-      as_of_date: item.as_of_date?.as_of_date
-        ? new Date(item.as_of_date.as_of_date)
-        : new Date(),
-
+      leave_amount_for_conversion: new Prisma.Decimal(item.leave_amount_for_conversion ?? 0),
+      as_of_date: item.as_of_date?.as_of_date ? new Date(item.as_of_date.as_of_date): new Date(),
       EmpCodeId: item.EmpCode,
       totalConversionArchiveId: header.id,
     }));
@@ -410,7 +422,7 @@ export async function saveConversionArchive({ company_id }: conversionReport) {
 
 
 
-export async function DisplayConversionArchive({ page, limit, search,company_id }: displayConversionProps) {
+export async function DisplayConversionArchive({ page, limit, search, company_id }: displayConversionProps) {
   try {
 
     const searchFilter: Prisma.totalConversionArchiveWhereInput = search
@@ -437,9 +449,10 @@ export async function DisplayConversionArchive({ page, limit, search,company_id 
 
 
 
-      const baseFilter = {
-          company_id: company_id,
-        }
+    const baseFilter = {
+      company_id: company_id,
+
+    }
 
     const finalWhere: Prisma.totalConversionArchiveWhereInput = {
       AND: [
@@ -453,12 +466,14 @@ export async function DisplayConversionArchive({ page, limit, search,company_id 
       skip: (page - 1) * limit,
       take: limit,
       select: {
+        id: true,
         created_at: true,
         total_amount: true,
       },
     });
 
     const formatted = data.map((item) => ({
+      id: item.id,
       created_at: item.created_at
         ? new Date(item.created_at).getFullYear()
         : null,
@@ -483,4 +498,51 @@ export async function DisplayConversionArchive({ page, limit, search,company_id 
   }
 }
 
+
+
+
+export async function getConversionArchive(id: number) {
+  try {
+    return prisma.conversionArchive.findMany({
+      where: {
+        totalConversionArchiveId: id,
+        
+      },
+      select: {
+        EmpCodeId: true,
+        Sick: true,
+        Vacation: true,
+        basic_salary: true,
+        daily_rate: true,
+        tenure: true,
+        leave_amount_for_conversion: true,
+        EmployementDate:true,
+        leave_convert:true,
+        total_leave_for_conversion:true,
+        as_of_date:true,
+        totalConversionArchive:{
+          select:{
+            created_at:true,
+          }
+        },
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Lastname: true,
+          }
+        }
+      },
+      orderBy: {
+        EmpCode: {
+          Lastname: 'asc',
+        }
+      }
+    }
+
+    );
+  }
+  catch (error) {
+    console.error(`Server Error occured ${error}`)
+  }
+}
 

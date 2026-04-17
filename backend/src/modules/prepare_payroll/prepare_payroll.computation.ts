@@ -105,7 +105,7 @@ export const computePhilRateEmployer = (basicPay: number | null,philPercentage: 
 
   
   if (isBod) {
-    console.log("true")
+  
     const res = basicPay * philPercentage;
     const final = res - bodEmployeeShare;
 
@@ -230,7 +230,15 @@ export const computeSSSContributionEmployer = (monthlySalary: number,ranges: SSS
 };
 
 
+export const isSecondCutoff = (payCode?: string): boolean => {
+  if (!payCode) return false;
 
+  const parts = payCode.split("-");
+  if (parts.length < 2) return false;
+
+  const startDay = Number(parts[1]);
+  return startDay === 16;
+};
 
 type JsonField = | Prisma.JsonValue | string | null | undefined;
 

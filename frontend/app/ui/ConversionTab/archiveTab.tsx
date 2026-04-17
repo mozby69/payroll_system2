@@ -1,12 +1,14 @@
 import Datatable from "@/app/components/Datatable";
+import RequestModal from "@/app/components/Modal";
 import { Pagination } from "@/app/components/Pagination";
 import { useAuth } from "@/app/components/UserContext";
 import { useDebounce } from "@/app/helper/useDebounce";
 import { useDisplayConversionArchive } from "@/app/hooks/useConversion";
 import { conversionArchiveProps } from "@/app/types/conversionType";
 import { Column } from "@/app/types/preparePayroll";
-import { Pencil } from "lucide-react";
 import { useState } from "react";
+import ConversionArchive from "./conversionArchive";
+import { formatCurrency } from "@/app/utils/currencyConverter";
 
 
 
@@ -21,7 +23,8 @@ export default function ArchivedConversionTab() {
     const { user } = useAuth();
     const company_id = user?.company_id;
     const { data: conversion_archive } = useDisplayConversionArchive({ page, limit: 10, search: debouncedSearch, company_id });
-
+    const [openModal, setOpenModal] = useState(false);
+    const [selectedArchiveId, setSelectedArchiveId] = useState<number | null>(null);
     const tableData: conversionArchiveProps[] = conversion_archive?.data ?? [];
 
 
@@ -32,16 +35,16 @@ export default function ArchivedConversionTab() {
         },
         {
             header: "Total Amount",
-            accessor: (row) => row.total_amount,
+            accessor: (row) => formatCurrency(row.total_amount),
         },
         {
             header: "Actions",
-            render: () => (
+            render: (row) => (
                 <div className="flex gap-2">
                     <button
-                        // onClick={() => openModal(row)}
-                        className="px-8 py-2.5 text-sm bg-green-800 hover:bg-green-700 text-white rounded">
-                            View
+                        onClick={() => handleOpenModal(row.id)}
+                        className="px-8 py-2.5 text-sm bg-green-800 hover:bg-green-700 hover:cursor-pointer text-white rounded">
+                        View
                     </button>
                 </div>
             ),
@@ -49,6 +52,14 @@ export default function ArchivedConversionTab() {
 
     ];
 
+    const closeModal = () => {
+        setOpenModal(false);
+    }
+
+    const handleOpenModal = (id:number) => {
+        setSelectedArchiveId(id);
+        setOpenModal(true);
+    }
 
     const handleSearchChange = (value: string) => {
         setSearch(value);
@@ -81,6 +92,15 @@ export default function ArchivedConversionTab() {
                 pageSize={PAGE_SIZE}
                 onPageChange={setPage}
             />
+
+
+
+        {openModal && selectedArchiveId &&(
+          <RequestModal size="xxxl" title="VIEW CONVERSION ARCHIVE" onClose={closeModal}>
+            <ConversionArchive archiveId={selectedArchiveId}/>
+          </RequestModal>
+        )}
+
 
         </div>
     );

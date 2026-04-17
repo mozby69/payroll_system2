@@ -117,7 +117,7 @@ model Employee {
   secondaryBranchId  String? @db.VarChar(20) 
   isAlien Boolean @default(false)
   secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
-
+  isOfficerAllowance Boolean? @default(false)
   
 
   employeepr EmpDetails[] @relation
@@ -131,6 +131,7 @@ model Employee {
   employee_salary_history EmployeeSalaryHistory[] @relation()
   bod_philhealth BodPhilhealtContrib[] @relation()
   archive_allowance archive_allowance[] @relation()
+  officersAllowance officersAllowance?
 
   specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount?
@@ -374,7 +375,7 @@ model EmployeePayrollArchive {
   created_at DateTime @default(now())
   total_deductions Decimal? @db.Decimal(10,2) @map("total_deductions")
   PayrollBranchId  String? 
-
+  officers_allowance Decimal? @db.Decimal(10,2) 
 
   totalPayrollId Int @map("total_payroll_id")
   totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
@@ -945,4 +946,17 @@ model totalConversionArchive {
   conversionArchive conversionArchive[]
 
   @@map("conversion_total_archive")
+}
+
+
+
+model officersAllowance {
+  id Int @id @default(autoincrement())
+  create_at DateTime @default(now())
+  basic_salary Decimal @db.Decimal(10,2) 
+
+
+  EmpCodeId                   String           @unique @map("EmpCode_id") @db.VarChar(20)
+  EmpCode                     Employee         @relation(fields: [EmpCodeId], references: [EmpCode])
+
 }

@@ -3,7 +3,7 @@ import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
 import { getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
-import { BankProps, BankResponse, GetEmployeeArchivedParams } from "../types/totalPayroll";
+import { BankProps, GetEmployeeArchivedParams } from "../types/totalPayroll";
 import { ApiErrorResponse, ErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
 import { PayrollArchiveReport } from "../types/archiveTypes";

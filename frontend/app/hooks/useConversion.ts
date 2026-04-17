@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { conversionArchiveResponse, conversionResponse } from "../types/conversionType";
+import { conversionArchiveList, conversionArchiveResponse, conversionResponse } from "../types/conversionType";
 import SweetAlert from "../components/Swal";
 
 
@@ -122,3 +122,22 @@ export function useDisplayConversionArchive(params: { page: number; limit: numbe
       },
     });
   }
+
+
+
+
+
+export const useConversionArchiveDetails = (id: number | null) => {
+  return useQuery<conversionArchiveList[]>({
+    queryKey: ['conversion-archive-list', id],
+    queryFn: async () => {
+      if (!id) throw new Error("No ID provided");
+
+      const res = await api.get<conversionArchiveList[]>(
+        `/conversion/conversion-archive/${id}`
+      );
+      return res.data;
+    },
+    enabled: !!id,
+  });
+};
