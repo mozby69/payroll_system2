@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import {allowanceprops,AllowanceRow,SummaryAllowanceProps} from "./allowance.types";
+import {allowanceprops,AllowanceRow,EmployeeVariance,SummaryAllowanceProps} from "./allowance.types";
 import {formatAllowanceMonth,getDaysInMonth,getPreviousMonth} from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 
@@ -95,13 +95,12 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
   const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
 
   const normalized = employees.map((emp) => {
+
     const totalAbsentHours = emp.employeesummary.reduce(
       (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
       0,
     );
-
-    const cashAssistance =
-      emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
+    const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
 
     const ecola = emp.employeepayroll?.ecola?.toNumber() ?? 0;
 
@@ -111,17 +110,14 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
 
     const hasEcola = emp.employeepayroll?.with_ecola === true;
 
-    const totalCashAllowance =
-      cashAssistance - cashDailyRate * totalAbsentHours;
+    const totalCashAllowance = cashAssistance - cashDailyRate * totalAbsentHours;
 
     const totalEcola = hasEcola ? ecola - ecolaDailyRate * totalAbsentHours : 0;
 
     const total = (totalCashAllowance + totalEcola).toFixed(2);
     const finalTotal = Number(total);
 
-    const totalDeductions =
-      cashDailyRate * totalAbsentHours +
-      (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
+    const totalDeductions = cashDailyRate * totalAbsentHours + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
 
     // const cashDailyRate = cashAssistance / daysInPrevMonth;
     // const ecolaDailyRate = ecola / daysInPrevMonth;
@@ -327,11 +323,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
       0,
     );
-    const cashAssistance =
-      emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
+    const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
     const hasEcola = emp.employeepayroll?.with_ecola === true;
-    const branchCode =
-      overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
+    const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
     const bodMember = emp.bod_member;
     const manCom = emp.Position;
 
@@ -353,6 +347,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
     const companyId = emp.BranchCode?.company_id ?? "UNKNOWN";
 
+   // const totalEcolaForVariance = Number(emp.employeepayroll?.ecola - totalEcola);
+
     return {
       EmpCode: emp.EmpCode,
       name: `${emp.Lastname ?? ""} ${emp.Firstname ?? ""}`.trim(),
@@ -364,12 +360,14 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       deduct: totalDeduction,
       totalDeduction,
       branch_code: branchCode ?? "NO_BRANCH",
-              company_id: companyId,
+      company_id: companyId,
       bod_member: bodMember,
       position: manCom,
       Department:emp.Department,
       // loan code ↓
       fch_rfc_deducted,
+      base_cash_assistance: cashAssistance,
+      base_ecola: ecola,
       // loan code ↑
     };
   });
@@ -844,6 +842,7 @@ export async function getVarianceForAllowance(selectedMonth: string) {
 
 export async function ViewAllList(selectedMonth: string) {
   try {
+    console.log(`selected month--${selectedMonth}`);
     const { rows } = await computeAllowanceForMonth(selectedMonth);
     const loan_list = await getLoanFor();
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
@@ -941,7 +940,7 @@ export async function ViewAllList(selectedMonth: string) {
 
       const entries = Object.entries(orderedBranches["EMB"]);
 
-      // insert at index 1 (after first branch)
+
       entries.splice(1, 0, ["BACOLOD_BRANCH", M2Members]);
 
       orderedBranches["EMB"] = Object.fromEntries(entries);
@@ -961,3 +960,130 @@ export async function ViewAllList(selectedMonth: string) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+export async function getVarianceEmployees(selectedMonth: string): Promise<EmployeeVariance[]> {
+  try {   
+    const prevMonth = getPreviousMonth2(selectedMonth);
+
+    const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
+
+  
+    const previousRows = await prisma.archive_allowance.findMany({
+      where: { selectedMonth: prevMonth },
+      select: {
+        EmpCode: true,
+        cash_allowance: true,
+        ecola: true,
+      },
+    });
+
+    const prevMap = new Map<string, typeof previousRows[number]>(
+      previousRows.map((p) => [
+        p.EmpCode.EmpCode.trim().toUpperCase(), 
+        p,
+      ])
+    );
+
+
+    // salary history 
+     const histories = await prisma.employeeSalaryHistory.findMany({
+      where: {
+        EmpCodeId: { in: currentRows.map((e) => e.EmpCode) },
+        salary_type: "Allowance",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+    const latestHistoryMap = new Map<string, typeof histories[number]>();
+
+    for (const h of histories) {
+      const empId = h.EmpCodeId.trim().toUpperCase();
+      if (!latestHistoryMap.has(empId)) {
+        latestHistoryMap.set(empId, h);
+      }
+    }
+    // salary history 
+
+      const result: EmployeeVariance[] = currentRows.map((curr) => {
+        const empCode = curr.EmpCode.trim().toUpperCase();
+        const prev = prevMap.get(empCode);
+        const history = latestHistoryMap.get(empCode);
+        
+
+        const currentCash = curr.cash_allowance ?? 0;
+        const currentEcola = curr.computed_ecola ?? 0;
+        const currentTotal = curr.total ?? 0;
+
+        const prevCash = curr.base_cash_assistance ?? 0;
+        const prevEcola = curr.base_ecola ?? 0;
+
+        // const prevCash = Number(prev?.cash_allowance ?? 0);
+        // const prevEcola = Number(prev?.ecola ?? 0);
+        const prevTotal = prevCash + prevEcola;
+
+        const varianceCash = currentCash - prevCash;
+        const varianceEcola = currentEcola - prevEcola;
+        const varianceTotal = currentTotal - prevTotal;
+
+        const hasHistory = Boolean(history?.remarks && history?.createdAt);
+
+       return {
+            EmpCode: empCode,
+            name: curr.name,
+            previous: {
+              cash_assistance: prevCash,
+              ecola: prevEcola,
+              total: prevTotal,
+            },
+            current: {
+              cash_assistance: currentCash,
+              ecola: currentEcola,
+              total: currentTotal,
+            },
+            variance: {
+              cash_assistance: varianceCash,
+              ecola: varianceEcola,
+              total: varianceTotal,
+
+              remarks: history?.remarks ?? null,
+              created_at: history?.createdAt ?? null,
+
+        
+              action: hasHistory
+                ? {
+                    type: "ADD",
+                    data: {
+                      remarks: history?.remarks,
+                      created_at: history?.createdAt,
+                    },
+                  }
+                : {
+                    type: "LESS",
+                    data: {},
+                  },
+            },
+          };
+      })
+      .filter(
+        (row) =>
+          row.variance.cash_assistance !== 0 ||
+          row.variance.ecola !== 0 ||
+          row.variance.total !== 0
+      );
+
+    return result;
+  } catch (error) {
+    console.error("error occured -", error);
+    throw error;
+  }
+}

@@ -1,7 +1,7 @@
 import CompanyFilter from "@/app/components/CompanyFilter";
 import { useGenerateBankFile } from "@/app/hooks/usePayrollArchive";
 import { BankProps } from "@/app/types/totalPayroll";
-import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
+import { formatCurrency } from "@/app/utils/currencyConverter";
 
 
 
@@ -24,8 +24,8 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
 
 
   const no_data = data2.length === 0;
-  const showBDO = company === "EMB" && !no_data;
-  const showPNB = company !== null && company !== "EMB" && !no_data;
+  // const showBDO = company === "EMB" && !no_data;
+  // const showPNB = company !== null && company !== "EMB" && !no_data;
   const selectedBank = company === "EMB" ? "BDO" : company ? "PNB" : null;
   const { generate } = useGenerateBankFile();
 
@@ -114,10 +114,7 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
                   </td>
   
                   <td className="px-4 py-3 text-right font-semibold text-green-700">
-                    {emp.Netpay.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    {formatCurrency(emp.Netpay)}
                   </td>
   
                   <td className="px-4 py-3 text-center text-gray-700">
@@ -137,10 +134,7 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
                   GRAND TOTAL
                 </td>
                 <td className="px-4 py-3 text-right font-bold text-green-800">
-                  {total.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {formatCurrency(total)}
                 </td>
                 <td />
               </tr>

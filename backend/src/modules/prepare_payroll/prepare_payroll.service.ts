@@ -826,7 +826,9 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
     OR: [
       {
         AND: [
-          { CycleCategory: cycle },
+          {
+             CycleCategory: cycle
+           },
           {
             EmpCode: {
               BranchCode: {
@@ -848,7 +850,8 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
           { 
             EmpCode:{
             isAlien: true
-            }
+            },
+            status:{ in: ["PENDING"] } 
           },
 
           {
@@ -858,7 +861,8 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
                   CompanyCycle: cycle,
                 },
               }
-            }
+            },
+            status:{ in: ["PENDING"] } 
           },
         searchFilter,
         statusOverride,

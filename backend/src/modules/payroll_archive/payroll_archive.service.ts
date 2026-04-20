@@ -1490,9 +1490,6 @@ export async function displayBankAdminBDO(){
               },
             },
           ]
-         
-
-       
         },
         select: {
           id:true,
@@ -1532,23 +1529,37 @@ export async function displayBankAdminBDO(){
         }
       });
   
+       const oa = await getOfficerAllowance();
 
-      const normalized: PayrollRow[] = employeeList.map((row) => ({
+       const oaMap = new Map<string, number>(
+          oa.map((o) => [
+            o.EmpCodeId.trim().toUpperCase(),
+            Number(o.basic_salary),
+          ])
+        );
 
-        id:row.id,
+      const normalized: PayrollRow[] = employeeList.map((row) => {
+
+      const empId = row.EmpCodeId.trim().toUpperCase();
+      //const officerAllowance = oaMap.get(empId) ?? 0;
+      const officerAllowance = isSecondCutoff(row.PayCode) ? 0 : oaMap.get(empId) ?? 0;
+      const baseNetpay = row.Netpay?.toNumber() ?? 0;
+
+      return {
+        id: row.id,
         PayCode: row.PayCode,
         cycle_category: row.cycle_category,
-        Netpay: row.Netpay?.toNumber() ?? 0,
-        BranchCodeId: row.EmpCode.isAlien ? row.EmpCode.secondaryBranchId  : row.EmpCode.BranchCodeId,
-        EmpCodeId:row.EmpCodeId,
+        Netpay: baseNetpay + officerAllowance,
+        BranchCodeId: row.EmpCode.isAlien ? row.EmpCode.secondaryBranchId : row.EmpCode.BranchCodeId,
+        EmpCodeId: row.EmpCodeId,
         EmpCode: {
           Firstname: row.EmpCode.Firstname,
           Lastname: row.EmpCode.Lastname,
           BranchCode: row.EmpCode.BranchCode,
           bank_account: row.EmpCode.employeepayroll?.bank_account,
-        
         },
-      }));
+      };
+    });
   
      // const grouped = groupByCompany(normalized);
   
