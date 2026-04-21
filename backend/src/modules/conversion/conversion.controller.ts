@@ -1,4 +1,4 @@
-import getAttendanceCount, { conversionReport, saveConversionArchive, updateVacationLeave } from "./conversion.service";
+import getAttendanceCount, { conversionReport, DisplayConversionArchive, getConversionArchive, saveConversionArchive, updateVacationLeave } from "./conversion.service";
 import { Request,Response } from "express";
 
 
@@ -80,3 +80,39 @@ export const saveConversionArchiveController = async (req: Request, res: Respons
     });
   }
 };
+
+
+
+
+export const DisplayConversionArchiveController = async (req: Request, res: Response) => {
+  try {
+
+     const company_id = req.query.company_id as string;
+     const page = Math.max(Number(req.query.page) || 1, 1);
+     const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+     const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+     const result = await DisplayConversionArchive({page,limit,search,company_id});
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("FETCH DATA ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch data",
+    });
+  }
+};
+
+
+
+export const getConversionArchiveController = async (req:Request, res:Response) => {
+  try{
+    const id = Number(req.params.id);
+    const data = await getConversionArchive(Number(id));
+    return res.status(200).json(data);
+  }
+  catch(error){
+    console.error("server error occured",error);
+    return res.status(500).json({message:"failed to fetch data"});
+  }
+}

@@ -1,40 +1,40 @@
 import { prisma } from "../../config/prismaClient";
-import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computePhilRateEmployer, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx } from "../prepare_payroll/prepare_payroll.computation";
+import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computePhilRateEmployer, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer, computeWHTx, isSecondCutoff } from "../prepare_payroll/prepare_payroll.computation";
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
 import { groupByCompany, isPayrollDateRange } from "./payroll_archive.helper";
 import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow } from "./payroll_archive.types";
 import { Console } from "console";
-import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
+import { getBodPhilhealth, getOfficerAllowance, getSSSContributions, getTaxTable } from "../general/general.services";
 import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 
-export async function employeeProbationary(){
+// export async function employeeProbationary(){
 
-  try{
-    // const computed = await displayCompletePayroll(["PENDING"]);
-    // if (!computed || computed.length === 0) return 0;
-    // const payCycle = computed[0].PayCode;
+//   try{
+//     // const computed = await displayCompletePayroll(["PENDING"]);
+//     // if (!computed || computed.length === 0) return 0;
+//     // const payCycle = computed[0].PayCode;
 
-    // const data1 = await prisma.employee.findMany({
-    //   where:{
-    //     EmploymentStatus:"Probationary",
-    //     EmployeeStatus:"Active"
-    //   }
-    // })
+//     // const data1 = await prisma.employee.findMany({
+//     //   where:{
+//     //     EmploymentStatus:"Probationary",
+//     //     EmployeeStatus:"Active"
+//     //   }
+//     // })
 
-    // return {data1,payCycle};
+//     // return {data1,payCycle};
     
-  }
+//   }
 
 
-  catch(error){
-    console.log('error occured',error);
-  }
+//   catch(error){
+//     console.log('error occured',error);
+//   }
 
-}
+// }
 
 
 
@@ -85,6 +85,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
       const bodPhil = await getBodPhilhealth();
       const tax_list = await getTaxTable();
+      const oa = await getOfficerAllowance();
       
 
       const baseFilter = {
@@ -143,7 +144,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                       EmpCode: {
                         isAlien: true,
                         secondaryBranch:{
-                          company_id: company_id
+                          company_id: company_id,
                         }
                       },
                     },
@@ -422,6 +423,13 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       }
   
 
+      const oaMap = new Map(
+        oa.map((o) => [
+          o.EmpCodeId.trim().toUpperCase(),
+          Number(o.basic_salary),
+        ])
+      );
+
       const normalized = employeeList.map((emp) => {
         
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
@@ -435,7 +443,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
         const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
         const isTaxable = emp.EmpCode.Taxable;
-
+        const empId = emp.EmpCodeId.trim().toUpperCase();
+        const officerAllowance = isSecondCutoff(emp.PayCode) ? 0 : oaMap.get(empId) ?? 0;
    
 
         const bodMap = new Map(
@@ -506,8 +515,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const companyId = emp.EmpCode.BranchCode?.company_id;
 
         const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee;
-
-        // console.log("total",emp.EmpCode.Firstname,'totaldeduct-',totalDeductions);
       
         return {
           ...emp,
@@ -540,7 +547,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           computedWtax: computedWtax,
           company_id:companyId,
           total_deductions:totalDeductions,
-      
+          officers_allowance: officerAllowance,
         };
  
 
@@ -880,7 +887,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           total_deductions:          emp.total_deductions,
           PayrollBranchId:           emp.EmpCode.isAlien
                                          ? emp.EmpCode.secondaryBranch?.branchCode ?? null
-                                         : emp.EmpCode.BranchCodeId ?? null
+                                         : emp.EmpCode.BranchCodeId ?? null,
+          officers_allowance: emp.officers_allowance,
         };
       });
 
@@ -1548,9 +1556,6 @@ export async function displayBankAdminBDO(){
               },
             },
           ]
-         
-
-       
         },
         select: {
           id:true,
@@ -1590,23 +1595,37 @@ export async function displayBankAdminBDO(){
         }
       });
   
+       const oa = await getOfficerAllowance();
 
-      const normalized: PayrollRow[] = employeeList.map((row) => ({
+       const oaMap = new Map<string, number>(
+          oa.map((o) => [
+            o.EmpCodeId.trim().toUpperCase(),
+            Number(o.basic_salary),
+          ])
+        );
 
-        id:row.id,
+      const normalized: PayrollRow[] = employeeList.map((row) => {
+
+      const empId = row.EmpCodeId.trim().toUpperCase();
+      //const officerAllowance = oaMap.get(empId) ?? 0;
+      const officerAllowance = isSecondCutoff(row.PayCode) ? 0 : oaMap.get(empId) ?? 0;
+      const baseNetpay = row.Netpay?.toNumber() ?? 0;
+
+      return {
+        id: row.id,
         PayCode: row.PayCode,
         cycle_category: row.cycle_category,
-        Netpay: row.Netpay?.toNumber() ?? 0,
-        BranchCodeId: row.EmpCode.isAlien ? row.EmpCode.secondaryBranchId  : row.EmpCode.BranchCodeId,
-        EmpCodeId:row.EmpCodeId,
+        Netpay: baseNetpay + officerAllowance,
+        BranchCodeId: row.EmpCode.isAlien ? row.EmpCode.secondaryBranchId : row.EmpCode.BranchCodeId,
+        EmpCodeId: row.EmpCodeId,
         EmpCode: {
           Firstname: row.EmpCode.Firstname,
           Lastname: row.EmpCode.Lastname,
           BranchCode: row.EmpCode.BranchCode,
           bank_account: row.EmpCode.employeepayroll?.bank_account,
-        
         },
-      }));
+      };
+    });
   
      // const grouped = groupByCompany(normalized);
   

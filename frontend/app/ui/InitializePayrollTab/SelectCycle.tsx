@@ -5,12 +5,12 @@ import SideModalLayout from "@/app/components/SideModal";
 import SweetAlert from "@/app/components/Swal";
 
 import { useAuth } from "@/app/components/UserContext";
-import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
+//import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 import { useDebounce } from "@/app/helper/useDebounce";
 import { useDisburseCompanies, useUpdateCompanySetup, useUpdateEmployeeSetup } from "@/app/hooks/disburse";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PayrollCycle } from "@/app/types/disburseType";
-import { useDisabledPayrollDates, useFetchApiAttendance } from "@/app/hooks/useApiProcess";
+import {  useFetchApiAttendance } from "@/app/hooks/useApiProcess";
 import {   useFetchInitializePayroll, useImportBranches } from "@/app/hooks/usePreparePayroll";
 import { Column, EmployeeRow } from "@/app/types/preparePayroll";
 import { DateRange } from "@/app/types/utilsTypes";
@@ -452,7 +452,7 @@ export default function SelectCycle({ setBranchCycle,branchCycle}:SelectCyclePro
                             <div className="mb-2 flex justify-between">
         
         
-                                <div className="flex flex-col">
+                                <div className="flex flex-col py-2">
                                     <label className="mb-1 text-xs font-medium text-slate-600">Choose Payroll Cycle</label>
                                     <select
                                         onChange={(e)=>handleCycleChanges(e.target.value)}

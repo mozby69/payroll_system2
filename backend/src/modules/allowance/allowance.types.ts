@@ -37,3 +37,33 @@ export interface AllowanceRow {
     BOARD_MEMBER: AllowanceRow[];
     BRANCHES: Record<string, AllowanceRow[]>;
   }
+
+
+
+
+
+
+
+export type EmployeeVariance = {
+    EmpCode: string;
+    name: string;
+    previous: {
+      cash_assistance: number;
+      ecola: number;
+      total: number;
+    };
+    current: {
+      cash_assistance: number;
+      ecola: number;
+      total: number;
+    };
+    variance: {
+      cash_assistance: number;
+      ecola: number;
+      total: number;
+    };
+  };
+  
+
+
+  

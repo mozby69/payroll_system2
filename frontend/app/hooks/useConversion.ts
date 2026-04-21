@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { conversionResponse } from "../types/conversionType";
+import { conversionArchiveList, conversionArchiveResponse, conversionResponse } from "../types/conversionType";
 import SweetAlert from "../components/Swal";
 
 
@@ -101,3 +101,43 @@ export function useSaveConversionArchive() {
     },
   });
 }
+
+
+
+
+export function useDisplayConversionArchive(params: { page: number; limit: number; search?: string;company_id?:string}){
+    return useQuery<conversionArchiveResponse>({
+      queryKey: [
+        "display-conversion-archive",
+        params.page,
+        params.limit,
+        params.search ?? "",
+        params.company_id,
+      ],
+      queryFn: async () => {
+        const res = await api.get("/conversion/display-conversion-archive", {
+          params,
+        });
+        return res.data;
+      },
+    });
+  }
+
+
+
+
+
+export const useConversionArchiveDetails = (id: number | null) => {
+  return useQuery<conversionArchiveList[]>({
+    queryKey: ['conversion-archive-list', id],
+    queryFn: async () => {
+      if (!id) throw new Error("No ID provided");
+
+      const res = await api.get<conversionArchiveList[]>(
+        `/conversion/conversion-archive/${id}`
+      );
+      return res.data;
+    },
+    enabled: !!id,
+  });
+};

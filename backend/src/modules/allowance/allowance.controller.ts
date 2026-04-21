@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getVarianceForAllowance, saveAllowanceArchive, updateAllowanceBranch, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, updateAllowanceBranch, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -221,3 +221,20 @@ export async function updateAllowanceBranchController(req:Request, res:Response)
 
 
 
+
+export async function getTotalPerCompanyController(req: Request, res: Response) {
+  try {
+    const selectedMonth = req.query.month as string;
+
+    if (!selectedMonth) {
+      return res.status(400).json({ message: "Month is required" });
+    }
+
+    const data = await getTotalPerCompany(selectedMonth);
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error(`error ocurred in controller ${error}`);
+    return res.status(500).json({ message: "error occured" });
+  }
+}

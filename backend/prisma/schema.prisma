@@ -122,10 +122,8 @@ model Employee {
   secondaryBranchId  String? @db.VarChar(20) 
   isAlien Boolean @default(false)
   secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
-
   isOfficerAllowance Boolean? @default(false)
-
-  officersAllowance officersAllowance?
+  
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()
@@ -138,6 +136,7 @@ model Employee {
   employee_salary_history EmployeeSalaryHistory[] @relation()
   bod_philhealth BodPhilhealtContrib[] @relation()
   archive_allowance archive_allowance[] @relation()
+  officersAllowance officersAllowance?
 
   specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount?
@@ -381,7 +380,7 @@ model EmployeePayrollArchive {
   created_at DateTime @default(now())
   total_deductions Decimal? @db.Decimal(10,2) @map("total_deductions")
   PayrollBranchId  String? 
-
+  officers_allowance Decimal? @db.Decimal(10,2) 
 
   totalPayrollId Int @map("total_payroll_id")
   totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
@@ -411,7 +410,8 @@ model company_details{
     isDisburse Boolean @default(false)
 
     branch_code Branch[] @relation
-
+    conversionArchive        conversionArchive[]
+    totalConversionArchive totalConversionArchive[]
     companyRules BonusRuleCompany[] @relation
 
     total_payroll_by_company totalPayrollByCompany[]
@@ -726,7 +726,8 @@ model archive_allowance {
   loan Decimal? @db.Decimal(10,2)
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
   createdAt DateTime @map("created_at")
-//  branch String? @db.VarChar(100) 
+  base_cash_assistance Decimal? @db.Decimal(10,2)
+  base_ecola Decimal? @db.Decimal(10,2)
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
   branchCode  String
@@ -918,25 +919,43 @@ model conversionAsOfDate{
   @@map("conversion_as_of_date")
 }
 
-model conversionArchive{
-  id Int @id @default(autoincrement())
-  Sick Int
-  Vacation Int
-  EmployementDate DateTime @db.Date
-  basic_salary Decimal @db.Decimal(10,2)
+model conversionArchive {
+  id                          Int              @id @default(autoincrement())
+  Sick                        Int
+  Vacation                    Int
+  EmployementDate             DateTime         @db.Date
+  basic_salary                Decimal          @db.Decimal(10, 2)
+  daily_rate                  Decimal          @db.Decimal(10, 2)
+  tenure                      Int
+  leave_convert               Int
+  total_leave_for_conversion  Int
+  leave_amount_for_conversion Decimal          @db.Decimal(10, 2)
+  as_of_date                  DateTime         @db.Date
+  EmpCodeId                   String           @unique @map("EmpCode_id") @db.VarChar(20)
+  company_id                  String?          @map("company_id") @db.VarChar(20)
+  totalConversionArchiveId Int
+  EmpCode                     Employee         @relation(fields: [EmpCodeId], references: [EmpCode])
+  CompanyCode                 company_details? @relation(fields: [company_id], references: [CompanyCode])
+  
 
-  daily_rate Decimal @db.Decimal(10,2)
-  tenure Int 
-  leave_convert Int
-  total_leave_for_conversion Int
-  leave_amount_for_conversion Decimal @db.Decimal(10,2)
-  as_of_date DateTime @db.Date
-
-  EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
-  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+  totalConversionArchive totalConversionArchive @relation(fields: [totalConversionArchiveId], references: [id])
 
   @@map("conversion_archive")
 }
+
+model totalConversionArchive {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime? @default(now())
+  company_id String?   @map("company_id") @db.VarChar(20)
+  total_amount Decimal @db.Decimal(10,2)
+
+  CompanyCode company_details? @relation(fields: [company_id], references: [CompanyCode])
+  conversionArchive conversionArchive[]
+
+  @@map("conversion_total_archive")
+}
+
+
 
 model officersAllowance {
   id Int @id @default(autoincrement())

@@ -225,11 +225,11 @@ export default function AllowancePage(){
                     </RequestModal>
                   )}
 
-              {isModalOpen2 && (
-                    <RequestModal size="sm" title={`EDIT BRANCH`} onClose={closeModal2}>
-                        <EditBranchAllowance onClose={closeModal2}  data={selectedAllowance} selectedMonth={month}/>
-                    </RequestModal>
-                  )}
+                {isModalOpen2 && (
+                      <RequestModal size="sm" title={`EDIT BRANCH`} onClose={closeModal2}>
+                          <EditBranchAllowance onClose={closeModal2}  data={selectedAllowance} selectedMonth={month}/>
+                      </RequestModal>
+                    )}
 
 
               {/* {isModalOpen2 &&(

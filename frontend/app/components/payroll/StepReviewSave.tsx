@@ -2,7 +2,7 @@
 
 import {  useRef, useState } from "react";
 import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
-import { printPayroll } from "@/app/utils/printPayrollUtils";
+//import { printPayroll } from "@/app/utils/printPayrollUtils";
 //import { dummySummary } from "@/app/types/dummyData";
 import { useDisplayPayroll, useSavePayroll } from "@/app/hooks/usePayrollArchive";
 
@@ -27,7 +27,7 @@ interface Props {
 
 export default function StepReviewSave({ onBack }: Props) {
   const [selectedCompany] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalOpen2, setIsModalOpen2] = useState(false);
@@ -129,7 +129,8 @@ export default function StepReviewSave({ onBack }: Props) {
       PayCode: emp.PayCode,
       EmpCodeId: emp.EmpCodeId,
       PayrollPeriod: emp.PayrollPeriod,
-      computedWtax: Number(emp.computedWtax)
+      computedWtax: Number(emp.computedWtax),
+      officers_allowance:emp.officers_allowance,
           };
         });
 
@@ -150,6 +151,12 @@ export default function StepReviewSave({ onBack }: Props) {
       acc.sss += toNumber(row.sss);
       acc.philhealth += toNumber(row.philhealth);
       acc.pagibig += toNumber(row.pagibig);
+      acc.arE += toNumber(row.arE);
+      acc.rfc += toNumber(row.rfc);
+      acc.fch += toNumber(row.fch);
+      acc.salaryLoan += toNumber(row.salaryLoan);
+      acc.calamityLoan += toNumber(row.calamityLoan);
+      acc.pagibigSalaryLoan += toNumber(row.pagibigSalaryLoan);
       acc.netPayable += toNumber(row.netPayable);
       acc.sssEmployer += toNumber(row.sssEmployer);
       acc.philEmployer += toNumber(row.philEmployer);
@@ -167,6 +174,12 @@ export default function StepReviewSave({ onBack }: Props) {
       sss: 0,
       philhealth: 0,
       pagibig: 0,
+      arE:0,
+      rfc:0,
+      fch:0,
+      salaryLoan:0,
+      calamityLoan:0,
+      pagibigSalaryLoan:0,
       netPayable: 0,
       sssEmployer: 0,
       philEmployer: 0,
@@ -174,19 +187,19 @@ export default function StepReviewSave({ onBack }: Props) {
     }
   );
 
-  const handlePrint = async () => {
-    try {
-      setLoading(true);
-      await printPayroll(
-        rows
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Failed to print payroll");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handlePrint = async () => {
+  //   try {
+  //     setLoading(true);
+  //     await printPayroll(
+  //       rows
+  //     );
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Failed to print payroll");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const openModal = () => {
     setIsModalOpen(true);

@@ -108,7 +108,8 @@ export default function AllowanceArchiveTab(){
                       onChange={(e) => setSearch(e.target.value)}
                       className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                       />  
-
+                      
+                      <h2></h2>
 
                     <div className="py-4">
                       <Datatable columns={columns} data={tableData}/>

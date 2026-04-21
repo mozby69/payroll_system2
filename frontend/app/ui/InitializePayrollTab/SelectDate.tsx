@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useDisabledPayrollDates, useFetchApiAttendance } from "@/app/hooks/useApiProcess";
 import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 import { ProcessingOverlay } from "../loader/ProcessingOverlay";
-import { useComputedPayroll, useInitializeComputedPayroll } from "@/app/hooks/usePreparePayroll";
+import {  useInitializeComputedPayroll } from "@/app/hooks/usePreparePayroll";
 import { useDebounce } from "@/app/helper/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import Datatable from "@/app/components/Datatable";
@@ -42,7 +42,7 @@ export default function SelectDate({branchCycle}:props){
       
        const tableData: ComputedProps[] = employee_payroll?.data ?? [];
 
-        const { isFetching,isSuccess,error  } = useFetchApiAttendance(
+        const { isFetching,isSuccess  } = useFetchApiAttendance(
           range
             ? {
                 startDate: range.startDate,
@@ -113,7 +113,7 @@ export default function SelectDate({branchCycle}:props){
                   )}
                   
            
-            <div className="mb-4">
+            <div className="mb-4 py-8">
             <DateRangePicker
                     value={
                         range

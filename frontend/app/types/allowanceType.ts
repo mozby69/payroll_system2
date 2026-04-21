@@ -91,6 +91,37 @@ export interface PrintAllowanceRow {
   loan:number | null;
 }
 
+export interface VarianceEmpItem {
+  EmpCode: string;
+  name: string;
+
+  previous: {
+    cash_assistance: number;
+    ecola: number;
+    total: number;
+  };
+
+  current: {
+    cash_assistance: number;
+    ecola: number;
+    total: number;
+  };
+
+  variance: {
+    cash_assistance: number;
+    ecola: number;
+    total: number;
+    remarks: string | null;
+    created_at: string | null;
+    action: {
+      type: "ADD" | "LESS";
+      data: {
+        remarks:string;
+        create_at:string;
+      };
+    };
+  };
+}
 
 export interface ViewAllItem {
   EmpCode: string;
@@ -123,6 +154,7 @@ export interface ViewAllResponse {
   BRANCHES: Record<string, Record<string, ViewAllItem[]>>;
   LOANS: LoanItem[];
   VARIANCE:VarianceAllowance;
+  VARIANCE_EMP: VarianceEmpItem[];
 }
 
 

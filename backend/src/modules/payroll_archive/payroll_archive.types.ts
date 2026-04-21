@@ -50,7 +50,7 @@ export interface EmployeeBankAccountsParams{
 export interface PayrollRow {
   PayCode: string;
   cycle_category: string | null;
-  Netpay: number; // ✅ number, not string
+  Netpay: number;
   BranchCodeId:string | null;
   EmpCode: {
     Firstname: string | null;

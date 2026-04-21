@@ -30,6 +30,7 @@ export interface SpreadsheetRow {
   EmpCodeId: string;
   PayrollPeriod: string;
   computedWtax: number;
+  officers_allowance:number;
 }
 
 
@@ -44,6 +45,12 @@ interface TotalsType{
   sss: number;
   philhealth: number;
   pagibig: number;
+  arE:number,
+  rfc:number,
+  fch:number,
+  salaryLoan:number,
+  calamityLoan:number;
+  pagibigSalaryLoan:number;
   netPayable: number;
   sssEmployer: number;
   philEmployer: number;
@@ -184,6 +191,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
             <th className="border border-gray-300">SSS</th>
             <th className="border border-gray-300">PhilHealth</th>
             <th className="border border-gray-300">Pag-ibig</th>
+            <th className="border border-gray-300 p-2">OA</th>
           </tr>
         </thead>
 
@@ -237,6 +245,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{row.sssEmployer}</td>
                 <td className="py-2 text-center">{row.philEmployer}</td>
                 <td className="py-2 text-center">{row.pagibigEmployer}</td>
+                <td className="py-2 text-center">{row.officers_allowance.toFixed(2)}</td>
               </tr>
             ))
           )}
@@ -258,11 +267,17 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
           <td className="text-center border border-gray-400">{totals.sss.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.philhealth.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.pagibig.toFixed(2)}</td>
-          <td colSpan={6} className="border border-gray-400"></td>
+          <td className="text-center border border-gray-400">{totals.arE.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.rfc.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.fch.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.salaryLoan.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.calamityLoan.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{totals.pagibigSalaryLoan.toFixed(2)}</td>
           <td className="text-center bg-blue-200 border border-gray-400">{totals.netPayable.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.philEmployer.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
+          <td className="text-center border border-gray-400">{}</td>
         </tr>
       </tfoot>
 

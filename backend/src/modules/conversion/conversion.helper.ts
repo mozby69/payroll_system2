@@ -17,3 +17,27 @@ export function computeTenure(employmentDate: Date, referenceDate: Date): number
 
   return tenure;
 }
+
+
+
+export const computeCustomTenure = (
+  employmentDate: Date,
+  referenceDate: Date
+): number => {
+  let years = referenceDate.getFullYear() - employmentDate.getFullYear();
+
+  const hasNotReachedAnniversary =
+    referenceDate.getMonth() < employmentDate.getMonth() ||
+    (referenceDate.getMonth() === employmentDate.getMonth() &&
+      referenceDate.getDate() < employmentDate.getDate());
+
+  if (hasNotReachedAnniversary) {
+    years--;
+  }
+
+  return years;
+};
+
+export const getJune30 = (date: Date): Date => {
+  return new Date(date.getFullYear(), 5, 30);
+};
