@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getUniqueLoan, reorderBranchesService } from "./general.services";
+import { assignBranchService, createGroupService, deleteGroupService, fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getGroupsService, getUniqueLoan, reorderBranchesService } from "./general.services";
 import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
 
@@ -225,3 +225,62 @@ export const getBranchController = async (req:Request, res:Response) => {
     console.error("error occured",error);
   }
 }
+
+
+
+// CREATE
+export const createGroup = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: "Group name is required" });
+    }
+
+    const group = await createGroupService(name.toUpperCase());
+
+    res.json(group);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// GET ALL
+export const getGroups = async (_req: Request, res: Response) => {
+  try {
+    const data = await getGroupsService();
+    res.json(data);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch groups" });
+  }
+};
+
+// DELETE
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    await deleteGroupService(id);
+
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: "Failed to delete group" });
+  }
+};
+
+// ASSIGN
+export const assignBranch = async (req: Request, res: Response) => {
+  try {
+    const { branchCode } = req.params;
+    const { groupId } = req.body;
+
+    await assignBranchService(
+      branchCode,
+      groupId ? Number(groupId) : null
+    );
+
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: "Failed to assign branch" });
+  }
+};

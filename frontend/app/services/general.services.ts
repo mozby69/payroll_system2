@@ -40,3 +40,38 @@ export const reorderBranchesService = async (
 
   return res.data
 }
+
+
+// GET
+export const getBranchGroups = async () => {
+  const res = await api.get("/general/branch-groups");
+  return res.data;
+};
+
+// CREATE
+export const createBranchGroup = async (name: string) => {
+  const res = await api.post("/general/branch-groups", { name });
+  return res.data;
+};
+
+// DELETE
+export const deleteBranchGroup = async (id: number) => {
+  await api.delete(`/general/branch-groups/${id}`);
+};
+
+// ASSIGN BRANCH
+
+export const assignBranchGroupService = async ({
+  branchCode,
+  groupId,
+}: {
+  branchCode: string;
+  groupId: number | null;
+}) => {
+  const res = await api.patch(
+    `/general/branch-groups/${branchCode}/assign`,
+    { groupId }
+  );
+
+  return res.data;
+};

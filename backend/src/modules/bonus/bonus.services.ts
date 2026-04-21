@@ -198,6 +198,7 @@ export async function generateBonusForAllEmployees({
     if (!rule) {
       throw new Error("Bonus rule not found")
     }
+
     const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
  
     const blockingSummary = await tx.bonusSummary.findFirst({
@@ -211,7 +212,6 @@ export async function generateBonusForAllEmployees({
       }
     })
 
-    console.log(blockingSummary)
 
     if (blockingSummary?.status === "RELEASED") {
       throw {
@@ -256,35 +256,53 @@ export async function generateBonusForAllEmployees({
  
     const employees = await tx.employee.findMany({
       where: {
-        AND: [
-          {
-            EmployementDate: {
-              lte: generateDate
-            }
-        },
-          {
-            BranchCode: {
-              CompanyCode: {
-                CompanyCode: {
-                  in: companyCodes,
-                },
+          OR: [
+            {
+              isAlien: true,
+              secondaryBranch:{
+                company_id: companyCode
+              },
+              EmployeeStatus: {
+                in: ["Active", "Inactive"],
               },
             },
-          },
-          {
-            OR: [
-              {  EmployeeStatus: {
-                in: ["Active", "Inactive"],
-              },},
-              { bod_member: "bod1" },
-              { bod_member: "bod2" },
-              {EndDate: {
-                gte: generateDate
-              }},
-           
-            ],
-          },
-        ],
+
+            {
+              AND: [
+                {
+                  EmployementDate: {
+                    lte: generateDate
+                  },
+                  isAlien: false
+              },
+                {
+                  BranchCode: {
+                    CompanyCode: {
+                      CompanyCode: {
+                        in: companyCodes,
+                      },
+                    },
+                  },
+                },
+                {
+                  OR: [
+                    {  EmployeeStatus: {
+                      in: ["Active", "Inactive"],
+                    },
+                  },
+                    { bod_member: "bod1" },
+                    { bod_member: "bod2" },
+                    {EndDate: {
+                      gte: generateDate
+                    }},
+                 
+                  ],
+                },
+              ],
+      
+            }
+          ]
+
       },
       include: { 
         employeepayroll: true,
@@ -295,6 +313,8 @@ export async function generateBonusForAllEmployees({
          }
          }
     })
+
+    console.log("Employee: ", employees)
 
 
 
@@ -1015,17 +1035,17 @@ export async function releaseBonusService(
 }
 
 
-export async function getEmployeesByBonusSummarySerive(
+export async function getEmployeesByBonusSummaryService(
   companyCode?: string,
   id?: number
 ) {
   return await prisma.$transaction(async (tx) => {
 
-    // ✅ 1. Get Summary (STRICT)
+    //  1. Get Summary (STRICT)
     const summary = await tx.bonusSummary.findFirst({
       where: {
         ...(id ? { id } : { status: "GENERATED" }),
-        ...(companyCode && { companyCode }) // ✅ direct filter
+        ...(companyCode && { companyCode }) //  direct filter
       },
       include: {
         bonusRule: {
@@ -1048,7 +1068,7 @@ export async function getEmployeesByBonusSummarySerive(
       }
     }
 
-    // ✅ 2. Allowed Companies (optional now, but kept if UI needs it)
+    //  2. Allowed Companies (optional now, but kept if UI needs it)
     const allowedCompanies = await tx.bonusRuleCompany.findMany({
       where: {
         bonusRuleId: summary.bonusRuleId,
@@ -1061,13 +1081,13 @@ export async function getEmployeesByBonusSummarySerive(
     }
     
     const selectedCompanyCode = summary.companyCode
-    // ✅ Use summary company directly
+    //  Use summary company directly
 
-    // ✅ 3. Get EmployeeBonus (FAST + CLEAN)
+    //  3. Get EmployeeBonus (FAST + CLEAN)
     const employeeBonuses = await tx.employeeBonus.findMany({
       where: {
         bonusSummaryId: summary.id,
-        companyCode: selectedCompanyCode // ✅ DIRECT FILTER (no joins)
+        companyCode: selectedCompanyCode //  DIRECT FILTER (no joins)
       },
       include: {
         employee: {
@@ -1084,14 +1104,14 @@ export async function getEmployeesByBonusSummarySerive(
 
    
 
-    // ✅ 4. Variance
+    //  4. Variance
     const variance = await reconcileEmployeePayrollBonus(
       tx,
       selectedCompanyCode,
       summary
     )
 
-    // ✅ 5. Map Result
+    //  5. Map Result
     const result = employeeBonuses.map(bonus => {
       const emp = bonus.employee
 
@@ -1124,7 +1144,7 @@ export async function getEmployeesByBonusSummarySerive(
       }
     })
 
-    // ✅ 6. Return
+    //  6. Return
     return {
       summary,
       companies: allowedCompanies,
@@ -1133,6 +1153,152 @@ export async function getEmployeesByBonusSummarySerive(
     }
   })
 }
+
+
+export async function getEmployeesFCHBonusSummaryService(
+  companyCode?: string,
+  id?: number,
+  groupId?: number
+) {
+  return await prisma.$transaction(async (tx) => {
+
+    //  1. Get Summary (STRICT)
+    const summary = await tx.bonusSummary.findFirst({
+      where: {
+        ...(id ? { id } : { status: "GENERATED" }),
+        ...(companyCode && { companyCode }) //  direct filter
+      },
+      include: {
+        bonusRule: {
+          select: {
+            code: true,
+            name: true,
+            bonusType: true,
+            eligibleMonth: true
+          }
+        }
+      }
+    })
+
+    if (!summary) {
+      return {
+        summary: null,
+        companies: [],
+        employees: [],
+        variance: []
+      }
+    }
+
+    //  2. Allowed Companies (optional now, but kept if UI needs it)
+    const allowedCompanies = await tx.bonusRuleCompany.findMany({
+      where: {
+        bonusRuleId: summary.bonusRuleId,
+      },
+      select: { companyCode: true },
+      orderBy: { companyCode: "asc" }
+    })
+    if (!summary.companyCode) {
+      throw new Error("CompanyCode is missing in summary")
+    }
+    
+    const selectedCompanyCode = summary.companyCode
+    //  Use summary company directly
+
+
+    const groups = await tx.branchGroup.findMany({
+      orderBy: { name: "desc" }
+    });
+
+    const effectiveGroupId =
+    groupId ?? (groups.length > 0 ? groups[0].id : undefined);
+
+    //  3. Get EmployeeBonus (FAST + CLEAN)
+    const employeeBonuses = await tx.employeeBonus.findMany({
+      where: {
+        bonusSummaryId: summary.id,
+        companyCode: selectedCompanyCode, //  DIRECT FILTER (no joins)
+         // ✅ FILTER BY GROUP
+          ...(effectiveGroupId  && {
+                employee: {
+                  OR: [
+                    {
+                      isAlien: false,
+                      BranchCode: { groupId: effectiveGroupId }
+                    },
+                    {
+                      isAlien: true,
+                      secondaryBranch: { groupId: effectiveGroupId }
+                    }
+                  ]
+                }
+              })
+          },
+      include: {
+        employee: {
+          include: {
+            employeepayroll: true,
+             BranchCode: true
+          }
+        }
+      },
+      orderBy: [
+        { employee: { Lastname: "asc" } },
+        { employee: { Firstname: "asc" } }
+      ]
+    })
+
+    console.log("Bonus: ", employeeBonuses)
+
+    //  4. Variance
+    const variance = await reconcileEmployeePayrollBonus(
+      tx,
+      selectedCompanyCode,
+      summary
+    )
+
+    //  5. Map Result
+    const result = employeeBonuses.map(bonus => {
+      const emp = bonus.employee
+
+      return {
+        employeeCode: bonus.employeeCode,
+        companyCode: bonus.companyCode, // ✅ direct
+
+        fullName: `${emp?.Lastname}, ${emp?.Firstname}`,
+        employementDate: emp?.EmployementDate,
+
+        tenureYears: emp?.EmployementDate
+          ? getTenureInYears(
+              emp.EmployementDate,
+              getLastDayOfMonthFromPeriod(summary.releasePeriod)
+            )
+          : 0,
+
+        basicSalary: emp?.employeepayroll?.basic_salary ?? 0,
+
+        bonusAmount: Number(bonus.amount),
+        bonusStatus: bonus.status,
+        bonusId: bonus.id,
+
+        fchLoan: Number(bonus.loanDeduction),
+        netAmount: Number(bonus.netAmount),
+
+        hasLeave: bonus.hasLeave,
+        remarks: bonus.remarks,
+        notes: bonus.notes,
+      }
+    })
+
+    //  6. Return
+    return {
+      summary,
+      companies: allowedCompanies,
+      employees: result,
+      variance
+    }
+  })
+}
+
 
 
 export async function updateBonusService(

@@ -9,7 +9,7 @@ import RoleConfigurationModal from "./RoleConfiguration"
 import { User } from "@/app/types/login"
 
 type Props = {
-    onClose: () => void
+    onClose?: () => void
   }
 export default function AccountConfigurationModal({ onClose}: Props) {
   const [openCreate, setOpenCreate] = useState(false)
@@ -31,7 +31,12 @@ export default function AccountConfigurationModal({ onClose}: Props) {
  
       {/* Header */}
       <div className="flex items-center justify-between">
+        
         <div>
+
+        <h2 className="text-lg font-semibold text-gray-800">
+                      User Management
+                    </h2>
           <p className="text-sm text-gray-500">
             Manage system users, roles, and permissions
           </p>
@@ -62,7 +67,9 @@ export default function AccountConfigurationModal({ onClose}: Props) {
 
       {/* Table */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+        
+      <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr className="text-left text-gray-600">
               <th className="px-4 py-3 font-medium">Name</th>
@@ -153,6 +160,9 @@ export default function AccountConfigurationModal({ onClose}: Props) {
             ))}
           </tbody>
         </table>
+        
+         </div>
+       
       </div>
 
       {openRoleModal && (

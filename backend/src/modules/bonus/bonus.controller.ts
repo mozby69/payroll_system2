@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, exportBonusExcelServices, generateBonusForAllEmployees, generateMultipleBonuses, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getCompanyBonusRulesService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, resolveBonusRuleIds, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
+import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, exportBonusExcelServices, generateBonusForAllEmployees, generateMultipleBonuses, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getCompanyBonusRulesService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService,  getEmployeesByBonusSummaryService, getEmployeesFCHBonusSummaryService, rejectBonusService, releaseBonusService, resetBonusService, resolveBonusRuleIds, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema, updateBonusSchema } from "./bonus.schema"
 import z, { json } from "zod";
 import { generateBatchId } from "./bonus.utils";
@@ -547,13 +547,24 @@ export async function getEmployeesByBonusSummaryController(
       ? Number(req.query.id)
       : undefined
 
-    const data =
-      await getEmployeesByBonusSummarySerive(companyCode, id)
+      const groupId = req.query.groupId
+        ? Number(req.query.groupId)
+        : undefined;
 
-    return res.status(200).json({
-      success: true,
-      data,
-    })
+        console.log("dawd", groupId)
+
+      //Select correct service
+      const service =
+        companyCode === "FCH"
+          ? getEmployeesFCHBonusSummaryService
+          : getEmployeesByBonusSummaryService;
+
+      const data = await service(companyCode, id, groupId);
+
+      return res.status(200).json({
+        success: true,
+        data,
+      })
 
   } catch (error: any) {
     return res.status(200).json({

@@ -170,13 +170,19 @@ export function useGetBonusSummary(){
 
 export function useGetEmployeeGeneratedBonus(
     companyCode?: string,
-    id?: number
+    selectedGroup?: number,
+    id?: number,
   ) {
+    console.log("companyCode:", companyCode)
+    console.log("selectedGroup:", selectedGroup)
     return useQuery<EmployeeGenerateBonusResponse>({
-      queryKey: ["generated-bonus", companyCode, id],
-      queryFn: () => getEmployeeGeneratedBonusService(companyCode, id),
+        
+      queryKey: ["generated-bonus", companyCode, id, selectedGroup],
+      queryFn: () =>
+        getEmployeeGeneratedBonusService(companyCode, id, selectedGroup),
+      enabled: !!companyCode && selectedGroup !== undefined,
       staleTime: 1000 * 60 * 5,
-    })
+    });
   }
 
   export function useApproveBonus(){

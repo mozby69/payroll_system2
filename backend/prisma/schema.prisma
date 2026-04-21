@@ -85,6 +85,11 @@ model Branch {
   secondBranch   Employee[] @relation("EmployeesSecond")
   position    Int         @default(0)
   company_id String? @db.VarChar(20) @map("company_id")
+
+ // 🔥 GROUP RELATION
+  groupId      Int?
+  group        BranchGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
   CompanyCode   company_details? @relation(fields: [company_id], references: [CompanyCode])
 
   archiveBranch  EmployeePayrollArchive[]
@@ -118,7 +123,9 @@ model Employee {
   isAlien Boolean @default(false)
   secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
 
-  
+  isOfficerAllowance Boolean? @default(false)
+
+  officersAllowance officersAllowance?
 
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()
@@ -929,4 +936,31 @@ model conversionArchive{
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   @@map("conversion_archive")
+}
+
+model officersAllowance {
+  id Int @id @default(autoincrement())
+  create_at DateTime @default(now())
+  basic_salary Decimal @db.Decimal(10,2) 
+
+
+  EmpCodeId                   String           @unique @map("EmpCode_id") @db.VarChar(20)
+  EmpCode                     Employee         @relation(fields: [EmpCodeId], references: [EmpCode])
+
+}
+
+
+model BranchGroup {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  code        String?  @unique
+  description String?
+
+  position    Int      @default(0) // for ordering groups
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // RELATIONS
+  branches    Branch[]
 }

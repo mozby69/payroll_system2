@@ -57,6 +57,30 @@ export async function saveWtaxOverrideService(data: {PayCode: string; EmpCodeId:
 export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER" | "FOR_APPROVER" )[] ,company_id?:string) {
   
     try{
+
+
+    // Special Leave Condition 
+    const summary = await prisma.employeeSummary.findFirst({
+      where: {
+        EmpCode:{
+          BranchCode:{
+             company_id
+          }
+        }
+      },
+      select: { selected_payroll_date: true },
+      orderBy:{
+        PayCode: "desc"
+      }
+    });
+
+    const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+
+    const cutoffStart = new Date(payrollDate?.start_date as string);
+    const cutoffEnd = new Date(payrollDate?.end_date as string);
+    
+ // END Special Leave Condition 
+
       const sssTable = await getSSSContributions();
       const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
       const bodPhil = await getBodPhilhealth();
@@ -131,7 +155,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                               notIn: ["Resigned", "Inactive", "Terminate"],
                             },
                           },
-                        },
+                        }, 
                         {
                           EmpCode: {
                             bod_member: {
@@ -143,10 +167,52 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                     },
                   ],
                 },
+
+                 // Special Leave Condition
+      {
+        AND: [
+          {
+            EmpCode: {
+              EmployeeStatus: "Inactive",
+            },
+          },
+          {
+            EmpCode: {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    // 🔹 Case 1: use start/end
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+      
+                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      }
+
+      // END Special Leave Condition
               ],
             },
           ],
-        },
+        },  
 
         select:{
           PayCode:true,

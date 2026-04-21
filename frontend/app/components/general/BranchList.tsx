@@ -8,13 +8,16 @@ import { BranchesType } from "@/app/types/generalTypes"
 import { DndContext, closestCenter } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable"
 import BranchRow from "./BranchRow"
+import RequestModal from "../Modal"
+import AssignBranchModal from "../branch-groups/AssignBranchModal"
 
 type GroupedBranches = Record<string, BranchesType[]>
 
 export default function BranchList() {
   const { data } = useGetBranches()
   const { mutate } = useReorderBranches()
-
+  const [isOpenAssignModal, setIsOpenAssignModal] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<BranchesType | null>(null)
   const [grouped, setGrouped] = useState<GroupedBranches>({})
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -28,12 +31,12 @@ export default function BranchList() {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const items = grouped[companyId]
+    const items = grouped[companyId];
 
-    const oldIndex = items.findIndex(i => i.branchCode === active.id)
-    const newIndex = items.findIndex(i => i.branchCode === over.id)
+    const oldIndex = items.findIndex(i => i.branchCode === active.id);
+    const newIndex = items.findIndex(i => i.branchCode === over.id);
 
-    const reordered = arrayMove(items, oldIndex, newIndex)
+    const reordered = arrayMove(items, oldIndex, newIndex);
 
     setGrouped(prev => ({
       ...prev,
@@ -51,6 +54,11 @@ export default function BranchList() {
     }, 400)
   }
 
+    const handleEdit = (branch: BranchesType) => {
+      setSelectedBranch(branch)
+      setIsOpenAssignModal(true)
+  }
+
   return (
     <div style={{ maxWidth: 600, margin: "auto" }}>
       {Object.entries(grouped).map(([companyId, branches]) => (
@@ -66,12 +74,25 @@ export default function BranchList() {
               strategy={verticalListSortingStrategy}
             >
               {branches.map(branch => (
-                <BranchRow key={branch.branchCode} branch={branch} />
+                <BranchRow   onDoubleClick={() => handleEdit(branch)} key={branch.branchCode} branch={branch} />
               ))}
             </SortableContext>
           </DndContext>
         </div>
       ))}
+
+      {(selectedBranch && isOpenAssignModal ) && (
+        <RequestModal title="Assign Branch Group" size="md" onClose={() => {
+          setIsOpenAssignModal(false);
+          setSelectedBranch(null);
+        }}>
+           <AssignBranchModal onClose={() => {
+          setIsOpenAssignModal(false);
+          setSelectedBranch(null);
+        }}  selectedBranch={selectedBranch}/>
+       </RequestModal>
+      )}
+      
     </div>
   )
 }

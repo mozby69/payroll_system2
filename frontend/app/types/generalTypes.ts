@@ -85,6 +85,9 @@ export type BranchesType = {
   company_id: string;
   position: number;
   Company?: string
+  groupId?: number 
+
+  group:  BranchGroup
 }
 
 export type ReorderBranchesPayload = {
@@ -98,3 +101,17 @@ export type ApiResponse<T> = {
   message?: string
   data: T
 }
+
+export type BranchGroup = {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  position: number;
+};
+
+export type BranchGroupType = {
+  groups: BranchGroup[]
+  ungrouped: BranchesType[]
+}
+

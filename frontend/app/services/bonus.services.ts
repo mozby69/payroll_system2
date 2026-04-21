@@ -82,12 +82,14 @@ export async function deleteBonusRuleServices(id: number) {
 
       export async function getEmployeeGeneratedBonusService(
         companyCode?: string,
-        id?: number
+        id?: number,
+        selectedGroup?: number
       ) {
         const res = await api.get("/bonus/employee-bonuses", {
           params: {
             companyCode,
-            id
+            id, 
+            groupId: selectedGroup 
           },
         })
         return res.data
