@@ -33,7 +33,7 @@ export default function FinancialPage(){
       const [company, setCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
-      const { hasPermission,hasRole,user } = useAuth()
+      const { hasPermission,hasRole } = useAuth()
 
 
       let status: "FOR_CHECKER" | "FOR_APPROVER";

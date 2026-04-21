@@ -23,3 +23,8 @@ export function formatAllowanceMonth(selectedMonth: string): string {
 
   return `${monthName} ${year}`;
 }
+
+
+export const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+

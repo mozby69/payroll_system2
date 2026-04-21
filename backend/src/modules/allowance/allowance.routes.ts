@@ -6,7 +6,7 @@ getBranchesByCompanyController,
 fetchAllowancePrintDataController,
 fetchViewAllListController,
 updateAllowanceBranchController,
-getVarianceEmployeesController,
+getTotalPerCompanyController,
 } from "./allowance.controller";
 
 const router = Router();
@@ -21,6 +21,8 @@ router.get("/branches-by-company",getBranchesByCompanyController);
 router.get("/print-data", fetchAllowancePrintDataController);
 router.get("/view-all",fetchViewAllListController);
 router.post("/update-branch", updateAllowanceBranchController);
-router.get("/get-variance-employee",getVarianceEmployeesController);
+
+
+router.get("/test",getTotalPerCompanyController);
 
 export default router;

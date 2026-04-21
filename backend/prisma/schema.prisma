@@ -720,7 +720,8 @@ model archive_allowance {
   loan Decimal? @db.Decimal(10,2)
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
   createdAt DateTime @map("created_at")
-//  branch String? @db.VarChar(100) 
+  base_cash_assistance Decimal? @db.Decimal(10,2)
+  base_ecola Decimal? @db.Decimal(10,2)
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
   branchCode  String
