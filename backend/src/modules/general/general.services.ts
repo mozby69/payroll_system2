@@ -158,6 +158,8 @@ export async function appendMissingBodEmployees(
       },
     });
 
+    
+
 
   
     const existingSet = new Set(existing.map(e => e.EmpCodeId));
@@ -166,6 +168,97 @@ export async function appendMissingBodEmployees(
     const missing = probiEmployees.filter(
       e => !existingSet.has(e.EmpCode)
     );
+
+  
+    //5. Create payload
+    return missing.map((e) => ({
+      EmpCodeId: e.EmpCode,
+      PayCode: template.PayCode,
+      CycleCategory: template.CycleCategory,
+      PayrollPeriod: template.PayrollPeriod,
+      LateCount: 0,
+      TotalAbsentHours: 0,
+      TotalUndertime: 0,
+      TotalOvertime: 0,
+      RegularAtt: {},
+      OvertimeAtt: {},
+      NightShiftAtt: {},
+      NightShiftOtAtt: {},
+      selected_payroll_date: template.selected_payroll_date,
+      createdAt: nowPH(),
+    }));
+  }
+
+
+  export async function specialLeaveEmployeesServices(
+    tx: Prisma.TransactionClient,
+    employees: EmployeeSummaryTypes[]
+  ) {
+    if (!employees.length) return [];
+  
+    const template = employees[0];
+  
+    //  1. Get date range
+    const { start, end } = parsePayCodeRange(template.PayCode);
+    const startISO = start.toISOString(); // full ISO
+    const endISO = end.toISOString();
+    //  2. Get probationary employees within range
+    const specialEmployees = await tx.employee.findMany({
+      where: {
+        BranchCode: {
+          CompanyCode: {
+            CompanyCycle: template.CycleCategory,
+          },
+        },
+        specialLeaves: {
+          some: {
+            OR: [
+              // Normal leave (Active, etc.)
+              {
+                status: { not: "Expected" },
+                end:   { not: null, gte: startISO, lte: endISO }
+              },
+    
+              // Expected leave
+              {
+                status: "Expected",
+                expectedEnd:    { not: null, gte: startISO, lte: endISO }
+              }
+            ]
+          }
+        }
+      },
+      select: {
+        EmpCode: true,
+      },
+    });
+    console.log("Employee Special: ", specialEmployees )
+
+    if (!specialEmployees.length) return [];
+  
+    const empCodes = specialEmployees.map(e => e.EmpCode);
+  
+    // 3. Get already existing archive records
+    const existing = await tx.employeeSummary.findMany({
+      where: {
+        EmpCodeId: { in: empCodes },
+        PayCode: template.PayCode,
+      },
+      select: {
+        EmpCodeId: true,
+      },
+    });
+
+
+  
+    const existingSet = new Set(existing.map(e => e.EmpCodeId));
+  
+    //  4. Filter missing employees
+    const missing = specialEmployees.filter(
+      e => !existingSet.has(e.EmpCode)
+    );
+
+  
 
   
     //5. Create payload

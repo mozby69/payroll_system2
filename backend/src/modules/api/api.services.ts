@@ -6,7 +6,7 @@ import { nowPH } from "../../utils/timezone";
 import { EmployeeSummaryTypes } from "./api.types";
 import { generatePayCode } from "./api.utils";
 import { io } from "../../server";
-import { appendMissingBodEmployees, probitionaryEmployees } from "../general/general.services";
+import { appendMissingBodEmployees, probitionaryEmployees, specialLeaveEmployeesServices } from "../general/general.services";
 import { totalmem } from "os";
 
 export async function fetchHrAttendance(params: ApiParams){
@@ -93,6 +93,8 @@ export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],b
       
       const bodAttendance = await appendMissingBodEmployees(tx, employees);
       const probiAttendance = await probitionaryEmployees(tx, employees);
+      const speacialLeaveAttendance = await specialLeaveEmployeesServices(tx, employees);
+
   
       const finalData = [
         ...employees.map((emp) => ({
@@ -112,7 +114,8 @@ export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],b
           createdAt: nowPH(),
         })),
         ...bodAttendance,
-        ...probiAttendance
+        ...probiAttendance,
+        ...speacialLeaveAttendance
       ];
     
       await tx.employeeSummary.createMany({
