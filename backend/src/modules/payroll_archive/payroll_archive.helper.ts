@@ -112,3 +112,46 @@ export async function generatePNBExcel(rows: BankFileRow[]) {
 }
 
 
+
+
+
+
+
+
+
+
+
+//is probi
+type PaycodeRange = {
+  start: Date;
+  end: Date;
+};
+
+export function parsePaycode(paycode: string): PaycodeRange | null {
+  const parts = paycode.split("-");
+  if (parts.length !== 4) return null;
+
+  const [monthStr, startDayStr, endDayStr, yearStr] = parts;
+  const monthIndex = new Date(`${monthStr} 1, ${yearStr}`).getMonth();
+  const year = Number(yearStr);
+  const startDay = Number(startDayStr);
+  const endDay = Number(endDayStr);
+
+  if (isNaN(monthIndex) || isNaN(year) || isNaN(startDay) || isNaN(endDay)) {
+    return null;
+  }
+
+  return {
+    start: new Date(year, monthIndex, startDay),
+    end: new Date(year, monthIndex, endDay),
+  };
+}
+
+export  function isEmploymentWithinPaycode(employmentDate: Date | null,paycode: string | null): boolean {
+  if (!employmentDate || !paycode) return false;
+
+  const range = parsePaycode(paycode);
+  if (!range) return false;
+
+  return employmentDate >= range.start && employmentDate <= range.end;
+}

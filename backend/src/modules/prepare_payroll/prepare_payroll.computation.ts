@@ -131,8 +131,7 @@ export const computePagibig = (pagibigContrib:number | null, payCode?: string | 
     const startDay = Number(parts[1]);
     if (startDay !== 16) return 0;
   }
-
-    return Number(pagibigContrib.toFixed(2));
+  return Number(pagibigContrib.toFixed(2));
   
 
 };
@@ -178,7 +177,6 @@ export const computeSSSContribution = (monthlySalary: number,ranges: SSSRange[],
 
   const isProbi = isNewProbi ?? false;
 
-  // ✅ Only apply cutoff logic if payCode exists
   if (payCode) {
     const parts = payCode.split("-");
     if (parts.length >= 4) {
@@ -241,6 +239,18 @@ export const isSecondCutoff = (payCode?: string): boolean => {
   return startDay === 16;
 };
 
+
+
+
+
+
+
+
+
+
+
+
+//OVERTIME COMPUTATION
 type JsonField = | Prisma.JsonValue | string | null | undefined;
 
 type OvertimeSources = {
