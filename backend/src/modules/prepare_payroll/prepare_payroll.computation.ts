@@ -8,32 +8,33 @@ export const computeSemiMonthlySalary = (basicSalary?: number | null): number =>
     return basicSalary / 2;
 };
 
-
-export const computeDailyRate = (basicSalary?:number | null):number => {
+// COMPUTATION
+export const computeDailyRate = (basicSalary?:number | null,isSixDays?:boolean | null):number => {
     if (!basicSalary) 
         return 0;
     else{
         const bs = (basicSalary  * 12);
-        const result = bs  / 262;
+        const divisor = isSixDays ? 314 : 262;
+        const result = bs  / divisor;
         const final_result = result.toFixed(2);
         return Number(final_result);
     }
 }
 
-export const computeAbsent = (absentCount:number | null,basicSalary: number | null ):number => {
+export const computeAbsent = (absentCount:number | null,basicSalary: number | null,isSixDays:boolean | null):number => {
     if (!absentCount) 
         return 0;
     
-    const dailyRate = computeDailyRate(basicSalary);
+    const dailyRate = computeDailyRate(basicSalary,isSixDays);
     const result = absentCount * dailyRate;
     return (result);
 }
 
-export const computeLate = (lateCount:number | null, basicSalary:number | null):number => {
+export const computeLate = (lateCount:number | null, basicSalary:number | null,isSixDays:boolean | null):number => {
     if(!lateCount)
         return 0;
 
-    const dailyRate = computeDailyRate(basicSalary);
+    const dailyRate = computeDailyRate(basicSalary,isSixDays);
     const lateness = dailyRate / 32;
     const result = lateness * lateCount;
     return Number(result.toFixed(2));

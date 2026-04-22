@@ -241,6 +241,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               isAlien: true,
               BranchCodeId: true,
               EmployementDate:true,
+              isSixDaysWork:true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -443,6 +444,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const Paycodes = emp.PayCode;
         const employmentDate = emp.EmpCode.EmployementDate? new Date(emp.EmpCode.EmployementDate): null;
         const isWithinPaycode = isEmploymentWithinPaycode(employmentDate,Paycodes);
+        const isSixDaysWork = emp.EmpCode.isSixDaysWork;
 
         const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && isWithinPaycode;
         //const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
@@ -467,9 +469,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
      
 
-        const absent = computeAbsent(totalAbsent,basicSalary);
-        const lateCount = computeLate(totalLateCount,basicSalary);
-        const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
+        const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
+        const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+        const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
         const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes);

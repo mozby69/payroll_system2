@@ -242,6 +242,7 @@ export async function conversionReport({ company_id }: conversionReport) {
             EmployementDate: true,
             Firstname: true,
             Lastname: true,
+            isSixDaysWork:true,
             BranchCode: {
               select: {
                 company_id: true,
@@ -276,7 +277,8 @@ export async function conversionReport({ company_id }: conversionReport) {
     const normalized = data.map((emp) => {
       const fullName = `${emp.EmpCode.Lastname} ${emp.EmpCode.Firstname}`;
       const basic = emp.EmpCode.employeepayroll?.basic_salary?.toNumber() ?? 0;
-      const dailyRate = computeDailyRate(basic);
+      const isSixDaysWork = emp.EmpCode.isSixDaysWork;
+      const dailyRate = computeDailyRate(basic,isSixDaysWork);
       const employmentDate = emp.EmpCode.EmployementDate;
       const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate) : 0;
       const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert ?? 0;
