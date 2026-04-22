@@ -213,7 +213,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{row.overtime}</td>
                 <td className="py-2 text-center">{row.late}</td>
                 <td className="py-2 text-center">{row.undertime}</td>
-                <td className="py-2 text-center">{row.absence}</td>
+                <td className="py-2 text-center">{row.absence.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.gross}</td>
                 <td>
                   <EditableWtax
