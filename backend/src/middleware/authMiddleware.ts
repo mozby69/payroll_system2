@@ -13,6 +13,9 @@ export interface AuthPayload {
   id: number
   username: string
   roles:string
+
+  company_id?: string | null
+  permissions?: string[]
 }
 
 declare global {
@@ -48,7 +51,10 @@ export function authenticateToken(
     req.user = {
       id: decoded.id,
       username: decoded.username,
-      roles: decoded.roles
+      roles: decoded.roles,
+
+      company_id: decoded.company_id ?? null,   
+      permissions: decoded.permissions ?? []   
     }
 
     next()

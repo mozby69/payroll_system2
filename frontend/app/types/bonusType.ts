@@ -74,6 +74,7 @@ export type InvalidEmployees = {
       releaseDate: string
       resetAt: string
       createdAt: string
+      companyCode: string
       bonusRule: {
         code: string
         name: string
@@ -148,6 +149,23 @@ export type InvalidEmployees = {
 
   export type BonusRuleCompanyModalProps = {
     initialData?: { id?: number; name?: string }
+  }
+
+
+  export type CompanyBonusRule = {
+    id: number
+    code: string
+    name: string
+    bonusType: string 
+    eligibleMonth: number
+    formulaType: string 
+    minTenureYear: number
+    isUsed: boolean
+  }
+
+  export type CompanyBonusRuleResponse = {
+    message: string
+    data: CompanyBonusRule[]
   }
   
 

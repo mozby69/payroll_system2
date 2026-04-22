@@ -10,6 +10,31 @@ import { displayCompletePayroll } from "../payroll_archive/payroll_archive.servi
 export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
   { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
 
+
+    // Special Leave Condition 
+    const summary = await prisma.employeeSummary.findFirst({
+      where: {
+        EmpCode:{
+          BranchCode:{
+             company_id
+          }
+        }
+      },
+      select: { selected_payroll_date: true },
+      orderBy:{
+        PayCode: "desc"
+      }
+    });
+
+    const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+
+    const cutoffStart = new Date(payrollDate?.start_date as string);
+    const cutoffEnd = new Date(payrollDate?.end_date as string);
+    
+ // END Special Leave Condition 
+
+
+
     const baseFilter = {
       BranchCode: {
         company_id: company_id
@@ -70,6 +95,44 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
           statusFilter,
         ],
       },
+
+          // Special Leave Condition 
+      {
+        AND: [
+          {
+              EmployeeStatus: "Inactive",
+          },
+          {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    // 🔹 Case 1: use start/end
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+      
+                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+          },
+        ],
+      }
+
+          //END Special Leave Condition 
 
     ]
   
@@ -448,6 +511,31 @@ export async function searchEmployees(keyword: string) {
 
 export async function ComputePayroll({company_id,page,limit,search}: {  company_id: string; page: number; limit: number; search?: string}) {
 
+
+  
+    // Special Leave Condition 
+    const summary = await prisma.employeeSummary.findFirst({
+      where: {
+        EmpCode:{
+          BranchCode:{
+             company_id
+          }
+        }
+      },
+      select: { selected_payroll_date: true },
+      orderBy:{
+        PayCode: "desc"
+      }
+    });
+
+    const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+
+    const cutoffStart = new Date(payrollDate?.start_date as string);
+    const cutoffEnd = new Date(payrollDate?.end_date as string);
+    
+ // END Special Leave Condition 
+
+
   const baseFilter = {
     EmpCode: {
       employeepayroll:{
@@ -531,7 +619,48 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
         statusOverride,
         { status: { in: ["PENDING"] } },
       ],
+      },
+      // Special Leave Condition
+      {
+        AND: [
+          {
+            EmpCode: {
+              EmployeeStatus: "Inactive",
+            },
+          },
+          {
+            EmpCode: {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    // 🔹 Case 1: use start/end
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+      
+                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
       }
+
+      // END Special Leave Condition
     ]
     
   };
@@ -783,12 +912,44 @@ export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyN
 
 
 
-
+type PayrollDate = {
+  start_date: string;
+  end_date: string;
+};
 
 
 
 export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
 
+  const summary = await prisma.employeeSummary.findFirst({
+    where: { CycleCategory: cycle },
+    select: { selected_payroll_date: true },
+    orderBy:{
+      PayCode: "desc"
+    }
+  });
+
+  const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+
+  if (
+    !payrollDate ||
+    !payrollDate.start_date ||
+    !payrollDate.end_date
+  ) {
+    throw new Error("Invalid payroll date");
+  }
+  
+  if (!payrollDate?.start_date || !payrollDate?.end_date) {
+    throw new Error("Payroll date is missing");
+  }
+  
+  const cutoffStart = new Date(`${payrollDate.start_date}T00:00:00.000Z`);
+  const cutoffEnd = new Date(`${payrollDate.end_date}T23:59:59.999Z`);
+  
+  if (isNaN(cutoffStart.getTime()) || isNaN(cutoffEnd.getTime())) {
+    throw new Error("Invalid payroll date format");
+  }
+  
 
 
   const searchFilter = search
@@ -868,9 +1029,49 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
         statusOverride,
       ],
       },
+      {
+        AND: [
+          {
+            EmpCode: {
+              EmployeeStatus: "Inactive",
+            },
+          },
+          {
+            EmpCode: {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    // 🔹 Case 1: use start/end
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+      
+                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      }
     ]
   
   };
+
+
   
 
   const [total, data] = await Promise.all([

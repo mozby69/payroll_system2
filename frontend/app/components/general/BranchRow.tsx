@@ -1,10 +1,19 @@
 "use client"
 
+import { BranchesType } from "@/app/types/generalTypes"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
-export default function BranchRow({ branch }: any) {
+type Props = {
+  branch: BranchesType & {
+    group?: {
+      name: string
+    } | null
+  }
+  onDoubleClick: () => void
+}
 
+export default function BranchRow({ branch, onDoubleClick }: Props) {
   const {
     attributes,
     listeners,
@@ -16,20 +25,37 @@ export default function BranchRow({ branch }: any) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    padding: "10px",
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    marginBottom: 6,
-    background: "#fff",
-    display: "flex",
-    alignItems: "center",
-    gap: 10
   }
 
   return (
-    <div className="" ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <span>☰</span>
-        {branch.branchCode}
+    <div
+      ref={setNodeRef}
+      style={style}
+      onDoubleClick={onDoubleClick}
+      {...attributes}
+      {...listeners}
+      className="flex items-center justify-between px-3 py-2 border mb-2 border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-all"
+    >
+      {/* LEFT SIDE */}
+      <div className="flex items-center gap-3">
+        <span className="text-gray-400 cursor-grab">☰</span>
+        <span className="font-medium text-gray-800">
+          {branch.branchCode}
+        </span>
+      </div>
+
+      {/* RIGHT SIDE (GROUP BADGE) */}
+      <div>
+        {branch.group?.name ? (
+          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
+            {branch.group.name}
+          </span>
+        ) : (
+          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500">
+            Ungrouped
+          </span>
+        )}
+      </div>
     </div>
   )
 }

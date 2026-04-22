@@ -9,7 +9,9 @@ import { useAuth } from "@/app/components/UserContext"
 
 type BonusTab = "GENERATE" | "ARCHIVE" | "RULES"
 export default function BonusManager() {
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
+
+
 
   const allowedTabs = useMemo<BonusTab[]>(() => {
     const tabs: BonusTab[] = ["ARCHIVE"]

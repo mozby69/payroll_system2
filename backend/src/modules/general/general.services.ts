@@ -122,7 +122,8 @@ export async function appendMissingBodEmployees(
   
     //  1. Get date range
     const { start, end } = parsePayCodeRange(template.PayCode);
-  
+    const startISO = start.toISOString(); // full ISO
+    const endISO = end.toISOString();
     //  2. Get probationary employees within range
     const probiEmployees = await tx.employee.findMany({
       where: {
@@ -131,19 +132,17 @@ export async function appendMissingBodEmployees(
             CompanyCycle: template.CycleCategory,
           },
         },
-  
-        EmployeeStatus: "Probationary",
-  
+        EmploymentStatus: "Probationary",
         EmployementDate: {
-          gte: start,
-          lte: end,
+          gte: startISO,
+          lte: endISO,
         },
       },
       select: {
         EmpCode: true,
       },
     });
-  
+
     if (!probiEmployees.length) return [];
   
     const empCodes = probiEmployees.map(e => e.EmpCode);
@@ -158,6 +157,8 @@ export async function appendMissingBodEmployees(
         EmpCodeId: true,
       },
     });
+
+
   
     const existingSet = new Set(existing.map(e => e.EmpCodeId));
   
@@ -165,6 +166,7 @@ export async function appendMissingBodEmployees(
     const missing = probiEmployees.filter(
       e => !existingSet.has(e.EmpCode)
     );
+
   
     //5. Create payload
     return missing.map((e) => ({
@@ -283,6 +285,9 @@ export const getUniqueLoan = async () => {
 
 export const getBranchesDetailsService = async () => {
   return prisma.branch.findMany({
+    include:{
+      group: true
+    },
     orderBy: [
       { company_id: "asc" },
       { position: "asc" }
@@ -325,3 +330,65 @@ export const reorderBranchesService = async (
 
   return true
 }
+
+
+// CREATE GROUP
+export const createGroupService = async (name: string) => {
+  // prevent duplicate
+  const existing = await prisma.branchGroup.findUnique({
+    where: { name },
+  });
+
+  if (existing) {
+    throw new Error("Group already exists");
+  }
+
+  return await prisma.branchGroup.create({
+    data: { name },
+  });
+};
+
+// GET ALL GROUPS + BRANCHES
+export const getGroupsService = async () => {
+  const groups = await prisma.branchGroup.findMany({
+    include: {
+      branches: {
+        orderBy: { position: "asc" },
+      },
+    },
+    orderBy: { name: "desc" },
+  });
+
+  const ungrouped = await prisma.branch.findMany({
+    where: { groupId: null },
+    orderBy: { position: "asc" },
+  });
+
+  return { groups, ungrouped };
+};
+
+// DELETE GROUP
+export const deleteGroupService = async (id: number) => {
+  // unassign branches first
+  await prisma.branch.updateMany({
+    where: { groupId: id },
+    data: { groupId: null },
+  });
+
+  return await prisma.branchGroup.delete({
+    where: { id },
+  });
+};
+
+// ASSIGN BRANCH TO GROUP
+export const assignBranchService = async (
+  branchCode: string,
+  groupId: number | null
+) => {
+  return await prisma.branch.update({
+    where: { branchCode },
+    data: {
+      groupId,
+    },
+  });
+};

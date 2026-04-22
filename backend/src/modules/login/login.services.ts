@@ -53,6 +53,7 @@ export async function loginUser(params: LoginDTO) {
     id: user.id,
     username: user.username,
     roles,
+    company_id: user.company_id,
     permissions
   })
 
@@ -62,6 +63,7 @@ export async function loginUser(params: LoginDTO) {
       id: user.id,
       username: user.username,
       roles,
+      company_id: user.company_id,
       permissions
     }
   }

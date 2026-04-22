@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   useExportBonusExcel,
   useGetEmployeeGeneratedBonus,
@@ -17,17 +17,40 @@ import { handleApiError } from "@/app/utils/handleApiError"
 import GenButton from "../Buttons"
 import { useReactToPrint } from "react-to-print"
 import PrintBonusReport from "../reports/BonusReport/PrintBonusReport"
+import { useAuth } from "../UserContext"
+import { useBranchGroups } from "@/app/hooks/useBranchGroup"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
   const [editModal, setIsOpenEditModal] = useState(false)
   const [selectedBonus, setSelectedBonus] = useState<EmployeBonusType | null>(null)
-  const [selectedCompany, setSelectedCompany] = useState<string | undefined>()
+  const [selectedGroup, setSelectedGroup] = useState<number | undefined>()
+
+  const { data: groupBranch } = useBranchGroups(); // to get groups
+  const groups = groupBranch?.groups ?? [];
+  const { user } = useAuth()
+  const companyCode = user?.company_id;
+  useEffect(() => {
+    if (!selectedGroup && groups?.length) {
+      setSelectedGroup(groups[0].id)
+    }
+  }, [groups])
+
+  const { data } = useGetEmployeeGeneratedBonus(companyCode, selectedGroup )
+
+
+  const summary = data?.data.summary
+  const employees = data?.data.employees ?? []
+  const variance = data?.data.variance
+
   const printRef = useRef<HTMLDivElement>(null)
   const exportExcelMutation = useExportBonusExcel()
 
   const resetBonusMutation = useResetBonus()
   const submitBonusMutation = useSubmitBonus()
+  
+
+
 
   const handleSubmitBonus = () => {
     SweetAlert.confirmationAlert(
@@ -69,20 +92,10 @@ export default function GenerateBonusPage() {
     )
   }
 
-  const { data } =
-    useGetEmployeeGeneratedBonus(selectedCompany)
 
-  const summary = data?.data.summary
-  const companies = data?.data.companies ?? []
-  const employees = data?.data.employees ?? []
-  const variance = data?.data.variance
-  
-
-
-  // ✅ derive active company safely
-  const activeCompany =
-    selectedCompany ?? companies[0]?.companyCode
-
+  // Derive active company safely
+  const activeGroup =
+    selectedGroup ?? groups
     const totals = employees.reduce(
       (acc, emp) => {
         acc.basicSalary += Number(emp.basicSalary || 0)
@@ -112,7 +125,6 @@ export default function GenerateBonusPage() {
       setSelectedBonus(bonus)
       setIsOpenEditModal(true)
     }
-  
       
     const varianceEmployees = variance?.varianceEmployees ?? []
 
@@ -129,32 +141,36 @@ export default function GenerateBonusPage() {
     const remainingVariance = varianceTotal - varianceBreakdownTotal
 
 
-        const handlePrint1 = useReactToPrint({
-              contentRef: printRef,
-              documentTitle: `Bonus`,
-            })
+    const handlePrint1 = useReactToPrint({
+          contentRef: printRef,
+          documentTitle: `Bonus`,
+        })
 
-            const handleExportExcel = async () => {
-              if (!summary?.id || !activeCompany) return
-            
-              try {
-                const blob = await exportExcelMutation.mutateAsync({
-                  bonusSummaryId: summary.id,
-                  companyCode: activeCompany,
-                })
-            
-                const url = window.URL.createObjectURL(blob)
-            
-                const a = document.createElement("a")
-                a.href = url
-                a.download = `Bonus_${activeCompany}.xlsx`
-                a.click()
-            
-                window.URL.revokeObjectURL(url)
-              } catch (error) {
-                console.error(error)
-              }
-            }
+    const handleExportExcel = async () => {
+      if (!summary?.id || !activeGroup) return
+
+      if (!companyCode) {
+        throw new Error("companyId is required");
+      }
+      try {
+        
+        const blob = await exportExcelMutation.mutateAsync({
+          bonusSummaryId: summary.id,
+          companyCode: companyCode,
+        })
+    
+        const url = window.URL.createObjectURL(blob)
+    
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `Bonus_${activeGroup}.xlsx`
+        a.click()
+    
+        window.URL.revokeObjectURL(url)
+      } catch (error) {
+        console.error(error)
+      }
+    }
        
 
   return (
@@ -224,17 +240,16 @@ export default function GenerateBonusPage() {
       <div className="flex justify-between">
           <div>
               {/* Company Buttons */}
-              {companies.length > 0 && (
+              {( companyCode === "FCH" && groups.length > 0  ) && (
                 <div className="flex gap-3">
-                  {companies.map(company => {
+                  {groups.map(branch => {
                     const isActive =
-                      activeCompany === company.companyCode
-
+                    activeGroup === branch.id
                     return (
                       <button
-                        key={company.companyCode}
+                        key={branch.name}
                         onClick={() =>
-                          setSelectedCompany(company.companyCode)
+                          setSelectedGroup(branch.id)
                         }
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           isActive
@@ -242,7 +257,7 @@ export default function GenerateBonusPage() {
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
-                        {company.companyCode}
+                        {branch.name}
                       </button>
                     )
                   })}
@@ -250,7 +265,7 @@ export default function GenerateBonusPage() {
               )}
           </div>
 
-          {companies.length > 0 && (
+          {groups.length > 0 && (
           <div className="flex gap-2">
                 <GenButton
                           variant="main"

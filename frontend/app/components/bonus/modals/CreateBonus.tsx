@@ -4,11 +4,12 @@ import { useState, useEffect } from "react"
 import axios from "axios"
 import SweetAlert from "../../Swal"
 
-import { useGenerateBonus, useGetAllBonusRules } from "@/app/hooks/useBonus"
+import { useGenerateBonus, useGetAllBonusRules, useGetCompanyBonusRules } from "@/app/hooks/useBonus"
 import { GenerateBonusSchema, GenerateBonusInput } from "@/app/schema/bonus.schema"
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { delay } from "@/app/helper/delay"
 import { BonusErrorResponse } from "@/app/types/bonusType"
+import { useAuth } from "../../UserContext"
 
 function getReleasePeriodFromEligibleMonth(
   eligibleMonth: number,
@@ -38,14 +39,22 @@ function getAsOfDateFromEligibleMonth(
 }
 
 export default function CreateBonusModal({ onClose }: { onClose: () => void }) {
-  const { data: bonusRules = [] } = useGetAllBonusRules()
-  const generateBonusMutation = useGenerateBonus()
 
+  
+    const { user } = useAuth()
+    const companyId = user?.company_id ?? "";
+    const { data: bonusRules = [] } = useGetCompanyBonusRules(companyId)
+    
+
+    
+    const generateBonusMutation = useGenerateBonus()
+  
   const [form, setForm] = useState<GenerateBonusInput>({
     bonusRuleIds: [],
     releasePeriod: "",
     asOfDate: "",
-    generateDate: ""
+    generateDate: "",
+    companyCode: companyId
   })
 
   const [open, setOpen] = useState(false)
@@ -71,7 +80,8 @@ export default function CreateBonusModal({ onClose }: { onClose: () => void }) {
       bonusRuleIds: [],
       releasePeriod: "",
       asOfDate: "",
-      generateDate: value
+      generateDate: value,
+      companyCode: companyId
     })
 
     setLockDates(false)
@@ -142,6 +152,7 @@ export default function CreateBonusModal({ onClose }: { onClose: () => void }) {
     }
 
     setShowProcessing(true)
+
 
     generateBonusMutation.mutate(result.data, {
       onSuccess: async () => {

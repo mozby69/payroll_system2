@@ -9,6 +9,7 @@ import { Home, LogOut, Settings, User, User2 } from "lucide-react";
 import RequestModal from "../components/Modal";
 import AccountConfigurationModal from "../components/users/modal/AccountConfigurationModal";
 import BranchList from "../components/general/BranchList";
+import SettingsModal from "../components/settings/SettingsModal";
 
 
 
@@ -16,6 +17,7 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
   const [OpenSidebar, setOpenSideBar] = useState(true);
   const [openMenu, setOpenMenu] = useState(false);
   const[openBranchModal, setOpenBranchModal] = useState(false)
+  const [openSettings, setOpenSettings] = useState(false);
   const { user, loading, logout, hasPermission } = useAuth();
 
   const [userModal, setUserModal] = useState(false)
@@ -51,7 +53,7 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
             {openMenu &&(
               <ul className="absolute text-sm top-14 right-0 bg-mainLight w-50 h-auto rounded-bl-xl py-4 px-8 flex flex-col gap-y-4 items-start justify-end shadow-[0px_4px_6px_2px_rgba(0,0,0,0.1)] cursor-pointer">
-                <li className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
+                <li   onClick={() => setOpenSettings(true)} className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
                   <Settings/>
                   Settings
                 </li>
@@ -114,7 +116,17 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
             <BranchList />
         </RequestModal>
       )}
-        
+
+      {openSettings && (
+        <RequestModal
+          title="System Settings"
+          size="xxl"
+          onClose={() => setOpenSettings(false)}
+        >
+          <SettingsModal />
+        </RequestModal>
+      )}
+              
 
     </div>
   );

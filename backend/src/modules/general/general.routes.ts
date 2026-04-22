@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { generatePdfController, getCompaniesByCodeController,getCompaniesController, getCompaniesByCycleController, getCompanyDetailsController, getUniqueLoanController, fetchCompanyCyclesController, getBranchesDetailsController, reorderBranchesController, getBranchController } from "./general.controller";
+import { generatePdfController, getCompaniesByCodeController,getCompaniesController, getCompaniesByCycleController, getCompanyDetailsController, getUniqueLoanController, fetchCompanyCyclesController, getBranchesDetailsController, reorderBranchesController, getBranchController, getGroups, createGroup, deleteGroup, assignBranch } from "./general.controller";
 
 
 
@@ -16,5 +16,10 @@ router.get("/fetch-company-cycle",fetchCompanyCyclesController);
 router.get("/branches", getBranchesDetailsController)
 router.put("/branches-reorder", reorderBranchesController);
 router.get('/branch-list',getBranchController);
+
+router.get("/branch-groups", getGroups);
+router.post("/branch-groups", createGroup);
+router.delete("/branch-groups/:id", deleteGroup);
+router.patch("/branch-groups/:branchCode/assign", assignBranch);
 
 export default router;
