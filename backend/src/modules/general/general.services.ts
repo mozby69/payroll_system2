@@ -122,7 +122,8 @@ export async function appendMissingBodEmployees(
   
     //  1. Get date range
     const { start, end } = parsePayCodeRange(template.PayCode);
-  
+    const startISO = start.toISOString(); // full ISO
+    const endISO = end.toISOString();
     //  2. Get probationary employees within range
     const probiEmployees = await tx.employee.findMany({
       where: {
@@ -131,19 +132,17 @@ export async function appendMissingBodEmployees(
             CompanyCycle: template.CycleCategory,
           },
         },
-  
-        EmployeeStatus: "Probationary",
-  
+        EmploymentStatus: "Probationary",
         EmployementDate: {
-          gte: start,
-          lte: end,
+          gte: startISO,
+          lte: endISO,
         },
       },
       select: {
         EmpCode: true,
       },
     });
-  
+
     if (!probiEmployees.length) return [];
   
     const empCodes = probiEmployees.map(e => e.EmpCode);
@@ -158,6 +157,8 @@ export async function appendMissingBodEmployees(
         EmpCodeId: true,
       },
     });
+
+
   
     const existingSet = new Set(existing.map(e => e.EmpCodeId));
   
@@ -165,6 +166,7 @@ export async function appendMissingBodEmployees(
     const missing = probiEmployees.filter(
       e => !existingSet.has(e.EmpCode)
     );
+
   
     //5. Create payload
     return missing.map((e) => ({

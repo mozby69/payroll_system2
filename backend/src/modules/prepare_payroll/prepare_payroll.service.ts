@@ -939,8 +939,16 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
     throw new Error("Invalid payroll date");
   }
   
-  const cutoffStart = new Date(payrollDate.start_date + "T00:00:00.000Z");
-  const cutoffEnd = new Date(payrollDate.end_date + "T23:59:59.999Z");
+  if (!payrollDate?.start_date || !payrollDate?.end_date) {
+    throw new Error("Payroll date is missing");
+  }
+  
+  const cutoffStart = new Date(`${payrollDate.start_date}T00:00:00.000Z`);
+  const cutoffEnd = new Date(`${payrollDate.end_date}T23:59:59.999Z`);
+  
+  if (isNaN(cutoffStart.getTime()) || isNaN(cutoffEnd.getTime())) {
+    throw new Error("Invalid payroll date format");
+  }
   
 
 
@@ -1101,7 +1109,6 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
       },
     }),
   ]);
-  console.log(data)
   
 
   const normalized = data.map((emp) => {
