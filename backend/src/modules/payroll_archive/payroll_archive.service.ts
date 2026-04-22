@@ -3,7 +3,7 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePa
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
-import { groupByCompany, isPayrollDateRange } from "./payroll_archive.helper";
+import { groupByCompany, isEmploymentWithinPaycode, isPayrollDateRange } from "./payroll_archive.helper";
 import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow } from "./payroll_archive.types";
 import { Console } from "console";
 import { getBodPhilhealth, getOfficerAllowance, getSSSContributions, getTaxTable } from "../general/general.services";
@@ -229,7 +229,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           NightShiftOtAtt:true,
           EmpCodeId:true,
           selected_payroll_date:true,
-        
+          
           EmpCode:{
             select:{
               Firstname:true,
@@ -240,6 +240,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               Taxable:true,
               isAlien: true,
               BranchCodeId: true,
+              EmployementDate:true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -440,7 +441,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const rawPagibigEmployee = emp.EmpCode.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
         const rawPagibigEmployer = emp.EmpCode.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
         const Paycodes = emp.PayCode;
-        const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
+        const employmentDate = emp.EmpCode.EmployementDate? new Date(emp.EmpCode.EmployementDate): null;
+        const isWithinPaycode = isEmploymentWithinPaycode(employmentDate,Paycodes);
+
+        const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && isWithinPaycode;
+        //const isNewProbi = emp.EmpCode.EmploymentStatus === "Probationary" && emp.EmpCode.isNewEmployee;
+
         const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
         const isTaxable = emp.EmpCode.Taxable;
         const empId = emp.EmpCodeId.trim().toUpperCase();
