@@ -1865,11 +1865,24 @@ export async function exportBonusExcelServices({
       bonusRule: true,
       employeeBonuses: {
         where: {
-          employee: {
-            BranchCode: {
-              company_id: companyCode,
-            },
-          },
+          OR:[
+            {
+              employee: {
+                BranchCode: {
+                  company_id: companyCode,
+                },
+                isAlien: false
+              },
+            },{
+                employee:{
+                  isAlien: true,
+                  secondaryBranch:{
+                    company_id: companyCode
+                  }
+                }
+            }
+          ]
+        
         },
         include: {
           employee: {
