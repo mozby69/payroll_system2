@@ -151,6 +151,7 @@ export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFi
   }
 
   const monthlyTaxable = monthlySalary - (completeContrib);
+  
   if (monthlyTaxable <= 0) return 0;
   const annualTaxable = monthlyTaxable * 12;
 

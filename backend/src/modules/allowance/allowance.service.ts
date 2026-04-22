@@ -4,6 +4,7 @@ import {allowanceprops,AllowanceRow,EmployeeVariance,SummaryAllowanceProps} from
 import {formatAllowanceMonth,getDaysInMonth,getPreviousMonth, round2} from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 
+
 export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}: allowanceprops) {
   const [year, month] = selectedMonth.split("-").map(Number);
   const prev = getPreviousMonth(year, month);
@@ -868,6 +869,7 @@ export async function ViewAllList(selectedMonth: string) {
     const loan_list = await getLoanFor();
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
     const variance_employee = await getVarianceEmployees(selectedMonth);
+    const getTotalPerCompanyList = await getTotalPerCompany(selectedMonth);
 
     const branches = await prisma.branch.findMany({
       select: {
@@ -882,29 +884,17 @@ export async function ViewAllList(selectedMonth: string) {
 
     const excludedEmpCodes = ["EMB10356", "EMB10346", "EMB10634", "EMB10631"];
 
-    const filteredRows = rows.filter(
-      (row) => !excludedEmpCodes.includes(row.EmpCode)
-    );
+    const filteredRows = rows.filter((row) => !excludedEmpCodes.includes(row.EmpCode));
 
-    const boardMembers = filteredRows.filter(
-      (row) => row.bod_member === "bod1" || row.bod_member === "bod3"
-    );
+    const boardMembers = filteredRows.filter((row) => row.bod_member === "bod1" || row.bod_member === "bod3");
 
-    const M2Members = filteredRows.filter(
-      (row) => row.Department === "M2"
-    );
+    const M2Members = filteredRows.filter((row) => row.Department === "M2");
 
-    const nonBoard = filteredRows.filter(
-      (row) => row.bod_member !== "bod1" && row.bod_member !== "bod3"
-    );
+    const nonBoard = filteredRows.filter((row) => row.bod_member !== "bod1" && row.bod_member !== "bod3");
 
-    const mancom = nonBoard.filter(
-      (row) => row.bod_member === "Mancom"
-    );
+    const mancom = nonBoard.filter((row) => row.bod_member === "Mancom");
 
-    const regularEmployees = nonBoard.filter(
-      (row) => row.bod_member !== "Mancom" && row.Department !== "M2"
-    );
+    const regularEmployees = nonBoard.filter((row) => row.bod_member !== "Mancom" && row.Department !== "M2");
 
     const branchesByCompany: Record<string,Record<string, AllowanceRow[]>> = {};
 
@@ -914,9 +904,7 @@ export async function ViewAllList(selectedMonth: string) {
 
    
    for (const employee of regularEmployees) {
-
     const branch = employee.isAlien && employee.secondaryBranchId ? employee.secondaryBranchId : employee.branch_code ?? "NO_BRANCH";
-
     const company = branch.split("-")[0] ?? "UNKNOWN";
 
     if (!branchesByCompany[company]) {
@@ -926,7 +914,6 @@ export async function ViewAllList(selectedMonth: string) {
     if (!branchesByCompany[company][branch]) {
       branchesByCompany[company][branch] = [];
     }
-
     branchesByCompany[company][branch].push(employee);
   }
 
@@ -943,7 +930,6 @@ export async function ViewAllList(selectedMonth: string) {
 
     for (const company of COMPANY_ORDER) {
       if (!branchesByCompany[company]) continue;
-
       const branchEntries = Object.entries(branchesByCompany[company]);
 
       branchEntries.sort((a, b) => {
@@ -962,10 +948,7 @@ export async function ViewAllList(selectedMonth: string) {
       }
 
       const entries = Object.entries(orderedBranches["EMB"]);
-
-
       entries.splice(1, 0, ["BACOLOD_BRANCH", M2Members]);
-
       orderedBranches["EMB"] = Object.fromEntries(entries);
     }
 
@@ -1124,7 +1107,6 @@ export async function getVarianceEmployees(selectedMonth: string): Promise<Emplo
 
 
 // get total per company for viewing 
-
 export async function getTotalPerCompany(selectedMonth: string) {
   try {
     const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
