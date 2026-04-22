@@ -172,6 +172,7 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
       Taxable:true,
       Disbursing:true,
       WithAtm:true,
+      isSixDaysWork:true,
       loan_details: {
         select: {
           loan_type: true,
@@ -690,6 +691,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
             Firstname: true,
             Lastname: true,
             BranchCode:true,
+            isSixDaysWork:true,
             employeepayroll: {
               select: {
                 basic_salary: true,
@@ -710,10 +712,11 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
     const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
     const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+    const isSixDaysWork  = emp.EmpCode.isSixDaysWork;
 
-    const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
-    const lateCount = computeLate(totalLateCount,basicSalary);
-    const absent = computeAbsent(totalAbsent,basicSalary);
+    const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+    const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+    const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
 
     const overTime = computeOvertime(basicSalary, {
@@ -1097,6 +1100,7 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
             Firstname: true,
             Lastname: true,
             BranchCode:true,
+            isSixDaysWork:true,
             employeepayroll: {
               select: {
                 basic_salary: true,
@@ -1117,10 +1121,11 @@ export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle
     const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
     const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
     const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+    const isSixDaysWork  = emp.EmpCode.isSixDaysWork;
 
-    const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
-    const lateCount = computeLate(totalLateCount,basicSalary);
-    const absent = computeAbsent(totalAbsent,basicSalary);
+    const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+    const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+    const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
 
     const overTime = computeOvertime(basicSalary, {

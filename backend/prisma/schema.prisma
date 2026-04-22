@@ -123,6 +123,7 @@ model Employee {
   isAlien Boolean @default(false)
   secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
   isOfficerAllowance Boolean? @default(false)
+  isSixDaysWork Boolean? @default(false)
   
 
   employeepr EmpDetails[] @relation

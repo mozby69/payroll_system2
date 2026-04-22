@@ -77,7 +77,6 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const grandTotals = companies.reduce(
         (acc, company) => {
             const totals = computeCompanyTotals(company);
-
             acc.cash += totals.cash_allowance;
             acc.ecola += totals.computed_ecola;
 
