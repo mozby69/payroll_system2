@@ -66,35 +66,28 @@ export function transformAttendanceData(
 
 
 
-export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],branchCycle:string) {
+  export async function saveEmployeeAttendance(
+    employees: EmployeeSummaryTypes[],
+    branchCycle: string
+  ) {
     if (!employees.length) return;
   
-
     await prisma.$transaction(async (tx) => {
-
-      const hasForApproval = await tx.employeeSummary.count({
-        where: {
-          status: "FOR_APPROVAL",
-        },
-      });
+      // 🚫 BLOCK if already for approval
+      // const hasForApproval = await tx.employeeSummary.count({
+      //   where: {
+      //     status: "FOR_APPROVAL",
+      //   },
+      // });
   
-      if (hasForApproval > 0) {
-        throw new Error(
-          "There is an existing approval payroll"
-        );
-      }
-
-      await tx.employeeSummary.deleteMany({
-        where: {
-          CycleCategory:branchCycle,
-          status: "PENDING",
-        },
-      });
-      
+      // if (hasForApproval > 0) {
+      //   throw new Error("There is an existing approval payroll");
+      // }
+  
+      // 👉 Prepare additional data
       const bodAttendance = await appendMissingBodEmployees(tx, employees);
       const probiAttendance = await probitionaryEmployees(tx, employees);
-      const speacialLeaveAttendance = await specialLeaveEmployeesServices(tx, employees);
-
+      const specialLeaveAttendance = await specialLeaveEmployeesServices(tx, employees);
   
       const finalData = [
         ...employees.map((emp) => ({
@@ -112,19 +105,41 @@ export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],b
           NightShiftOtAtt: emp.NightShiftOtAtt,
           selected_payroll_date: emp.selected_payroll_date,
           createdAt: nowPH(),
+          updatedAt: nowPH(),
         })),
         ...bodAttendance,
         ...probiAttendance,
-        ...speacialLeaveAttendance
+        ...specialLeaveAttendance,
       ];
-    
-      await tx.employeeSummary.createMany({
-        data: finalData,
-        skipDuplicates: true,
-      });
-      
+  
+      // 🚀 UPSERT LOOP (SAFE — keeps relations)
+      for (const emp of finalData) {
+        await tx.employeeSummary.upsert({
+          where: {
+            PayCode_EmpCodeId_PayrollPeriod: {
+              PayCode: emp.PayCode,
+              EmpCodeId: emp.EmpCodeId,
+              PayrollPeriod: emp.PayrollPeriod,
+            },
+          },
+          update: {
+            CycleCategory: emp.CycleCategory,
+            LateCount: emp.LateCount,
+            TotalAbsentHours: emp.TotalAbsentHours,
+            TotalUndertime: emp.TotalUndertime,
+            TotalOvertime: emp.TotalOvertime,
+            RegularAtt: emp.RegularAtt,
+            OvertimeAtt: emp.OvertimeAtt,
+            NightShiftAtt: emp.NightShiftAtt,
+            NightShiftOtAtt: emp.NightShiftOtAtt,
+            selected_payroll_date: emp.selected_payroll_date,
+            updatedAt: nowPH(),
+          },
+          create: emp,
+        });
+      }
     });
-}
+  }
   
 
 
