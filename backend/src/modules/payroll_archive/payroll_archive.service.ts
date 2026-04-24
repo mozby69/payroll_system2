@@ -544,9 +544,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           overtime: emp.OvertimeAtt,
           nightShift: emp.NightShiftAtt,
           nightShiftOt: emp.NightShiftOtAtt,
-        });
+        },
+          isSixDaysWork);
 
         const computedOvertime = overTime;
+        
         const finalOvertime = override?.TotalOvertime !== undefined && override?.TotalOvertime !== null
         ? Number(override.TotalOvertime)
         : computedOvertime
