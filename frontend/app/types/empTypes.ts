@@ -81,6 +81,8 @@ export type EmpPayrollInfo = {
   philhealthRateEmployee: number;
   pagibigEmployeeShare: number;
   totalEdeduction:number;
+  isecola:boolean;
+  gmail_account?:string;
   bankAccount: string;
 };
 
@@ -119,6 +121,7 @@ export type EmployeeProfile = {
   Taxable:boolean;      
   BranchCode?: BranchInfo | null;
   isOfficerAllowance?:boolean;
+  isSixDaysWork?:boolean;
   employeepr: EmpDetails[];
   employeepayroll: EmpPayrollInfo | null;
   officersAllowance: EmpOAInfo | null;
@@ -135,6 +138,9 @@ export type UpdateEmployeePayrollPayload = {
   Taxable:boolean;
   remarks?:string;
   isOfficerAllowance?:boolean;
+  isSixDaysWork?:boolean;
+  isecola?:boolean;
+  gmail_account?:string;
   OaBasicSalary?:string;
   bankAccount?: string;
 };
@@ -148,6 +154,9 @@ export type PayrollFormState = {
   Disbursing: boolean;
   Taxable:boolean;
   isOfficerAllowance?:boolean;
+  isSixDaysWork?:boolean;
+  isecola?:boolean;
+  gmail_account?:string;
   OaBasicSalary?: string;
   bankAccount?: string;
 };
