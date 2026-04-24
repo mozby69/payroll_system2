@@ -5,6 +5,7 @@ import { FilterKey } from "./FilterTypes";
 export type AddLoanPayload = {
   empCode: string;
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN" ;
+  rounding_type?: "Tens" | "Ones"
   principal: number;
   term_value: number;
   term_unit: "MONTHS" | "YEARS";
@@ -92,6 +93,7 @@ export type LoanLedgerItem = {
 
 
 export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
+export type RoundingType = "Tens" | "Ones"
 export type AreType = "HOUSING" | "CASH ADV." | "OTHERS";
 export type TermUnit = "MONTHS" | "YEARS";
 
@@ -99,6 +101,7 @@ export type EmpLoanResponse = {
   loan_id: number;
   principal: number;
   loan_type: LoanType;
+  rounding_types: RoundingType;
   term_value: number;
   term_unit: TermUnit;
   start_date: string;
@@ -118,6 +121,7 @@ export type EmpLoanResponse = {
 
 export type UpdateLoanPayload = {
   loan_type: LoanType;
+  rounding_type?: RoundingType;
   principal: number;
   term_value: number;
   term_unit: TermUnit;

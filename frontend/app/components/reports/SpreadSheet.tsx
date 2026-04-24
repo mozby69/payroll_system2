@@ -1,6 +1,10 @@
 import { useState } from "react";
 import SweetAlert from "../Swal";
 import { useSaveWtaxOverride } from "@/app/hooks/usePayrollArchive";
+import AuthenticationModal from "@/app/components/editableLoanModal/AuthenticationModal"
+import { useVerifyPassword } from "@/app/hooks/useEditableLoan";
+import RequestModal from "../Modal";
+import EditLoanModal from "../editableLoanModal/EditLoanModal";
 
 export interface SpreadsheetRow {
   name: string;
@@ -147,6 +151,36 @@ function EditableWtax({
 }
 
 export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedLoanType, setSelectedLoanType] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<SpreadsheetRow | null>(null);
+  const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
+
+  const verifyPasswordMutation = useVerifyPassword();
+
+  const handlePasswordConfirm = async (password: string) => {
+    try {
+      const result = await verifyPasswordMutation.mutateAsync(password);
+
+      setVerifiedUserId(result.user_id);
+
+      SweetAlert.successAlert("Access Granted");
+
+      setIsModalOpen(false);
+      setIsDetailModalOpen(true);
+
+    } catch {
+      SweetAlert.errorAlert("Invalid password or no permission");
+    }
+  };
+
+  const closeSecModal = () => {
+    setIsDetailModalOpen(false);
+    setVerifiedUserId(null);
+  }
+
   return (
     <div className="print-area1 w-full p-4">
       <table className="w-full border-collapse text-[9pt] table-auto">
@@ -234,9 +268,19 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{row.arE}</td>
                 <td className="py-2 text-center">{row.rfc}</td>
                 <td className="py-2 text-center">{row.fch}</td>
-                <td className="py-2 text-center">{row.salaryLoan}</td>
-                <td className="py-2 text-center">{row.calamityLoan.toFixed(2)}</td>
-                <td className="py-2 text-center">{row.pagibigSalaryLoan}</td>
+                <td className="py-2 text-center cursor-pointer"
+                  onDoubleClick={() => {
+                    setSelectedRow(row);
+                    setIsModalOpen(true);
+                    setSelectedLoanType("SSS_LOAN");
+                  }}>{row.salaryLoan}</td>
+                <td className="py-2 text-center">{row.calamityLoan}</td>
+                <td className="py-2 text-center cursor-pointer"
+                  onDoubleClick={() => {
+                    setSelectedRow(row);
+                    setIsModalOpen(true);
+                    setSelectedLoanType("PAGIBIG_LOAN");
+                  }}>{row.pagibigSalaryLoan}</td>
 
                 <td className="py-2 text-center font-semibold bg-blue-50">
                   {row.netPayable.toFixed(2)}
@@ -283,10 +327,24 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
 
 
       </table>
+
+      <AuthenticationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handlePasswordConfirm}
+      />
+
+      {isDetailModalOpen && selectedRow && verifiedUserId !== null && (
+        <RequestModal size="xl" title="Editable Loan" onClose={closeSecModal}>
+          <EditLoanModal 
+            selectedRow={selectedRow} 
+            loanType={selectedLoanType!}  
+            master_id={verifiedUserId} 
+            onClose={closeSecModal}
+          />
+        </RequestModal>
+      )}
     </div>
   );
 }
-
-
-
 

@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useMemo, useRef} from "react";
 
 
+
 type ProfileClientProps = {
   empCode: string;
 };
@@ -35,6 +36,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
   
   const details = data?.employeepr?.[0] ?? null;
   const payInfo = data?.employeepayroll;
+  const oaInfo = data?.officersAllowance;
   const loans = data?.loan_details ?? [];
 
 
@@ -47,9 +49,11 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       WithAtm: Boolean(data?.WithAtm ?? false),
       Disbursing: Boolean(data?.Disbursing ?? false),
       Taxable:Boolean(data?.Taxable ?? false),
+      isOfficerAllowance:Boolean(data?.isOfficerAllowance ?? false),
+      OaBasicSalary: String(oaInfo?.OaBasicSalary ?? ""),
       bankAccount: String(payInfo?.bankAccount ?? ""),
     };
-  }, [payInfo, data]);
+  }, [payInfo, data, oaInfo]);
 
   const [formValues, setFormValues] = useState<PayrollFormState>(initialValues);
 
@@ -224,6 +228,8 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       WithAtm: formValues.WithAtm,
       Disbursing: formValues.Disbursing,
       Taxable:formValues.Taxable,
+      isOfficerAllowance:formValues.isOfficerAllowance,
+      OaBasicSalary:formValues.OaBasicSalary,
       bankAccount: String(formValues.bankAccount),
     };
 
@@ -517,6 +523,22 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                         Taxable
                       </span>
                     </div>
+                    <div className="flex items-center gap-x-3 col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={formValues.isOfficerAllowance}
+                        onChange={(e) =>
+                          setFormValues(prev => ({
+                            ...prev,
+                            isOfficerAllowance: e.target.checked
+                          }))
+                        }
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700 font-medium">
+                        Officers Allowance
+                      </span>
+                    </div>
                 </div>
 
                   </div>
@@ -659,6 +681,31 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
 
                   </div>
                           
+                  
+                  <div className="flex flex-col gap-y-6">
+
+                      <div className="flex flex-col gap-y-4">
+                          <h1 className="font-bold text-lg">Officers  Allowance</h1>
+                      </div>
+
+                      
+                      <div className="flex flex-col gap-y-1 col-span-2">
+                        <span className="text-sm text-gray-500">Allowance Amount</span>
+                        <input
+                          type="number"
+                          value={formValues.OaBasicSalary}
+                          onChange={(e) =>
+                            setFormValues(prev => ({
+                              ...prev,
+                              OaBasicSalary: e.target.value
+                            }))
+                          }
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                        />
+
+                      </div>
+                  </div>
+
                   <div className="flex justify-end mt-6 mx-8">
                         <GenButton
                           disabled={!isDirty}

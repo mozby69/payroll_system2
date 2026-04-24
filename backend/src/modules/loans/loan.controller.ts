@@ -9,6 +9,7 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
     const {
       empCode,
       loan_type,
+      rounding_type,
       principal,
       term_value,
       term_unit,
@@ -32,6 +33,9 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
     const termUnitFinal =
       loan_type === "OTHERS" ? "BONUS" : term_unit;
 
+    const roundTypes = 
+      loan_type === "FCH_LOAN" ? rounding_type : ""
+
     if (!empCode || !loan_type || !principal) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -39,6 +43,7 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
     const loan = await saveEmployeeLoan({
       empCode,
       loan_type,
+      rounding_type: roundTypes,
       principal: Number(principal),
       term_value: termValueFinal,
       term_unit: termUnitFinal,
@@ -204,6 +209,7 @@ export const updateEmployeeLoanController = async (
 
     const {
       loan_type,
+      rounding_type,
       principal,
       term_value,
       term_unit,
@@ -228,6 +234,7 @@ export const updateEmployeeLoanController = async (
     const updatedLoan = await loanService.updateEmployeeLoan({
       loan_id,
       loan_type,
+      rounding_type,
       principal: Number(principal),
       term_value: Number(term_value),
       term_unit,

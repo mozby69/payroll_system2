@@ -96,7 +96,7 @@ export default function StepReviewSave({ onBack }: Props) {
           Number(emp.rfc_loan) +
           Number(emp.fch_loan) +
           Number(emp.sss_loan) +
-          Number(emp.pagibig_loan)+
+          Number(emp.pagibig_loan) + 
           Number(emp.calamity_loan)
         )
       ).toFixed(2)

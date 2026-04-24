@@ -7,5 +7,7 @@ export type UpdateTypesByEmpCode ={
     Disbursing:boolean;
     Taxable:boolean;
     remarks?:string;
+    isOfficerAllowance: boolean,
+    OaBasicSalary: number,
     bankAccount?:string;
 }

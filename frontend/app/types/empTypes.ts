@@ -84,6 +84,10 @@ export type EmpPayrollInfo = {
   bankAccount: string;
 };
 
+export type EmpOAInfo = {
+  OaBasicSalary: number;
+};
+
 
 export type CompanyInfo = {
   CompanyName?: string | null;
@@ -114,8 +118,10 @@ export type EmployeeProfile = {
   Disbursing: boolean;
   Taxable:boolean;      
   BranchCode?: BranchInfo | null;
+  isOfficerAllowance?:boolean;
   employeepr: EmpDetails[];
   employeepayroll: EmpPayrollInfo | null;
+  officersAllowance: EmpOAInfo | null;
   loan_details: EmployeeLoan[];
 };
 export type UpdateEmployeePayrollPayload = {
@@ -128,6 +134,8 @@ export type UpdateEmployeePayrollPayload = {
   Disbursing: boolean;
   Taxable:boolean;
   remarks?:string;
+  isOfficerAllowance?:boolean;
+  OaBasicSalary?:string;
   bankAccount?: string;
 };
 
@@ -139,6 +147,8 @@ export type PayrollFormState = {
   WithAtm: boolean;
   Disbursing: boolean;
   Taxable:boolean;
+  isOfficerAllowance?:boolean;
+  OaBasicSalary?: string;
   bankAccount?: string;
 };
 

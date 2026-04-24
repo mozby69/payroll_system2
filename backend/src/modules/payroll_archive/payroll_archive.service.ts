@@ -282,13 +282,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         return [];
       }
 
-      
-
-// loans fetch and query here ↓
+          
+    // New Update loans fetch and query here ↓
 
     const empCodes = employeeList.map(e => e.EmpCodeId);
     const payrollPeriod = employeeList[0].PayCode;
-    const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod)
+    const currentPayrollPeriod = convertPayrollLabelToPeriod(payrollPeriod);
     const payCycle = employeeList[0].PayrollPeriod;
 
     const [payYear, payMonth] = currentPayrollPeriod.split("-").map(Number);
@@ -297,6 +296,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     const firstPayCycles = ["10", "15"];
     const secondPayCycles = ["25", "30"];
 
+    // ✅ FETCH LOANS
     const loans = await prisma.loan_details.findMany({
       where: {
         EmpCodeId: { in: empCodes },
@@ -321,11 +321,28 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
     const loanIds = loans.map(l => l.loan_id);
 
+    // ✅ FETCH OVERRIDES
+    const overridesLoan = await prisma.over_ride_loan.findMany({
+      where: {
+        loan_id: { in: loanIds },
+        payroll_period: payrollPeriod,
+        payroll_cycle: payCycle,
+      },
+    });
+
+    // ✅ MAP OVERRIDES
+    const overrideMapLoan = new Map<number, any>();
+    for (const o of overridesLoan) {
+      overrideMapLoan.set(o.loan_id, o);
+    }
+
+    // ✅ FETCH LEDGERS
     const ledgers = await prisma.loan_ledger.findMany({
       where: { loan_id: { in: loanIds } },
       orderBy: { transaction_date: "desc" },
     });
 
+    // ✅ GET LATEST LEDGER PER LOAN
     const latestLedger = new Map<number, any>();
     for (const l of ledgers) {
       if (!latestLedger.has(l.loan_id)) {
@@ -333,12 +350,15 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       }
     }
 
+    // ✅ FINAL STRUCTURE
     const loanByEmp: Record<string, any> = {};
 
     for (const loan of loans) {
       const ledger = latestLedger.get(loan.loan_id);
+      const override = overrideMapLoan.get(loan.loan_id);
 
       let alreadyDeducted = false;
+
       if (ledger) {
         const d = ledger.transaction_date;
         alreadyDeducted =
@@ -346,7 +366,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           d.getMonth() + 1 === payMonth &&
           ledger.payroll_cycle === payrollCycle;
       }
-      
+
       if (!loanByEmp[loan.EmpCodeId]) {
         loanByEmp[loan.EmpCodeId] = {};
       }
@@ -365,6 +385,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loanByEmp[loan.EmpCodeId][key] = {
           amount: 0,
           alreadyDeducted: false,
+          isOverridden: false, // optional
         };
       }
 
@@ -374,33 +395,39 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       let shouldDeduct = false;
 
       if (loan.deduct_first_pay && loan.deduct_second_pay) {
-        // both true → allow all cycles
         shouldDeduct = true;
       } else if (loan.deduct_first_pay && !loan.deduct_second_pay) {
-        // only first pay
         shouldDeduct = isFirstPay;
       } else if (!loan.deduct_first_pay && loan.deduct_second_pay) {
-        // only second pay
         shouldDeduct = isSecondPay;
       } else {
-        // both false → no deduction
         shouldDeduct = false;
       }
 
-      if (!alreadyDeducted && shouldDeduct) {
-        loanByEmp[loan.EmpCodeId][key].amount += Number(loan.per_payroll_deduct);
+      // ✅ APPLY OVERRIDE LOGIC
+      let amountToUse = Number(loan.per_payroll_deduct);
+
+      if (override && override.credit_amount != null) {
+        amountToUse = Number(override.credit_amount);
+        loanByEmp[loan.EmpCodeId][key].isOverridden = true;
       }
 
-      // mark deducted if ANY record is deducted
+      if (!alreadyDeducted && shouldDeduct) {
+        loanByEmp[loan.EmpCodeId][key].amount += amountToUse;
+      }
+
       loanByEmp[loan.EmpCodeId][key].alreadyDeducted =
         loanByEmp[loan.EmpCodeId][key].alreadyDeducted || alreadyDeducted;
-      
     }
 
+    // ✅ FINAL HELPER
     const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>
       loan && !loan.alreadyDeducted ? loan.amount : 0;
 
-// loans fetch and query here ↑
+    // New Update loans fetch and query here ↑
+
+
+
 
 
       //wtax override 
@@ -422,6 +449,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         if (!overrideMap.has(key)) {
           overrideMap.set(key, Number(o.edited_value));
         }
+        
       }
   
 
@@ -685,7 +713,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         throw new Error("Invalid selected_payroll_date");
       }
   
-      // ── Loans ───────────────────────────────────────────────────────────────
+      // New ── Loans ───────────────────────────────────────────────────────────────
+
       const loans = await tx.loan_details.findMany({
         where: {
           EmpCodeId: { in: empCodes },
@@ -695,25 +724,56 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             lte: new Date(payYear, payMonth, 0),
           }
         },
-        select: { loan_id: true, EmpCodeId: true, loan_type: true, per_payroll_deduct: true,others_types: true,  deduct_first_pay: true,
-                deduct_second_pay: true,},
+        select: {
+          loan_id: true,
+          EmpCodeId: true,
+          loan_type: true,
+          per_payroll_deduct: true,
+          others_types: true,
+          deduct_first_pay: true,
+          deduct_second_pay: true,
+        },
       });
-  
+
       const loanIds = loans.map((l) => l.loan_id);
+
+      // ✅ FETCH OVERRIDES (FIXED: use payrollCycle not payCycle)
+      const overridesLoan = await tx.over_ride_loan.findMany({
+        where: {
+          loan_id: { in: loanIds },
+          payroll_period: payrollPeriod,
+          payroll_cycle: payCycle, // ✅ FIXED
+        },
+      });
+
+      // ✅ MAP OVERRIDES
+      const overrideMap = new Map<number, any>();
+      for (const o of overridesLoan) {
+        overrideMap.set(o.loan_id, o);
+      }
+
+      // ✅ FETCH LEDGERS
       const ledgers = await tx.loan_ledger.findMany({
         where: { loan_id: { in: loanIds } },
         orderBy: { transaction_date: "desc" },
       });
-  
+
+      // ✅ GET LATEST LEDGER
       const latestLedger = new Map<number, any>();
       for (const l of ledgers) {
-        if (!latestLedger.has(l.loan_id)) latestLedger.set(l.loan_id, l);
+        if (!latestLedger.has(l.loan_id)) {
+          latestLedger.set(l.loan_id, l);
+        }
       }
-  
+
       const loanByEmp: Record<string, any> = {};
+
       for (const loan of loans) {
         const ledger = latestLedger.get(loan.loan_id);
+        const override = overrideMap.get(loan.loan_id);
+
         let alreadyDeducted = false;
+
         if (ledger) {
           const d = ledger.transaction_date;
           alreadyDeducted =
@@ -721,26 +781,13 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             d.getMonth() + 1 === payMonth &&
             ledger.payroll_cycle === payrollCycle;
         }
-        if (!loanByEmp[loan.EmpCodeId]) loanByEmp[loan.EmpCodeId] = {};
-        loanByEmp[loan.EmpCodeId][loan.loan_type] = {
-          loan_id: loan.loan_id,
-          amount: Number(loan.per_payroll_deduct),
-          alreadyDeducted,
-        };
 
-        
-        const isFirstPay = firstPayCycles.includes(payrollCycle);
-        const isSecondPay = secondPayCycles.includes(payrollCycle);
+        if (!loanByEmp[loan.EmpCodeId]) {
+          loanByEmp[loan.EmpCodeId] = {};
+        }
 
-        const shouldDeduct =
-          !alreadyDeducted &&
-          (
-            (loan.deduct_first_pay && isFirstPay) ||
-            (loan.deduct_second_pay && isSecondPay)
-          );
-
+        // 🔹 HANDLE KEY (Calamity mapping)
         let key = loan.loan_type;
-
 
         if (
           loan.others_types === "Calamity" &&
@@ -750,15 +797,54 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           if (loan.loan_type === "PAGIBIG_LOAN") key = "Pag_IBIG_Cal";
         }
 
-        loanByEmp[loan.EmpCodeId][key] = {
-          loan_id: loan.loan_id,
-          amount: shouldDeduct ? Number(loan.per_payroll_deduct) : 0,
-          alreadyDeducted,
-        };
+        const isFirstPay = firstPayCycles.includes(payrollCycle);
+        const isSecondPay = secondPayCycles.includes(payrollCycle);
+
+        let shouldDeduct = false;
+
+        if (loan.deduct_first_pay && loan.deduct_second_pay) {
+          shouldDeduct = true;
+        } else if (loan.deduct_first_pay && !loan.deduct_second_pay) {
+          shouldDeduct = isFirstPay;
+        } else if (!loan.deduct_first_pay && loan.deduct_second_pay) {
+          shouldDeduct = isSecondPay;
+        } else {
+          shouldDeduct = false;
+        }
+
+        // ✅ APPLY OVERRIDE
+        let amountToUse = Number(loan.per_payroll_deduct);
+
+        if (override && override.credit_amount != null) {
+          amountToUse = Number(override.credit_amount);
+        }
+
+        if (!loanByEmp[loan.EmpCodeId][key]) {
+          loanByEmp[loan.EmpCodeId][key] = {
+            loan_id: loan.loan_id,
+            amount: 0,
+            alreadyDeducted: false,
+            isOverridden: false,
+          };
+        }
+
+        if (!alreadyDeducted && shouldDeduct) {
+          loanByEmp[loan.EmpCodeId][key].amount += amountToUse;
+        }
+
+        if (override) {
+          loanByEmp[loan.EmpCodeId][key].isOverridden = true;
+        }
+
+        loanByEmp[loan.EmpCodeId][key].alreadyDeducted =
+          loanByEmp[loan.EmpCodeId][key].alreadyDeducted || alreadyDeducted;
       }
-  
+
+      // ✅ FINAL HELPER
       const loanDeduct = (loan?: { amount: number; alreadyDeducted: boolean }) =>
         loan && !loan.alreadyDeducted ? loan.amount : 0;
+
+  // New ── Loans ───────────────────────────────────────────────────────────────
   
       const companyTotals = computed.reduce(
         (acc, emp) => {
@@ -926,43 +1012,81 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
       console.log(archivePayload)
   
-      // ── Loan ledger entries ─────────────────────────────────────────────────
-    const transaction_date = nowPH();
 
-    for (const emp of computed) {
-      const empLoans = loanByEmp[emp.EmpCodeId];
-      if (!empLoans) continue;
+      
+  // Loan New  ── Loan ledger entries ─────────────────────────────────────────────────
+      const transaction_date = nowPH();
 
-      const processedLoanIds = new Set<number>(); // ✅ ADD THIS
+      for (const emp of computed) {
+        const empLoans = loanByEmp[emp.EmpCodeId];
+        if (!empLoans) continue;
 
-      for (const loanType of Object.keys(empLoans)) {
-        const loan = empLoans[loanType];
+        const processedLoanIds = new Set<number>();
 
-        if (loan.alreadyDeducted) continue;
+        for (const loanType of Object.keys(empLoans)) {
+          const loan = empLoans[loanType];
 
-        // ✅ skip if not supposed to deduct
-        if (!loan.amount || loan.amount <= 0) continue;
+          if (loan.alreadyDeducted) continue;
+          if (!loan.amount || loan.amount <= 0) continue;
 
+          if (processedLoanIds.has(loan.loan_id)) continue;
+          processedLoanIds.add(loan.loan_id);
 
-        // ✅ PREVENT DUPLICATES
-        if (processedLoanIds.has(loan.loan_id)) continue;
-        processedLoanIds.add(loan.loan_id);
+          // ✅ CASE: OVERRIDE EXISTS
+          if (loan.isOverridden) {
 
-        await tx.loan_ledger.create({
-          data: {
-            loan_id:          loan.loan_id,
-            EmpCodeId:        emp.EmpCodeId,
-            transaction_date,
-            payroll_cycle:    payrollCycle,
-            transaction_type: "PAYROLL_DEDUCT",
-            debit_amount:     0,
-            credit_amount:    loan.amount,
-            remarks:          "Loan Credited to Payroll",
-            payment_status:   "PAID",
-          },
-        });
+            // 🔴 1. Create SKIPPED ledger (for missed previous)
+            await tx.loan_ledger.create({
+              data: {
+                loan_id:          loan.loan_id,
+                EmpCodeId:        emp.EmpCodeId,
+                transaction_date,
+                payroll_cycle:    payrollCycle,
+                transaction_type: "LOAN_SKIPPED",
+                debit_amount:     0,
+                credit_amount:    0,
+                remarks:          "Previous payment skipped (override applied)",
+                payment_status:   "SKIPPED",
+              },
+            });
+
+            // 🟢 2. Create ACTUAL PAYMENT ledger
+            await tx.loan_ledger.create({
+              data: {
+                loan_id:          loan.loan_id,
+                EmpCodeId:        emp.EmpCodeId,
+                transaction_date,
+                payroll_cycle:    payrollCycle,
+                transaction_type: "PAYROLL_DEDUCT",
+                debit_amount:     0,
+                credit_amount:    loan.amount,
+                remarks:          "Override payment applied",
+                payment_status:   "PAID",
+              },
+            });
+
+          } else {
+            // ✅ NORMAL FLOW
+            await tx.loan_ledger.create({
+              data: {
+                loan_id:          loan.loan_id,
+                EmpCodeId:        emp.EmpCodeId,
+                transaction_date,
+                payroll_cycle:    payrollCycle,
+                transaction_type: "PAYROLL_DEDUCT",
+                debit_amount:     0,
+                credit_amount:    loan.amount,
+                remarks:          "Loan Credited to Payroll",
+                payment_status:   "PAID",
+              },
+            });
+          }
+        }
       }
-    }
+
+  // Loan New  ── Loan ledger entries ─────────────────────────────────────────────────
+
+
       const disbursingEmployees = await tx.employee.findMany({
         where: { EmpCode: { in: empCodes }, Disbursing: true },
         select: { EmpCode: true },
