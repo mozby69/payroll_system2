@@ -253,8 +253,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
   const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
 
-  const employees = await prisma.employee.findMany({
-    where: {
+ const employees = await prisma.employee.findMany({
+  where: {
     AND: [
       {
         OR: [
@@ -271,15 +271,38 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         ],
       },
 
-     {
-      BranchCode: {
-        company_id: {
-          notIn: ["SERV", "HPC", "LIK","KOHI","NORNS"],
-        },
+      {
+        OR: [
+          // NON-ALIEN → filter using primary main branch
+          {
+            isAlien: false,
+            BranchCode: {
+              company_id: {
+                notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
+              },
+              branchCode:{
+                notIn:["SGI","NAH"],
+              }
+            },
+          },
+
+          // ALIEN → ignore main branch, use secondaryBranch instead
+          {
+            isAlien: true,
+            secondaryBranch: {
+              company_id: {
+                notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
+              },
+                branchCode:{
+                notIn:["SGI","NAH"],
+              }
+            },
+          },
+        ],
       },
-    }
     ],
   },
+
 
     
 
@@ -337,13 +360,14 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
   //return employees.map((emp) => {
   const rows = employees.map((emp) => {
-    const totalAbsentHours = emp.employeesummary.reduce(
-      (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
-      0,
-    );
+    const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0), 0,);
     const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
     const hasEcola = emp.employeepayroll?.with_ecola === true;
-    const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
+   // const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
+
+    const baseBranch = emp.isAlien ? emp.secondaryBranch : emp.BranchCode;
+    const branchCode = overrideMap.get(emp.EmpCode) ?? baseBranch?.branchCode ?? "NO_BRANCH";
+
     const bodMember = emp.bod_member;
     const manCom = emp.Position;
 
@@ -363,9 +387,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     const fch_rfc_deducted = 0;
     // loan code ↑
 
-    const companyId = emp.BranchCode?.company_id ?? "UNKNOWN";
+    //const companyId = emp.BranchCode?.company_id ?? "UNKNOWN";
+    const companyId = baseBranch?.company_id ?? "UNKNOWN";
 
-   // const totalEcolaForVariance = Number(emp.employeepayroll?.ecola - totalEcola);
 
     return {
       EmpCode: emp.EmpCode,
@@ -530,6 +554,8 @@ export async function saveAllowanceArchive(selectedMonth: string) {
   // 2️⃣ Compute allowance
   const { rows, summary } = await computeAllowanceForMonth(selectedMonth);
 
+  const total_ecola_ca = summary.cash_allowance + summary.ecola;
+
   if (!rows.length) return;
 
   // 3️⃣ Transaction
@@ -541,7 +567,7 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         selectedMonth,
         total_cash_allowance: summary.cash_allowance,
         total_ecola: summary.ecola,
-        grand_total: summary.total,
+        grand_total: total_ecola_ca,
         totalDeduction: summary.totalDeduction,
         totalAbsent: summary.deduct,
         totalLoan: summary.fch_rfc_deducted,
@@ -903,19 +929,20 @@ export async function ViewAllList(selectedMonth: string) {
     
 
    
-   for (const employee of regularEmployees) {
-    const branch = employee.isAlien && employee.secondaryBranchId ? employee.secondaryBranchId : employee.branch_code ?? "NO_BRANCH";
-    const company = branch.split("-")[0] ?? "UNKNOWN";
+  for (const employee of regularEmployees) {
+      const company = employee.company_id ?? "UNKNOWN";
+      const branch = employee.branch_code ?? "NO_BRANCH";
 
-    if (!branchesByCompany[company]) {
-      branchesByCompany[company] = {};
-    }
+      if (!branchesByCompany[company]) {
+        branchesByCompany[company] = {};
+      }
 
-    if (!branchesByCompany[company][branch]) {
-      branchesByCompany[company][branch] = [];
+      if (!branchesByCompany[company][branch]) {
+        branchesByCompany[company][branch] = [];
+      }
+
+      branchesByCompany[company][branch].push(employee);
     }
-    branchesByCompany[company][branch].push(employee);
-  }
 
     for (const company of Object.keys(branchesByCompany)) {
       for (const branch of Object.keys(branchesByCompany[company])) {
@@ -959,6 +986,7 @@ export async function ViewAllList(selectedMonth: string) {
       LOANS: loan_list ?? [],
       VARIANCE: variance_allowance ?? null,
       VARIANCE_EMP: variance_employee ?? null,
+      TOTAL_PER_COMPANY: getTotalPerCompanyList ?? null,
     };
 
   } catch (error) {
@@ -1107,22 +1135,54 @@ export async function getVarianceEmployees(selectedMonth: string): Promise<Emplo
 
 
 // get total per company for viewing 
-export async function getTotalPerCompany(selectedMonth: string) {
+type CompanyBranchSummary = Record<
+  string,
+  {
+    total_cash_allowance: number;
+    ecola: number;
+    total_num: number;
+    branches: Record<
+      string,
+      {
+        total_num: number;
+        employees: string[];
+      }
+    >;
+  }
+>;
+
+export async function getTotalPerCompany(selectedMonth: string): Promise<CompanyBranchSummary> {
   try {
     const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
 
-    const result = currentRows.reduce<Record<string,{ total_cash_allowance: number; ecola: number }>>((acc, curr) => {
+    const result = currentRows.reduce<CompanyBranchSummary>((acc, curr) => {
       const company = curr.company_id ?? "UNKNOWN";
+      const branch = curr.branch_code ?? "NO_BRANCH";
 
       if (!acc[company]) {
         acc[company] = {
           total_cash_allowance: 0,
           ecola: 0,
+          total_num: 0,
+          branches: {},
         };
       }
 
       acc[company].total_cash_allowance += curr.cash_allowance ?? 0;
       acc[company].ecola += curr.computed_ecola ?? 0;
+      acc[company].total_num += 1;
+
+      // branch grouping
+
+      // if (!acc[company].branches[branch]) {
+      //   acc[company].branches[branch] = {
+      //     total_num: 0,
+      //     employees: [],
+      //   };
+      // }
+
+      // acc[company].branches[branch].total_num += 1;
+      // acc[company].branches[branch].employees.push(curr.name);
 
       return acc;
     }, {});

@@ -1,5 +1,5 @@
-import DateRangePicker from "@/app/ui/DateRangePicker";
-import SweetAlert from "../Swal";
+// import DateRangePicker from "@/app/ui/DateRangePicker";
+// import SweetAlert from "../Swal";
 import {  useState } from "react";
 import { DateRange } from "@/app/types/utilsTypes";
 import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay";
@@ -10,9 +10,12 @@ import { useDebounce } from "@/app/utils/useDebounce";
 import { ComputedProps } from "@/app/services/preparePayroll";
 import { Pagination } from "../Pagination";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
-import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
+// import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
+// import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 import { useAuth } from "../UserContext";
+import { Edit } from "lucide-react";
+import RequestModal from "../Modal";
+import EditDeduction from "@/app/ModalContent/PreparePayroll/EditDeducution";
 
 
 interface Props {
@@ -26,7 +29,7 @@ interface Props {
 
   
   
-  export default function StepComputePayroll({ onBack, onNext,range,setRange,cycle }: Props) {
+  export default function StepComputePayroll({ onBack, onNext,range }: Props) {
       const PAGE_SIZE = 7;
       const [page, setPage] = useState(1);
       const [search, setSearch] = useState("");
@@ -35,11 +38,12 @@ interface Props {
 
       //const payrollPeriod = range ? `${range.startDate} to ${range.endDate}` : null;
       const queryClient = useQueryClient();
-      const { data: disabledRanges = [] } = useDisabledPayrollDates(cycle);
-      const { hasPermission,user } = useAuth()
+      //const { data: disabledRanges = [] } = useDisabledPayrollDates(cycle);
+      const { user } = useAuth()
       const companyId = user?.company_id;
-     
-      const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
+      const [isModalOpen, setIsModalOpen] = useState(false);
+       const [selectedRow, setSelectedRow] = useState<ComputedProps | null>(null);
+      //const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
 
       const { data: employee_payroll } = useComputedPayroll({
           company_id: companyId ?? "",
@@ -87,6 +91,22 @@ interface Props {
         {
           header:"GROSS PAY",
           accessor: (row) => row.gross_pay,
+        },
+        {
+          header: "Actions",
+          render: (row) => (
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedRow(row);
+                  setIsModalOpen(true);
+                }}
+                className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
+              >
+                <Edit />
+              </button>
+            </div>
+          ),
         }
 
       
@@ -102,7 +122,11 @@ interface Props {
         setPage(1);
       };
 
-    
+
+        
+    const closeModal = () => {
+      setIsModalOpen(false);
+    };
       
  
     return (
@@ -117,11 +141,9 @@ interface Props {
 
      
         <div className="flex justify-between gap-x-4">
-
           <div>
             <h2 className="font-semibold">Payroll Period: <span className="font-medium">{payCode}</span></h2>
           </div>
-                
           <input
             type="text"
             placeholder="Search..."
@@ -129,14 +151,11 @@ interface Props {
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
           />   
-
-
-
-          </div>
+        </div>
 
 
                     
-            <Datatable columns={columns} data={tableData} />
+                <Datatable columns={columns} data={tableData} />
             
                 <Pagination
                       page={page}
@@ -169,6 +188,14 @@ interface Props {
                 </button>
 
               </div>
+
+
+                 {isModalOpen && selectedRow && (
+                    <RequestModal size="xxl" title={`EDIT DEDUCTION`} onClose={closeModal}>
+                      <EditDeduction employee={selectedRow} onClose={closeModal}/>
+                    </RequestModal>
+                  )}
+              
 
 
 

@@ -229,7 +229,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           NightShiftOtAtt:true,
           EmpCodeId:true,
           selected_payroll_date:true,
-          
+          SummaryTableOverride: true,
           EmpCode:{
             select:{
               Firstname:true,
@@ -433,11 +433,19 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       );
 
       const normalized = employeeList.map((emp) => {
-        
+        const override = emp.SummaryTableOverride?.[0]; 
+
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
-        const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
-        const totalUndertimeCount = emp.TotalUndertime ? Number(emp.TotalUndertime): 0;
-        const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+        //const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+        const totalLateCount = override?.LateCount ?? (emp.LateCount ? Number(emp.LateCount) : 0);
+        //const totalUndertimeCount = emp.TotalUndertime ? Number(emp.TotalUndertime): 0;
+        const totalUndertimeCount = override?.TotalUndertime ?? (emp.TotalUndertime ? Number(emp.TotalUndertime) : 0);
+        //const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+        const totalAbsent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
+          ? Number(override.TotalAbsentHours)
+          : emp.TotalAbsentHours
+          ? Number(emp.TotalAbsentHours)
+          : 0;
         const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
         const rawPagibigEmployee = emp.EmpCode.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
         const rawPagibigEmployer = emp.EmpCode.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
@@ -509,6 +517,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           nightShift: emp.NightShiftAtt,
           nightShiftOt: emp.NightShiftOtAtt,
         });
+
+        const computedOvertime = overTime;
+        const finalOvertime = override?.TotalOvertime !== undefined && override?.TotalOvertime !== null
+        ? Number(override.TotalOvertime)
+        : computedOvertime
+        ? Number(computedOvertime)
+        : 0;
+
         const computedWtax  = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
 
         const key = `${emp.PayCode}_${emp.EmpCodeId}_${emp.PayrollPeriod}`;
@@ -517,7 +533,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const finalWtax = overrideValue ?? computedWtax;
 
 
-        const grossPay = computeGrossPay(overTime,semiMonthly,lateCount,undertimeCount,absent);
+        const grossPay = computeGrossPay(finalOvertime,semiMonthly,lateCount,undertimeCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
@@ -527,7 +543,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         return {
           ...emp,
           semi_monthly:semiMonthly.toFixed(2),
-          overtime:overTime,
+          overtime:finalOvertime,
           late_count:lateCount,
           undertime:undertimeCount,
           absence:absent,

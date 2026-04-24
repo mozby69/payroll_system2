@@ -84,8 +84,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     },
     {
       header:"Branch",
-      render: (row) =>
-        `${row.BranchCode?.branchCode}`,
+      render: (row) => `${row.BranchCode?.branchCode}`,
     },
     {
       header:"Basic Pay",

@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, fetchInitializeComputedPayroll, fetchInitializePayroll, importAttendanceCount, importBranches, searchEmployees, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
-import { DeductionsOnlyProps, EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
+import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, fetchInitializeComputedPayroll, fetchInitializePayroll, importAttendanceCount, importBranches, searchEmployees, updateDeduction, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
+import { DeductionsOnlyProps, EmployeeRow, PaginatedResponse, UpdateDeductionPayload } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
 import api from "../services/axios";
 
@@ -207,6 +207,34 @@ export function useDeductionsOnly(company_id?: string) {
         params: { company_id },
       });
       return res.data;
+    },
+  });
+}
+
+
+
+
+
+
+// edit deduction 
+
+export function useUpdateDeduction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateDeductionPayload) =>
+      updateDeduction(payload),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["computed-payroll"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["employees-computed"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["variance-display"],
+      });
     },
   });
 }

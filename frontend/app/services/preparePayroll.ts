@@ -1,5 +1,5 @@
 import api from "./axios";
-import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
+import { EmployeeRow, PaginatedResponse, UpdateDeductionPayload } from "../types/preparePayroll";
 import { ImportAttendanceResponse, ImportResponse } from "../hooks/usePreparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
@@ -107,6 +107,9 @@ export interface ComputedProps{
   overtime:number;
   gross_pay:number;
   undertime:number;
+  TotalAbsentHours?:number;
+  TotalUndertime?:number;
+  TotalOvertime?:number;
   EmpCode:{
     Firstname:string;
     Lastname:string;
@@ -153,3 +156,10 @@ export const fetchInitializeComputedPayroll = async (params: {
 
   return res.data;
 };
+
+
+
+export async function updateDeduction(payload: UpdateDeductionPayload) {
+  const res = await api.put("/prepare-payroll/payroll-override", payload);
+  return res.data;
+}

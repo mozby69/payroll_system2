@@ -210,3 +210,18 @@ export interface DeductionsOnlyProps{
   are_loan: number;
   total_deductions:number;
 }
+
+
+
+
+
+
+export type UpdateDeductionPayload = {
+  PayCode: string;
+  EmpCodeId: string;
+  PayrollPeriod: string;
+  LateCount: number;
+  TotalAbsentHours: number;
+  TotalUndertime: number;
+  TotalOvertime:number;
+};

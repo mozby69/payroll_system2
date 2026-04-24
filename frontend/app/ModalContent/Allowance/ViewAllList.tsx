@@ -10,6 +10,7 @@ import { formatMonthYear } from "@/app/utils/DateFormatter";
 
 
 
+
 interface Props {
     selectedMonth: string;
 }
@@ -24,6 +25,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const branches = data?.BRANCHES ?? {};
     const loans = data?.LOANS ?? [];
     const variance = data?.VARIANCE;
+    const total_per_company = Object.entries(data?.TOTAL_PER_COMPANY ?? {});
 
     const prev = variance?.previous;
     const curr = variance?.current;
@@ -67,23 +69,23 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
     //   const embTotals = computeTotals(embEmployees);
 
-    const computeCompanyTotals = (company: string) => {
-        const companyBranches = branches[company] ?? {};
-        const employees = Object.values(companyBranches).flat();
-        return computeTotals(employees);
-    };
-    const companies = Object.keys(branches);
+    // const computeCompanyTotals = (company: string) => {
+    //     const companyBranches = branches[company] ?? {};
+    //     const employees = Object.values(companyBranches).flat();
+    //     return computeTotals(employees);
+    // };
+    // const companies = Object.keys(branches);
 
-    const grandTotals = companies.reduce(
-        (acc, company) => {
-            const totals = computeCompanyTotals(company);
-            acc.cash += totals.cash_allowance;
-            acc.ecola += totals.computed_ecola;
+    // const grandTotals = companies.reduce(
+    //     (acc, company) => {
+    //         const totals = computeCompanyTotals(company);
+    //         acc.cash += totals.cash_allowance;
+    //         acc.ecola += totals.computed_ecola;
 
-            return acc;
-        },
-        { cash: 0, ecola: 0 }
-    );
+    //         return acc;
+    //     },
+    //     { cash: 0, ecola: 0 }
+    // );
 
 
 
@@ -358,7 +360,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                         </tr>
 
                                                         <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2">TOTAL EMB</td>
+                                                            <td className="py-2" colSpan={2}>TOTAL EMB</td>
 
                                                             <td className="text-center">
                                                                 {formatCurrency(companyTotals.cash_allowance)}
@@ -367,6 +369,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                             <td className="text-center">
                                                                 {formatCurrency(companyTotals.computed_ecola)}
                                                             </td>
+                                                                 <td colSpan={3}></td>
 
                                                             <td className="text-center">
                                                                 {formatCurrency(
@@ -375,7 +378,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 )}
                                                             </td>
 
-                                                            <td colSpan={4}></td>
+                                                       
                                                         </tr>
                                                     </>
                                                 )}
@@ -387,7 +390,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                         </tr>
 
                                                         <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2">TOTAL FCH</td>
+                                                            <td className="py-2" colSpan={2}>TOTAL FCH</td>
 
                                                             <td className="text-center">
                                                                 {formatCurrency(companyTotals.cash_allowance)}
@@ -397,6 +400,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 {formatCurrency(companyTotals.computed_ecola)}
                                                             </td>
 
+                                                            <td colSpan={3}></td>
+
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
@@ -404,7 +409,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 )}
                                                             </td>
 
-                                                            <td colSpan={4}></td>
+                                                       
                                                         </tr>
                                                     </>
                                                 )}
@@ -417,7 +422,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                         </tr>
 
                                                         <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2">TOTAL ELC</td>
+                                                            <td className="py-2" colSpan={2}>TOTAL ELC</td>
 
                                                             <td className="text-center">
                                                                 {formatCurrency(companyTotals.cash_allowance)}
@@ -427,6 +432,9 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 {formatCurrency(companyTotals.computed_ecola)}
                                                             </td>
 
+
+                                                            <td colSpan={3}></td>
+
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
@@ -434,7 +442,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 )}
                                                             </td>
 
-                                                            <td colSpan={4}></td>
+                                                   
                                                         </tr>
                                                     </>
                                                 )}
@@ -446,7 +454,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                         </tr>
 
                                                         <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2">TOTAL PSPMI</td>
+                                                            <td className="py-2" colSpan={2}>TOTAL PSPMI</td>
 
                                                             <td className="text-center">
                                                                 {formatCurrency(companyTotals.cash_allowance)}
@@ -456,6 +464,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 {formatCurrency(companyTotals.computed_ecola)}
                                                             </td>
 
+                                                            <td colSpan={3}></td>
+
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
@@ -463,7 +473,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 )}
                                                             </td>
 
-                                                            <td colSpan={3}></td>
+                                                  
                                                         </tr>
                                                     </>
                                                 )}
@@ -484,56 +494,63 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 </div>
 
 
-                <div>
-                    <table className="border-collapse w-full border border-gray-300 text-center">
-                        <thead>
-                            <tr>
-                                <th className="p-1 border border-gray-300">Company</th>
-                                <th className="p-1 border border-gray-300">Cash Assistance</th>
-                                <th className="p-1 border border-gray-300">Ecola</th>
-                                <th className="p-1 border border-gray-300">Total</th>
 
+         {/* TOTAL PER COMPANY */}
+          <div className="pt-4">
+                    <table className="border-collapse w-12/12 border border-gray-300 text-center">
+                        <thead>
+                            <tr className="bg-gray-300">
+                                <th></th>
+                                <th className="py-2">COMPANY</th>
+                                <th>CASH ASSISTANCE</th>
+                                <th>ECOLA</th>
+                                <th>NET TOTAL</th>
                             </tr>
                         </thead>
 
-                        <tbody>
-                            {companies.map((company) => {
-                                const totals = computeCompanyTotals(company);
+                       <tbody>
+                            {total_per_company.map(([companyCode, company], index) => (
+                                <tr key={companyCode}>
+                                <td className="p-2 border border-gray-200">{index + 1}</td>
+                                <td className="p-2 border border-gray-200">{companyCode}</td>
+                                <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance)}</td>
+                                <td className="p-2 border border-gray-200">{formatCurrency(company.ecola)}</td>
+                                <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance + company.ecola)}</td>
+                                </tr>
+                            ))}
 
-                                return (
-                                    <tr key={company}>
-                                        <td className="p-1 border border-gray-300">{company}</td>
-                                        <td className="p-1 border border-gray-300">
-                                            {formatCurrency(totals.cash_allowance)}
-                                        </td>
-                                        <td className="p-1 border border-gray-300">
-                                            {formatCurrency(totals.computed_ecola)}
-                                        </td>
-                                        <td className="p-1 border border-gray-300">
-                                            {formatCurrency(
-                                                totals.cash_allowance + totals.computed_ecola
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                           <tr className="border-t font-semibold bg-gray-100">
+                                <td colSpan={2} className="p-2">GRAND TOTAL</td>
+                                <td>
+                                    {formatCurrency(
+                                    total_per_company.reduce(
+                                        (sum, [, c]) => sum + c.total_cash_allowance,
+                                        0
+                                    )
+                                    )}
+                                </td>
 
-                            <tr className="bg-gray-200 font-bold">
-                                <td className="p-1 border border-gray-300">Grand Total</td>
-                                <td className="p-1 border border-gray-300">
-                                    {formatCurrency(grandTotals.cash)}
+                                <td>
+                                    {formatCurrency(
+                                    total_per_company.reduce(
+                                        (sum, [, c]) => sum + c.ecola,
+                                        0
+                                    )
+                                    )}
                                 </td>
-                                <td className="p-1 border border-gray-300">
-                                    {formatCurrency(grandTotals.ecola)}
+
+                                <td>
+                                    {formatCurrency(
+                                    total_per_company.reduce(
+                                        (sum, [, c]) => sum + c.total_cash_allowance + c.ecola,
+                                        0
+                                    )
+                                    )}
                                 </td>
-                                <td className="p-1 border border-gray-300">
-                                    {formatCurrency(grandTotals.cash + grandTotals.ecola)}
-                                </td>
-                            </tr>
-                        </tbody>
+                                </tr>
+                            </tbody>
                     </table>
                 </div>
-
 
 
                 <div className="mt-4">
