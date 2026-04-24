@@ -48,6 +48,8 @@ export const updateEmployeePayroll = async (
     Disbursing,
     remarks,
     Taxable,
+    isOfficerAllowance,
+    OaBasicSalary,
     bankAccount,
   } = payload;
 
@@ -61,6 +63,8 @@ export const updateEmployeePayroll = async (
       WithAtm,
       Disbursing,
       Taxable,
+      isOfficerAllowance,
+      OaBasicSalary,
       bankAccount,
       ...(remarks ? { remarks } : {}),
     }

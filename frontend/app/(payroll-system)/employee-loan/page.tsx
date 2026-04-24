@@ -15,7 +15,7 @@ import ActiveFilters from "@/app/components/FilterObject";
 import FilterModal from "@/app/components/Filter";
 import LoanCard from "@/app/components/loans/loanCard";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
-import { ApiErrorResponse, AreType, EmployeeSearchItem, LoanType, TermUnit } from "@/app/types/loanTypes";
+import { ApiErrorResponse, AreType, EmployeeSearchItem, LoanType, RoundingType, TermUnit } from "@/app/types/loanTypes";
 import { AxiosError } from "axios";
 import RequestModal from "@/app/components/Modal";
 import { useCompanies, useLoanTypes } from "@/app/hooks/useGeneral";
@@ -69,6 +69,7 @@ function LoanApplyContent() {
     const { data: employees } = useEmployeeSearch(searchloan);
 
     const [loanType, setLoanType] = useState<LoanType>("FCH_LOAN");
+    const [roundingType, setRoundingType] = useState<RoundingType>("Tens");
     const [principal, setPrincipal] = useState<number | "">("");
     const [termValue, setTermValue] = useState(1);
     const [termUnit, setTermUnit] = useState<"MONTHS" | "YEARS">("MONTHS");
@@ -84,6 +85,7 @@ function LoanApplyContent() {
       setSelectedEmp(null);
       setSearch("");
       setLoanType("FCH_LOAN");
+      setRoundingType("Tens");
       setPrincipal("");
       setTermValue(1);
       setTermUnit("MONTHS");
@@ -105,6 +107,7 @@ function LoanApplyContent() {
         await addLoan.mutateAsync({
           empCode: selectedEmp.EmpCode,
           loan_type: loanType,
+          rounding_type: roundingType,
           principal: Number(principal),
           term_value: termValue,
           term_unit: termUnit,
@@ -267,7 +270,7 @@ function LoanApplyContent() {
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                             />
                         </div>
-                            
+
                         <div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                                 Type of Loan
@@ -286,6 +289,47 @@ function LoanApplyContent() {
                                 <option value="OTHERS">Others...</option>
                             </select>
                         </div>
+                            
+                        { loanType === "FCH_LOAN" && (
+                          <div className="flex flex-col gap-2">
+                              <label className="text-sm font-semibold">
+                                  Type of Rounding
+                              </label>
+                              <select 
+                                  value={roundingType} 
+                                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setRoundingType(e.target.value as RoundingType)
+                                  }
+                                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                              >
+                                  <option value="Tens">Nearest Tens</option>
+                                  <option value="Ones">Nearest Ones</option>
+                              </select>
+                          </div>
+                        )}
+
+                         { loanType === "OTHERS" && (
+                            <div className="flex flex-col gap-2">
+                            <label className="text-sm font-semibold">
+                                Type of Bonus
+                            </label>
+
+                            <select
+                                value={selectedBonus}
+                                onChange={getBonusPrincipal}
+                                disabled={bonusLoading || bonusError}
+                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                            >
+                                <option value="">Select Bonus Type</option>
+
+                                {bonusRules?.map((rule) => (
+                                <option key={rule.code} value={rule.code}>
+                                    {rule.code} - {rule.name}
+                                </option>
+                                ))}
+                            </select>
+                        </div>
+                        )}
 
                         <div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
@@ -342,28 +386,7 @@ function LoanApplyContent() {
                         </div>)}
 
                               
-                        { loanType === "OTHERS" && (
-                            <div className="flex flex-col gap-2">
-                            <label className="text-sm font-semibold">
-                                Type of Bonus
-                            </label>
-
-                            <select
-                                value={selectedBonus}
-                                onChange={getBonusPrincipal}
-                                disabled={bonusLoading || bonusError}
-                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                            >
-                                <option value="">Select Bonus Type</option>
-
-                                {bonusRules?.map((rule) => (
-                                <option key={rule.code} value={rule.code}>
-                                    {rule.code} - {rule.name}
-                                </option>
-                                ))}
-                            </select>
-                        </div>
-                        )}
+                       
 
                         {["SSS_LOAN", "PAGIBIG_LOAN"].includes(loanType)&&(
                           <div className="flex flex-col gap-2">
@@ -385,7 +408,7 @@ function LoanApplyContent() {
                         )}
 
                         { ["FCH_LOAN", "RFC_LOAN"].includes(loanType) &&(
-                            <div className="inline-flex gap-2 w-full items-center">
+                            <div className="inline-flex gap-2 w-full items-end ">
                                 <input
                                     type="checkbox"
                                     checked={deductAllowance}

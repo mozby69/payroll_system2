@@ -27,6 +27,8 @@ model User{
   auditLogs AuditLog[]
   payrollprocesslogs PayrollProcessingLog[] @relation()
 
+  overrideloan over_ride_loan[]
+
 
   company_id String? @db.VarChar(20) @map("company_id")
   company company_details? @relation(fields: [company_id], references: [CompanyCode])
@@ -116,8 +118,9 @@ model Employee {
   isAlien Boolean @default(false)
   secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
 
+  isOfficerAllowance Boolean? @default(false)
+  officersAllowance officersAllowance?
   
-
   employeepr EmpDetails[] @relation
   employeesummary EmployeeSummary[] @relation()
   employeepayroll Employee_payroll?
@@ -417,12 +420,15 @@ model loan_details {
   cycle_category       String? @db.VarChar(20)
   extended_term        Decimal @db.Decimal(10,1) @default(0)
   others_types         String? @db.VarChar(50)
+  rounding_types       String? @db.VarChar(20)
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
   ledger loan_ledger[]
 
   loan_logs loan_ledger_logs[]
+
+  over_ride_loan over_ride_loan[]
 
   @@map("loan_details")
 }
@@ -473,6 +479,20 @@ model loan_ledger_logs {
 
   created_at DateTime @default(now())
 
+  loan loan_details @relation(fields: [loan_id], references: [loan_id], onDelete: Cascade)
+}
+
+model over_ride_loan{
+  over_id Int @id @default(autoincrement())
+  loan_id Int
+  userId  Int
+  credit_amount Decimal? @db.Decimal(10,2)
+  payroll_period String? @db.VarChar(20)
+  payroll_cycle String? @db.VarChar(20)
+  created_at DateTime @default(now())
+  
+
+  user User @relation(fields: [userId], references: [id])
   loan loan_details @relation(fields: [loan_id], references: [loan_id], onDelete: Cascade)
 }
 
@@ -868,4 +888,16 @@ model PayrollWtaxOverride {
   employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId, PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
 
   @@index([PayCode, EmpCodeId, PayrollPeriod])
+}
+
+
+model officersAllowance {
+  id Int @id @default(autoincrement())
+  create_at DateTime @default(now())
+  basic_salary Decimal @db.Decimal(10,2) 
+
+
+  EmpCodeId                   String           @unique @map("EmpCode_id") @db.VarChar(20)
+  EmpCode                     Employee         @relation(fields: [EmpCodeId], references: [EmpCode])
+
 }

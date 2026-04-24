@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEmpLoanById, useUpdateLoan } from "@/app/hooks/useLoans";
 import GenButton from "../Buttons";
 import SweetAlert from "../Swal";
-import { LoanType, TermUnit } from "@/app/types/loanTypes";
+import { LoanType, RoundingType, TermUnit } from "@/app/types/loanTypes";
 
 type LoanModal = {
   loan_id: number;
@@ -13,6 +13,7 @@ type LoanModal = {
 
 type LoanForm = {
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
+  rounding_type: "Tens" | "Ones";
   principal: number;
   start_date: string;
   term_value: number;
@@ -40,6 +41,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
   if (!form) {
     setForm({
       loan_type: data.loan_type,
+      rounding_type: data.rounding_types,
       principal: Number(data.principal),
       start_date: data.start_date.slice(0, 7),
       term_value: data.term_value,
@@ -117,6 +119,27 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
             className="disabled:opacity-50 w-full px-3 py-2.5 border rounded-md"
           />
         </div>
+
+        { form.loan_type === "FCH_LOAN" && (
+            <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold">
+                    Type of Rounding
+                </label>
+                <select 
+                    value={form.rounding_type} 
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      setForm({
+                        ...form,
+                        rounding_type: e.target.value as RoundingType,
+                      })
+                    }
+                    className="disabled:opacity-50 w-full px-3 py-2.5 border rounded-md"
+                >
+                    <option value="Tens">Nearest Tens</option>
+                    <option value="Ones">Nearest Ones</option>
+                </select>
+            </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <label className="text-sm font-semibold">Term</label>

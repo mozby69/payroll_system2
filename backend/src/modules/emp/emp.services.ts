@@ -113,6 +113,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       bod_member:true,
       Disbursing:true,
       WithAtm:true,
+      isOfficerAllowance:true,
       Taxable:true,
       employeepr: {
         select: {
@@ -124,6 +125,13 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           EmpChildrenBirthday: true,
           EmpChildrenBplace: true,
         },
+      },
+
+      officersAllowance:{
+        select:{
+           basic_salary:true,
+           EmpCodeId:true,
+        }
       },
 
       loan_details:{
@@ -175,6 +183,10 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
   if (!employee) return null;
 
   const payroll = employee.employeepayroll ?? null;
+
+  const officersAllowance = employee.officersAllowance ?? null;
+  const OaSalary = Number(officersAllowance?.basic_salary ?? 0);
+
 
   const basicSalary = Number(payroll?.basic_salary ?? 0);
   const bankAccount = String(payroll?.bank_account ?? 0);
@@ -228,6 +240,13 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           totalEdeduction:totalEdeduction,
         }
       : null,
+
+    officersAllowance: officersAllowance
+
+        ?{
+          OaBasicSalary : OaSalary
+        }
+        :null,
   };
 };
 
@@ -301,7 +320,7 @@ export const updateEmployeePayroll = async (
           WithAtm: payLoad.WithAtm,
           Disbursing: payLoad.Disbursing,
           Taxable: payLoad.Taxable,
-
+          isOfficerAllowance: payLoad.isOfficerAllowance,
           employeepayroll: {
             upsert: {
               update: {
@@ -317,6 +336,16 @@ export const updateEmployeePayroll = async (
                 bank_account: payLoad.bankAccount
               },
             },
+          },
+          officersAllowance:{
+            upsert:{
+                update: {
+                  basic_salary: payLoad.OaBasicSalary,
+                },
+                create: {
+                  basic_salary: payLoad.OaBasicSalary,
+                }
+              }
           },
 
           pagibig_list: {

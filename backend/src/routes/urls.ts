@@ -19,6 +19,8 @@ import disburseRoutes from '../modules/Disburse/disburse.routes';
 import printeRoutes from '../modules/print/print.routes';
 import conversionRouites from '../modules/conversion/conversion.routes';
 
+import editableLoanRoutes from '../modules/editableLoan/editableLoan.routes';
+
 
 
 const router = Router();
@@ -54,6 +56,9 @@ router.use("/loans", addLoanRoutes);
 router.use("/Disburse", disburseRoutes);
 // Disburse code ↑
 
+// Editable Load ↓
+router.use("/editable-loan", editableLoanRoutes);
+// Editable Load ↑
 
 //Print
 router.use("/print", printeRoutes)

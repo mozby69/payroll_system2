@@ -48,14 +48,22 @@ export async function saveEmployeeLoan(data: loanProps){
 
       const rawPerPayroll =
         Number(data.principal) / totalTerms / divisor;
-        
+      
+      // New Update
+
       if(data.loan_type === "FCH_LOAN"){
-        perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+        if (data.rounding_type === "Tens") {
+          perPayroll = Math.round(rawPerPayroll / 10) * 10;
+        } else {
+          perPayroll = Math.ceil(rawPerPayroll);
+        }
       }
       else{
 
         perPayroll = Math.round(rawPerPayroll * 100) / 100;
       }
+
+      // New Update
       
     }
 
@@ -77,6 +85,7 @@ export async function saveEmployeeLoan(data: loanProps){
         select: {
           loan_id: true,
           EmpCodeId: true,
+          rounding_types:true,
           principal: true,
           term_value: true,
           term_unit: true,
@@ -205,6 +214,7 @@ export async function saveEmployeeLoan(data: loanProps){
           loan_type: data.loan_type,
           principal: data.principal,
           term_value: data.term_value,
+          rounding_types: data.rounding_type,
           term_unit: data.term_unit,
           start_date: startDate,
           deduct_allowance: data.deduct_allowance,
@@ -464,6 +474,7 @@ export const getEmpLoan = async (loan_id: number) => {
       loan_id: true,
       principal: true,
       loan_type: true,
+      rounding_types:true,
       term_value: true,
       term_unit: true,
       start_date: true,
@@ -568,6 +579,7 @@ export const getEmpLoan = async (loan_id: number) => {
     loan_id: empLoan.loan_id,
     principal: Number(empLoan.principal),
     loan_type: empLoan.loan_type,
+    rounding_types: empLoan.rounding_types,
     term_value: empLoan.term_value,
     term_unit: empLoan.term_unit,
     start_date: empLoan.start_date.toISOString(),
@@ -593,6 +605,7 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
       where: { loan_id: data.loan_id },
       select: {
         loan_id: true,
+        rounding_types:true,
         EmpCodeId: true,
         principal: true,
         term_value: true,
@@ -676,7 +689,11 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
         Number(data.principal) / totalTerms / deductionsPerMonth;
         
     if(data.loan_type === "FCH_LOAN"){
-      perPayroll = Math.ceil(rawPerPayroll / 10) * 10;
+        if (data.rounding_type === "Tens") {
+          perPayroll = Math.round(rawPerPayroll / 10) * 10;
+        } else {
+          perPayroll = Math.ceil(rawPerPayroll);
+        }
     }
     else{
       perPayroll = Math.round(rawPerPayroll * 100) / 100;
@@ -686,6 +703,7 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
       where: { loan_id: data.loan_id },
       data: {
         loan_type: data.loan_type,
+        rounding_types: data.rounding_type,
         deduct_allowance: data.deduct_allowance,
         deduct_first_pay: data.deduct_first_pay,
         deduct_second_pay: data.deduct_sec_pay,
