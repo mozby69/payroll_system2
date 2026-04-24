@@ -314,7 +314,7 @@ export async function generateBonusForAllEmployees({
          }
     })
 
-    console.log("Employee: ", employees)
+  
 
 
 

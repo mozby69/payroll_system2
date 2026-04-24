@@ -232,7 +232,7 @@ export async function appendMissingBodEmployees(
         EmpCode: true,
       },
     });
-    console.log("Employee Special: ", specialEmployees )
+  
 
     if (!specialEmployees.length) return [];
   
@@ -259,7 +259,7 @@ export async function appendMissingBodEmployees(
     );
 
   
-
+    
   
     //5. Create payload
     return missing.map((e) => ({
