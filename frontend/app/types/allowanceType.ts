@@ -148,6 +148,15 @@ export interface LoanItem{
   BranchCodeId:string;
 }
 
+export interface CompanyData {
+  total_cash_allowance: number;
+  ecola: number;
+  total_num: number;
+  branches: Record<string, unknown>;
+}
+
+export type TotalPerCompany = Record<string, CompanyData>;
+
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
@@ -155,6 +164,7 @@ export interface ViewAllResponse {
   LOANS: LoanItem[];
   VARIANCE:VarianceAllowance;
   VARIANCE_EMP: VarianceEmpItem[];
+  TOTAL_PER_COMPANY: TotalPerCompany;
 }
 
 

@@ -187,6 +187,7 @@ model EmployeeSummary{
 
   
   payroll_wtax_override PayrollWtaxOverride[] @relation()
+  SummaryTableOverride  SummaryTableOverride[] @relation()
 
   @@id([PayCode, EmpCodeId,PayrollPeriod])
   @@map("employee_summary")
@@ -983,4 +984,30 @@ model BranchGroup {
 
   // RELATIONS
   branches    Branch[]
+}
+
+
+
+
+
+
+model SummaryTableOverride {
+  id              Int      @id @default(autoincrement())
+  PayCode         String   @db.VarChar(20)
+  EmpCodeId       String   @db.VarChar(20)
+  PayrollPeriod   String   @db.VarChar(20)
+
+  LateCount Int?
+  TotalAbsentHours Decimal? @db.Decimal(10,2)
+  TotalUndertime Int? 
+  TotalOvertime Decimal? @db.Decimal(10,2)
+
+  created_at      DateTime @default(now())
+
+  employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId,PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
+
+  @@index([PayCode, EmpCodeId,PayrollPeriod])
+  @@unique([PayCode, EmpCodeId, PayrollPeriod])
+
+  @@map("summary_table_override")
 }

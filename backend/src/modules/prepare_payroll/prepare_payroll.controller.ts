@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, updateEmployeePayrollFields, updateEmployeeSalary, ViewDeduction } from "./prepare_payroll.service";
+import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, updateDeductionService, updateEmployeePayrollFields, updateEmployeeSalary, ViewDeduction } from "./prepare_payroll.service";
 
 
 
@@ -197,5 +197,41 @@ export const ViewDeductionController = async (req:Request, res:Response) => {
   }
   catch(error){
     return res.status(500).json({message:`Error occured ${error}`});
+  }
+}
+
+
+
+
+export async function updateDeductionController(req: Request, res: Response) {
+  try {
+    const {
+      PayCode,
+      EmpCodeId,
+      PayrollPeriod,
+      LateCount,
+      TotalAbsentHours,
+      TotalUndertime,
+      TotalOvertime,
+    } = req.body;
+
+    if (!PayCode || !EmpCodeId || !PayrollPeriod) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const result = await updateDeductionService({
+      PayCode,
+      EmpCodeId,
+      PayrollPeriod,
+      LateCount,
+      TotalAbsentHours,
+      TotalUndertime,
+      TotalOvertime
+    });
+
+    return res.json(result);
+  } catch (error) {
+    console.error(`error ocurred ${error}`)
+    return res.status(500).json({ message: "Failed to update deduction" });
   }
 }

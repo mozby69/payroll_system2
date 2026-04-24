@@ -152,3 +152,19 @@ export function getCurrentPayrollLabel(): string {
 
   return `${monthName}-1-15-${year}`;
 }
+
+
+
+
+
+
+
+export type UpdateDeductionPayload = {
+  PayCode: string;
+  EmpCodeId: string;
+  PayrollPeriod: string;
+  LateCount: number;
+  TotalAbsentHours: number;
+  TotalUndertime: number;
+  TotalOvertime:number;
+};
