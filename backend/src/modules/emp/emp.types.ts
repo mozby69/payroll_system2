@@ -8,6 +8,9 @@ export type UpdateTypesByEmpCode ={
     Taxable:boolean;
     remarks?:string;
     isOfficerAllowance: boolean,
+    isSixDaysWork:boolean,
+    isecola:boolean,
+    gmail_account:string,
     OaBasicSalary: number,
     bankAccount?:string;
 }

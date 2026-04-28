@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEmpLoanById, useUpdateLoan } from "@/app/hooks/useLoans";
 import GenButton from "../Buttons";
 import SweetAlert from "../Swal";
-import { LoanType, RoundingType, TermUnit } from "@/app/types/loanTypes";
+import { LoanType, RoundingType, TermUnit,StartDeductLoan } from "@/app/types/loanTypes";
 
 type LoanModal = {
   loan_id: number;
@@ -14,6 +14,7 @@ type LoanModal = {
 type LoanForm = {
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
   rounding_type: "Tens" | "Ones";
+  start_deduction_cycle: "10" | "25" | "15" | "30";
   principal: number;
   start_date: string;
   term_value: number;
@@ -42,6 +43,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
     setForm({
       loan_type: data.loan_type,
       rounding_type: data.rounding_types,
+      start_deduction_cycle: data.start_deduction_cycle,
       principal: Number(data.principal),
       start_date: data.start_date.slice(0, 7),
       term_value: data.term_value,
@@ -92,6 +94,27 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
             <option value="ARE_LOAN">ARE Loan</option>
             <option value="OTHERS">Others...</option>
           </select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold">
+                Select Deduction Start
+            </label>
+            <select 
+                value={form.start_deduction_cycle} 
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setForm({
+                    ...form,
+                    start_deduction_cycle: e.target.value as StartDeductLoan,
+                  })
+            }
+                className="disabled:opacity-50 w-full px-3 py-2.5 border rounded-md"
+            >
+                <option value="10">1st Pay 10-25-cycle</option>
+                <option value="25">2nd Pay 10-25-cycle</option>
+                <option value="15">1st Pay 15-30-cycle</option>
+                <option value="30">2nd Pay 15-30-cycle</option>
+            </select>
         </div>
 
         <div className="flex flex-col gap-2">
