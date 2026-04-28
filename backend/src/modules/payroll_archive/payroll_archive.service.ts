@@ -99,6 +99,79 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             isAlien: false,
           },
         }
+
+        const statusCondition = {
+          OR: [
+            // ✅ Active
+            {
+              EmpCode: {
+                EmployeeStatus: {
+                  notIn: ["Resigned", "Inactive", "Terminate"],
+                },
+              },
+            },
+        
+            // ✅ BOD
+            {
+              EmpCode: {
+                bod_member: {
+                  in: ["bod1", "bod2"],
+                },
+              },
+            },
+        
+            // ✅ Special Leave (WITH company safety)
+            {
+              AND: [
+                {
+                  EmpCode: {
+                    EmployeeStatus: "Inactive",
+                  },
+                },
+                {
+                  EmpCode: {
+                    OR: [
+                      {
+                        isAlien: false,
+                        BranchCode: { company_id },
+                      },
+                      {
+                        isAlien: true,
+                        secondaryBranch: { company_id },
+                      },
+                    ],
+                  },
+                },
+                {
+                  EmpCode: {
+                    specialLeaves: {
+                      some: {
+                        OR: [
+                          {
+                            AND: [
+                              { start: { not: null } },
+                              { end: { not: null } },
+                              { start: { lte: cutoffEnd } },
+                              { end: { gte: cutoffStart } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { expectedStart: { not: null } },
+                              { expectedEnd: { not: null } },
+                              { expectedStart: { lte: cutoffEnd } },
+                              { expectedEnd: { gte: cutoffStart } },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        };
   
 
       const employeeList = await prisma.employeeSummary.findMany({
@@ -116,24 +189,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 {
                   AND: [
                     baseFilter,
-                    {
-                      OR: [
-                        {
-                          EmpCode: {
-                            EmployeeStatus: {
-                              notIn: ["Resigned", "Inactive", "Terminate"],
-                            },
-                          },
-                        },
-                        {
-                          EmpCode: {
-                            bod_member: {
-                              in: ["bod1", "bod2"],
-                            },
-                          },
-                        },
-                      ],
-                    },
+                    statusCondition,
                   ],
                 },
         
@@ -148,68 +204,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                         }
                       },
                     },
-                    {
-                      OR: [
-                        {
-                          EmpCode: {
-                            EmployeeStatus: {
-                              notIn: ["Resigned", "Inactive", "Terminate"],
-                            },
-                          },
-                        }, 
-                        {
-                          EmpCode: {
-                            bod_member: {
-                              in: ["bod1", "bod2"],
-                            },
-                          },
-                        },
-                      ],
-                    },
+                   statusCondition
                   ],
                 },
-
-                 // Special Leave Condition
-      {
-        AND: [
-          {
-            EmpCode: {
-              EmployeeStatus: "Inactive",
-            },
-          },
-          {
-            EmpCode: {
-              specialLeaves: {
-                some: {
-                  OR: [
-                    // 🔹 Case 1: use start/end
-                    {
-                      AND: [
-                        { start: { not: null } },
-                        { end: { not: null } },
-                        { start: { lte: cutoffEnd } },
-                        { end: { gte: cutoffStart } },
-                      ],
-                    },
-      
-                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
-                    {
-                      AND: [
-                        { expectedStart: { not: null } },
-                        { expectedEnd: { not: null } },
-                        { expectedStart: { lte: cutoffEnd } },
-                        { expectedEnd: { gte: cutoffStart } },
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        ],
-      }
-
-      // END Special Leave Condition
               ],
             },
           ],

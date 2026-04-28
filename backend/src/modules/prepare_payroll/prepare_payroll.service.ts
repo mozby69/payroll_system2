@@ -47,6 +47,7 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
         }),
       
       };
+      
 
   const searchFilter = search
     ? {
@@ -59,20 +60,56 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
     : {};
 
 
-  const statusFilter = {
-    OR: [
-      {
-        EmployeeStatus: {
-          notIn: ["Resigned", "Inactive", "Terminate"],
+    const statusFilter = {
+      OR: [
+        {
+          EmployeeStatus: {
+            notIn: ["Resigned", "Inactive", "Terminate"],
+          },
         },
-      },
-      {
-        bod_member: {
-          in: ["bod1", "bod2"],
+        {
+          bod_member: {
+            in: ["bod1", "bod2"],
+          },
         },
-      },
-    ],
-  };
+          // Special Leave Condition 
+          {
+            AND: [
+              {
+                  EmployeeStatus: "Inactive",
+              },
+              {
+                  specialLeaves: {
+                    some: {
+                      OR: [
+                        // 🔹 Case 1: use start/end
+                        {
+                          AND: [
+                            { start: { not: null } },
+                            { end: { not: null } },
+                            { start: { lte: cutoffEnd } },
+                            { end: { gte: cutoffStart } },
+                          ],
+                        },
+          
+                        // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                        {
+                          AND: [
+                            { expectedStart: { not: null } },
+                            { expectedEnd: { not: null } },
+                            { expectedStart: { lte: cutoffEnd } },
+                            { expectedEnd: { gte: cutoffStart } },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+              },
+            ],
+          }
+          //END Special Leave Condition 
+      ],
+    };
 
   const where = {
     OR: [
@@ -99,43 +136,6 @@ export async function fetchEmployeesByPayrollCycle({company_id, page,limit,searc
         ],
       },
 
-          // Special Leave Condition 
-      {
-        AND: [
-          {
-              EmployeeStatus: "Inactive",
-          },
-          {
-              specialLeaves: {
-                some: {
-                  OR: [
-                    // 🔹 Case 1: use start/end
-                    {
-                      AND: [
-                        { start: { not: null } },
-                        { end: { not: null } },
-                        { start: { lte: cutoffEnd } },
-                        { end: { gte: cutoffStart } },
-                      ],
-                    },
-      
-                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
-                    {
-                      AND: [
-                        { expectedStart: { not: null } },
-                        { expectedEnd: { not: null } },
-                        { expectedStart: { lte: cutoffEnd } },
-                        { expectedEnd: { gte: cutoffStart } },
-                      ],
-                    },
-                  ],
-                },
-              },
-          },
-        ],
-      }
-
-          //END Special Leave Condition 
 
     ]
   
@@ -552,13 +552,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     },
   };
 
-//   const includePayrollFilter = {
-//   EmpCode: {
-//     employeepayroll: {
-//       include_payroll: true,
-//     },
-//   },
-// };
+;
 
   const searchFilter = search
   ? {
@@ -572,6 +566,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 
   const statusOverride = {
     OR: [
+      // ✅ Active employees
       {
         EmpCode: {
           EmployeeStatus: {
@@ -579,12 +574,51 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
           },
         },
       },
+  
+      // ✅ BOD
       {
         EmpCode: {
           bod_member: {
             in: ["bod1", "bod2"],
           },
         },
+      },
+  
+      // Special Leave (FIXED - now controlled)
+      {
+        AND: [
+          {
+            EmpCode: {
+              EmployeeStatus: "Inactive",
+            },
+          },
+          {
+            EmpCode: {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
       },
     ],
   };
@@ -596,11 +630,9 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       {
         AND: [
           baseFilter,
-          
           { status: { in: ["PENDING"] } },
-          searchFilter,
+          ...(search ? [searchFilter] : []),
           statusOverride,
-    
         ],
       },
 
@@ -619,52 +651,11 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
               }
             }
           },
-        searchFilter,
+          ...(search ? [searchFilter] : []),
         statusOverride,
         { status: { in: ["PENDING"] } },
       ],
       },
-      // Special Leave Condition
-      {
-        AND: [
-          {
-            EmpCode: {
-              EmployeeStatus: "Inactive",
-            },
-          },
-          {
-            EmpCode: {
-              specialLeaves: {
-                some: {
-                  OR: [
-                    // 🔹 Case 1: use start/end
-                    {
-                      AND: [
-                        { start: { not: null } },
-                        { end: { not: null } },
-                        { start: { lte: cutoffEnd } },
-                        { end: { gte: cutoffStart } },
-                      ],
-                    },
-      
-                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
-                    {
-                      AND: [
-                        { expectedStart: { not: null } },
-                        { expectedEnd: { not: null } },
-                        { expectedStart: { lte: cutoffEnd } },
-                        { expectedEnd: { gte: cutoffStart } },
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        ],
-      }
-
-      // END Special Leave Condition
     ]
     
   };
