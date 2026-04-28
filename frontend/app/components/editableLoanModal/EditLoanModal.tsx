@@ -86,6 +86,10 @@ export default function EditLoanModal({
 
     lastLedger = index >= 0 ? ledgers[index] : last;
     }
+    const cycleMap: Record<string, string> = {
+    "25-pay-cycle": "10",
+    "30-pay-cycle": "15",
+    };
 
     displayLedgers.push({
         loan_ledger_id: -1,
@@ -93,7 +97,7 @@ export default function EditLoanModal({
         ? getNextPayrollDate(lastLedger.transaction_date)
         : new Date().toISOString(),
         payroll_cycle:
-        selectedRow.PayrollPeriod === "25-pay-cycle" ? "10" : "25",
+        cycleMap[selectedRow.PayrollPeriod] ?? "25",
         debit_amount: 0,
         credit_amount: 0,
         payment_status: "MISSED",

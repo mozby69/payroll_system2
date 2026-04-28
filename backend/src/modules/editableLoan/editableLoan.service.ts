@@ -63,7 +63,12 @@ export const fetchLoanLedger = async (
 
   const [monthStr, , , yearStr] = PayCode.split("-");
 
-  const PayrollCycle = PayPeriod === "25-pay-cycle" ? "10" : "25";
+  const cycleMap: Record<string, string> = {
+  "25-pay-cycle": "10",
+  "30-pay-cycle": "15",
+  };
+
+  const PayrollCycle = cycleMap[PayPeriod] ?? "25";
 
   const PayCodeMonth = monthMap[monthStr];
   const PayCodeYear = Number(yearStr);
