@@ -6,6 +6,7 @@ import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP,
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
 import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
   { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
@@ -527,9 +528,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
         }
       },
       select: { selected_payroll_date: true },
-      orderBy:{
-        PayCode: "desc"
-      }
+      orderBy: { PayCode: "desc" }
     });
 
     const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
@@ -732,7 +731,10 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
     const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
     const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
+
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
+    const semi_monthly = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
+    : override?.gross_pay_edit ?? (semiMonthlyRate ? Number(semiMonthlyRate) : 0);
 
     const overTime = computeOvertime(basicSalary, {
       regular: emp.RegularAtt,
@@ -748,7 +750,12 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
         ? Number(computedOvertime)
         : 0;
         
-    const grossPay = computeGrossPay(finalOvertime,semiMonthlyRate,lateCount,undertimeCount,absent);
+    const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
+
+
+  
+
+
     return {
       ...emp,
       late_count:lateCount,
@@ -761,6 +768,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       TotalAbsentHours: override?.TotalAbsentHours ?? emp.TotalAbsentHours ?? 0,
       TotalUndertime: override?.TotalUndertime ?? emp.TotalUndertime ?? 0,
       TotalOvertime: override?.TotalOvertime ?? computedOvertime,
+      gross_pay_edit: override?.gross_pay_edit ?? grossPay,
     };
   });
 
@@ -1259,7 +1267,7 @@ export async function ViewDeduction(company_id:string){
 
 
 
-export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime}: UpdateDeductionPayload) {
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit}: UpdateDeductionPayload) {
   try{
     return await prisma.summaryTableOverride.upsert({
         where: {
@@ -1274,6 +1282,7 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalAbsentHours,
           TotalUndertime,
           TotalOvertime,
+          gross_pay_edit,
         },
         create: {
           PayCode,
@@ -1283,6 +1292,7 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalAbsentHours,
           TotalUndertime,
           TotalOvertime,
+          gross_pay_edit
         },
       });
   }

@@ -4,12 +4,13 @@ import { useDebounce } from "@/app/utils/useDebounce";
 import { useState } from "react";
 import Datatable from "../Datatable";
 import { Column } from "@/app/types/preparePayroll";
-import { FileText, Printer } from "lucide-react";
+import { FilePenLine, FileText, Printer } from "lucide-react";
 import RequestModal from "../Modal";
 import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
 import { Pagination } from "../Pagination";
 
 import CompanyBranchSelector from "@/app/ModalContent/Allowance/ViewPrint";
+import AllowanceReportArchive from "@/app/ModalContent/Allowance/ViewReportArchive";
 
 
 
@@ -20,6 +21,7 @@ export default function AllowanceArchiveTab(){
             const [search, setSearch] = useState("");
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isModalOpenPrint, setIsModalOpenPrint] = useState(false);
+            const [isModalOpenReport, setIsModalOpenReport] = useState(false);
             const debouncedSearch = useDebounce(search, 400);
             const [selectedRow, setSelectedRow] = useState<AllowanceSummary | null>(null);
        
@@ -59,6 +61,12 @@ export default function AllowanceArchiveTab(){
                             header:"Actions",
                             render: (row) => (
                               <div className="flex gap-2">
+
+                                <button
+                                 className="px-3 py-2 bg-emerald-700 hover:bg-emerald-500 text-white rounded"
+                                 onClick={() => openModalReport(row)}>
+                                  <FilePenLine/>
+                                </button>
                                 <button
                                 onClick={ () => openModal(row)}
                                 className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 hover:cursor-pointer text-white rounded">
@@ -95,6 +103,20 @@ export default function AllowanceArchiveTab(){
                   const closeModalPrint = () => {
                     setIsModalOpenPrint(false);
                   };
+
+
+
+                  const openModalReport = (row:AllowanceSummary) => {
+                          setSelectedRow(row);
+                    setIsModalOpenReport(true);
+                  };
+
+
+                  const closeModalReport = () => {
+                    setIsModalOpenReport(false);
+                  };
+
+                  
             
 
             return(
@@ -138,6 +160,15 @@ export default function AllowanceArchiveTab(){
           {isModalOpenPrint && (
               <RequestModal size="sm" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
                   <CompanyBranchSelector selectedMonth={selectedRow?.selectedMonth ?? ""}/>
+              </RequestModal>
+            )}
+
+
+
+
+          {isModalOpenReport && selectedRow && (
+              <RequestModal size="xxxl" title={`REPORT`} onClose={closeModalReport}>
+                  <AllowanceReportArchive allowanceSummary={selectedRow} onClose={closeModalReport}/>
               </RequestModal>
             )}
 

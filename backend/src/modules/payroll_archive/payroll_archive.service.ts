@@ -10,6 +10,7 @@ import { getBodPhilhealth, getOfficerAllowance, getSSSContributions, getTaxTable
 import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
+import { Decimal } from "@prisma/client/runtime/library";
 
 // export async function employeeProbationary(){
 
@@ -562,8 +563,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     
         const finalWtax = overrideValue ?? computedWtax;
 
+        const semi_monthly_modified = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
+        : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
 
-        const grossPay = computeGrossPay(finalOvertime,semiMonthly,lateCount,undertimeCount,absent);
+
+        const grossPay = computeGrossPay(finalOvertime,semi_monthly_modified,lateCount,undertimeCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;

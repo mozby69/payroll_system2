@@ -15,7 +15,8 @@ export async function fetchHrAttendance(params: ApiParams){
 
   const totatPayroll = await prisma.totalPayroll.findFirst({
     where: {
-      cycle_category: branchCycle
+      cycle_category: branchCycle,
+      status: "COMPLETED"
     },
     orderBy: {
       id: "desc"

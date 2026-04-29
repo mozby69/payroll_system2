@@ -54,14 +54,29 @@ export interface ArchiveAllowance {
   totalDeduction: number | null;
   total: number | null;
   createdAt: string;
-  branchCode:string;
+  branchCode: string;
+  position: string | null;
+  loan: number | null;
+  deduct: number | null;
+  branchPosition: number;
+  company_id: string | null;
 }
-
-
+export interface ArchiveAllowanceDetails {
+  company_list: Record<string, unknown>;
+  loans: unknown[];
+  variance_allowance: unknown;
+  variance_employee: unknown;
+}
 
 export interface ArchiveAllowanceResponse {
-  data: ArchiveAllowance[];
+  data: {
+    list: ArchiveAllowance[];
+    details: ArchiveAllowanceDetails | null;
+  };
 }
+
+
+
 
 
 

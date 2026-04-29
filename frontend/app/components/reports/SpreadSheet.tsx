@@ -274,7 +274,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                     setIsModalOpen(true);
                     setSelectedLoanType("SSS_LOAN");
                   }}>{row.salaryLoan}</td>
-                <td className="py-2 text-center">{row.calamityLoan}</td>
+                <td className="py-2 text-center">{row.calamityLoan.toFixed(2)}</td>
                 <td className="py-2 text-center cursor-pointer"
                   onDoubleClick={() => {
                     setSelectedRow(row);

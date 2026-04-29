@@ -76,10 +76,7 @@ export default function PreparePayroll() {
 
   return (
     <div className="relative min-h-screen bg-slate-100 px-6 py-8 text-mainGray">
-   
-
      
-  
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-800">
           Prepare Payroll
@@ -127,11 +124,6 @@ export default function PreparePayroll() {
         </div>
 
         </div>
-     
-
-              
-
-
 
     </div>
   );

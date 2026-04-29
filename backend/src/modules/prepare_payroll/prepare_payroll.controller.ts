@@ -213,6 +213,7 @@ export async function updateDeductionController(req: Request, res: Response) {
       TotalAbsentHours,
       TotalUndertime,
       TotalOvertime,
+      gross_pay_edit
     } = req.body;
 
     if (!PayCode || !EmpCodeId || !PayrollPeriod) {
@@ -226,7 +227,8 @@ export async function updateDeductionController(req: Request, res: Response) {
       LateCount,
       TotalAbsentHours,
       TotalUndertime,
-      TotalOvertime
+      TotalOvertime,
+      gross_pay_edit
     });
 
     return res.json(result);

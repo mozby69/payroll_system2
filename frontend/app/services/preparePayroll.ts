@@ -110,6 +110,7 @@ export interface ComputedProps{
   TotalAbsentHours?:number;
   TotalUndertime?:number;
   TotalOvertime?:number;
+  gross_pay_edit?:number;
   EmpCode:{
     Firstname:string;
     Lastname:string;

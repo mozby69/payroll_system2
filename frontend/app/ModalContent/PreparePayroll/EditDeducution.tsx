@@ -4,6 +4,9 @@ import { ComputedProps } from "@/app/services/preparePayroll";
 import { useState } from "react";
 import { useUpdateDeduction } from "@/app/hooks/usePreparePayroll";
 import SweetAlert from "@/app/components/Swal";
+import AuthenticationModal from "@/app/components/editableLoanModal/AuthenticationModal"
+import { useVerifyPassword } from "@/app/hooks/useEditableLoan";
+
 
 type Props = {
   employee: ComputedProps;
@@ -12,7 +15,12 @@ type Props = {
 
 export default function EditDeduction({ employee, onClose }: Props) {
   const { mutate, isPending } = useUpdateDeduction();
+  const [openModal, setOpenModal] = useState(false);
+  const [isChecked, setIsChecked] = useState(false);
+  const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+  console.log(isDetailModalOpen);
 
   const [late, setLate] = useState<string>(
     employee.LateCount && employee.LateCount > 0 ? String(employee.LateCount) : ""
@@ -35,6 +43,12 @@ export default function EditDeduction({ employee, onClose }: Props) {
       : ""
   );
 
+    const [grossPay, setGrossPay] = useState<string>(
+    employee.gross_pay_edit && employee.gross_pay_edit > 0 ? String(employee.gross_pay_edit) : ""
+  );
+
+  const verifyPasswordMutation = useVerifyPassword();
+
   const handleSubmit = () => {
     mutate(
       {
@@ -45,6 +59,7 @@ export default function EditDeduction({ employee, onClose }: Props) {
         TotalAbsentHours: absent === "" ? 0 : Number(absent),
         TotalUndertime: undertime === "" ? 0 : Number(undertime),
         TotalOvertime: overtime === "" ? 0 : Number(overtime),
+        gross_pay_edit: grossPay === "" ? 0 : Number(grossPay),
       },
       {
         onSuccess: () => {
@@ -53,6 +68,28 @@ export default function EditDeduction({ employee, onClose }: Props) {
         },
       }
     );
+  };
+
+
+  // const handleOpenModal = () =>{
+  //   setOpenModal(true);
+  // }
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setIsChecked(false); 
+  }
+
+
+  const handlePasswordConfirm = async (password: string) => {
+    try {
+      const result = await verifyPasswordMutation.mutateAsync(password);
+      setVerifiedUserId(result.user_id);
+      SweetAlert.successAlert("Access Granted");
+      setOpenModal(false);
+      setIsDetailModalOpen(true);
+    } catch {
+      SweetAlert.errorAlert("Invalid password or no permission");
+    }
   };
 
   return (
@@ -103,6 +140,34 @@ export default function EditDeduction({ employee, onClose }: Props) {
           />
         </div>
 
+
+        <div className={`flex flex-col w-full ${verifiedUserId ? "visible" : "invisible"}`}>
+          <label className="pb-1">GROSS PAY</label>
+          <input
+            type="number"
+            value={grossPay}
+            placeholder="Input gross amount..."
+            onChange={(e) => setGrossPay((e.target.value))}
+            className="border border-gray-400 p-2 rounded w-full"
+          />
+        </div>
+
+        <div className="flex justify-between p-2 gap-x-4 rounded w-2/12 col-span-full border border-gray-400">
+          <label className="">Special Case</label>
+          <input type="checkbox" checked={isChecked}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setIsChecked(checked);
+              if (checked) {
+                setOpenModal(true);
+              } else {
+                setOpenModal(false);
+              }
+            }}
+            className="w-5 h-5 accent-green-600 cursor-pointer"
+          />
+        </div>
+
       </div>
 
       <div className="flex justify-end gap-2 pt-8">
@@ -119,6 +184,26 @@ export default function EditDeduction({ employee, onClose }: Props) {
           {isPending ? "Updating..." : "Update"}
         </button>
       </div>
+
+
+
+        <AuthenticationModal
+              isOpen={openModal}
+              onClose={handleCloseModal}
+              onConfirm={handlePasswordConfirm}
+            />
+
+
+
+           {/* {openModal && (
+            <RequestModal size="sm" title={`Edit Gross`} onClose={handleCloseModal}>
+              <EditGrossPay
+      
+
+              />
+            </RequestModal>
+          )} */}
+      
 
     </div>
   );
