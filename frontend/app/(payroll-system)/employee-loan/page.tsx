@@ -15,7 +15,7 @@ import ActiveFilters from "@/app/components/FilterObject";
 import FilterModal from "@/app/components/Filter";
 import LoanCard from "@/app/components/loans/loanCard";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
-import { ApiErrorResponse, AreType, EmployeeSearchItem, LoanType, RoundingType, TermUnit } from "@/app/types/loanTypes";
+import { ApiErrorResponse, AreType, EmployeeSearchItem, LoanType, RoundingType, TermUnit,StartDeductLoan } from "@/app/types/loanTypes";
 import { AxiosError } from "axios";
 import RequestModal from "@/app/components/Modal";
 import { useCompanies, useLoanTypes } from "@/app/hooks/useGeneral";
@@ -70,6 +70,7 @@ function LoanApplyContent() {
 
     const [loanType, setLoanType] = useState<LoanType>("FCH_LOAN");
     const [roundingType, setRoundingType] = useState<RoundingType>("Tens");
+    const [startDeductLoan, setStartDeductLoan] = useState<StartDeductLoan>("10");
     const [principal, setPrincipal] = useState<number | "">("");
     const [termValue, setTermValue] = useState(1);
     const [termUnit, setTermUnit] = useState<"MONTHS" | "YEARS">("MONTHS");
@@ -86,6 +87,7 @@ function LoanApplyContent() {
       setSearch("");
       setLoanType("FCH_LOAN");
       setRoundingType("Tens");
+      setStartDeductLoan("10");
       setPrincipal("");
       setTermValue(1);
       setTermUnit("MONTHS");
@@ -108,6 +110,7 @@ function LoanApplyContent() {
           empCode: selectedEmp.EmpCode,
           loan_type: loanType,
           rounding_type: roundingType,
+          start_deduction_cycle: startDeductLoan,
           principal: Number(principal),
           term_value: termValue,
           term_unit: termUnit,
@@ -214,51 +217,43 @@ function LoanApplyContent() {
     return(
         <div className="flex flex-col gap-y-8">
 
-                    <div className="relative">
-                        <label className="block text-sm font-semibold mb-2">
-                        Employee
-                        </label>
-                        <input
-                        type="text"
-                        placeholder="Search name or employee code..."
-                        value={selectedEmp ? `${selectedEmp.Lastname}, ${selectedEmp.Firstname}` : searchloan}
-                        onChange={(e) => {
-                            setSelectedEmp(null);
-                            setSearch(e.target.value);
-                        }}
-                        className="w-full border border-gray-300 px-4 py-2.5 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                        />
-
-                        {!selectedEmp && employees && employees.length > 0 && (
-                        <div className="absolute z-10 bg-mainNeutral border border-gray-200 w-full rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                            {employees.map((emp) => (
-                            <div
-                                key={emp.EmpCode}
-                                onClick={() => {
-                                setSelectedEmp(emp);
-                                setSearch("");
-                                }}
-                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
-                                <div className="font-medium text-gray-900">
-                                {emp.Lastname}, {emp.Firstname}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                {emp.EmpCode}
-                                </div>
-                            </div>
-                            ))}
-                        </div>
-                        )}
-                    </div>
-
-
-
-                
-
-                
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-                        <div className="flex flex-col gap-2">
+                      <div className="relative">
+                          <label className="block text-sm font-semibold mb-2">
+                          Employee
+                          </label>
+                          <input
+                          type="text"
+                          placeholder="Search name or employee code..."
+                          value={selectedEmp ? `${selectedEmp.Lastname}, ${selectedEmp.Firstname}` : searchloan}
+                          onChange={(e) => {
+                              setSelectedEmp(null);
+                              setSearch(e.target.value);
+                          }}
+                          className="w-full border border-gray-300 px-4 py-2.5 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                          />
+                          {!selectedEmp && employees && employees.length > 0 && (
+                          <div className="absolute z-10 bg-mainNeutral border border-gray-200 w-full rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                              {employees.map((emp) => (
+                              <div
+                                  key={emp.EmpCode}
+                                  onClick={() => {
+                                  setSelectedEmp(emp);
+                                  setSearch("");
+                                  }}
+                                  className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
+                                  <div className="font-medium text-gray-900">
+                                  {emp.Lastname}, {emp.Firstname}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                  {emp.EmpCode}
+                                  </div>
+                              </div>
+                              ))}
+                          </div>
+                          )}
+                      </div>
+                      <div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                             Employee Code
                             </label>
@@ -269,9 +264,8 @@ function LoanApplyContent() {
                                 readOnly
                                 className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
                             />
-                        </div>
-
-                        <div className="flex flex-col gap-2">
+                      </div>
+                      <div className="flex flex-col gap-2">
                             <label className="text-sm font-semibold">
                                 Type of Loan
                             </label>
@@ -288,7 +282,19 @@ function LoanApplyContent() {
                                 <option value="RFC_LOAN">RFC Housing Loan</option>
                                 <option value="OTHERS">Others...</option>
                             </select>
-                        </div>
+                      </div>
+                    </div>
+
+
+
+                
+
+                
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+                        
+
+                        
                             
                         { loanType === "FCH_LOAN" && (
                           <div className="flex flex-col gap-2">
@@ -308,28 +314,24 @@ function LoanApplyContent() {
                           </div>
                         )}
 
-                         { loanType === "OTHERS" && (
-                            <div className="flex flex-col gap-2">
-                            <label className="text-sm font-semibold">
-                                Type of Bonus
-                            </label>
+                          <div className="flex flex-col gap-2">
+                              <label className="text-sm font-semibold">
+                                  Select Deduction Start
+                              </label>
+                              <select 
+                                  value={startDeductLoan} 
+                                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setStartDeductLoan(e.target.value as StartDeductLoan)
+                                  }
+                                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                              >
+                                  <option value="10">1st Pay 10-25-cycle</option>
+                                  <option value="25">2nd Pay 10-25-cycle</option>
+                                  <option value="15">1st Pay 15-30-cycle</option>
+                                  <option value="30">2nd Pay 15-30-cycle</option>
+                              </select>
+                          </div>
 
-                            <select
-                                value={selectedBonus}
-                                onChange={getBonusPrincipal}
-                                disabled={bonusLoading || bonusError}
-                                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                            >
-                                <option value="">Select Bonus Type</option>
-
-                                {bonusRules?.map((rule) => (
-                                <option key={rule.code} value={rule.code}>
-                                    {rule.code} - {rule.name}
-                                </option>
-                                ))}
-                            </select>
-                        </div>
-                        )}
 
                                
                         { loanType === "OTHERS" && (
@@ -478,6 +480,7 @@ function AreApplyContent(){
     const [principal, setPrincipal] = useState<number | "">("");
     const [termValue, setTermValue] = useState(1);
     const [termUnit, setTermUnit] = useState<"MONTHS" | "YEARS">("MONTHS");
+    const [startDeductLoan, setStartDeductLoan] = useState<StartDeductLoan>("10");
     const [startDate, setStartDate] = useState("");
     const [loanPurpose, setLoanPurpose] = useState("");
     const [deductAllowance, setDeductAllowance] = useState(false);
@@ -499,6 +502,7 @@ function AreApplyContent(){
             principal: Number(principal),
             term_value: termValue,
             term_unit: termUnit,
+            start_deduction_cycle: startDeductLoan,
             start_date: startDate,
             deduct_allowance: deductAllowance,
             deduct_first_pay: deductFirstPay,
@@ -531,6 +535,7 @@ function AreApplyContent(){
       setAreType("HOUSING");
       setPrincipal("");
       setTermValue(1);
+      setStartDeductLoan("10");
       setTermUnit("MONTHS");
       setStartDate("");
       setDeductAllowance(false);
@@ -540,57 +545,80 @@ function AreApplyContent(){
     <>
       <div className="flex flex-col gap-y-8">
 
-          <div className="relative">
-                <label className="block text-sm font-semibold mb-2">
-                Employee
-                </label>
-                <input
-                type="text"
-                placeholder="Search name or employee code..."
-                value={selectedEmpAre ? `${selectedEmpAre.Lastname}, ${selectedEmpAre.Firstname}` : searchloanare}
-                onChange={(e) => {
-                    setSelectedEmpAre(null);
-                    setSearchare(e.target.value);
-                }}
-                className="w-full border border-gray-300 px-4 py-2.5 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="relative">
+                  <label className="block text-sm font-semibold mb-2">
+                  Employee
+                  </label>
+                  <input
+                  type="text"
+                  placeholder="Search name or employee code..."
+                  value={selectedEmpAre ? `${selectedEmpAre.Lastname}, ${selectedEmpAre.Firstname}` : searchloanare}
+                  onChange={(e) => {
+                      setSelectedEmpAre(null);
+                      setSearchare(e.target.value);
+                  }}
+                  className="w-full border border-gray-300 px-4 py-2.5 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                  />
+                  {!selectedEmpAre && employeesAre && employeesAre.length > 0 && (
+                  <div className="absolute z-10 bg-mainNeutral border border-gray-200 w-full rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                      {employeesAre.map((emp:EmployeeSearchItem ) => (
+                      <div
+                          key={emp.EmpCode}
+                          onClick={() => {
+                          setSelectedEmpAre(emp);
+                          setSearchare("");
+                          }}
+                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
+                          <div className="font-medium text-gray-900">
+                          {emp.Lastname}, {emp.Firstname}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                          {emp.EmpCode}
+                          </div>
+                      </div>
+                      ))}
+                  </div>
+                  )}
+            
+              </div>
 
-                {!selectedEmpAre && employeesAre && employeesAre.length > 0 && (
-                <div className="absolute z-10 bg-mainNeutral border border-gray-200 w-full rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
-                    {employeesAre.map((emp:EmployeeSearchItem ) => (
-                    <div
-                        key={emp.EmpCode}
-                        onClick={() => {
-                        setSelectedEmpAre(emp);
-                        setSearchare("");
-                        }}
-                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0">
-                        <div className="font-medium text-gray-900">
-                        {emp.Lastname}, {emp.Firstname}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                        {emp.EmpCode}
-                        </div>
-                    </div>
-                    ))}
-                </div>
-                )}
-            </div>
+
+              <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold">
+                      Employee Code
+                      </label>
+                      <input
+                          type="text"
+                          disabled
+                          value={selectedEmpAre?.EmpCode ?? ""}
+                          readOnly
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                      />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold">
+                        Select Deduction Start
+                    </label>
+                    <select 
+                        value={startDeductLoan} 
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                          setStartDeductLoan(e.target.value as StartDeductLoan)
+                        }
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                    >
+                        <option value="10">1st Pay 10-25-cycle</option>
+                        <option value="25">2nd Pay 10-25-cycle</option>
+                        <option value="15">1st Pay 15-30-cycle</option>
+                        <option value="30">2nd Pay 15-30-cycle</option>
+                    </select>
+              </div>
+
+
+          </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-                <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold">
-                    Employee Code
-                    </label>
-                    <input
-                        type="text"
-                        disabled
-                        value={selectedEmpAre?.EmpCode ?? ""}
-                        readOnly
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
-                    />
-                </div>
 
                 <div className="flex flex-col gap-2">
                     <label className="text-sm font-semibold">

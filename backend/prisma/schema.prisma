@@ -444,6 +444,7 @@ model loan_details {
   extended_term        Decimal @db.Decimal(10,1) @default(0)
   others_types         String? @db.VarChar(50)
   rounding_types       String? @db.VarChar(20)
+  start_deduction_cycle String? @db.VarChar(50)
   EmpCodeId String  @db.VarChar(20) @map("EmpCodeId")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 

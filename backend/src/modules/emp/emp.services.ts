@@ -114,6 +114,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       Disbursing:true,
       WithAtm:true,
       isOfficerAllowance:true,
+      isSixDaysWork:true,
       Taxable:true,
       employeepr: {
         select: {
@@ -154,6 +155,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           cash_assistance: true,
           ecola: true,
           bank_account:true,
+          with_ecola:true,
+          gmail_account:true,
         },
       },
 
@@ -232,6 +235,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           BasicSalary: basicSalary,
           CashAssistance: cashAssistance,
           Ecola: ecola,
+          isecola: payroll?.with_ecola,
+          gmail_account: payroll?.gmail_account,
           TotalSalary: totalSalary,
           bankAccount: bankAccount,
           sssContribEmployee: sssContribEmployee,
@@ -321,6 +326,7 @@ export const updateEmployeePayroll = async (
           Disbursing: payLoad.Disbursing,
           Taxable: payLoad.Taxable,
           isOfficerAllowance: payLoad.isOfficerAllowance,
+          isSixDaysWork: payLoad.isSixDaysWork,
           employeepayroll: {
             upsert: {
               update: {
@@ -328,12 +334,16 @@ export const updateEmployeePayroll = async (
                 cash_assistance: payLoad.cashAssistance,
                 ecola: payLoad.ecola,
                 bank_account: payLoad.bankAccount,
+                with_ecola: payLoad.isecola,
+                gmail_account: payLoad.gmail_account,
               },
               create: {
                 basic_salary: payLoad.basicSalary,
                 cash_assistance: payLoad.cashAssistance,
                 ecola: payLoad.ecola,
-                bank_account: payLoad.bankAccount
+                bank_account: payLoad.bankAccount,
+                with_ecola: payLoad.isecola,
+                gmail_account: payLoad.gmail_account,
               },
             },
           },
