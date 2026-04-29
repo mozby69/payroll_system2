@@ -87,6 +87,7 @@ export type InvalidEmployees = {
   export type EmployeBonusType = {
     employeeCode: string
     companyCode: string
+    branchCode: string
     fullName: string
     employementDate: string | null
     tenureYears: number
