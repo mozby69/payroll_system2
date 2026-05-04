@@ -50,6 +50,9 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       Disbursing: Boolean(data?.Disbursing ?? false),
       Taxable:Boolean(data?.Taxable ?? false),
       isOfficerAllowance:Boolean(data?.isOfficerAllowance ?? false),
+      isSixDaysWork:Boolean(data?.isSixDaysWork ?? false),
+      isecola:Boolean(payInfo?.isecola ?? false),
+      gmail_account:String(payInfo?.gmail_account ?? false),
       OaBasicSalary: String(oaInfo?.OaBasicSalary ?? ""),
       bankAccount: String(payInfo?.bankAccount ?? ""),
     };
@@ -229,6 +232,9 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       Disbursing: formValues.Disbursing,
       Taxable:formValues.Taxable,
       isOfficerAllowance:formValues.isOfficerAllowance,
+      isSixDaysWork:formValues.isSixDaysWork,
+      isecola:formValues.isecola,
+      gmail_account:formValues.gmail_account,
       OaBasicSalary:formValues.OaBasicSalary,
       bankAccount: String(formValues.bankAccount),
     };
@@ -472,73 +478,110 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
 
                     </div>
 
-                  <div className="inline-flex gap-x-8 justify-start items-center">
-                  
-                    <div className="flex items-center gap-x-3 col-span-2">
-                      <input
-                        type="checkbox"
-                        checked={formValues.WithAtm}
-                        onChange={(e) =>
-                          setFormValues(prev => ({
-                            ...prev,
-                            WithAtm: e.target.checked
-                          }))
-                        }
+                <div className="grid grid-cols-3 grid-rows-2 gap-y-2 gap-x-4 items-center">
 
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-700 font-medium">
-                        With ATM
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-x-3 col-span-2">
-                      <input
-                        type="checkbox"
-                        checked={formValues.Disbursing}
-                        onChange={(e) =>
-                          setFormValues(prev => ({
-                            ...prev,
-                            Disbursing: e.target.checked
-                          }))
-                        }
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-700 font-medium">
-                        Disbursing
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-x-3 col-span-2">
-                      <input
-                        type="checkbox"
-                        checked={formValues.Taxable}
-                        onChange={(e) =>
-                          setFormValues(prev => ({
-                            ...prev,
-                            Taxable: e.target.checked
-                          }))
-                        }
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-700 font-medium">
-                        Taxable
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-x-3 col-span-2">
-                      <input
-                        type="checkbox"
-                        checked={formValues.isOfficerAllowance}
-                        onChange={(e) =>
-                          setFormValues(prev => ({
-                            ...prev,
-                            isOfficerAllowance: e.target.checked
-                          }))
-                        }
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-700 font-medium">
-                        Officers Allowance
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.WithAtm}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          WithAtm: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      With ATM
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.Disbursing}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          Disbursing: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      Disbursing
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.Taxable}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          Taxable: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      Taxable
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.isOfficerAllowance}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          isOfficerAllowance: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      Officers Allowance
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.isecola}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          isecola: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      Ecola
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.isSixDaysWork}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          isSixDaysWork: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      6 Days Work
+                    </span>
+                  </div>
+
                 </div>
 
                   </div>
@@ -703,6 +746,32 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                           className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
                         />
 
+                      </div>
+                  </div>
+
+
+                  <div className="flex flex-col gap-y-6">
+
+                      <div className="flex flex-col gap-y-4">
+                          <h1 className="font-bold text-lg">Employee Email Account</h1>
+                      </div>
+
+                      
+                      <div className="flex flex-col gap-y-1 col-span-2">
+                        <span className="text-sm text-gray-500">Email Address</span>
+                        
+                        <input
+                          type="email"
+                          value={formValues.gmail_account ?? ""}
+                          onChange={(e) =>
+                            setFormValues(prev => ({
+                              ...prev,
+                              gmail_account: e.target.value
+                            }))
+                          }
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white"
+                          placeholder="Enter email address"
+                        />
                       </div>
                   </div>
 

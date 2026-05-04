@@ -23,7 +23,6 @@ export async function fetchHrAttendance(params: ApiParams){
     }
   })
  const  prevPeriod = totatPayroll?.payroll_period ?? "";
-
   const response = await hrApi.get("/attendance/summary/", {
       params: {
           startDate,

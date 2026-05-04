@@ -215,6 +215,7 @@ export async function saveEmployeeLoan(data: loanProps){
           principal: data.principal,
           term_value: data.term_value,
           rounding_types: data.rounding_type,
+          start_deduction_cycle: data.start_deduction_cycle,
           term_unit: data.term_unit,
           start_date: startDate,
           deduct_allowance: data.deduct_allowance,
@@ -475,6 +476,7 @@ export const getEmpLoan = async (loan_id: number) => {
       principal: true,
       loan_type: true,
       rounding_types:true,
+      start_deduction_cycle:true,
       term_value: true,
       term_unit: true,
       start_date: true,
@@ -579,6 +581,7 @@ export const getEmpLoan = async (loan_id: number) => {
     loan_id: empLoan.loan_id,
     principal: Number(empLoan.principal),
     loan_type: empLoan.loan_type,
+    start_deduction_cycle: empLoan.start_deduction_cycle,
     rounding_types: empLoan.rounding_types,
     term_value: empLoan.term_value,
     term_unit: empLoan.term_unit,
@@ -606,6 +609,7 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
       select: {
         loan_id: true,
         rounding_types:true,
+        start_deduction_cycle:true,
         EmpCodeId: true,
         principal: true,
         term_value: true,
@@ -704,6 +708,7 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
       data: {
         loan_type: data.loan_type,
         rounding_types: data.rounding_type,
+        start_deduction_cycle: data.start_deduction_cycle,
         deduct_allowance: data.deduct_allowance,
         deduct_first_pay: data.deduct_first_pay,
         deduct_second_pay: data.deduct_sec_pay,
@@ -854,10 +859,10 @@ function getNextPayroll(
 
 }
 
-
-export const insertLoanPayment = async (loan_id: number,
-  actionType: LoanActionType) => {
-    
+export const insertLoanPayment = async (
+  loan_id: number,
+  actionType: LoanActionType
+) => {
   return prisma.$transaction(async (tx) => {
 
     if (!LOAN_ACTION_TYPES.includes(actionType)) {
@@ -877,7 +882,8 @@ export const insertLoanPayment = async (loan_id: number,
         term_value: true,
         term_unit: true,
         deduct_allowance: true,
-        extended_term:true,
+        extended_term: true,
+        start_deduction_cycle: true,
       },
     });
 
@@ -886,36 +892,72 @@ export const insertLoanPayment = async (loan_id: number,
       throw new Error("Loan is already CLOSED");
 
     const cycleCategory: CycleCategory =
-      fetchLoan.cycle_category !== null &&
+      fetchLoan.cycle_category &&
       fetchLoan.cycle_category in CYCLE_RULES
         ? (fetchLoan.cycle_category as CycleCategory)
         : DEFAULT_CYCLE_CATEGORY;
 
+    // ===============================
+    // GET LAST VALID PAYROLL STEP
+    // ===============================
+    const latestValidLedger = await tx.loan_ledger.findFirst({
+      where: {
+        loan_id,
+        payment_status: { in: ["PAID", "SKIPPED"] },
+      },
+      orderBy: { transaction_date: "desc" },
+    });
 
+    let transaction_date: Date;
+    let payroll_cycle: PayrollCycle;
 
-    const latestLedger = await tx.loan_ledger.findFirst({
-          where: { loan_id, payment_status: { in: ["PAID", "SKIPPED"],}},
-          orderBy: { transaction_date: "desc" },
-        });
+    const startCycle = String(fetchLoan.start_deduction_cycle ?? "");
 
-    const start_date_year = fetchLoan.start_date.getFullYear() 
-    const start_date_month = fetchLoan.start_date.getMonth()
+    // ===============================
+    // DETERMINE SCHEDULE
+    // ===============================
+    if (!latestValidLedger) {
+      // 🔥 FIRST SCHEDULE (BASED ONLY ON start_date)
 
-    const { transaction_date, payroll_cycle } = latestLedger
-      ? getNextPayroll(
-          fetchLoan.deduct_allowance,
-          latestLedger.transaction_date,
-          latestLedger.payroll_cycle as PayrollCycle,
-          cycleCategory
-        )
-      : {
-         
-          transaction_date: new Date(start_date_year, start_date_month, 10),
-          payroll_cycle: String(
-            CYCLE_RULES[cycleCategory].first
-          ) as PayrollCycle,
-        };
+      const baseDate = fetchLoan.start_date;
+      const year = baseDate.getFullYear();
+      const month = baseDate.getMonth();
+      const lastDay = getLastDayOfMonth(year, month);
 
+      if (startCycle) {
+        const cycleDay = Number(startCycle);
+
+        transaction_date = new Date(
+          year,
+          month,
+          Math.min(cycleDay, lastDay)
+        );
+
+        payroll_cycle = startCycle as PayrollCycle;
+      } else {
+        const rule = CYCLE_RULES[cycleCategory];
+
+        transaction_date = new Date(year, month, rule.first);
+        payroll_cycle = String(rule.first) as PayrollCycle;
+      }
+
+    } else {
+      // ✅ NORMAL CONTINUATION
+
+      const next = getNextPayroll(
+        fetchLoan.deduct_allowance,
+        latestValidLedger.transaction_date,
+        latestValidLedger.payroll_cycle as PayrollCycle,
+        cycleCategory
+      );
+
+      transaction_date = next.transaction_date;
+      payroll_cycle = next.payroll_cycle;
+    }
+
+    // ===============================
+    // PAYMENT CALCULATIONS
+    // ===============================
     const paidLedgers = await tx.loan_ledger.findMany({
       where: {
         loan_id,
@@ -950,6 +992,9 @@ export const insertLoanPayment = async (loan_id: number,
       ? remainingBalance
       : Number(fetchLoan.per_payroll_deduct);
 
+    // ===============================
+    // INSERT LEDGER
+    // ===============================
     if (isLastPayment) {
       const closedLedger = await tx.loan_ledger.create({
         data: {
@@ -973,21 +1018,22 @@ export const insertLoanPayment = async (loan_id: number,
     }
 
     if (actionType === "EARLY_PAY") {
-        return tx.loan_ledger.create({
-          data: {
-            loan_id,
-            EmpCodeId: fetchLoan.EmpCodeId,
-            transaction_date,
-            payroll_cycle,
-            transaction_type: "PAYROLL_DEDUCT",
-            debit_amount: 0,
-            credit_amount: creditAmount,
-            remarks: "Loan Credited to Payroll",
-            payment_status: "PAID",
-          },
-        });
+      return tx.loan_ledger.create({
+        data: {
+          loan_id,
+          EmpCodeId: fetchLoan.EmpCodeId,
+          transaction_date,
+          payroll_cycle,
+          transaction_type: "PAYROLL_DEDUCT",
+          debit_amount: 0,
+          credit_amount: creditAmount,
+          remarks: "Loan Credited to Payroll",
+          payment_status: "PAID",
+        },
+      });
     }
-    else if (actionType === "SKIPPED") {
+
+    if (actionType === "SKIPPED") {
       const skippedLoan = await tx.loan_ledger.create({
         data: {
           loan_id,
@@ -1011,8 +1057,6 @@ export const insertLoanPayment = async (loan_id: number,
 
       return skippedLoan;
     }
-
-
   });
 };
 

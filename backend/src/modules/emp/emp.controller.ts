@@ -96,6 +96,9 @@ export const updateEmployeePayrollByEmpCode = async (
       remarks,
       Taxable,
       isOfficerAllowance,
+      isSixDaysWork,
+      isecola,
+      gmail_account,
       OaBasicSalary,
       bankAccount
     } = req.body;
@@ -115,7 +118,10 @@ export const updateEmployeePayrollByEmpCode = async (
         remarks: remarks ? String(remarks) : undefined, 
         Taxable: Boolean(Taxable),
         isOfficerAllowance: Boolean(isOfficerAllowance),
+        isSixDaysWork: Boolean(isSixDaysWork),
+        isecola: Boolean(isecola),
         OaBasicSalary: Number(OaBasicSalary), 
+        gmail_account:gmail_account ? String(gmail_account) : "",
         bankAccount:bankAccount ? String(bankAccount) : undefined,
       },
       changedBy 

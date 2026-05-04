@@ -100,6 +100,79 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             isAlien: false,
           },
         }
+
+        const statusCondition = {
+          OR: [
+            // ✅ Active
+            {
+              EmpCode: {
+                EmployeeStatus: {
+                  notIn: ["Resigned", "Inactive", "Terminate"],
+                },
+              },
+            },
+        
+            // ✅ BOD
+            {
+              EmpCode: {
+                bod_member: {
+                  in: ["bod1", "bod2"],
+                },
+              },
+            },
+        
+            // ✅ Special Leave (WITH company safety)
+            {
+              AND: [
+                {
+                  EmpCode: {
+                    EmployeeStatus: "Inactive",
+                  },
+                },
+                {
+                  EmpCode: {
+                    OR: [
+                      {
+                        isAlien: false,
+                        BranchCode: { company_id },
+                      },
+                      {
+                        isAlien: true,
+                        secondaryBranch: { company_id },
+                      },
+                    ],
+                  },
+                },
+                {
+                  EmpCode: {
+                    specialLeaves: {
+                      some: {
+                        OR: [
+                          {
+                            AND: [
+                              { start: { not: null } },
+                              { end: { not: null } },
+                              { start: { lte: cutoffEnd } },
+                              { end: { gte: cutoffStart } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { expectedStart: { not: null } },
+                              { expectedEnd: { not: null } },
+                              { expectedStart: { lte: cutoffEnd } },
+                              { expectedEnd: { gte: cutoffStart } },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        };
   
 
       const employeeList = await prisma.employeeSummary.findMany({
@@ -117,24 +190,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 {
                   AND: [
                     baseFilter,
-                    {
-                      OR: [
-                        {
-                          EmpCode: {
-                            EmployeeStatus: {
-                              notIn: ["Resigned", "Inactive", "Terminate"],
-                            },
-                          },
-                        },
-                        {
-                          EmpCode: {
-                            bod_member: {
-                              in: ["bod1", "bod2"],
-                            },
-                          },
-                        },
-                      ],
-                    },
+                    statusCondition,
                   ],
                 },
         
@@ -149,68 +205,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                         }
                       },
                     },
-                    {
-                      OR: [
-                        {
-                          EmpCode: {
-                            EmployeeStatus: {
-                              notIn: ["Resigned", "Inactive", "Terminate"],
-                            },
-                          },
-                        }, 
-                        {
-                          EmpCode: {
-                            bod_member: {
-                              in: ["bod1", "bod2"],
-                            },
-                          },
-                        },
-                      ],
-                    },
+                   statusCondition
                   ],
                 },
-
-                 // Special Leave Condition
-      {
-        AND: [
-          {
-            EmpCode: {
-              EmployeeStatus: "Inactive",
-            },
-          },
-          {
-            EmpCode: {
-              specialLeaves: {
-                some: {
-                  OR: [
-                    // 🔹 Case 1: use start/end
-                    {
-                      AND: [
-                        { start: { not: null } },
-                        { end: { not: null } },
-                        { start: { lte: cutoffEnd } },
-                        { end: { gte: cutoffStart } },
-                      ],
-                    },
-      
-                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
-                    {
-                      AND: [
-                        { expectedStart: { not: null } },
-                        { expectedEnd: { not: null } },
-                        { expectedStart: { lte: cutoffEnd } },
-                        { expectedEnd: { gte: cutoffStart } },
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        ],
-      }
-
-      // END Special Leave Condition
               ],
             },
           ],
@@ -317,8 +314,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         others_types: true,
         deduct_first_pay: true,
         deduct_second_pay: true,
+        start_deduction_cycle:true,
       },
     });
+
+
 
     const loanIds = loans.map(l => l.loan_id);
 
@@ -337,26 +337,48 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       overrideMapLoan.set(o.loan_id, o);
     }
 
-    // ✅ FETCH LEDGERS
     const ledgers = await prisma.loan_ledger.findMany({
       where: { loan_id: { in: loanIds } },
-      orderBy: { transaction_date: "desc" },
+      orderBy: {
+        transaction_date: "desc",
+      },
+      distinct: ["loan_id"],
     });
 
-    // ✅ GET LATEST LEDGER PER LOAN
     const latestLedger = new Map<number, any>();
     for (const l of ledgers) {
-      if (!latestLedger.has(l.loan_id)) {
-        latestLedger.set(l.loan_id, l);
-      }
+      latestLedger.set(l.loan_id, l);
     }
 
+    
     // ✅ FINAL STRUCTURE
     const loanByEmp: Record<string, any> = {};
 
-    for (const loan of loans) {
+    
+    const filteredLoans = loans.filter((loan) => {
       const ledger = latestLedger.get(loan.loan_id);
-      const override = overrideMapLoan.get(loan.loan_id);
+
+      const isNewLoan =
+        ledger?.payment_status === "NEW" &&
+        ledger?.transaction_type === "PAYROLL_DEDUCT";
+
+      const startCycle = String(loan.start_deduction_cycle ?? "");
+      const currentCycle = String(payrollCycle);
+
+
+
+      if (!isNewLoan) return true;
+
+      if (startCycle && currentCycle !== startCycle) {
+        return false;
+      }
+
+      return true;
+    });
+        
+    for (const loan of filteredLoans) {
+      const ledger = latestLedger.get(loan.loan_id);
+      const overrideloan = overrideMapLoan.get(loan.loan_id);
 
       let alreadyDeducted = false;
 
@@ -408,8 +430,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       // ✅ APPLY OVERRIDE LOGIC
       let amountToUse = Number(loan.per_payroll_deduct);
 
-      if (override && override.credit_amount != null) {
-        amountToUse = Number(override.credit_amount);
+      if (overrideloan && overrideloan.credit_amount != null) {
+        amountToUse = Number(overrideloan.credit_amount);
         loanByEmp[loan.EmpCodeId][key].isOverridden = true;
       }
 
@@ -738,6 +760,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           others_types: true,
           deduct_first_pay: true,
           deduct_second_pay: true,
+          start_deduction_cycle:true,
         },
       });
 
@@ -758,23 +781,46 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         overrideMap.set(o.loan_id, o);
       }
 
-      // ✅ FETCH LEDGERS
-      const ledgers = await tx.loan_ledger.findMany({
+      const ledgers = await prisma.loan_ledger.findMany({
         where: { loan_id: { in: loanIds } },
-        orderBy: { transaction_date: "desc" },
+        orderBy: {
+          transaction_date: "desc",
+        },
+        distinct: ["loan_id"],
       });
 
-      // ✅ GET LATEST LEDGER
       const latestLedger = new Map<number, any>();
       for (const l of ledgers) {
-        if (!latestLedger.has(l.loan_id)) {
-          latestLedger.set(l.loan_id, l);
-        }
+        latestLedger.set(l.loan_id, l);
       }
 
+      
+      // ✅ FINAL STRUCTURE
       const loanByEmp: Record<string, any> = {};
 
-      for (const loan of loans) {
+      
+      const filteredLoans = loans.filter((loan) => {
+        const ledger = latestLedger.get(loan.loan_id);
+
+        const isNewLoan =
+          ledger?.payment_status === "NEW" &&
+          ledger?.transaction_type === "PAYROLL_DEDUCT";
+
+        const startCycle = String(loan.start_deduction_cycle ?? "");
+        const currentCycle = String(payrollCycle);
+
+
+
+        if (!isNewLoan) return true;
+
+        if (startCycle && currentCycle !== startCycle) {
+          return false;
+        }
+
+        return true;
+      });
+
+      for (const loan of filteredLoans) {
         const ledger = latestLedger.get(loan.loan_id);
         const override = overrideMap.get(loan.loan_id);
 
