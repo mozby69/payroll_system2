@@ -1048,23 +1048,21 @@ export async function ViewAllList(selectedMonth: string) {
 
     const COMPANY_ORDER = ["EMB", "FCH", "RFC", "ELC","PSPMI","DOJA"];
 
-    
 
    
-  for (const employee of regularEmployees) {
-      const company = employee.company_id ?? "UNKNOWN";
-      const branch = employee.branch_code ?? "NO_BRANCH";
+   for (const employee of regularEmployees) {
+   const branch = employee.branch_code ?? "NO_BRANCH";
+    const company = branch.split("-")[0] ?? "UNKNOWN";
 
-      if (!branchesByCompany[company]) {
-        branchesByCompany[company] = {};
-      }
-
-      if (!branchesByCompany[company][branch]) {
-        branchesByCompany[company][branch] = [];
-      }
-
-      branchesByCompany[company][branch].push(employee);
+    if (!branchesByCompany[company]) {
+      branchesByCompany[company] = {};
     }
+
+    if (!branchesByCompany[company][branch]) {
+      branchesByCompany[company][branch] = [];
+    }
+    branchesByCompany[company][branch].push(employee);
+  }
 
     for (const company of Object.keys(branchesByCompany)) {
       for (const branch of Object.keys(branchesByCompany[company])) {
@@ -1073,6 +1071,7 @@ export async function ViewAllList(selectedMonth: string) {
         });
       }
     }
+
 
 
     const orderedBranches: Record<string,Record<string, AllowanceRow[]>> = {};
@@ -1202,25 +1201,20 @@ export async function getVarianceEmployees(selectedMonth: string): Promise<Emplo
         const isPositiveIncrease = varianceCash > 0 || varianceEcola > 0 || varianceTotal > 0;
         const hasAbsent = curr.absent > 0;
 
-       const action = hasHistory && isPositiveIncrease
-          ? {
-              type: "ADD" as const,
-              data: {
-                remarks: history?.remarks,
-                created_at: history?.createdAt,
-              },
-            }
-          : hasAbsent
-          ? {
-              type: "LESS" as const,
-              data: {},
-            }
-          : isPositiveIncrease 
-          ? {
-              type: "ADD" as const,
-              data: {},
-            }
-          : null;
+      const action = hasHistory && isPositiveIncrease
+        ? {
+            type: "ADD" as const,
+            data: {
+              remarks: history?.remarks,
+              created_at: history?.createdAt,
+            },
+          }
+        : hasAbsent
+        ? {
+            type: "LESS" as const,
+            data: {},
+          }
+        : null;
 
        return {
             EmpCode: empCode,

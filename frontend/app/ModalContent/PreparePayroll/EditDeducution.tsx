@@ -188,10 +188,10 @@ export default function EditDeduction({ employee, onClose }: Props) {
 
 
         <AuthenticationModal
-              isOpen={openModal}
-              onClose={handleCloseModal}
-              onConfirm={handlePasswordConfirm}
-            />
+            isOpen={openModal}
+            onClose={handleCloseModal}
+            onConfirm={handlePasswordConfirm}
+        />
 
 
 

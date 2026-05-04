@@ -1,8 +1,8 @@
 import { useFetchArchiveAllowanceModal } from "@/app/hooks/useAllowance";
-import { AllowanceSummary, ArchiveAllowance } from "@/app/types/allowanceType";
+import { AllowanceSummary, ArchiveAllowance, CompanyItem, LoanItem, VarianceAllowanceComplete, VarianceAllowanceEmployee } from "@/app/types/allowanceType";
 import { prepareCompanyData } from "@/app/utils/allowanceHelper";
 import { formatCurrency } from "@/app/utils/currencyConverter";
-import { tr } from "zod/v4/locales";
+
 
 
 
@@ -15,40 +15,6 @@ interface ViewEmployeeListAllowanceProps {
     onClose: () => void;
 }
 
-type LoanItem = {
-    Firstname: string;
-    Lastname: string;
-    per_payroll_deduct: number;
-    BranchCodeId: string;
-};
-
-
-type CompanyItem = {
-  total_cash_allowance: number;
-  ecola: number;
-  total_num: number;
-  branches: unknown;
-};
-
-type VarianceAllowance = {
-  previous: {
-    selectedMonth: string;
-    cash_assistance: number;
-    ecola: number;
-    grand_total: number;
-  };
-  current: {
-    selectedMonth: string;
-    cash_assistance: number;
-    ecola: number;
-    grand_total: number;
-  };
-  variance: {
-    cash_assistance: number;
-    ecola: number;
-    grand_total: number;
-  };
-};
 
 export default function AllowanceReportArchive({ allowanceSummary }: ViewEmployeeListAllowanceProps) {
     const { data } = useFetchArchiveAllowanceModal(allowanceSummary.selectedMonth);
@@ -75,11 +41,30 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
         }
     );
 
-    const variance = data?.data?.details?.variance_allowance as VarianceAllowance | undefined;
+    const variance = data?.data?.details?.variance_allowance as VarianceAllowanceComplete | undefined;
     const previous = variance?.previous;
     const current = variance?.current;
     const varianceRow = variance?.variance;
 
+    //variance employee 
+    const variance_emp = data?.data?.details?.variance_employee as VarianceAllowanceEmployee[] | undefined;
+
+    const addList = variance_emp?.filter((emp) => emp.variance?.action?.type === "ADD") ?? [];
+    const lessList = variance_emp?.filter((emp) => emp.variance?.action?.type === "LESS") ?? [];
+
+    const addTotals = addList.reduce(
+        (acc, emp) => {
+            acc.cash += emp.variance.cash_assistance ?? 0;
+            acc.ecola += emp.variance.ecola ?? 0;
+            acc.total += emp.variance.total ?? 0;
+            return acc;
+        },
+        {
+            cash: 0,
+            ecola: 0,
+            total: 0,
+        }
+        );
 
     const boardList = list.filter((row) => row.position === "board");
     const mancomList = list.filter((row) => row.position === "Mancom");
@@ -143,41 +128,41 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
 
 
 
-    const companyMap = list.reduce<Record<string, ArchiveAllowance[]>>((acc, row) => {
-        const key = row.company_id ?? "UNKNOWN";
+    // const companyMap = list.reduce<Record<string, ArchiveAllowance[]>>((acc, row) => {
+    //     const key = row.company_id ?? "UNKNOWN";
 
-        if (!acc[key]) {
-            acc[key] = [];
-        }
+    //     if (!acc[key]) {
+    //         acc[key] = [];
+    //     }
 
-        acc[key].push(row);
-        return acc;
-    }, {});
+    //     acc[key].push(row);
+    //     return acc;
+    // }, {});
 
-    const companyTotals = Object.entries(companyMap).map(([company, data]) => {
-        const totals = computeTotals(data);
+    // const companyTotals = Object.entries(companyMap).map(([company, data]) => {
+    //     const totals = computeTotals(data);
 
-        return {
-            company,
-            cash: totals.cash_allowance,
-            ecola: totals.computed_ecola,
-            total: totals.total,
-        };
-    });
+    //     return {
+    //         company,
+    //         cash: totals.cash_allowance,
+    //         ecola: totals.computed_ecola,
+    //         total: totals.total,
+    //     };
+    // });
 
-    const grandCompanyTotal = companyTotals.reduce(
-        (acc, row) => {
-            acc.cash += row.cash;
-            acc.ecola += row.ecola;
-            acc.total += row.total;
-            return acc;
-        },
-        {
-            cash: 0,
-            ecola: 0,
-            total: 0,
-        }
-    );
+    // const grandCompanyTotal = companyTotals.reduce(
+    //     (acc, row) => {
+    //         acc.cash += row.cash;
+    //         acc.ecola += row.ecola;
+    //         acc.total += row.total;
+    //         return acc;
+    //     },
+    //     {
+    //         cash: 0,
+    //         ecola: 0,
+    //         total: 0,
+    //     }
+    // );
 
 
     return (
@@ -922,8 +907,8 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
 
 
 
-              {/* VARIANCE */}
-             <div className="pt-8">
+     
+             {/* <div className="pt-8">
                 <h2 className="py-1 font-semibold text-lg">LOANS</h2>
                 <table className="border-collapse w-full border border-gray-300 text-center">
                     <thead>
@@ -964,7 +949,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             </tr>   
                     </tbody>
                 </table>
-            </div>
+            </div> */}
 
 
 
@@ -1025,9 +1010,9 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
 
 
 
-                    {/* VARIANCE EMPLOYEE */}
-                    <div className="pt-6">
-                    <h2 className="text-left font-semibold text-lg mb-2">VARIANCE</h2>
+                    {/* VARIANCE EMPLOYEE  add*/}
+                  <div className="pt-6">
+                    <h2 className="text-left font-semibold text-lg mb-2">ADD</h2>
 
                     <table className="w-full border-collapse border border-gray-300 text-left">
                         <thead>
@@ -1040,33 +1025,54 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                         </thead>
 
                         <tbody>
-         
+                        {addList.map((emp, index) => (
+                            <tr key={index}>
+                            <td className="p-2">{emp.name}</td>
+                            <td>{formatCurrency(emp.variance.cash_assistance)}</td>
+                            <td>{formatCurrency(emp.variance.ecola)}</td>
+                            <td>{formatCurrency(emp.variance.total)}</td>
+                            </tr>
+                        ))}
                         <tr>
-                            <td className="p-2">
-                            {previous?.selectedMonth?.toUpperCase?.() ?? "-"}
-                            </td>
-                            <td>{formatCurrency(previous?.cash_assistance)}</td>
-                            <td>{formatCurrency(previous?.ecola)}</td>
-                            <td>{formatCurrency(previous?.grand_total)}</td>
+                        <td className="font-semibold p-2 bg-gray-200">GRAND TOTAL</td>
+                        <td className="font-semibold py-1 bg-gray-200">
+                            {formatCurrency(addTotals.cash)}
+                        </td>
+                        <td className="font-semibold py-1 bg-gray-200">
+                            {formatCurrency(addTotals.ecola)}
+                        </td>
+                        <td className="font-semibold py-1 bg-gray-200">
+                            {formatCurrency(addTotals.total)}
+                        </td>
                         </tr>
+                        </tbody>
+                    </table>
+                    </div>
 
-                 
-           
 
-                   
-                        <tr>
-                            <td colSpan={4}>
-                            <div className="border-t border-gray-300" />
-                            </td>
+                    {/* variance emp less  */}
+
+                    <div className="pt-6">
+                    <h2 className="text-left font-semibold text-lg mb-2">LESS</h2>
+                    <table className="w-full border-collapse border border-gray-300 text-left">
+                        <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2">EMPLOYEE NAME</th>
+                            <th>CASH ASSISTANCE</th>
+                            <th>ECOLA</th>
+                            <th>TOTAL</th>
                         </tr>
+                        </thead>
 
-               
-                        <tr className="font-semibold">
-                            <td className="py-1 px-2 bg-gray-200">GRAND TOTAL</td>
-                            <td className="py-1 px-2 bg-gray-200"></td>
-                            <td className="py-1 px-2 bg-gray-200"></td>
-                            <td className="py-1 px-2 bg-gray-200"></td>
-                        </tr>
+                        <tbody>
+                        {lessList.map((emp, index) => (
+                            <tr key={index}>
+                            <td className="p-2">{emp.name}</td>
+                            <td>{formatCurrency(emp.variance.cash_assistance)}</td>
+                            <td>{formatCurrency(emp.variance.ecola)}</td>
+                            <td>{formatCurrency(emp.variance.total)}</td>
+                            </tr>
+                        ))}
                         </tbody>
                     </table>
                     </div>

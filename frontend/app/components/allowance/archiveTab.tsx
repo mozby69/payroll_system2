@@ -158,7 +158,7 @@ export default function AllowanceArchiveTab(){
 
 
           {isModalOpenPrint && (
-              <RequestModal size="sm" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
+              <RequestModal size="md" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
                   <CompanyBranchSelector selectedMonth={selectedRow?.selectedMonth ?? ""}/>
               </RequestModal>
             )}
