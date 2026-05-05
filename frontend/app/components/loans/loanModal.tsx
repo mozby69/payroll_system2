@@ -13,7 +13,7 @@ type LoanModal = {
 
 type LoanForm = {
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
-  rounding_type: "Tens" | "Ones";
+  rounding_type: "Tens" | "Ones" | "Five";
   start_deduction_cycle: "10" | "25" | "15" | "30";
   principal: number;
   start_date: string;
@@ -160,6 +160,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
                 >
                     <option value="Tens">Nearest Tens</option>
                     <option value="Ones">Nearest Ones</option>
+                    <option value="Five">Nearest Five</option>
                 </select>
             </div>
         )}

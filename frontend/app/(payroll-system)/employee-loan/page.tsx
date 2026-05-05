@@ -310,6 +310,7 @@ function LoanApplyContent() {
                               >
                                   <option value="Tens">Nearest Tens</option>
                                   <option value="Ones">Nearest Ones</option>
+                                  <option value="Five">Nearest Five</option>
                               </select>
                           </div>
                         )}

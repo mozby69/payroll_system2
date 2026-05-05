@@ -698,12 +698,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
   }
 
 
-  
-
-
-
-
-
   export async function saveComputedFinalPayroll(cycle: "10-25-Cycle" | "15-30-Cycle",companyId: string,approvedBy:number) {
     return await prisma.$transaction(async (tx) => {
   
