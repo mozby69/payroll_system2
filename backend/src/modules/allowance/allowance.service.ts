@@ -3,7 +3,8 @@ import { prisma } from "../../config/prismaClient";
 import {allowanceprops,AllowanceRow,ArchiveAllowanceDTO,ArchiveAllowanceFullResponse,BranchMeta,EmployeeVariance,SummaryAllowanceProps} from "./allowance.types";
 import {formatAllowanceMonth,getDaysInMonth,getPreviousMonth, round2} from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
-
+import { generateAllowancePDF } from "../print/print.service";
+import nodemailer from "nodemailer";
 
 export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}: allowanceprops) {
   const [year, month] = selectedMonth.split("-").map(Number);
@@ -870,14 +871,16 @@ export async function getBranchesByCompany(companyCode: string) {
 
 
 
-export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,branch}: {
+export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,branch,empId}: {
   selectedMonth: string;
   company: string;
   branch: string;
+  empId?:string;
 }) {
   return await prisma.archive_allowance.findMany({
     where: {
       selectedMonth,
+      ...(empId && { EmpCodeId: empId }), 
       EmpCode: {
         BranchCode: {
           branchCode: branch,
@@ -904,6 +907,11 @@ export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,
               company_id: true,
             },
           },
+          employeepayroll:{
+            select:{
+              gmail_account:true,
+            }
+          }
         },
       },
     },
@@ -1351,4 +1359,124 @@ export async function getArchiveReport(selectedMonth: string) {
       }
     }
   });
+}
+
+
+
+
+
+
+
+
+
+
+type AllowanceEmailType = {
+  EmpCodeId: string;
+  name: string;
+  cash_allowance: number | null;
+  ecola: number | null;
+  deduct: number | null;
+  loan: number | null;
+  total: number | null;
+  email: string;
+};
+
+
+export const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER!,
+    pass: process.env.EMAIL_PASS!,
+  },
+});
+
+export async function sendAllowanceEmailService(
+  employee: AllowanceEmailType,
+  context: {
+    month: string;
+    company: string;
+    branch: string;
+  }
+) {
+
+  if (!employee.email) {
+    throw new Error("No email found");
+  }
+
+  const pdfBuffer = await generateAllowancePDF({
+    EmpCodeId: employee.EmpCodeId,
+    month: context.month,
+    company: context.company,
+    branch: context.branch,
+  });
+
+  await transporter.sendMail({
+    from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+    to: employee.email,
+    subject: "Your Allowance",
+    html: `
+      <p>Dear ${employee.name},</p>
+      <p>Please find your allowance attached.</p>
+      <p>Regards,<br/>Payroll Department</p>
+    `,
+    attachments: [
+      {
+        filename: `Allowance-${employee.EmpCodeId}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
+}
+
+export async function sendBulkAllowanceService({
+  month,
+  company,
+  branch,
+}: {
+  month: string;
+  company: string;
+  branch: string;
+}) {
+
+  const employees = await getArchiveAllowanceByCompanyBranch({
+    selectedMonth: month,
+    company,
+    branch,
+  });
+
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const emp of employees) {
+  const email = emp.EmpCode?.employeepayroll?.gmail_account;
+
+  if (!email) continue;
+
+  try {
+    await sendAllowanceEmailService(
+      {
+        ...emp,
+        email,
+        cash_allowance: emp.cash_allowance ? Number(emp.cash_allowance) : null,
+        ecola: emp.ecola ? Number(emp.ecola) : null,
+        deduct: emp.deduct ? Number(emp.deduct) : null,
+        loan: emp.loan ? Number(emp.loan) : null,
+        total: emp.total ? Number(emp.total) : null,
+      },
+      {
+        month,
+        company,
+        branch,
+      }
+    );
+  } catch (err) {
+    console.error(`Failed for ${emp.EmpCodeId}`, err);
+  }
+}
+
+  return {
+    success: true,
+    sent: successCount,
+    failed: failedCount,
+  };
 }

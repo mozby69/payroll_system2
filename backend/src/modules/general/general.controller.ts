@@ -44,7 +44,6 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
   export async function fetchCompanyCyclesController(req: Request, res: Response) {
     try {
       const result = await fetchCompanyCycles()
-      
       return res.json({ success: true, data: result });
     } catch (err) {
       return res.status(500).json({ message: "Failed to fetch cycles" });
@@ -76,7 +75,6 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
       const browser = await getBrowser(); 
       const page = await browser.newPage();
   
-      //const fullUrl = `http://localhost:3000${path}`;
       const fullUrl = `${process.env.FRONTEND_LAN_URL}${path}`;
   
       await page.goto(fullUrl, {

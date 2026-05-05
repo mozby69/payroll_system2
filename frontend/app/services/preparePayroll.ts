@@ -164,3 +164,5 @@ export async function updateDeduction(payload: UpdateDeductionPayload) {
   const res = await api.put("/prepare-payroll/payroll-override", payload);
   return res.data;
 }
+
+

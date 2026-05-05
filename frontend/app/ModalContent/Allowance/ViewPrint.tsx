@@ -89,17 +89,38 @@ export default function CompanyBranchSelector({ selectedMonth }:Props) {
           Print
           </button>
 
-             <button
-          disabled={!selectedCompany || !preselectedbranch}
-          onClick={() => {
-              const printPath = `/print?month=${selectedMonth}&company=${selectedCompany}&branch=${preselectedbranch}`;
-              window.open(
-              `${API_URL}/general/print?path=${encodeURIComponent(printPath)}`,
-              "_blank"
-              );
-          }}
-          className="bg-orange-500 hover:bg-orange-400 hover:cursor-pointer text-white py-2.5 px-6 rounded disabled:bg-gray-400">
-          Send Email
+          <button disabled={!selectedCompany || !preselectedbranch}
+            onClick={async () => {
+              try {
+                const res = await fetch(
+                  `${API_URL}/allowance/send-allowance-email`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      month: selectedMonth,
+                      company: selectedCompany,
+                      branch: preselectedbranch,
+                    }),
+                  }
+                );
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                  throw new Error(data.message);
+                }
+
+                alert("Emails sent successfully");
+              } catch (err) {
+                console.error(err);
+                alert("Failed to send emails");
+              }
+            }}
+            className="bg-orange-500 hover:bg-orange-400 text-white py-2.5 px-6 rounded disabled:bg-gray-400">
+            Send Email
           </button>
       </div>
 

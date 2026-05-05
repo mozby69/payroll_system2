@@ -168,4 +168,5 @@ export type UpdateDeductionPayload = {
   TotalUndertime: number;
   TotalOvertime:number;
   gross_pay_edit:number;
+  gross_edited:boolean;
 };

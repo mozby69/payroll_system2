@@ -19,6 +19,8 @@ export default function EditDeduction({ employee, onClose }: Props) {
   const [isChecked, setIsChecked] = useState(false);
   const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isGrossEdited, setIsGrossEdited] = useState(false);
+
 
   console.log(isDetailModalOpen);
 
@@ -49,27 +51,40 @@ export default function EditDeduction({ employee, onClose }: Props) {
 
   const verifyPasswordMutation = useVerifyPassword();
 
-  const handleSubmit = () => {
-    mutate(
-      {
-        PayCode: employee.PayCode,
-        EmpCodeId: employee.EmpCodeId,
-        PayrollPeriod: employee.PayrollPeriod,
-        LateCount: late === "" ? 0 : Number(late),
-        TotalAbsentHours: absent === "" ? 0 : Number(absent),
-        TotalUndertime: undertime === "" ? 0 : Number(undertime),
-        TotalOvertime: overtime === "" ? 0 : Number(overtime),
-        gross_pay_edit: grossPay === "" ? 0 : Number(grossPay),
-      },
-      {
-        onSuccess: () => {
-          onClose?.();
-          SweetAlert.successAlert("Saved successfully");
-        },
-      }
-    );
+const handleSubmit = () => {
+  const payload: {
+    PayCode: string;
+    EmpCodeId: string;
+    PayrollPeriod: string;
+    LateCount: number;
+    TotalAbsentHours: number;
+    TotalUndertime: number;
+    TotalOvertime: number;
+    gross_pay_edit?: number;
+    gross_edited?: boolean;
+  } = {
+    PayCode: employee.PayCode,
+    EmpCodeId: employee.EmpCodeId,
+    PayrollPeriod: employee.PayrollPeriod,
+    LateCount: late === "" ? 0 : Number(late),
+    TotalAbsentHours: absent === "" ? 0 : Number(absent),
+    TotalUndertime: undertime === "" ? 0 : Number(undertime),
+    TotalOvertime: overtime === "" ? 0 : Number(overtime),
   };
 
+  // 👇 ONLY include gross if user edited it
+  if (isGrossEdited) {
+    payload.gross_pay_edit = grossPay === "" ? 0 : Number(grossPay);
+    payload.gross_edited = true;
+  }
+
+  mutate(payload, {
+    onSuccess: () => {
+      onClose?.();
+      SweetAlert.successAlert("Saved successfully");
+    },
+  });
+};
 
   // const handleOpenModal = () =>{
   //   setOpenModal(true);
@@ -147,7 +162,10 @@ export default function EditDeduction({ employee, onClose }: Props) {
             type="number"
             value={grossPay}
             placeholder="Input gross amount..."
-            onChange={(e) => setGrossPay((e.target.value))}
+            onChange={(e) => {
+              setGrossPay(e.target.value);
+              setIsGrossEdited(true); 
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>

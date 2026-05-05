@@ -532,6 +532,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
         const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
+   
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));
         const sssContribEmployer = computeSSSContributionEmployer(basicSalary, sssTable,isNewProbi,Paycodes);
         const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi,Paycodes);
@@ -585,11 +586,22 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     
         const finalWtax = overrideValue ?? computedWtax;
 
-        const semi_monthly_modified = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
-        : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
+        // const semi_monthly_modified = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
+        // : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
 
 
-        const grossPay = computeGrossPay(finalOvertime,semi_monthly_modified,lateCount,undertimeCount,absent);
+
+        const computedGrossPay = computeGrossPay(
+          finalOvertime,
+          semiMonthly,
+          lateCount,
+          undertimeCount,
+          absent
+        );
+
+        const grossPay = override?.gross_edited && override?.gross_pay_edit !== null ? Number(override.gross_pay_edit): computedGrossPay;
+
+        //const grossPay = computeGrossPay(finalOvertime,semi_monthly_modified,lateCount,undertimeCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;

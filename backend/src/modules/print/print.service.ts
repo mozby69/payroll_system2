@@ -200,3 +200,25 @@ export async function generatePayslipPDF(data: unknown[]) {
   return Buffer.from(arrayBuffer);
 }
 
+
+export async function generateAllowancePDF(employee: {
+  EmpCodeId: string;
+  month: string;
+  company: string;
+  branch: string;
+}) {
+const printPath = `/print?month=${employee.month}&company=${employee.company}&branch=${employee.branch}&empId=${employee.EmpCodeId}&t=${Date.now()}`;
+
+  const res = await fetch(
+    `${process.env.BACKEND_URL}/api/general/print?path=${encodeURIComponent(printPath)}`
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("PDF error:", text);
+    throw new Error("Failed to generate PDF");
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}

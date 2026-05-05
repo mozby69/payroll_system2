@@ -724,8 +724,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
 
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
-    const semi_monthly = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
-    : override?.gross_pay_edit ?? (semiMonthlyRate ? Number(semiMonthlyRate) : 0);
+    const semi_monthly = Number(semiMonthlyRate ?? 0);
 
     const overTime = computeOvertime(basicSalary, {
       regular: emp.RegularAtt,
@@ -735,13 +734,28 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     });
 
     const computedOvertime = overTime;
+
     const finalOvertime = override?.TotalOvertime !== undefined && override?.TotalOvertime !== null
         ? Number(override.TotalOvertime)
         : computedOvertime
         ? Number(computedOvertime)
         : 0;
+
+
+
+    const computedGrossPay = computeGrossPay(
+      finalOvertime,
+      semi_monthly,
+      lateCount,
+      undertimeCount,
+      absent
+    );
+
+    const grossPay = override?.gross_edited && override?.gross_pay_edit !== null
+        ? Number(override.gross_pay_edit)
+        : computedGrossPay;
         
-    const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
+    //const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
 
 
   
@@ -1258,7 +1272,7 @@ export async function ViewDeduction(company_id:string){
 
 
 
-export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit}: UpdateDeductionPayload) {
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit,gross_edited,}: UpdateDeductionPayload) {
   try{
     return await prisma.summaryTableOverride.upsert({
         where: {
@@ -1273,7 +1287,10 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalAbsentHours,
           TotalUndertime,
           TotalOvertime,
-          gross_pay_edit,
+          ...(gross_pay_edit !== undefined && {
+            gross_pay_edit,
+            gross_edited: true,
+          }),
         },
         create: {
           PayCode,
@@ -1283,7 +1300,10 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalAbsentHours,
           TotalUndertime,
           TotalOvertime,
-          gross_pay_edit
+         ...(gross_pay_edit !== undefined && {
+          gross_pay_edit,
+          gross_edited: true,
+        }),
         },
       });
   }

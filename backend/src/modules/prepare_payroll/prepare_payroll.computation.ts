@@ -367,14 +367,14 @@ export const computeOvertime = (
   };
 
   const nightShiftLabels = {
-    "Ordinary Day": 0.8, // ✅ use % not OT multiplier
-    "Rest Day": 0.8,
-    "Special Day": 0.8,
-    "Special Day FRD": 0.8,
-    "Regular Holiday": 0.8,
-    "Regular HFRD": 0.8,
-    "Double RH": 0.8,
-    "Double RHFRD": 0.8,
+    "Ordinary Day": 0.8, 
+    "Rest Day": 1.43,
+    "Special Day": 1.43,
+    "Special Day FRD": 1.65,
+    "Regular Holiday": 2.2,
+    "Regular HFRD": 2.86,
+    "Double RH": 3.3,
+    "Double RHFRD": 4.29,
   };
 
   const regularLabels = {

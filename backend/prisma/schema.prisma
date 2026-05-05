@@ -1026,6 +1026,7 @@ model SummaryTableOverride {
   TotalUndertime Int? 
   TotalOvertime Decimal? @db.Decimal(10,2)
   gross_pay_edit Decimal? @db.Decimal(10,2)
+  gross_edited Boolean @default(false)
 
   created_at      DateTime @default(now())
 

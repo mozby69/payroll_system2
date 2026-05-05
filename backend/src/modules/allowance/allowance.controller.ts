@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, updateAllowanceBranch, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAllowanceBranch, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -165,7 +165,7 @@ export const allowancePrintController = async (req: Request,res: Response) => {
 
 export const fetchAllowancePrintDataController = async (req: Request,res: Response) => {
   try {
-    const { month, company, branch } = req.query;
+    const { month, company, branch, empId } = req.query;
 
     if (!month || !company || !branch) {
       return res.status(400).json({ message: "Missing parameters" });
@@ -175,17 +175,17 @@ export const fetchAllowancePrintDataController = async (req: Request,res: Respon
       selectedMonth: month as string,
       company: company as string,
       branch: branch as string,
+      empId: empId as string | undefined,
     });
 
     return res.status(200).json({
       success: true,
       data: result,
     });
+
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      message: "Failed to fetch print data",
-    });
+    return res.status(500).json({ message: "Failed to fetch print data" });
   }
 };
 
@@ -231,6 +231,24 @@ export async function getTotalPerCompanyController(req: Request, res: Response) 
     }
 
     const data = await getTotalPerCompany(selectedMonth);
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error(`error ocurred in controller ${error}`);
+    return res.status(500).json({ message: "error occured" });
+  }
+}
+
+
+
+
+export async function sendBulkAllowanceServiceController(req: Request, res: Response) {
+  try {
+     const { month,company,branch} = req.body;
+
+
+
+    const data = await sendBulkAllowanceService({month,company,branch});
 
     return res.status(200).json(data);
   } catch (error) {

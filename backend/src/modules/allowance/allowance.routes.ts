@@ -7,6 +7,7 @@ fetchAllowancePrintDataController,
 fetchViewAllListController,
 updateAllowanceBranchController,
 getTotalPerCompanyController,
+sendBulkAllowanceServiceController,
 } from "./allowance.controller";
 
 const router = Router();
@@ -21,7 +22,7 @@ router.get("/branches-by-company",getBranchesByCompanyController);
 router.get("/print-data", fetchAllowancePrintDataController);
 router.get("/view-all",fetchViewAllListController);
 router.post("/update-branch", updateAllowanceBranchController);
-
+router.post("/send-allowance-email",sendBulkAllowanceServiceController);
 
 router.get("/test",getTotalPerCompanyController);
 
