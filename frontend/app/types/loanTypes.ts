@@ -6,7 +6,7 @@ export type StartDeductLoan = "10" | "25" | "15" | "30"
 export type AddLoanPayload = {
   empCode: string;
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN" ;
-  rounding_type?: "Tens" | "Ones"
+  rounding_type?: "Tens" | "Ones" | "Five"
   start_deduction_cycle?:StartDeductLoan;
   principal: number;
   term_value: number;
@@ -95,7 +95,7 @@ export type LoanLedgerItem = {
 
 
 export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
-export type RoundingType = "Tens" | "Ones"
+export type RoundingType = "Tens" | "Ones" | "Five"
 
 export type AreType = "HOUSING" | "CASH ADV." | "OTHERS";
 export type TermUnit = "MONTHS" | "YEARS";

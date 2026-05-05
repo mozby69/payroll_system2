@@ -9,7 +9,8 @@ import {
     HandCoins,
     PhilippinePeso,
     CreditCard,
-    FilePlus
+    FilePlus,
+    WorkflowIcon
   } from "lucide-react"
 import { MenuSection } from "../types/sideTypes"
   
@@ -26,7 +27,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         {
           label: "Initialize Payroll",
           path: "/initialize-payroll",
-          icon: User,
+          icon: WorkflowIcon,
           permission: "PAYROLL_INITIALIZE"
         },
 
