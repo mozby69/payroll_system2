@@ -252,118 +252,157 @@ export const isSecondCutoff = (payCode?: string): boolean => {
 
 
 //OVERTIME COMPUTATION
-type JsonField = | Prisma.JsonValue | string | null | undefined;
+type JsonField = Prisma.JsonValue | string | null | undefined;
 
 type OvertimeSources = {
   overtime?: JsonField;
-  nightShift?: JsonField;
+  nightShift?: JsonField; // now number-based
   regular?: JsonField;
   nightShiftOt?: JsonField;
 };
 
-const parseJson = (field: JsonField): Record<string, string> => {
-    if (!field) return {};
-  
-    if (typeof field === "string") {
-      try {
-        return JSON.parse(field);
-      } catch {
-        return {};
-      }
-    }
-  
-    if (typeof field === "object" && !Array.isArray(field)) {
-      return field as Record<string, string>;
-    }
-  
-    return {};
-  };
-  
+// -------------------- PARSER --------------------
+const parseJson = (field: JsonField): Record<string, unknown> => {
+  if (!field) return {};
 
+  if (typeof field === "string") {
+    try {
+      return JSON.parse(field);
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof field === "object" && !Array.isArray(field)) {
+    return field as Record<string, unknown>;
+  }
+
+  return {};
+};
+
+// -------------------- TIME CONVERTER --------------------
 const timeToHours = (time: string): number => {
   if (!time) return 0;
   const [h, m] = time.split(":").map(Number);
   return h + (m || 0) / 60;
 };
 
-const computeSource = (source: Record<string, string>,multipliers: Record<string, number>,basicSalary: number): number => {
-    let total = 0;
-  
-    const dailyRate = computeDailyRate(basicSalary);
-    if (!dailyRate) return 0;
-  
-    for (const label in source) {
-      const multiplier = multipliers[label];
-      if (!multiplier) continue;
-  
-      const hours = timeToHours(source[label]); // HH:MM → decimal
-  
-      const otHourlyRate = (dailyRate / 8) * multiplier;
-      const otPay = otHourlyRate * hours;
-  
-      total += Number(otPay.toFixed(2));
-    }
-  
-    return total;
+// -------------------- TIME-BASED (UNCHANGED) --------------------
+const computeSource = (
+  source: Record<string, unknown>,
+  multipliers: Record<string, number>,
+  basicSalary: number,
+  isSixDays?:boolean | null
+): number => {
+  let total = 0;
+
+  const dailyRate = computeDailyRate(basicSalary,isSixDays);
+  if (!dailyRate) return 0;
+
+  for (const label in source) {
+    const multiplier = multipliers[label];
+    if (!multiplier) continue;
+
+    const value = source[label];
+    if (typeof value !== "string") continue;
+
+    const hours = timeToHours(value);
+
+    const otHourlyRate = (dailyRate / 8) * multiplier;
+    const otPay = otHourlyRate * hours;
+
+    total += Number(otPay.toFixed(2));
+  }
+
+  return total;
+};
+
+// -------------------- NIGHT SHIFT (NEW LOGIC) --------------------
+const computeNightShift = (
+  source: Record<string, unknown>,
+  multipliers: Record<string, number>,
+  basicSalary: number,
+  iSixDays?:boolean | null
+): number => {
+  let total = 0;
+
+  const dailyRate = computeDailyRate(basicSalary,iSixDays);
+  if (!dailyRate) return 0;
+
+  const hourlyBase = dailyRate / 8;
+
+  for (const label in source) {
+    const multiplier = multipliers[label];
+    if (!multiplier) continue;
+
+    const value = source[label];
+    if (typeof value !== "number") continue;
+
+    // ✅ Correct formula for night shift
+    const pay = hourlyBase * multiplier * value;
+
+    total += Number(pay.toFixed(2));
+  }
+
+  return total;
+};
+
+// -------------------- MAIN FUNCTION --------------------
+export const computeOvertime = (
+  basicSalary: number,
+  sources: OvertimeSources,
+  iSixDays?:boolean | null
+): number => {
+  if (!basicSalary) return 0;
+
+  const overtimeLabels = {
+    "Ordinary Day": 1.25,
+    "Rest Day": 1.69,
+    "Special Day": 1.69,
+    "Special Day FRD": 1.95,
+    "Regular Holiday": 2.6,
+    "Regular HFRD": 3.38,
+    "Double RH": 3.9,
+    "Double RHFRD": 5.07,
   };
-  
 
-  export const computeOvertime = (basicSalary: number,sources: OvertimeSources): number => {
-    if (!basicSalary) return 0;
-
-
-    const overtimeLabels = {
-        "Ordinary Day":1.25,
-        "Rest Day": 1.69,
-        "Special Day": 1.69,
-        "Special Day FRD": 1.95,
-        "Regular Holiday": 2.6,
-        "Regular HFRD": 3.38,
-        "Double RH": 3.9,
-        "Double RHFRD":5.07,
-      };
-  
-      const nightShiftLabels = {
-        "Ordinary Day":1.1,
-        "Rest Day": 1.43,
-        "Special Day": 1.43,
-        "Special Day FRD": 1.65,
-        "Regular Holiday": 2.2,
-        "Regular HFRD": 2.86,
-        "Double RH": 3.3,
-        "Double RHFRD":4.29,
-      };
-  
-      const regularLabels = {
-        "Rest Day": 1.3,
-        "Special Day": 1.3,
-        "Special Day FRD": 1.5,
-        "Regular Holiday": 2,
-        "Regular HFRD": 2.6,
-        "Double RH": 3,
-        "Double RHFRD":3.9,
-      };
-  
-      const nightShiftOtLabels = {
-        "Ordinary Day":1.375,
-        "Rest Day": 1.859,
-        "Special Day": 1.859,
-        "Special Day FRD": 2.145,
-        "Regular Holiday": 2.86,
-        "Regular HFRD": 3.718,
-        "Double RH": 4.29,
-        "Double RHFRD":5.577,
-      };
-  
-  
-    const total = 
-      computeSource(parseJson(sources.overtime), overtimeLabels, basicSalary) +
-      computeSource(parseJson(sources.nightShift), nightShiftLabels, basicSalary) +
-      computeSource(parseJson(sources.regular), regularLabels, basicSalary) +
-      computeSource(parseJson(sources.nightShiftOt), nightShiftOtLabels, basicSalary);
-
-      return Number(total.toFixed(2));
-    
+  const nightShiftLabels = {
+    "Ordinary Day": 0.8, // ✅ use % not OT multiplier
+    "Rest Day": 0.8,
+    "Special Day": 0.8,
+    "Special Day FRD": 0.8,
+    "Regular Holiday": 0.8,
+    "Regular HFRD": 0.8,
+    "Double RH": 0.8,
+    "Double RHFRD": 0.8,
   };
-  
 
+  const regularLabels = {
+    "Rest Day": 1.3,
+    "Special Day": 1.3,
+    "Special Day FRD": 1.5,
+    "Regular Holiday": 2,
+    "Regular HFRD": 2.6,
+    "Double RH": 3,
+    "Double RHFRD": 3.9,
+  };
+
+  const nightShiftOtLabels = {
+    "Ordinary Day": 1.375,
+    "Rest Day": 1.859,
+    "Special Day": 1.859,
+    "Special Day FRD": 2.145,
+    "Regular Holiday": 2.86,
+    "Regular HFRD": 3.718,
+    "Double RH": 4.29,
+    "Double RHFRD": 5.577,
+  };
+
+  const total =
+    computeSource(parseJson(sources.overtime), overtimeLabels, basicSalary,iSixDays) +
+    computeSource(parseJson(sources.regular), regularLabels, basicSalary,iSixDays) +
+    computeSource(parseJson(sources.nightShiftOt), nightShiftOtLabels, basicSalary,iSixDays) +
+    computeNightShift(parseJson(sources.nightShift), nightShiftLabels, basicSalary,iSixDays);
+
+  return Number(total.toFixed(2));
+};

@@ -35,12 +35,7 @@ export const ViewEmployeePayroll: React.FC<ViewEmployeePayrollProps> = ({employe
   const [sss] = useState<number>(Number(employeeSummary.sss_contrib ?? 0));
   const [philHealth] = useState<number>(Number(employeeSummary.phil_rate ?? 0));
   const [includePayroll, setIncludePayroll] = useState<boolean>(employeeSummary.include_payroll ?? true);
-
-  
-  
   const [hasBasicSalary] = useState(employeeSummary.basic_salary > 0);
-
-
   const [showAddBasicSalary, setShowAddBasicSalary] = useState(false);
 
 

@@ -171,6 +171,16 @@ export default function GenerateBonusPage() {
         console.error(error)
       }
     }
+
+    const groupedByBranch =
+  companyCode === "PSPMI"
+    ? employees.reduce((acc, emp) => {
+        const key = emp.branchCode || "UNKNOWN"
+        if (!acc[key]) acc[key] = []
+        acc[key].push(emp)
+        return acc
+      }, {} as Record<string, typeof employees>)
+    : null
        
 
   return (
@@ -302,58 +312,128 @@ export default function GenerateBonusPage() {
               </tr>
             </thead>
 
-            <tbody>
-              {employees.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
-                    No bonuses generated yet
-                  </td>
-                </tr>
-              )}
+      <tbody>
+          {employees.length === 0 && (
+            <tr>
+              <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
+                No bonuses generated yet
+              </td>
+            </tr>
+          )}
 
-              {employees.map((bonus, index) => (
-                <tr
-                  key={bonus.employeeCode}
-                  className={`border-t hover:bg-gray-50 transition-colors cursor-pointer ${
-                    bonus.hasLeave  ? "bg-red-100 hover:bg-red-50" : ""
-                  }`}
-                  onDoubleClick={()=>handleEditBonus(bonus)}
-                  title={bonus.remarks ?? ""}
-                >
-                  <td className="px-4 py-3">{index + 1}</td>
-                  <td className="px-4 py-3 font-medium">
-                    {bonus.fullName}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {bonus.employementDate
-                      ? new Date(bonus.employementDate).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {bonus.tenureYears}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    ₱{Number(bonus.basicSalary).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    ₱{Number(bonus.bonusAmount).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right text-red-600">
-                    ₱{Number(bonus.fchLoan).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-green-600">
-                    ₱{Number(bonus.netAmount).toLocaleString()}
-                  </td>
-                  <td
-                   className="px-4 py-3 font-medium max-w-sm truncate text-left">
-                      {bonus.remarks}
+        {/* ✅ PSPMI VIEW (GROUPED) */}
+        {companyCode === "PSPMI" && groupedByBranch &&
+          Object.entries(groupedByBranch).map(([branch, branchEmployees]) => {
+
+            const branchTotals = branchEmployees.reduce(
+              (acc, emp) => {
+                acc.basicSalary += Number(emp.basicSalary || 0)
+                acc.halfMonth += Number(emp.basicSalary || 0) / 2
+                acc.bonusAmount += Number(emp.bonusAmount || 0)
+                acc.fchLoan += Number(emp.fchLoan || 0)
+                acc.netAmount += Number(emp.netAmount || 0)
+                return acc
+              },
+              { basicSalary: 0, halfMonth: 0, bonusAmount: 0, fchLoan: 0, netAmount: 0 }
+            )
+
+      return (
+                <React.Fragment key={branch}>
+                  {/* 🔹 Branch Header */}
+                  <tr className="bg-gray-200 font-bold text-gray-800">
+                    <td colSpan={10} className="px-4 py-2">
+                      {branch}
                     </td>
-                </tr>
-              ))}
-            </tbody>
+                  </tr>
+
+                  {/* 🔹 Employees */}
+                  {branchEmployees.map((bonus, index) => (
+                    <tr key={bonus.employeeCode}
+                      className={`border-t hover:bg-gray-50 cursor-pointer ${
+                        bonus.hasLeave ? "bg-red-100" : ""
+                      }`}
+                      onDoubleClick={() => handleEditBonus(bonus)}
+                    >
+                      <td className="px-4 py-3">{index + 1}</td>
+                      <td className="px-4 py-3 font-medium">{bonus.fullName}</td>
+                      <td className="px-4 py-3 text-center">
+                        {bonus.employementDate
+                          ? new Date(bonus.employementDate).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-center">{bonus.tenureYears}</td>
+                      <td className="px-4 py-3 text-right">
+                        ₱{Number(bonus.basicSalary).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        ₱{Number(bonus.bonusAmount).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right text-red-600">
+                        ₱{Number(bonus.fchLoan).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-green-600">
+                        ₱{Number(bonus.netAmount).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 truncate">{bonus.remarks}</td>
+                    </tr>
+                  ))}
+
+                  {/* 🔹 Branch Total */}
+                  <tr className="bg-gray-100 font-semibold">
+                    <td colSpan={4} className="px-4 py-2 text-right">TOTAL</td>
+                    <td className="px-4 py-2 text-right">₱{branchTotals.basicSalary.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-right">₱{branchTotals.halfMonth.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-right">₱{branchTotals.bonusAmount.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-right text-red-600">₱{branchTotals.fchLoan.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-right text-green-700">₱{branchTotals.netAmount.toLocaleString()}</td>
+                    <td></td>
+                  </tr>
+
+                </React.Fragment>
+              )
+            })
+          }
+
+          {/* ✅ DEFAULT VIEW (NON-PSPMI) */}
+          {companyCode !== "PSPMI" &&
+            employees.map((bonus, index) => (
+              <tr key={bonus.employeeCode}
+                className={`border-t hover:bg-gray-50 cursor-pointer ${
+                  bonus.hasLeave ? "bg-red-100" : ""
+                }`}
+                onDoubleClick={() => handleEditBonus(bonus)}
+              >
+                <td className="px-4 py-3">{index + 1}</td>
+                <td className="px-4 py-3 font-medium">{bonus.fullName}</td>
+                <td className="px-4 py-3 text-center">
+                  {bonus.employementDate
+                    ? new Date(bonus.employementDate).toLocaleDateString()
+                    : "-"}
+                </td>
+                <td className="px-4 py-3 text-center">{bonus.tenureYears}</td>
+                <td className="px-4 py-3 text-right">
+                  ₱{Number(bonus.basicSalary).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  ₱{Number(bonus.bonusAmount).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-right text-red-600">
+                  ₱{Number(bonus.fchLoan).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-green-600">
+                  ₱{Number(bonus.netAmount).toLocaleString()}
+                </td>
+                <td className="px-4 py-3 truncate">{bonus.remarks}</td>
+              </tr>
+            ))
+          }
+        </tbody>
 
             {employees.length > 0 && (
             <tfoot className="bg-gray-100 border-t sticky bottom-0 z-10">
@@ -383,14 +463,9 @@ export default function GenerateBonusPage() {
                 </td>
                 <td></td>
               </tr>
-
-
-      
-      </tfoot>
-      )}
-
-          </table>
-
+            </tfoot>
+           )}
+        </table>
   
         </div>
       </div>

@@ -110,6 +110,24 @@ export default function ArchivePayroll() {
         Number(row.Total_NetPay).toLocaleString(),
     },
     {
+      header: "Status",
+      render: (row) => {
+        const status = row.status?.toLowerCase();
+        const baseClass = "px-2.5 py-1 text-xs font-semibold rounded-full inline-block";
+        const statusClass = status === "completed"
+            ? "bg-green-100 text-green-700 border border-green-200"
+            : status === "in_progress"
+            ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+            : "bg-gray-100 text-gray-600 border border-gray-200";
+
+        return (
+          <span className={`${baseClass} ${statusClass}`}>
+            {row.status}
+          </span>
+        );
+      },
+    },
+    {
       header: "Actions",
       render: (row) => (
         <div className="flex items-center gap-2">

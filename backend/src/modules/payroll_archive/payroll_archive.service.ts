@@ -10,6 +10,7 @@ import { getBodPhilhealth, getOfficerAllowance, getSSSContributions, getTaxTable
 import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
+import { Decimal } from "@prisma/client/runtime/library";
 
 // export async function employeeProbationary(){
 
@@ -99,6 +100,79 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             isAlien: false,
           },
         }
+
+        const statusCondition = {
+          OR: [
+            // ✅ Active
+            {
+              EmpCode: {
+                EmployeeStatus: {
+                  notIn: ["Resigned", "Inactive", "Terminate"],
+                },
+              },
+            },
+        
+            // ✅ BOD
+            {
+              EmpCode: {
+                bod_member: {
+                  in: ["bod1", "bod2"],
+                },
+              },
+            },
+        
+            // ✅ Special Leave (WITH company safety)
+            {
+              AND: [
+                {
+                  EmpCode: {
+                    EmployeeStatus: "Inactive",
+                  },
+                },
+                {
+                  EmpCode: {
+                    OR: [
+                      {
+                        isAlien: false,
+                        BranchCode: { company_id },
+                      },
+                      {
+                        isAlien: true,
+                        secondaryBranch: { company_id },
+                      },
+                    ],
+                  },
+                },
+                {
+                  EmpCode: {
+                    specialLeaves: {
+                      some: {
+                        OR: [
+                          {
+                            AND: [
+                              { start: { not: null } },
+                              { end: { not: null } },
+                              { start: { lte: cutoffEnd } },
+                              { end: { gte: cutoffStart } },
+                            ],
+                          },
+                          {
+                            AND: [
+                              { expectedStart: { not: null } },
+                              { expectedEnd: { not: null } },
+                              { expectedStart: { lte: cutoffEnd } },
+                              { expectedEnd: { gte: cutoffStart } },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        };
   
 
       const employeeList = await prisma.employeeSummary.findMany({
@@ -116,24 +190,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 {
                   AND: [
                     baseFilter,
-                    {
-                      OR: [
-                        {
-                          EmpCode: {
-                            EmployeeStatus: {
-                              notIn: ["Resigned", "Inactive", "Terminate"],
-                            },
-                          },
-                        },
-                        {
-                          EmpCode: {
-                            bod_member: {
-                              in: ["bod1", "bod2"],
-                            },
-                          },
-                        },
-                      ],
-                    },
+                    statusCondition,
                   ],
                 },
         
@@ -148,68 +205,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                         }
                       },
                     },
-                    {
-                      OR: [
-                        {
-                          EmpCode: {
-                            EmployeeStatus: {
-                              notIn: ["Resigned", "Inactive", "Terminate"],
-                            },
-                          },
-                        }, 
-                        {
-                          EmpCode: {
-                            bod_member: {
-                              in: ["bod1", "bod2"],
-                            },
-                          },
-                        },
-                      ],
-                    },
+                   statusCondition
                   ],
                 },
-
-                 // Special Leave Condition
-      {
-        AND: [
-          {
-            EmpCode: {
-              EmployeeStatus: "Inactive",
-            },
-          },
-          {
-            EmpCode: {
-              specialLeaves: {
-                some: {
-                  OR: [
-                    // 🔹 Case 1: use start/end
-                    {
-                      AND: [
-                        { start: { not: null } },
-                        { end: { not: null } },
-                        { start: { lte: cutoffEnd } },
-                        { end: { gte: cutoffStart } },
-                      ],
-                    },
-      
-                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
-                    {
-                      AND: [
-                        { expectedStart: { not: null } },
-                        { expectedEnd: { not: null } },
-                        { expectedStart: { lte: cutoffEnd } },
-                        { expectedEnd: { gte: cutoffStart } },
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        ],
-      }
-
-      // END Special Leave Condition
               ],
             },
           ],
@@ -569,9 +567,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           overtime: emp.OvertimeAtt,
           nightShift: emp.NightShiftAtt,
           nightShiftOt: emp.NightShiftOtAtt,
-        });
+        },
+          isSixDaysWork);
 
         const computedOvertime = overTime;
+        
         const finalOvertime = override?.TotalOvertime !== undefined && override?.TotalOvertime !== null
         ? Number(override.TotalOvertime)
         : computedOvertime
@@ -585,8 +585,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     
         const finalWtax = overrideValue ?? computedWtax;
 
+        const semi_monthly_modified = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
+        : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
 
-        const grossPay = computeGrossPay(finalOvertime,semiMonthly,lateCount,undertimeCount,absent);
+
+        const grossPay = computeGrossPay(finalOvertime,semi_monthly_modified,lateCount,undertimeCount,absent);
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
     
         const companyId = emp.EmpCode.BranchCode?.company_id;

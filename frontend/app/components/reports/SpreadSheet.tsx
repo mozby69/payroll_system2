@@ -244,9 +244,9 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{idx + 1}</td>
                 <td className="py-2 text-center">{row.name}</td>
                 <td className="py-2 text-center">{row.basicPay}</td>
-                <td className="py-2 text-center">{row.overtime}</td>
-                <td className="py-2 text-center">{row.late}</td>
-                <td className="py-2 text-center">{row.undertime}</td>
+                <td className="py-2 text-center">{row.overtime.toFixed(2)}</td>
+                <td className="py-2 text-center">{row.late.toFixed(2)}</td>
+                <td className="py-2 text-center">{row.undertime.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.absence.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.gross}</td>
                 <td>
@@ -274,7 +274,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                     setIsModalOpen(true);
                     setSelectedLoanType("SSS_LOAN");
                   }}>{row.salaryLoan}</td>
-                <td className="py-2 text-center">{row.calamityLoan}</td>
+                <td className="py-2 text-center">{row.calamityLoan.toFixed(2)}</td>
                 <td className="py-2 text-center cursor-pointer"
                   onDoubleClick={() => {
                     setSelectedRow(row);

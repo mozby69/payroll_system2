@@ -18,7 +18,9 @@ export const ViewEmployeeListAllowance: React.FC<ViewEmployeeListAllowanceProps>
     return <div>Loading...</div>;
   }
 
-  const list = data?.data ?? [];
+  const list = data?.data?.list ?? [];
+
+
 
 
   return (
@@ -57,3 +59,6 @@ export const ViewEmployeeListAllowance: React.FC<ViewEmployeeListAllowanceProps>
     </div>
   );
 }
+
+
+

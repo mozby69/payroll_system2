@@ -231,14 +231,6 @@ export default function AllowancePage(){
                       </RequestModal>
                     )}
 
-
-              {/* {isModalOpen2 &&(
-                  <RequestModal size="md" title={`Edit Branch`} onClose={closeModal2}>
-                    <EditBranchAllowance data={selectedAllowance} selectedMonth={month} onClose={closeModal} />
-                  </RequestModal>
-                )} */}
-
-
                   
            </div>
         </>

@@ -147,11 +147,7 @@ export function useFetchArchiveAllowanceModal(selectedMonth: string | null) {
       if (!selectedMonth) {
         throw new Error('selectedMonth is required');
       }
-
-      const response = await api.get<ArchiveAllowanceResponse>(
-        `/allowance/archive-allowance/${selectedMonth}`
-      );
-
+      const response = await api.get<ArchiveAllowanceResponse>(`/allowance/archive-allowance/${selectedMonth}`);
       return response.data;
     },
     enabled: Boolean(selectedMonth),

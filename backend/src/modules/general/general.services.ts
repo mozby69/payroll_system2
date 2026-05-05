@@ -65,17 +65,14 @@ export async function getOfficerAllowance() {
   }
 
 
-export async function appendMissingBodEmployees(
-  tx: Prisma.TransactionClient,
-  employees: EmployeeSummaryTypes[]
-) {
+export async function appendMissingBodEmployees(tx: Prisma.TransactionClient,employees: EmployeeSummaryTypes[]) {
   if (!employees.length) return [];
 
   const template = employees[0];
 
   const bodEmployees = await tx.employee.findMany({
     where: {
-      bod_member: { in: ["bod1", "bod2"] },
+      bod_member: { in: ["bod1", "bod2","officer"] },
       BranchCode: {
         CompanyCode: {
           CompanyCycle: template.CycleCategory,

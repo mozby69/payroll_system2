@@ -93,11 +93,11 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const varianceEmp = data?.VARIANCE_EMP ?? [];
 
     const addList = varianceEmp.filter(
-        (item) => item.variance.action.type === "ADD"
+        (item) => item.variance.action?.type === "ADD"
     );
 
     const lessList = varianceEmp.filter(
-        (item) => item.variance.action.type === "LESS"
+        (item) => item.variance?.action?.type === "LESS"
     );
 
     // const addTotals = addList.reduce(
@@ -282,7 +282,9 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                     <td>{formatCurrency(branchTotals.total)}</td>
                                                 </tr>
 
-                                                {/* EMB MAIN EXTRA */}
+                               
+
+{/*                                
                                                 {branch === "EMB-MAIN" && (
                                                     <>
                                                         <tr>
@@ -350,7 +352,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                             <td colSpan={4}></td>
                                                         </tr>
                                                     </>
-                                                )}
+                                                )} */}
 
 
                                                 {company === "EMB" && isLastBranch && (

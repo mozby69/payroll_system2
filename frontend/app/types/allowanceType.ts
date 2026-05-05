@@ -54,14 +54,29 @@ export interface ArchiveAllowance {
   totalDeduction: number | null;
   total: number | null;
   createdAt: string;
-  branchCode:string;
+  branchCode: string;
+  position: string | null;
+  loan: number | null;
+  deduct: number | null;
+  branchPosition: number;
+  company_id: string | null;
 }
-
-
+export interface ArchiveAllowanceDetails {
+  company_list: Record<string, unknown>;
+  loans: unknown[];
+  variance_allowance: unknown;
+  variance_employee: unknown;
+}
 
 export interface ArchiveAllowanceResponse {
-  data: ArchiveAllowance[];
+  data: {
+    list: ArchiveAllowance[];
+    details: ArchiveAllowanceDetails | null;
+  };
 }
+
+
+
 
 
 
@@ -144,7 +159,7 @@ export interface LoanItem{
   EmpCode:string;
   Firstname:string;
   Lastname:string;
-  per_payroll_deduct:number;
+  per_payroll_deduct?:number;
   BranchCodeId:string;
 }
 
@@ -185,3 +200,58 @@ export interface VarianceAllowance{
   current: VarianceAllowanceField;
   variance: VarianceAllowanceGrandTotal;
 }
+
+
+
+
+
+
+
+
+
+// export type LoanItem = {
+//     Firstname: string;
+//     Lastname: string;
+//     per_payroll_deduct: number;
+//     BranchCodeId: string;
+// };
+
+
+export type CompanyItem = {
+  total_cash_allowance: number;
+  ecola: number;
+  total_num: number;
+  branches: unknown;
+};
+
+export type VarianceAllowanceComplete = {
+  previous: {
+    selectedMonth: string;
+    cash_assistance: number;
+    ecola: number;
+    grand_total: number;
+  };
+  current: {
+    selectedMonth: string;
+    cash_assistance: number;
+    ecola: number;
+    grand_total: number;
+  };
+  variance: {
+    cash_assistance: number;
+    ecola: number;
+    grand_total: number;
+  };
+};
+
+export type VarianceAllowanceEmployee = {
+  name: string;
+  variance: {
+    cash_assistance: number;
+    ecola: number;
+    total: number;
+    action: {
+      type: "ADD" | "LESS";
+    };
+  };
+};

@@ -16,6 +16,7 @@ export type TotalPayroll = {
     Total_PhilhealthContributionEmployee: string
     Total_PhilhealthContributionEmployer: string
     total_wtax: string
+    status?:string | null;
   }
   
   export type PaginatedResponse<T> = {

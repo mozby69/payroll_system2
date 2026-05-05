@@ -1038,3 +1038,30 @@ export const importSQLService = async (filePath:string | undefined, originalFile
         });
       }
     }
+
+
+
+
+
+  for (const employee of regularEmployees) {
+      const company = employee.company_id ?? "UNKNOWN";
+      const branch = employee.branch_code ?? "NO_BRANCH";
+
+      if (!branchesByCompany[company]) {
+        branchesByCompany[company] = {};
+      }
+
+      if (!branchesByCompany[company][branch]) {
+        branchesByCompany[company][branch] = [];
+      }
+
+      branchesByCompany[company][branch].push(employee);
+    }
+
+    for (const company of Object.keys(branchesByCompany)) {
+      for (const branch of Object.keys(branchesByCompany[company])) {
+        branchesByCompany[company][branch].sort((a, b) => {
+          return (a.EmpCode ?? "").localeCompare(b.EmpCode ?? "");
+        });
+      }
+    }

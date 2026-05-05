@@ -209,20 +209,20 @@ export default function ArchiveReportModal({
     <h2 className="text-center text-xl font-bold mb-6">
       PAYROLL ARCHIVE REPORT
     </h2>
-{grandTotals && (
-  <div>
-    <ArchiveReportView grandTotals={grandTotals}  report = {report}/>
-    <div style={{ display: "none" }}>
-        <div ref={printRef}>
-          <ArchivePayrollPrintView
-            report={report}
-            grandTotals={grandTotals}
-          />
-        </div>
+    {grandTotals && (
+      <div>
+        <ArchiveReportView grandTotals={grandTotals}  report = {report}/>
+        <div style={{ display: "none" }}>
+            <div ref={printRef}>
+              <ArchivePayrollPrintView
+                report={report}
+                grandTotals={grandTotals}
+              />
+            </div>
+          </div>
       </div>
-  </div>
-)}
-   
+    )}
+      
 
 
   </div>

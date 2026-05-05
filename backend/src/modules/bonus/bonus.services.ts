@@ -1118,7 +1118,7 @@ export async function getEmployeesByBonusSummaryService(
       return {
         employeeCode: bonus.employeeCode,
         companyCode: bonus.companyCode, // ✅ direct
-
+        branchCode: bonus.employee?.BranchCodeId,
         fullName: `${emp?.Lastname}, ${emp?.Firstname}`,
         employementDate: emp?.EmployementDate,
 

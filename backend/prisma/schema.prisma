@@ -752,6 +752,7 @@ model archive_allowance {
   createdAt DateTime @map("created_at")
   base_cash_assistance Decimal? @db.Decimal(10,2)
   base_ecola Decimal? @db.Decimal(10,2)
+  position String? @db.VarChar(100) 
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
   branchCode  String
@@ -778,6 +779,7 @@ model archive_allowance_summary {
   createdAt DateTime @map("created_at")
 
   allowances archive_allowance[]
+  allowanceArchiveDetails allowanceArchiveDetails[]
 
   @@unique([selectedMonth])
   @@map("archive_allowance_summary")
@@ -1023,6 +1025,7 @@ model SummaryTableOverride {
   TotalAbsentHours Decimal? @db.Decimal(10,2)
   TotalUndertime Int? 
   TotalOvertime Decimal? @db.Decimal(10,2)
+  gross_pay_edit Decimal? @db.Decimal(10,2)
 
   created_at      DateTime @default(now())
 
@@ -1033,3 +1036,19 @@ model SummaryTableOverride {
 
   @@map("summary_table_override")
 }
+
+
+model allowanceArchiveDetails{
+  id Int @id @default(autoincrement())
+  company_list Json?
+  loans Json?
+  variance_allowance Json?
+  variance_employee Json?
+
+  selectedMonth String @db.VarChar(100) @map("selected_month")
+  summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
+  @@map("allowance_archive_details")
+}
+
+
+

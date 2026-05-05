@@ -67,3 +67,37 @@ export type EmployeeVariance = {
 
 
   
+
+export type ArchiveAllowanceDTO = {
+  EmpCodeId: string;
+  name: string;
+  cash_allowance: number | null;
+  ecola: number | null;
+  absent_count: number | null;
+  total: number | null;
+  totalDeduction: number | null;
+  deduct: number | null;
+  loan: number | null;
+  position: string | null;
+  createdAt: Date;
+  branchCode: string;
+  branchPosition: number;
+  company_id: string | null;
+};
+
+export type BranchMeta = {
+  branchCode: string;
+  position: number;
+  company_id: string | null;
+};
+
+export type ArchiveAllowanceFullResponse = {
+  list: ArchiveAllowanceDTO[];
+  details: {
+    company_list: unknown;
+    loans: unknown;
+    variance_allowance: unknown;
+    variance_employee: unknown;
+  } | null;
+};
+

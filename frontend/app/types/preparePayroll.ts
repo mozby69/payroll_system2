@@ -224,4 +224,5 @@ export type UpdateDeductionPayload = {
   TotalAbsentHours: number;
   TotalUndertime: number;
   TotalOvertime:number;
+  gross_pay_edit:number;
 };
