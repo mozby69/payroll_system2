@@ -389,6 +389,7 @@ model EmployeePayrollArchive {
   total_deductions Decimal? @db.Decimal(10,2) @map("total_deductions")
   PayrollBranchId  String? 
   officers_allowance Decimal? @db.Decimal(10,2) 
+  disburse_amount Decimal? @db.Decimal(10,2)
 
   totalPayrollId Int @map("total_payroll_id")
   totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)

@@ -112,7 +112,7 @@ export async function getMainDisburseDetails(
       disburseID: true,
       empArchive: {
         select: {
-          Netpay: true,
+          disburse_amount: true,
           EmpCode: {
             select: {
               EmpCode: true,
