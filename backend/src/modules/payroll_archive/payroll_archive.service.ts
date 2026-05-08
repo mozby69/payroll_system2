@@ -240,6 +240,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               BranchCodeId: true,
               EmployementDate:true,
               isSixDaysWork:true,
+              WithAtm:true,
+              Disbursing:true,
               BranchCode:{
                 select:{
                   company_id:true,
@@ -512,6 +514,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const isTaxable = emp.EmpCode.Taxable;
         const empId = emp.EmpCodeId.trim().toUpperCase();
         const officerAllowance = isSecondCutoff(emp.PayCode) ? 0 : oaMap.get(empId) ?? 0;
+        const isDisbursing = emp.EmpCode.Disbursing === true;
+        const hasNoAtm = emp.EmpCode.WithAtm === false;
    
 
         const bodMap = new Map(
@@ -601,8 +605,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         const grossPay = override?.gross_edited && override?.gross_pay_edit !== null ? Number(override.gross_pay_edit): computedGrossPay;
 
-        //const grossPay = computeGrossPay(finalOvertime,semi_monthly_modified,lateCount,undertimeCount,absent);
+       
+        
         const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
+
+
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
 

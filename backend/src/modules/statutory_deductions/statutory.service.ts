@@ -238,6 +238,8 @@ export async function updatePhilhealth(id:number, SettingPercentage:string){
   });
 }
 
+
+
 export async function displayWTax(){
   try{
     const data = await prisma.tax_table.findMany();

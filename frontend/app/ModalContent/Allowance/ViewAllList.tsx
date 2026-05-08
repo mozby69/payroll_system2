@@ -40,6 +40,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 acc.fch_rfc_deducted += Number(emp.fch_rfc_deducted ?? 0);
                 acc.totalDeduction += Number(emp.totalDeduction ?? 0);
                 acc.total += Number(emp.total ?? 0);
+                acc.emergency_allowance_amount += Number(emp.emergency_allowance_amount ?? 0);
                 return acc;
             },
             {
@@ -49,6 +50,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 fch_rfc_deducted: 0,
                 totalDeduction: 0,
                 total: 0,
+                emergency_allowance_amount:0,
             }
         );
     }
@@ -129,6 +131,10 @@ export default function ViewAllList({ selectedMonth }: Props) {
     // );
 
 
+    const showEmergency = boardMembers.some(emp => emp.is_emergency);
+
+
+
     return (
         <>
             <div className="p-2">
@@ -150,6 +156,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <th>ABSENCES</th>
                                 <th>LOANS</th>
                                 <th>TOTAL DEDUCTIONS</th>
+                                { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
                                 <th>NET TOTAL</th>
                             </tr>
                         </thead>
@@ -159,11 +166,12 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <tr key={emp.EmpCode}>
                                     <td className="px-2">{index + 1}</td>
                                     <td className="py-1">{emp.name}</td>
-                                    <td className="py-1">{emp.cash_allowance}</td>
-                                    <td className="py-1">{emp.computed_ecola}</td>
-                                    <td className="py-1">{emp.deduct}</td>
+                                    <td className="py-1">{emp.cash_allowance.toFixed(2)}</td>
+                                    <td className="py-1">{emp.computed_ecola.toFixed(2)}</td>
+                                    <td className="py-1">{emp.deduct.toFixed(2)}</td>
                                     <td className="py-1">{emp.fch_rfc_deducted.toFixed(2)}</td>
                                     <td className="py-1">{emp.totalDeduction.toFixed(2)}</td>
+                                    { showEmergency && <td className="py-1">{emp.emergency_allowance_amount}</td> }
                                     <td className="py-1">{emp.total}</td>
                                 </tr>
                             ))}
@@ -174,6 +182,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td>{formatCurrency(boardTotals.deduct)}</td>
                                 <td>{formatCurrency(boardTotals.fch_rfc_deducted)}</td>
                                 <td>{formatCurrency(boardTotals.totalDeduction)}</td>
+                                { showEmergency && <td>{formatCurrency(boardTotals.emergency_allowance_amount)}</td> } 
                                 <td>{formatCurrency(boardTotals.total)}</td>
                             </tr>
                         </tbody>
@@ -192,6 +201,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <th>ABSENCES</th>
                                 <th>LOANS</th>
                                 <th>TOTAL DEDUCTIONS</th>
+                                { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
                                 <th>NET TOTAL</th>
                             </tr>
                         </thead>
@@ -206,6 +216,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                     <td className="py-1">{emp.deduct}</td>
                                     <td className="py-1">{emp.fch_rfc_deducted.toFixed(2)}</td>
                                     <td className="py-1">{emp.totalDeduction.toFixed(2)}</td>
+                                    { showEmergency && <td className="py-1">{emp.emergency_allowance_amount}</td> }
                                     <td className="py-1">{emp.total}</td>
                                 </tr>
                             ))}
@@ -216,6 +227,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td>{formatCurrency(mancomTotals.deduct)}</td>
                                 <td>{formatCurrency(mancomTotals.fch_rfc_deducted)}</td>
                                 <td>{formatCurrency(mancomTotals.totalDeduction)}</td>
+                                { showEmergency && <td>{formatCurrency(mancomTotals.emergency_allowance_amount)}</td> } 
                                 <td>{formatCurrency(mancomTotals.total)}</td>
                             </tr>
                         </tbody>
@@ -252,6 +264,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                     <th>ABSENCES</th>
                                                     <th>LOANS</th>
                                                     <th>TOTAL DEDUCTIONS</th>
+                                                    { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
                                                     <th>NET TOTAL</th>
                                                 </tr>
                                             </thead>
@@ -267,6 +280,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                         <td>{emp.deduct.toFixed(2)}</td>
                                                         <td>{emp.fch_rfc_deducted.toFixed(2)}</td>
                                                         <td>{emp.totalDeduction.toFixed(2)}</td>
+                                                        { showEmergency && <td>{emp.emergency_allowance_amount}</td> }
                                                         <td className="font-semibold">{emp.total.toFixed(2)}</td>
                                                     </tr>
                                                 ))}
@@ -279,6 +293,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                     <td>{formatCurrency(branchTotals.deduct)}</td>
                                                     <td>{formatCurrency(branchTotals.fch_rfc_deducted)}</td>
                                                     <td>{formatCurrency(branchTotals.totalDeduction)}</td>
+                                                    { showEmergency && <td>{formatCurrency(branchTotals.emergency_allowance_amount)}</td> } 
                                                     <td>{formatCurrency(branchTotals.total)}</td>
                                                 </tr>
 
@@ -371,12 +386,19 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                             <td className="text-center">
                                                                 {formatCurrency(companyTotals.computed_ecola)}
                                                             </td>
-                                                                 <td colSpan={3}></td>
+
+                                                                       
+                                                           <td colSpan={3}></td>
+
+                                                           { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
+
+                                                
 
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola
+                                                                    companyTotals.computed_ecola +
+                                                                    companyTotals.emergency_allowance_amount
                                                                 )}
                                                             </td>
 
@@ -404,14 +426,54 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
                                                             <td colSpan={3}></td>
 
+                                                             { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
+
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola
+                                                                    companyTotals.computed_ecola +
+                                                                    companyTotals.emergency_allowance_amount
                                                                 )}
                                                             </td>
 
                                                        
+                                                        </tr>
+                                                    </>
+                                                )}
+                                                
+
+
+
+                                                  {company === "RFC" && isLastBranch && (
+                                                    <>
+                                                        <tr>
+                                                            <td className="invisible">s</td>
+                                                        </tr>
+
+                                                        <tr className="bg-yellow-200 font-bold border-t-2">
+                                                            <td className="py-2" colSpan={2}>TOTAL RFC</td>
+
+                                                            <td className="text-center">
+                                                                {formatCurrency(companyTotals.cash_allowance)}
+                                                            </td>
+
+                                                            <td className="text-center">
+                                                                {formatCurrency(companyTotals.computed_ecola)}
+                                                            </td>
+
+                                                            <td colSpan={3}></td>
+
+                                                              { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
+
+                                                            <td className="text-center">
+                                                                {formatCurrency(
+                                                                    companyTotals.cash_allowance +
+                                                                    companyTotals.computed_ecola +
+                                                                    companyTotals.emergency_allowance_amount
+                                                                )}
+                                                            </td>
+
+                                                   
                                                         </tr>
                                                     </>
                                                 )}
@@ -434,13 +496,15 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 {formatCurrency(companyTotals.computed_ecola)}
                                                             </td>
 
-
                                                             <td colSpan={3}></td>
+
+                                                              { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
 
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola
+                                                                    companyTotals.computed_ecola +
+                                                                    companyTotals.emergency_allowance_amount
                                                                 )}
                                                             </td>
 
@@ -468,10 +532,14 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
                                                             <td colSpan={3}></td>
 
+                                                            { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
+
+
                                                             <td className="text-center">
                                                                 {formatCurrency(
                                                                     companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola
+                                                                    companyTotals.computed_ecola +
+                                                                    companyTotals.emergency_allowance_amount
                                                                 )}
                                                             </td>
 
@@ -506,6 +574,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <th className="py-2">COMPANY</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
+                                 { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
                                 <th>NET TOTAL</th>
                             </tr>
                         </thead>
@@ -517,7 +586,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td className="p-2 border border-gray-200">{companyCode}</td>
                                 <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance)}</td>
                                 <td className="p-2 border border-gray-200">{formatCurrency(company.ecola)}</td>
-                                <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance + company.ecola)}</td>
+                                { showEmergency && <td className="p-2 border border-gray-200">{formatCurrency(company.emergency_allowance_amount)}</td> }
+                                <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance + company.ecola + company.emergency_allowance_amount)}</td>
                                 </tr>
                             ))}
 
@@ -540,11 +610,21 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                     )
                                     )}
                                 </td>
+                                { showEmergency && 
+                                <td>
+                                    {formatCurrency(
+                                    total_per_company.reduce(
+                                        (sum, [, c]) => sum + c.emergency_allowance_amount,
+                                        0
+                                    )
+                                    )}
+                                </td>
+                                }
 
                                 <td>
                                     {formatCurrency(
                                     total_per_company.reduce(
-                                        (sum, [, c]) => sum + c.total_cash_allowance + c.ecola,
+                                        (sum, [, c]) => sum + c.total_cash_allowance + c.ecola + c.emergency_allowance_amount,
                                         0
                                     )
                                     )}

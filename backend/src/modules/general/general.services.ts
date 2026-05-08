@@ -482,3 +482,22 @@ export const assignBranchService = async (
     },
   });
 };
+
+
+
+
+
+
+
+
+
+
+export async function getAllowanceEmergency() {
+    return prisma.allowance_emergency.findFirst({
+      select: {
+        allowance_id: true,
+        is_emergency: true,
+        emergency_allowance_amount:true,
+      },
+    });
+  }

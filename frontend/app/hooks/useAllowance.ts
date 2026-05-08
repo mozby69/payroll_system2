@@ -215,3 +215,81 @@ export function useFetchViewAll(selectedMonth: string | null) {
     enabled: Boolean(selectedMonth),
   });
 }
+
+
+
+
+
+export interface EmergencyAllowanceResponse {
+  allowance_id:number;
+  is_emergency:boolean;
+  emergency_allowance_amount:number;
+}
+
+
+
+export function useFetchEmergencyAllowanceList() {
+  return useQuery<EmergencyAllowanceResponse>({
+    queryKey: ["emergency-allowance-list"],
+    queryFn: async () => {
+      const res = await api.get<EmergencyAllowanceResponse>(
+        "/allowance/display-emergency-allowance"
+      );
+
+      return res.data;
+    },
+  });
+}
+
+
+  export function useUpdateEmergencyAllowance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: EmergencyAllowanceResponse) => {
+      const res = await api.put<EmergencyAllowanceResponse>(
+        `/allowance/emergency-allowance-edit/${payload.allowance_id}`,
+        {
+          is_emergency: payload.is_emergency,
+          emergency_allowance_amount: payload.emergency_allowance_amount,
+        }
+      );
+
+      return res.data;
+    },
+
+    onSuccess: () => {
+      SweetAlert.successAlert("Updated successfully");
+      queryClient.invalidateQueries({
+        queryKey: ["emergency-allowance-list"],
+      });
+       queryClient.invalidateQueries({
+        queryKey: ["fetch-view-all"],
+      });
+    },
+  });
+}
+
+
+
+
+
+
+export function useUpdateAbsentOverride() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      EmpCode: string;
+      selectedMonth: string;
+      absent_hours: number;
+    }) => {
+      await api.post("/allowance/update-absent", payload);
+    },
+    onSuccess: () => {
+      SweetAlert.successAlert("Absent override updated");
+      queryClient.invalidateQueries({ queryKey: ["allowance-list"] });
+      queryClient.invalidateQueries({ queryKey: ["fetch-view-all"] });
+    },
+  });
+}

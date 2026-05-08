@@ -9,6 +9,7 @@ export interface AllowanceProps {
     totalDeduction:string | null;
     loan: string | null;
     deduct:string | null;
+    absent_hours?:number | null;
     BranchCode:{
       branchCode:string;
     };
@@ -60,6 +61,8 @@ export interface ArchiveAllowance {
   deduct: number | null;
   branchPosition: number;
   company_id: string | null;
+  emergency_allowance_amount: number | null;
+  is_emergency: boolean | null;
 }
 export interface ArchiveAllowanceDetails {
   company_list: Record<string, unknown>;
@@ -154,6 +157,8 @@ export interface ViewAllItem {
   fch_rfc_deducted: number;
   cash_assitance_deduct:number;
   ecola_deduct:number;
+  is_emergency:boolean;
+  emergency_allowance_amount:number;
 }
 export interface LoanItem{
   EmpCode:string;
@@ -168,6 +173,8 @@ export interface CompanyData {
   ecola: number;
   total_num: number;
   branches: Record<string, unknown>;
+  is_emergency:boolean;
+  emergency_allowance_amount:number;
 }
 
 export type TotalPerCompany = Record<string, CompanyData>;
@@ -222,6 +229,7 @@ export type CompanyItem = {
   ecola: number;
   total_num: number;
   branches: unknown;
+  emergency_allowance_amount: number;
 };
 
 export type VarianceAllowanceComplete = {

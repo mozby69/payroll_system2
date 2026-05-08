@@ -226,7 +226,7 @@ export async function conversionReport({ company_id }: conversionReport) {
         as_of_date: true,
       },
       orderBy: {
-        created_at: 'asc'
+        created_at: 'desc'
       }
     });
 
@@ -307,7 +307,7 @@ export async function conversionReport({ company_id }: conversionReport) {
           anniv >= ref &&
           anniv <= june &&
           baseTenure < 3
-        );
+        );   
       })();
 
       if (shouldAddLeave) {

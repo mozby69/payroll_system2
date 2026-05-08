@@ -13,10 +13,11 @@ import RequestModal from "@/app/components/Modal";
 import ViewAllList from "@/app/ModalContent/Allowance/ViewAllList";
 import { Pencil } from "lucide-react";
 import EditBranchAllowance from "@/app/ModalContent/Allowance/EditBranch";
+import ConfigTab from "@/app/components/allowance/configTab";
 
 
 
-type AllowanceTab = "current" | "archive";
+type AllowanceTab = "current" | "archive" | "config";
 
 
 export default function AllowancePage(){
@@ -122,6 +123,7 @@ export default function AllowancePage(){
           const tabs: TabItem<AllowanceTab>[] = [
             { key: "current", label: "Employee Allowance" },
             { key: "archive", label: "Allowance Archive" },
+            { key: "config", label: "Config" },
           ];
 
           const handleSearchChange = (value: string) => {
@@ -217,10 +219,16 @@ export default function AllowancePage(){
               {activeTab === "archive" && (
                 <AllowanceArchiveTab/>
               )}
+
+
+              {activeTab === "config" && (
+                <ConfigTab/>
+              )}
+              
               
 
                 {isModalOpen && (
-                    <RequestModal size="xxl" title={`VIEW ALL`} onClose={closeModal}>
+                    <RequestModal size="xxxl" title={`VIEW ALL`} onClose={closeModal}>
                         <ViewAllList selectedMonth={month}/>
                     </RequestModal>
                   )}

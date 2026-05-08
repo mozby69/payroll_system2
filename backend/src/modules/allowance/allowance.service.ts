@@ -1,14 +1,16 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import {allowanceprops,AllowanceRow,ArchiveAllowanceDTO,ArchiveAllowanceFullResponse,BranchMeta,EmployeeVariance,SummaryAllowanceProps} from "./allowance.types";
-import {formatAllowanceMonth,getDaysInMonth,getPreviousMonth, round2} from "./allowance.helper";
+import {formatAllowanceMonth,getDaysInMonth,getPreviousMonth, round2, to2} from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 import { generateAllowancePDF } from "../print/print.service";
 import nodemailer from "nodemailer";
+import { getAllowanceEmergency } from "../general/general.services";
 
 export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}: allowanceprops) {
   const [year, month] = selectedMonth.split("-").map(Number);
   const prev = getPreviousMonth(year, month);
+
 
   const monthName = new Date(prev.year, prev.month - 1).toLocaleString(
     "en-US",
@@ -241,9 +243,17 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
   };
 }
 
+
+
+
+
+
+
+
 export async function computeAllowanceForMonth(selectedMonth: string) {
   const [year, month] = selectedMonth.split("-").map(Number);
   const prev = getPreviousMonth(year, month);
+  const emergency_allowance = await getAllowanceEmergency();
 
   const monthName = new Date(prev.year, prev.month - 1).toLocaleString(
     "en-US",
@@ -253,6 +263,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
   );
 
   const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
+
+
+
 
  const employees = await prisma.employee.findMany({
   where: {
@@ -357,14 +370,35 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     },
   });
 
+
   const overrideMap = new Map(overrides.map((o) => [o.EmpCode, o.branchCode]));
+
+
+
+    //override absent
+  const absentOverrides = await prisma.employeeAbsentOverride.findMany({
+    where: {
+      selectedMonth,
+      EmpCodeId: { in: empCodes },
+    },
+  });
+
+  const overrideAbsentMap = new Map(
+    absentOverrides.map(o => [o.EmpCodeId, Number(o.absent_hours ?? 0)])
+  );
 
   //return employees.map((emp) => {
   const rows = employees.map((emp) => {
-    const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0), 0,);
+    //const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0), 0,);
+    const computedAbsent = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
+    const totalAbsentHours = overrideAbsentMap.has(emp.EmpCode) ? overrideAbsentMap.get(emp.EmpCode)! : computedAbsent;
     const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
     const hasEcola = emp.employeepayroll?.with_ecola === true;
    // const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
+
+    const isEmergency = emergency_allowance?.is_emergency ?? false;
+
+    const emergencyAmount = isEmergency ? Number(emergency_allowance?.emergency_allowance_amount ?? 0) : 0;
 
     const baseBranch = emp.isAlien ? emp.secondaryBranch : emp.BranchCode;
     const branchCode = overrideMap.get(emp.EmpCode) ?? baseBranch?.branchCode ?? "NO_BRANCH";
@@ -376,13 +410,18 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     const cashDailyRate = cashAssistance / daysInPrevMonth;
     const ecolaDailyRate = ecola / daysInPrevMonth;
 
+    const ca_rate_per_absent = cashDailyRate * totalAbsentHours;
+
     const fch_rfc_deducted = 0;
 
-    const totalCashAllowance = cashAssistance - (cashDailyRate * totalAbsentHours);
+    const totalCashAllowance = cashAssistance - (ca_rate_per_absent);
+
 
     const totalEcola = hasEcola ? ecola - ecolaDailyRate * totalAbsentHours : 0;
 
-    const total = totalCashAllowance + totalEcola;
+    //const total = totalCashAllowance + totalEcola + emergencyAmount;
+    const total = to2(totalCashAllowance) + to2(totalEcola) + to2(emergencyAmount);
+
 
     const totalDeduction = cashDailyRate * totalAbsentHours + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
 
@@ -425,6 +464,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       isAlien:emp.isAlien,
       secondaryBranchId:emp.secondaryBranchId,
       positionEmp,
+      is_emergency:isEmergency,
+      emergency_allowance_amount:emergencyAmount,
       // loan code ↑
     };
   });
@@ -538,6 +579,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       acc.totalDeduction += row.totalDeduction;
       acc.deduct += row.deduct;
       acc.fch_rfc_deducted += row.fch_rfc_deducted;
+      acc.emergency_allowance_amount += row.emergency_allowance_amount;
       return acc;
     },
     {
@@ -547,6 +589,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       totalDeduction: 0,
       deduct: 0,
       fch_rfc_deducted: 0,
+      emergency_allowance_amount:0,
     },
   );
 
@@ -593,6 +636,7 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         totalDeduction: summary.totalDeduction,
         totalAbsent: summary.deduct,
         totalLoan: summary.fch_rfc_deducted,
+        total_emergency_allowance:summary.emergency_allowance_amount,
         createdAt: nowPH(),
       },
     });
@@ -615,6 +659,8 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         base_cash_assistance:emp.base_cash_assistance,
         base_ecola: emp.base_ecola,
         position: emp.positionEmp,
+        emergency_allowance_amount: emp.emergency_allowance_amount,
+        is_emergency:emp.is_emergency,
 
         createdAt: nowPH(),
       })),
@@ -690,8 +736,37 @@ export async function updateAllowanceBranch({EmpCode,selectedMonth,branchCode}: 
       selectedMonth,
       branchCode,
     },
+  });  
+}
+
+
+
+
+
+export async function updateAbsentOverride({EmpCode,selectedMonth,absent_hours}: {
+  EmpCode: string;
+  selectedMonth: string;
+  absent_hours: number;
+}) {
+  await prisma.employeeAbsentOverride.upsert({
+    where: {
+      EmpCodeId_selectedMonth: {
+        EmpCodeId: EmpCode,
+        selectedMonth,
+      },
+    },
+    update: {
+      absent_hours,
+    },
+    create: {
+      EmpCodeId: EmpCode,
+      selectedMonth,
+      absent_hours,
+    },
   });
 }
+
+
 
 export async function displayAllowanceList({page,limit,search}: SummaryAllowanceProps) {
 
@@ -770,6 +845,8 @@ export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise
         position: true,
         createdAt: true,
         branchCode: true,
+        emergency_allowance_amount:true,
+        is_emergency:true,
       },
       orderBy: {
         EmpCode: {
@@ -816,6 +893,8 @@ export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise
       branchCode: row.branchCode,
       branchPosition: meta?.position ?? 999,
       company_id: meta?.company_id ?? null,
+      emergency_allowance_amount: row.emergency_allowance_amount ? Number(row.emergency_allowance_amount): null,
+      is_emergency: row.is_emergency,
     };
   });
    const parsedDetails = details
@@ -1018,9 +1097,10 @@ export async function getVarianceForAllowance(selectedMonth: string) {
 }
 
 
+
+
 export async function ViewAllList(selectedMonth: string) {
   try {
-
     const { rows } = await computeAllowanceForMonth(selectedMonth);
     const loan_list = await getLoanFor();
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
@@ -1275,6 +1355,7 @@ type CompanyBranchSummary = Record<
     total_cash_allowance: number;
     ecola: number;
     total_num: number;
+    emergency_allowance_amount:number;
     branches: Record<
       string,
       {
@@ -1298,6 +1379,7 @@ export async function getTotalPerCompany(selectedMonth: string): Promise<Company
           total_cash_allowance: 0,
           ecola: 0,
           total_num: 0,
+          emergency_allowance_amount:0,
           branches: {},
         };
       }
@@ -1305,7 +1387,7 @@ export async function getTotalPerCompany(selectedMonth: string): Promise<Company
       acc[company].total_cash_allowance += curr.cash_allowance ?? 0;
       acc[company].ecola += curr.computed_ecola ?? 0;
       acc[company].total_num += 1;
-
+      acc[company].emergency_allowance_amount += curr.emergency_allowance_amount ?? 0;
       // branch grouping
 
       // if (!acc[company].branches[branch]) {
@@ -1479,4 +1561,38 @@ export async function sendBulkAllowanceService({
     sent: successCount,
     failed: failedCount,
   };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+export async function displayEmergencyAllowance(){
+  try{
+    const data = await prisma.allowance_emergency.findFirst();
+    return data;
+  }
+  catch(error){
+    console.error("error occured",error);
+  }
+}
+
+
+
+export async function updateEmergencyAllowance(allowance_id:number, is_emergency:boolean, emergency_allowance_amount:number){
+  return prisma.allowance_emergency.update({
+    where :{ allowance_id },
+    data:{ 
+      is_emergency: is_emergency,
+      emergency_allowance_amount: new Prisma.Decimal(emergency_allowance_amount)
+    },
+  });
 }

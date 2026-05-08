@@ -1065,3 +1065,28 @@ export const importSQLService = async (filePath:string | undefined, originalFile
         });
       }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+           const deductions =
+          sssContribEmployee +
+          pagibigEmployeeShare +
+          philhealthRateEmployee +
+          totalLoanDeduction +
+          finalWtax;
+
+        const netPay = (hasNoAtm || isDisbursing) ? 0 : grossPay - deductions;
+
+
+
+               const isDisbursing = emp.EmpCode.Disbursing === true;
+        const hasNoAtm = emp.EmpCode.WithAtm === false;

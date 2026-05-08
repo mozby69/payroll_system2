@@ -451,6 +451,19 @@ export async function updateEmployeePayrollFields({empCode,basic_salary,pagibig_
           },
         });
       }
+
+
+      if(include_payroll === true){
+          await tx.employeeSummary.updateMany({
+          where: {
+            EmpCodeId: empCode,
+            status: "EXCLUDED",
+          },
+          data: {
+            status: "PENDING",
+          },
+        });
+      }
     
 
 
@@ -532,7 +545,6 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     });
 
     const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
-
     const cutoffStart = new Date(payrollDate?.start_date as string);
     const cutoffEnd = new Date(payrollDate?.end_date as string);
     
