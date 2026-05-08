@@ -2,6 +2,8 @@ import { useFetchArchiveAllowanceModal } from "@/app/hooks/useAllowance";
 import { AllowanceSummary, ArchiveAllowance, CompanyItem, LoanItem, VarianceAllowanceComplete, VarianceAllowanceEmployee } from "@/app/types/allowanceType";
 import { prepareCompanyData } from "@/app/utils/allowanceHelper";
 import { formatCurrency } from "@/app/utils/currencyConverter";
+import { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
 
 
 
@@ -23,6 +25,8 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
 
     const companyList = data?.data?.details?.company_list ?? {};
     const loanList = data?.data?.details?.loans ?? {};
+    const isEmergency = list.some( (item) => item.is_emergency === true);
+
 
     const loanTotal = Object.values(loanList as Record<string, LoanItem>)
     .reduce((acc, item) => acc + (item.per_payroll_deduct ?? 0), 0);
@@ -33,11 +37,13 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
         (acc, item) => {
         acc.cash += item.total_cash_allowance ?? 0;
         acc.ecola += item.ecola ?? 0;
+        acc.emergency_allowance_amount += item.emergency_allowance_amount ?? 0;
         return acc;
         },
         {
         cash: 0,
         ecola: 0,
+        emergency_allowance_amount: 0,
         }
     );
 
@@ -102,6 +108,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                 acc.loan += Number(emp.loan ?? 0);
                 acc.totalDeduction += Number(emp.totalDeduction ?? 0);
                 acc.total += Number(emp.total ?? 0);
+                acc.emergency_allowance_amount += Number(emp.emergency_allowance_amount ?? 0);
                 return acc;
             },
             {
@@ -111,6 +118,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                 loan: 0,
                 totalDeduction: 0,
                 total: 0,
+                emergency_allowance_amount: 0,
             }
         );
     }
@@ -165,8 +173,26 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
     // );
 
 
+
+      const printRef = useRef<HTMLDivElement>(null);
+        
+        const handlePrint = useReactToPrint({
+      contentRef: printRef,
+      documentTitle: "conversion report",
+      pageStyle: `
+        @page {
+          size: A4;
+          margin: 10mm;
+        }
+        body {
+          -webkit-print-color-adjust: exact;
+        }
+      `,
+    });
+
+
     return (
-        <div className="p-2">
+        <div className="p-2 print-deductions print:bg-white print:shadow-none print:p-2" ref={printRef}>
 
             <div className="font-semibold space-y-1 uppercase">
                 <h2>JAMERO GROUP OF COMPANIES</h2>
@@ -175,7 +201,11 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
             </div>
 
             <div className="pt-4">
-                <h2 className="py-1 font-semibold text-lg">BOARD</h2>
+                <div className="flex justify-between py-2">
+                    <h2 className="py-1 font-semibold text-lg">BOARD</h2>
+                    <button onClick={handlePrint} className="bg-blue-800 px-6 py-2 text-white rounded mb-2 font-semibold shadow hover:bg-blue-600 print:hidden">Print</button>
+                </div>
+            
                 <table className="w-full border border-slate-200 rounded-md shadow">
                     <thead>
                         <tr className="bg-slate-100">
@@ -187,20 +217,22 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <th className="p-2 text-center">Absences</th>
                             <th className="p-2 text-center">Loans</th>
                             <th className="p-2 text-cetnter">Total Deductions</th>
+                            { isEmergency && <th className="p-2 text-cetnter">Emergency Allowance</th> }
                             <th className="p-2 text-center">Total Net</th>
                         </tr>
                     </thead>
                     <tbody>
                         {boardList.map((row) => (
                             <tr key={row.EmpCodeId}>
-                                <td className="p-2 text-center">{row.name}</td>
-                                <td className="p-2 text-center">{row.branchCode}</td>
-                                <td className="p-2 text-center">{row.cash_allowance ?? 0}</td>
-                                <td className="p-2 text-center">{row.ecola ?? 0}</td>
-                                <td className="p-2 text-center">{row.deduct ?? 0}</td>
-                                <td className="p-2 text-center">{row.loan ?? 0}</td>
-                                <td className="p-2 text-center">{row.totalDeduction ?? 0}</td>
-                                <td className="p-2 text-center">{row.total ?? 0}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.name}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.branchCode}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.cash_allowance ?? 0}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.ecola ?? 0}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.deduct ?? 0}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.loan ?? 0}</td>
+                                <td className="p-1 text-center border border-gray-300">{row.totalDeduction ?? 0}</td>
+                                { isEmergency && <td className="p-1 text-center border border-gray-300">{row.emergency_allowance_amount ?? 0}</td>}
+                                <td className="p-1 text-center border border-gray-300">{row.total ?? 0}</td>
                             </tr>
                         ))}
                         <tr className="border-t border-gray-400 font-semibold bg-gray-100">
@@ -210,6 +242,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <td className="text-center">{formatCurrency(boardTotals.deduct)}</td>
                             <td className="text-center">{formatCurrency(boardTotals.loan)}</td>
                             <td className="text-center">{formatCurrency(boardTotals.totalDeduction)}</td>
+                            { isEmergency && <td className="text-center">{formatCurrency(boardTotals.emergency_allowance_amount)}</td>}
                             <td className="text-center">{formatCurrency(boardTotals.total)}</td>
                         </tr>
                     </tbody>
@@ -234,20 +267,22 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <th className="p-2 text-center">Absences</th>
                             <th className="p-2 text-center">Loans</th>
                             <th className="p-2 text-cetnter">Total Deductions</th>
+                            { isEmergency && <th className="p-2 text-center">Emergency Allowance</th>}
                             <th className="p-2 text-center">Total Net</th>
                         </tr>
                     </thead>
                     <tbody>
                         {mancomList.map((row) => (
                             <tr key={row.EmpCodeId}>
-                                <td className="p-2 text-center">{row.name}</td>
-                                <td className="p-2 text-center">{row.branchCode}</td>
-                                <td className="p-2 text-center">{row.cash_allowance ?? 0}</td>
-                                <td className="p-2 text-center">{row.ecola ?? 0}</td>
-                                <td className="p-2 text-center">{row.deduct ?? 0}</td>
-                                <td className="p-2 text-center">{row.loan ?? 0}</td>
-                                <td className="p-2 text-center">{row.totalDeduction ?? 0}</td>
-                                <td className="p-2 text-center">{row.total ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.name}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.branchCode}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.cash_allowance ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.ecola ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.deduct ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.loan ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.totalDeduction ?? 0}</td>
+                                { isEmergency && <td className="p-1 border border-gray-300 text-center">{row.emergency_allowance_amount}</td>}
+                                <td className="p-1 border border-gray-300 text-center">{row.total ?? 0}</td>
                             </tr>
                         ))}
                         <tr className="border-t border-gray-400 font-semibold bg-gray-100">
@@ -257,6 +292,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <td className="text-center">{formatCurrency(mancomTotals.deduct)}</td>
                             <td className="text-center">{formatCurrency(mancomTotals.loan)}</td>
                             <td className="text-center">{formatCurrency(mancomTotals.totalDeduction)}</td>
+                            { isEmergency && <td className="p-1 border border-gray-300 text-center">{formatCurrency(mancomTotals.emergency_allowance_amount)}</td>}
                             <td className="text-center">{formatCurrency(mancomTotals.total)}</td>
                         </tr>
                     </tbody>
@@ -279,6 +315,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <th className="p-2 text-center">Absences</th>
                             <th className="p-2 text-center">Loans</th>
                             <th className="p-2 text-center">Total Deductions</th>
+                            { isEmergency && <th className="p-2 text-center">Emergency Allowance</th>}
                             <th className="p-2 text-center">Total Net</th>
                         </tr>
                     </thead>
@@ -286,24 +323,26 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                     <tbody>
                         {embMainList.map((row) => (
                             <tr key={row.EmpCodeId}>
-                                <td className="p-2 text-center">{row.name}</td>
-                                <td className="p-2 text-center">{row.branchCode}</td>
-                                <td className="p-2 text-center">{row.cash_allowance ?? 0}</td>
-                                <td className="p-2 text-center">{row.ecola ?? 0}</td>
-                                <td className="p-2 text-center">{row.deduct ?? 0}</td>
-                                <td className="p-2 text-center">{row.loan ?? 0}</td>
-                                <td className="p-2 text-center">{row.totalDeduction ?? 0}</td>
-                                <td className="p-2 text-center">{row.total ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.name}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.branchCode}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.cash_allowance ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.ecola ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.deduct ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.loan ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.totalDeduction ?? 0}</td>
+                                { isEmergency && <td className="p-1 border border-gray-300 text-center">{row.emergency_allowance_amount ?? 0 }</td>}
+                                <td className="p-1 border border-gray-300 text-center">{row.total ?? 0}</td>
                             </tr>
                         ))}
 
                         <tr className="border-t border-gray-400 font-semibold bg-gray-100">
-                            <td colSpan={2} className="text-center">GRAND TOTAL</td>
+                            <td colSpan={2} className="text-center p-1">GRAND TOTAL</td>
                             <td className="text-center">{formatCurrency(embMainTotals.cash_allowance)}</td>
                             <td className="text-center">{formatCurrency(embMainTotals.computed_ecola)}</td>
                             <td className="text-center">{formatCurrency(embMainTotals.deduct)}</td>
                             <td className="text-center">{formatCurrency(embMainTotals.loan)}</td>
                             <td className="text-center">{formatCurrency(embMainTotals.totalDeduction)}</td>
+                            { isEmergency && <td className="text-center">{formatCurrency(embMainTotals.emergency_allowance_amount)}</td>}
                             <td className="text-center">{formatCurrency(embMainTotals.total)}</td>
                         </tr>
                     </tbody>
@@ -327,6 +366,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <th className="p-2 text-center">Absences</th>
                             <th className="p-2 text-center">Loans</th>
                             <th className="p-2 text-center">Total Deductions</th>
+                            { isEmergency && <th className="p-2 text-center">Emergency Allowance</th> }
                             <th className="p-2 text-center">Total Net</th>
                         </tr>
                     </thead>
@@ -334,14 +374,15 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                     <tbody>
                         {m2List.map((row) => (
                             <tr key={row.EmpCodeId}>
-                                <td className="p-2 text-center">{row.name}</td>
-                                <td className="p-2 text-center">{row.branchCode}</td>
-                                <td className="p-2 text-center">{row.cash_allowance ?? 0}</td>
-                                <td className="p-2 text-center">{row.ecola ?? 0}</td>
-                                <td className="p-2 text-center">{row.deduct ?? 0}</td>
-                                <td className="p-2 text-center">{row.loan ?? 0}</td>
-                                <td className="p-2 text-center">{row.totalDeduction ?? 0}</td>
-                                <td className="p-2 text-center">{row.total ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.name}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.branchCode}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.cash_allowance ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.ecola ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.deduct ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.loan ?? 0}</td>
+                                <td className="p-1 border border-gray-300 text-center">{row.totalDeduction ?? 0}</td>
+                                { isEmergency && <td className="p-1 border border-gray-300 text-center">{row.emergency_allowance_amount ?? 0}</td>}
+                                <td className="p-1 border border-gray-300 text-center">{row.total ?? 0}</td>
                             </tr>
                         ))}
 
@@ -352,6 +393,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <td className="text-center">{formatCurrency(m2Totals.deduct)}</td>
                             <td className="text-center">{formatCurrency(m2Totals.loan)}</td>
                             <td className="text-center">{formatCurrency(m2Totals.totalDeduction)}</td>
+                            { isEmergency && <td className="text-center">{formatCurrency(m2Totals.emergency_allowance_amount)}</td>}
                             <td className="text-center">{formatCurrency(m2Totals.total)}</td>
                         </tr>
                     </tbody>
@@ -383,6 +425,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <th className="p-1 text-center">ABSENCES</th>
                                     <th className="p-1 text-center">LOANS</th>
                                     <th className="p-1 text-center">TOTAL DEDUCTIONS</th>
+                                    { isEmergency && <th className="p-1 text-center">EMERGENCY ALLOWANCE</th> }
                                     <th className="p-1 text-center">NET TOTAL</th>
                                 </tr>
                             </thead>
@@ -397,9 +440,8 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="p-1 text-center">{formatCurrency(row.deduct)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.loan)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.totalDeduction)}</td>
-                                        <td className="p-1 text-center font-semibold">
-                                            {formatCurrency(row.total)}
-                                        </td>
+                                        { isEmergency && <th className="p-1 text-center">{formatCurrency(row.emergency_allowance_amount)}</th>}
+                                        <td className="p-1 text-center font-semibold">{formatCurrency(row.total)}</td>
                                     </tr>
                                 ))}
 
@@ -412,6 +454,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <td className="text-center">{formatCurrency(totals.deduct)}</td>
                                     <td className="text-center">{formatCurrency(totals.loan)}</td>
                                     <td className="text-center">{formatCurrency(totals.totalDeduction)}</td>
+                                    { isEmergency && <td className="text-center">{formatCurrency(totals.emergency_allowance_amount)}</td>}
                                     <td className="text-center">{formatCurrency(totals.total)}</td>
                                 </tr>
 
@@ -426,6 +469,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="text-center py-2">{formatCurrency(embTotal.deduct)}</td>
                                         <td className="text-center py-2">{formatCurrency(embTotal.loan)}</td>
                                         <td className="text-center py-2">{formatCurrency(embTotal.totalDeduction)}</td>
+                                        { isEmergency && <td className="text-center py-2">{formatCurrency(embTotal.emergency_allowance_amount)}</td>}
                                         <td className="text-center py-2">{formatCurrency(embTotal.total)}</td>
                                     </tr>
                                 )}
@@ -460,6 +504,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <th className="p-1 text-center">ABSENCES</th>
                                     <th className="p-1 text-center">LOANS</th>
                                     <th className="p-1 text-center">TOTAL DEDUCTIONS</th>
+                                    { isEmergency && <td className="p-1 text-center font-bold">EMERGENCY ALLOWANCE</td>}
                                     <th className="p-1 text-center">NET TOTAL</th>
                                 </tr>
                             </thead>
@@ -474,6 +519,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="p-1 text-center">{formatCurrency(row.deduct)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.loan)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.totalDeduction)}</td>
+                                        { isEmergency && <td className="p-1 text-center">{formatCurrency(row.emergency_allowance_amount)}</td>}
                                         <td className="p-1 text-center font-semibold">
                                             {formatCurrency(row.total)}
                                         </td>
@@ -489,6 +535,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <td className="text-center">{formatCurrency(totals.deduct)}</td>
                                     <td className="text-center">{formatCurrency(totals.loan)}</td>
                                     <td className="text-center">{formatCurrency(totals.totalDeduction)}</td>
+                                    { isEmergency && <td className="text-center">{formatCurrency(totals.emergency_allowance_amount)}</td>}
                                     <td className="text-center">{formatCurrency(totals.total)}</td>
                                 </tr>
 
@@ -503,6 +550,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="text-center py-2">{formatCurrency(fchTotal.deduct)}</td>
                                         <td className="text-center py-2">{formatCurrency(fchTotal.loan)}</td>
                                         <td className="text-center py-2">{formatCurrency(fchTotal.totalDeduction)}</td>
+                                        { isEmergency && <td className="text-center py-2">{formatCurrency(fchTotal.emergency_allowance_amount)}</td>}
                                         <td className="text-center py-2">{formatCurrency(fchTotal.total)}</td>
                                     </tr>
                                 )}
@@ -539,6 +587,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <th className="p-1 text-center">ABSENCES</th>
                                     <th className="p-1 text-center">LOANS</th>
                                     <th className="p-1 text-center">TOTAL DEDUCTIONS</th>
+                                    { isEmergency && <td className="p-1 text-center font-bold">EMERGENCY ALLOWANCE</td> }
                                     <th className="p-1 text-center">NET TOTAL</th>
                                 </tr>
                             </thead>
@@ -553,6 +602,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="p-1 text-center">{formatCurrency(row.deduct)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.loan)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.totalDeduction)}</td>
+                                        { isEmergency && <td className="p-1 text-center">{formatCurrency(row.emergency_allowance_amount)}</td>}
                                         <td className="p-1 text-center font-semibold">
                                             {formatCurrency(row.total)}
                                         </td>
@@ -568,6 +618,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <td className="text-center">{formatCurrency(totals.deduct)}</td>
                                     <td className="text-center">{formatCurrency(totals.loan)}</td>
                                     <td className="text-center">{formatCurrency(totals.totalDeduction)}</td>
+                                    { isEmergency && <td className="text-center ">{formatCurrency(totals.emergency_allowance_amount)}</td>}
                                     <td className="text-center">{formatCurrency(totals.total)}</td>
                                 </tr>
 
@@ -582,6 +633,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="text-center py-2">{formatCurrency(rfcTotal.deduct)}</td>
                                         <td className="text-center py-2">{formatCurrency(rfcTotal.loan)}</td>
                                         <td className="text-center py-2">{formatCurrency(rfcTotal.totalDeduction)}</td>
+                                        { isEmergency && <td className="text-center py-2">{formatCurrency(rfcTotal.emergency_allowance_amount)}</td>}
                                         <td className="text-center py-2">{formatCurrency(rfcTotal.total)}</td>
                                     </tr>
                                 )}
@@ -615,6 +667,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <th className="p-1 text-center">ABSENCES</th>
                                     <th className="p-1 text-center">LOANS</th>
                                     <th className="p-1 text-center">TOTAL DEDUCTIONS</th>
+                                    { isEmergency && <th className="p-1 text-center">EMERGENCY ALLOWANCE</th>}
                                     <th className="p-1 text-center">NET TOTAL</th>
                                 </tr>
                             </thead>
@@ -629,6 +682,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="p-1 text-center">{formatCurrency(row.deduct)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.loan)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.totalDeduction)}</td>
+                                        { isEmergency && <td className="p-1 text-center">{formatCurrency(row.emergency_allowance_amount)}</td>}
                                         <td className="p-1 text-center font-semibold">
                                             {formatCurrency(row.total)}
                                         </td>
@@ -644,6 +698,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <td className="text-center">{formatCurrency(totals.deduct)}</td>
                                     <td className="text-center">{formatCurrency(totals.loan)}</td>
                                     <td className="text-center">{formatCurrency(totals.totalDeduction)}</td>
+                                    { isEmergency && <td className="text-center">{formatCurrency(totals.emergency_allowance_amount)}</td> }
                                     <td className="text-center">{formatCurrency(totals.total)}</td>
                                 </tr>
 
@@ -658,6 +713,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="text-center py-2">{formatCurrency(elcTotal.deduct)}</td>
                                         <td className="text-center py-2">{formatCurrency(elcTotal.loan)}</td>
                                         <td className="text-center py-2">{formatCurrency(elcTotal.totalDeduction)}</td>
+                                        { isEmergency && <td className="text-center py-2 ">{formatCurrency(elcTotal.emergency_allowance_amount)}</td>}
                                         <td className="text-center py-2">{formatCurrency(elcTotal.total)}</td>
                                     </tr>
                                 )}
@@ -690,6 +746,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <th className="p-1 text-center">ABSENCES</th>
                                     <th className="p-1 text-center">LOANS</th>
                                     <th className="p-1 text-center">TOTAL DEDUCTIONS</th>
+                                    { isEmergency && <th className="p-1 text-center">EMERGENCY ALLOWANCE</th>}
                                     <th className="p-1 text-center">NET TOTAL</th>
                                 </tr>
                             </thead>
@@ -704,6 +761,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="p-1 text-center">{formatCurrency(row.deduct)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.loan)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.totalDeduction)}</td>
+                                        <td className="p-1 text-center">{formatCurrency(row.emergency_allowance_amount)}</td>
                                         <td className="p-1 text-center font-semibold">
                                             {formatCurrency(row.total)}
                                         </td>
@@ -719,6 +777,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <td className="text-center">{formatCurrency(totals.deduct)}</td>
                                     <td className="text-center">{formatCurrency(totals.loan)}</td>
                                     <td className="text-center">{formatCurrency(totals.totalDeduction)}</td>
+                                    { isEmergency && <td className="text-center">{formatCurrency(totals.emergency_allowance_amount)}</td>}
                                     <td className="text-center">{formatCurrency(totals.total)}</td>
                                 </tr>
 
@@ -733,6 +792,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="text-center py-2">{formatCurrency(dojaTotal.deduct)}</td>
                                         <td className="text-center py-2">{formatCurrency(dojaTotal.loan)}</td>
                                         <td className="text-center py-2">{formatCurrency(dojaTotal.totalDeduction)}</td>
+                                        { isEmergency && <td className="text-center py-2 ">{formatCurrency(dojaTotal.emergency_allowance_amount)}</td>}
                                         <td className="text-center py-2">{formatCurrency(dojaTotal.total)}</td>
                                     </tr>
                                 )}
@@ -767,6 +827,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <th className="p-1 text-center">ABSENCES</th>
                                     <th className="p-1 text-center">LOANS</th>
                                     <th className="p-1 text-center">TOTAL DEDUCTIONS</th>
+                                    { isEmergency && <th className="p-1 text-center">EMERGENCY ALLOWANCE</th>}
                                     <th className="p-1 text-center">NET TOTAL</th>
                                 </tr>
                             </thead>
@@ -781,6 +842,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="p-1 text-center">{formatCurrency(row.deduct)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.loan)}</td>
                                         <td className="p-1 text-center">{formatCurrency(row.totalDeduction)}</td>
+                                        { isEmergency && <td className="p-1 text-center">{formatCurrency(row.emergency_allowance_amount)}</td>}
                                         <td className="p-1 text-center font-semibold">
                                             {formatCurrency(row.total)}
                                         </td>
@@ -796,6 +858,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                     <td className="text-center">{formatCurrency(totals.deduct)}</td>
                                     <td className="text-center">{formatCurrency(totals.loan)}</td>
                                     <td className="text-center">{formatCurrency(totals.totalDeduction)}</td>
+                                    { isEmergency && <td className="p-1 text-center">{formatCurrency(totals.emergency_allowance_amount)}</td>}
                                     <td className="text-center">{formatCurrency(totals.total)}</td>
                                 </tr>
 
@@ -810,6 +873,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                         <td className="text-center py-2">{formatCurrency(pspmiTotal.deduct)}</td>
                                         <td className="text-center py-2">{formatCurrency(pspmiTotal.loan)}</td>
                                         <td className="text-center py-2">{formatCurrency(pspmiTotal.totalDeduction)}</td>
+                                        { isEmergency && <td className="text-center py-2">{formatCurrency(pspmiTotal.emergency_allowance_amount)}</td>}
                                         <td className="text-center py-2">{formatCurrency(pspmiTotal.total)}</td>
                                     </tr>
                                 )}
@@ -829,6 +893,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <th className="py-2 text-center">COMPANY</th>
                             <th>CASH ASSISTANCE</th>
                             <th>ECOLA</th>
+                            { isEmergency && <th>EMERGENCY ALLOWANCE</th>}
                             <th>NET TOTAL</th>
                         </tr>
                     </thead>
@@ -839,12 +904,14 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                 ecola: number;
                                 total_num: number;
                                 branches: unknown;
+                                emergency_allowance_amount: number;
                             };
                         return (
                             <tr key={company}>
                                 <td className="text-center p-2 border border-gray-300">{company}</td>
                                 <td className="text-center p-2 border border-gray-300">{formatCurrency(item.total_cash_allowance)}</td>
                                 <td className="text-center p-2 border border-gray-300">{formatCurrency(item.ecola)}</td>
+                                { isEmergency && <td className="text-center p-2 border border-gray-300">{formatCurrency(item.emergency_allowance_amount)}</td>}
                                 <td className="text-center p-2 border border-gray-300 font-semibold">{formatCurrency(item.total_cash_allowance + item.ecola)}</td>
                             </tr>
                             );
@@ -853,7 +920,8 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                             <td className="font-semibold">GRAND TOTAL</td>
                             <td className="py-1 px-2 border border-gray-300 font-semibold">{formatCurrency(companyTotal.cash)}</td>
                             <td className="py-1 px-2 border border-gray-300 font-semibold">{formatCurrency(companyTotal.ecola)}</td>
-                            <td className="py-1 px-2 border border-gray-300 font-semibold">{formatCurrency(companyTotal.ecola + companyTotal.cash)}</td>
+                            { isEmergency && <td className="py-1 px-2 border border-gray-300 font-semibold">{formatCurrency(companyTotal.emergency_allowance_amount)}</td>}
+                            <td className="py-1 px-2 border border-gray-300 font-semibold">{formatCurrency(companyTotal.ecola + companyTotal.cash + companyTotal.emergency_allowance_amount)}</td>
                         </tr>
                     </tbody>
                 </table>

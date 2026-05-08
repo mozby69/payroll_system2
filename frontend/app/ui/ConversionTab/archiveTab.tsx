@@ -24,6 +24,7 @@ export default function ArchivedConversionTab() {
     const company_id = user?.company_id;
     const { data: conversion_archive } = useDisplayConversionArchive({ page, limit: 10, search: debouncedSearch, company_id });
     const [openModal, setOpenModal] = useState(false);
+    const [openModal2, setOpenModal2] = useState(false);
     const [selectedArchiveId, setSelectedArchiveId] = useState<number | null>(null);
     const tableData: conversionArchiveProps[] = conversion_archive?.data ?? [];
 
@@ -45,6 +46,10 @@ export default function ArchivedConversionTab() {
                         onClick={() => handleOpenModal(row.id)}
                         className="px-8 py-2.5 text-sm bg-green-800 hover:bg-green-700 hover:cursor-pointer text-white rounded">
                         View
+                    </button>
+
+                    <button className="px-8 py-2.5 text-sm bg-blue-800 hover:bg-blue-600 hover:cursor-pointer text-white rounded">
+                        Bank
                     </button>
                 </div>
             ),

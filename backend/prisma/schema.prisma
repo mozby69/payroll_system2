@@ -141,7 +141,7 @@ model Employee {
   employee_salary_history EmployeeSalaryHistory[] @relation()
   bod_philhealth BodPhilhealtContrib[] @relation()
   archive_allowance archive_allowance[] @relation()
-
+  EmployeeAbsentOverride EmployeeAbsentOverride[] @relation()
 
   specialLeaves SpecialLeaves[]
   attendance_count AttendanceCount?
@@ -300,6 +300,8 @@ model Employee_payroll{
   include_payroll Boolean @default(true)
   gmail_account String? @db.VarChar(100)
   excluded_date DateTime? @db.Date
+
+  
 
   EmpCodeId String @unique @db.VarChar(20)
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -753,9 +755,13 @@ model archive_allowance {
   base_cash_assistance Decimal? @db.Decimal(10,2)
   base_ecola Decimal? @db.Decimal(10,2)
   position String? @db.VarChar(100) 
+  emergency_allowance_amount Decimal? @db.Decimal(10,2)
+  is_emergency Boolean @default(false)
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
   branchCode  String
+
+  //AllowanceAbsentOverride AllowanceAbsentOverride []
   
   summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -776,6 +782,7 @@ model archive_allowance_summary {
   totalAbsent Decimal? @db.Decimal(10,2)
   totalLoan Decimal? @db.Decimal(10,2)
   totalDeduction Decimal? @db.Decimal(10,2) @map("total_deduction")
+  total_emergency_allowance Decimal? @db.Decimal(10,2)
   createdAt DateTime @map("created_at")
 
   allowances archive_allowance[]
@@ -1052,4 +1059,56 @@ model allowanceArchiveDetails{
 }
 
 
+
+model allowance_emergency{
+  allowance_id Int @id @default(autoincrement())
+  is_emergency Boolean @default(false)
+  emergency_allowance_amount Decimal @db.Decimal(10,2)
+  created_at DateTime @default(now())
+
+
+  @@map("allowance_emergency")
+}
+
+
+
+
+
+
+
+
+// model AllowanceAbsentOverride {
+//   id              Int      @id @default(autoincrement())
+//   EmpCodeId String @db.VarChar(20) @map("EmpCodeId")
+//   selectedMonth String @db.VarChar(100) @map("selected_month")
+//   absent_count Decimal? @db.Decimal(10,2)
+
+//   created_at      DateTime @default(now())
+
+//   archive_allowance archive_allowance @relation(fields: [EmpCodeId, selectedMonth],references: [EmpCodeId, selectedMonth])
+
+//   @@index([EmpCodeId, selectedMonth])
+//   @@unique([EmpCodeId, selectedMonth])
+
+//   @@map("allowance_absent_override")
+// }
+
+
+
+
+model EmployeeAbsentOverride {
+  id Int @id @default(autoincrement())
+  selectedMonth String @db.VarChar(100) @map("selected_month")
+  absent_hours Decimal? @db.Decimal(10,2) @map("absent_hours")
+  createdAt DateTime @default(now()) @map("created_at")
+
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@unique([EmpCodeId, selectedMonth])
+  @@index([EmpCodeId, selectedMonth])
+
+  @@map("allowance_absent_override")
+}
 

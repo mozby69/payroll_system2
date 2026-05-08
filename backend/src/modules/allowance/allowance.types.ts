@@ -83,6 +83,8 @@ export type ArchiveAllowanceDTO = {
   branchCode: string;
   branchPosition: number;
   company_id: string | null;
+  emergency_allowance_amount: number | null;
+  is_emergency: boolean | null;
 };
 
 export type BranchMeta = {

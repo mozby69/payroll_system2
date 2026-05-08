@@ -1,25 +1,33 @@
 "use client";
 
+import SweetAlert from "@/app/components/Swal";
 import { useFetchBranchesByCompany, useFetchCompanies } from "@/app/hooks/useAllowance";
+import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface Props {
     selectedMonth: string;
-  }
+}
 
 export default function CompanyBranchSelector({ selectedMonth }:Props) {
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [selectedBranch, setSelectedBranch] = useState<string>("");
   const { data: companies = [] } = useFetchCompanies();
   const { data: branches = [] } = useFetchBranchesByCompany(selectedCompany);
-
+  const [loading, setLoading] = useState(false);
 
   const preselectedbranch = branches.length === 1 ? branches[0].branchCode : selectedBranch;
 
   return (
     <div className="p-6 max-full bg-white rounded-lg shadow-xl">
+      {loading ? (
+        <ProcessingOverlay
+          title="Sending Emails"
+          message="Please wait while we send employee payslips. This may take a few moments."
+        />
+      ) : null}
 
       <div className="grid gap-y-1 mb-4">
         <label className="text-sm font-semibold">Select Company</label>
@@ -89,39 +97,44 @@ export default function CompanyBranchSelector({ selectedMonth }:Props) {
           Print
           </button>
 
-          <button disabled={!selectedCompany || !preselectedbranch}
-            onClick={async () => {
-              try {
-                const res = await fetch(
-                  `${API_URL}/allowance/send-allowance-email`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      month: selectedMonth,
-                      company: selectedCompany,
-                      branch: preselectedbranch,
-                    }),
-                  }
-                );
+          <button
+            disabled={!selectedCompany || !preselectedbranch || loading}
+           onClick={async () => {
+            setLoading(true);
 
-                const data = await res.json();
-
-                if (!res.ok) {
-                  throw new Error(data.message);
+            try {
+              const res = await fetch(
+                `${API_URL}/allowance/send-allowance-email`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    month: selectedMonth,
+                    company: selectedCompany,
+                    branch: preselectedbranch,
+                  }),
                 }
+              );
 
-                alert("Emails sent successfully");
-              } catch (err) {
-                console.error(err);
-                alert("Failed to send emails");
+              const data = await res.json();
+
+              if (!res.ok) {
+                throw new Error(data.message);
               }
-            }}
+
+              setLoading(false); 
+              SweetAlert.successAlert("Allowance payslips have been emailed successfully");
+            } catch (err) {
+              console.error(err);
+              setLoading(false);
+              SweetAlert.errorAlert("Failed to send emails");
+            }
+          }}
             className="bg-orange-500 hover:bg-orange-400 text-white py-2.5 px-6 rounded disabled:bg-gray-400">
-            Send Email
-          </button>
+            {loading ? "Sending..." : "Send Email"}
+      </button>
       </div>
 
       

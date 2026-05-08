@@ -223,6 +223,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
 
   const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi);
 
+  console.log('emp',empCode, semiMonthly);
+
   const pagibigEmployeeShare = computePagibig(rawPagibigEmployee);
 
   const totalEdeduction = sssContribEmployee + philhealthRateEmployee + pagibigEmployeeShare

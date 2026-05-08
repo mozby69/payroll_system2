@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAllowanceBranch, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -221,6 +221,19 @@ export async function updateAllowanceBranchController(req:Request, res:Response)
 
 
 
+export async function updateAbsentOverrideController(req: Request, res: Response) {
+  const { EmpCode, selectedMonth, absent_hours } = req.body;
+
+  await updateAbsentOverride({
+    EmpCode,
+    selectedMonth,
+    absent_hours: Number(absent_hours),
+  });
+
+  res.json({ success: true });
+}
+
+
 
 export async function getTotalPerCompanyController(req: Request, res: Response) {
   try {
@@ -254,5 +267,40 @@ export async function sendBulkAllowanceServiceController(req: Request, res: Resp
   } catch (error) {
     console.error(`error ocurred in controller ${error}`);
     return res.status(500).json({ message: "error occured" });
+  }
+}
+
+
+
+
+
+
+
+  export const updateEmergencyAllowanceController = async (req: Request, res: Response) => {
+    try{
+      const allowance_id = Number(req.params.allowance_id);
+      const { is_emergency,emergency_allowance_amount } = req.body;
+
+      const updated = await updateEmergencyAllowance(
+        allowance_id,
+        is_emergency,
+        emergency_allowance_amount
+      );
+
+      return res.status(200).json(updated);
+    }
+    catch(error){
+      return res.status(500).json({ message: `SERVER ERROR ${error}`})
+    }
+}
+
+export const displayEmergencyAllowanceController = async (req:Request, res:Response) => {
+  try{
+    const data = await displayEmergencyAllowance();
+    return res.status(200).json(data);
+  }
+
+  catch(error){
+    return res.status(500).json({ message: `SERVER ERROR ${error}`})
   }
 }

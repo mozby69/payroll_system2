@@ -84,23 +84,23 @@ export default function StepReviewSave({ onBack }: Props) {
 
     const finalWtax = editedWtax[key] ?? Number(emp.wtax);
 
-    const net = Number(
-      (
-        Number(emp.gross_pay) -
-        (
-          finalWtax +
-          Number(emp.sss_contrib_employee) +
-          Number(emp.philhealth_contrib_employee) +
-          Number(emp.pagibig_contrib_employee) +
-          Number(emp.are_loan) +
-          Number(emp.rfc_loan) +
-          Number(emp.fch_loan) +
-          Number(emp.sss_loan) +
-          Number(emp.pagibig_loan) + 
-          Number(emp.calamity_loan)
-        )
-      ).toFixed(2)
-    );
+    // const net = Number(
+    //   (
+    //     Number(emp.gross_pay) -
+    //     (
+    //       finalWtax +
+    //       Number(emp.sss_contrib_employee) +
+    //       Number(emp.philhealth_contrib_employee) +
+    //       Number(emp.pagibig_contrib_employee) +
+    //       Number(emp.are_loan) +
+    //       Number(emp.rfc_loan) +
+    //       Number(emp.fch_loan) +
+    //       Number(emp.sss_loan) +
+    //       Number(emp.pagibig_loan) + 
+    //       Number(emp.calamity_loan)
+    //     )
+    //   ).toFixed(2)
+    // );
 
     return {
       name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
@@ -120,7 +120,7 @@ export default function StepReviewSave({ onBack }: Props) {
       salaryLoan: emp.sss_loan,
       calamityLoan: emp.calamity_loan,
       pagibigSalaryLoan: emp.pagibig_loan,
-      netPayable: net,
+      netPayable: emp.net_pay,
       sssEmployer: emp.sss_contrib_employer,
       philEmployer: emp.philhealth_contrib_employer,
       pagibigEmployer: emp.pagibig_contrib_employer,

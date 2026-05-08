@@ -8,6 +8,9 @@ fetchViewAllListController,
 updateAllowanceBranchController,
 getTotalPerCompanyController,
 sendBulkAllowanceServiceController,
+updateEmergencyAllowanceController,
+displayEmergencyAllowanceController,
+updateAbsentOverrideController,
 } from "./allowance.controller";
 
 const router = Router();
@@ -23,6 +26,9 @@ router.get("/print-data", fetchAllowancePrintDataController);
 router.get("/view-all",fetchViewAllListController);
 router.post("/update-branch", updateAllowanceBranchController);
 router.post("/send-allowance-email",sendBulkAllowanceServiceController);
+router.put("/emergency-allowance-edit/:allowance_id",updateEmergencyAllowanceController);
+router.get("/display-emergency-allowance",displayEmergencyAllowanceController);
+router.post("/update-absent",updateAbsentOverrideController);
 
 router.get("/test",getTotalPerCompanyController);
 
