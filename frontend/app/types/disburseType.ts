@@ -46,7 +46,7 @@ export type DisburseDetailsItem = {
   disburseID: number;
   empArchive: {
     id: number;
-    Netpay: string | number;
+    disburse_amount: string | number;
     EmpCode: {
       EmpCode: string;
       BranchCode: {

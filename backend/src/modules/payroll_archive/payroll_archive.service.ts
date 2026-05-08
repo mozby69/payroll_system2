@@ -555,7 +555,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const sss_loan = loanDeduct(loans.SSS_LOAN);
         const pagibig_loan = loanDeduct(loans.PAGIBIG_LOAN);
         const rfc_loan = loanDeduct(loans.RFC_LOAN);
-        const are_loan = loanDeduct(loans.ARE_LOAN);
+    
         const calamity_loan =
                       loanDeduct(loans.Pag_IBIG_Cal) +
                       loanDeduct(loans.SSS_Cal);
@@ -564,7 +564,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         // Loan Code ↑
 
 
-        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan + calamity_loan;
+        //const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan + calamity_loan;
 
 
         const overTime = computeOvertime(basicSalary, {
@@ -605,15 +605,22 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         const grossPay = override?.gross_edited && override?.gross_pay_edit !== null ? Number(override.gross_pay_edit): computedGrossPay;
 
-       
-        
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee +totalLoanDeduction + finalWtax);
+        const are_loan_temp = loanDeduct(loans.ARE_LOAN);
+        const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan_temp + calamity_loan;
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee + totalLoanDeduction + finalWtax);
 
+        const are_loan = isDisbursing ? are_loan_temp + netPay : are_loan_temp;
+
+        const finalNetPay = isDisbursing ? 0 : netPay;
+
+        const forDisburse = isDisbursing ? netPay : 0;
 
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
 
         const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee;
+
+        console.log('disburse',forDisburse);
       
         return {
           ...emp,
@@ -641,12 +648,13 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           philhealth_contrib_employer:philhealthRateEmployer,
           pagibig_contrib_employee:pagibigEmployeeShare,
           pagibig_contrib_employer:pagibigEmployerShare,
-          net_pay:netPay,
+          net_pay:finalNetPay,
           wtax: finalWtax,          
           computedWtax: computedWtax,
           company_id:companyId,
           total_deductions:totalDeductions,
           officers_allowance: officerAllowance,
+          disburse_amount:forDisburse,
         };
  
 
@@ -1064,6 +1072,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                                          ? emp.EmpCode.secondaryBranch?.branchCode ?? null
                                          : emp.EmpCode.BranchCodeId ?? null,
           officers_allowance: emp.officers_allowance,
+          disburse_amount: emp.disburse_amount,
         };
       });
 
@@ -1161,11 +1170,11 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const disbursingEmpCodes = disbursingEmployees.map((e) => e.EmpCode);
         const disburseArchives = await tx.employeePayrollArchive.findMany({
           where: { EmpCodeId: { in: disbursingEmpCodes }, totalPayrollId: totalPayrollRecord.id },
-          select: { id: true, Netpay: true, EmpCodeId: true },
+          select: { id: true, disburse_amount: true, EmpCodeId: true },
         });
   
         const totalDisburseAmount = disburseArchives.reduce(
-          (sum, emp) => sum + Number(emp.Netpay ?? 0), 0
+          (sum, emp) => sum + Number(emp.disburse_amount ?? 0), 0
         );
   
         const mainDisburse = await tx.main_disburse.create({

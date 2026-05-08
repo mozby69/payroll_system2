@@ -528,7 +528,7 @@ function DisbursePage() {
                               {item.empArchive.EmpCode.Department}
                             </td>
                             <td className="px-8 py-4 text-right font-semibold">
-                              ₱{Number(item.empArchive.Netpay).toLocaleString()}
+                              ₱{Number(item.empArchive.disburse_amount).toLocaleString()}
                             </td>
                           </tr>
                         ))}
