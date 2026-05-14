@@ -73,3 +73,13 @@ export type UpdateLedgerDatePayload = {
   transaction_date: Date
   remarks: string
 }
+
+
+
+
+
+export interface overridedLoanProps{
+  loan_id: number;
+  newPerPayroll: number;
+}
+

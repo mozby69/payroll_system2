@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useEmpLoanById, useUpdateLoan } from "@/app/hooks/useLoans";
+import { useEmpLoanById, useUpdateLoan,  useOverrideEmployeeLoan} from "@/app/hooks/useLoans";
 import GenButton from "../Buttons";
 import SweetAlert from "../Swal";
 import { LoanType, RoundingType, TermUnit,StartDeductLoan } from "@/app/types/loanTypes";
@@ -15,6 +15,7 @@ type LoanForm = {
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
   rounding_type: "Tens" | "Ones" | "Five";
   start_deduction_cycle: "10" | "25" | "15" | "30";
+  newPerPayroll: number;
   principal: number;
   start_date: string;
   term_value: number;
@@ -28,6 +29,7 @@ type LoanForm = {
 export default function ModifyLoan({ loan_id }: LoanModal) {
   const { data, isLoading, isError } = useEmpLoanById(loan_id, !!loan_id);
   const updateLoan = useUpdateLoan();
+  const overrideLoan = useOverrideEmployeeLoan();
 
   const [form, setForm] = useState<LoanForm | null>(null);
 
@@ -47,6 +49,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
       principal: Number(data.principal),
       start_date: data.start_date.slice(0, 7),
       term_value: data.term_value,
+      newPerPayroll: Number(data.per_payroll_deduct),
       term_unit: data.term_unit,
       deduct_allowance: data.deduct_allowance,
       deduct_first_pay:data.deduct_first_pay,
@@ -57,19 +60,103 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
   }
 
   const isLocked = data.totalPaid > 0;
-
+  
   const handleSave = () => {
-    updateLoan.mutate({
+
+  // ======================================
+  // ACTIVE LOAN WITH PAYMENTS
+  // ======================================
+  if (isLocked) {
+
+    const currentDeduction =
+      Number(data.per_payroll_deduct);
+
+    const newDeduction =
+      Number(form.newPerPayroll);
+
+    // ======================================
+    // NO CHANGES
+    // ======================================
+    if (
+      !form.newPerPayroll ||
+      newDeduction === currentDeduction
+    ) {
+
+      SweetAlert.successAlert(
+        "No loan override changes detected"
+      );
+
+      return;
+    }
+
+    // ======================================
+    // OVERRIDE ACTIVE LOAN
+    // ======================================
+    overrideLoan.mutate(
+      {
+        loan_id,
+        payload: {
+          newPerPayroll: newDeduction,
+        },
+      },
+      {
+        onSuccess: () => {
+
+          SweetAlert.successAlert(
+            "Loan override successful"
+          );
+        },
+
+       onError: (error) => {
+
+          const err = error as {
+            response?: {
+              data?: {
+                message?: string;
+              };
+            };
+          };
+
+          const message =
+            err.response?.data?.message ||
+            "Failed to override loandsds";
+
+          SweetAlert.errorAlert(message);
+        },
+      }
+    );
+
+    return;
+  }
+
+  // ======================================
+  // NORMAL UPDATE
+  // ======================================
+  updateLoan.mutate(
+    {
       loan_id,
       payload: {
         ...form,
         start_date: `${form.start_date}-01`,
       },
-    });
+    },
+    {
+      onSuccess: () => {
 
-    SweetAlert.successAlert("Loan updated successfully");
-  };
+        SweetAlert.successAlert(
+          "Loan updated successfully"
+        );
+      },
 
+      onError: () => {
+
+        SweetAlert.errorAlert(
+          "Failed to update loan"
+        );
+      },
+    }
+  );
+};
   return (
     <div className="flex flex-col gap-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -102,6 +189,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
             </label>
             <select 
                 value={form.start_deduction_cycle} 
+                disabled={isLocked}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                   setForm({
                     ...form,
@@ -150,6 +238,7 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
                 </label>
                 <select 
                     value={form.rounding_type} 
+                    disabled={isLocked}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                       setForm({
                         ...form,
@@ -255,8 +344,50 @@ export default function ModifyLoan({ loan_id }: LoanModal) {
             
           </div>
 
+      
+
+      </div>
+      {isLocked && (
+             <div className="w-full flex flex-col gap-3">
+
+        <div className="w-[50%] flex flex-col gap-2">
+
+          <label className="text-sm font-semibold">
+            Per Payroll Deduction
+          </label>
+
+          {/* CURRENT VALUE */}
+          <div className="text-sm text-gray-500">
+            Current Deduction:
+            <span className="font-semibold ml-1">
+              ₱{Number(data.per_payroll_deduct).toLocaleString()}
+            </span>
+          </div>
+
+          {/* NEW VALUE */}
+          <input
+            type="number"
+            value={form.newPerPayroll}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                newPerPayroll: Number(e.target.value),
+              })
+            }
+            className="w-full px-3 py-2.5 border rounded-md"
+          />
+
+        </div>
+
+        <div className="text-sm text-gray-600 leading-relaxed">
+          Changing this value will update the payroll deduction
+          amount and automatically recalculate the remaining
+          loan terms and balance.
+        </div>
+
       </div>
 
+      )}
       <div className="flex justify-end">
         <GenButton variant="positive" onClick={handleSave}>
           Save Changes

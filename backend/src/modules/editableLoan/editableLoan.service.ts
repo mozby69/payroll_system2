@@ -23,6 +23,7 @@ export const saveOverrideLoan = async (data: overRideProps[]) => {
           loan_type: item.loan_type,
         },
         select: {
+          principal:true,
           per_payroll_deduct: true,
         },
       });
@@ -31,8 +32,36 @@ export const saveOverrideLoan = async (data: overRideProps[]) => {
         throw new Error(`Active loan not found for loan_id ${item.loan_id}`);
       }
 
+      // ✅ TOTAL PAID
+      const payments = await tx.loan_ledger.aggregate({
+        where: {
+          loan_id: item.loan_id,
+        },
+        _sum: {
+          credit_amount: true,
+        },
+      });
+
+      const totalPaid = Number(
+        payments._sum.credit_amount ?? 0
+      );
+
+      const remainingBalance =
+        Number(loanDetail.principal) - totalPaid;
+
+      const regularDeduction = Number(
+        loanDetail.per_payroll_deduct
+      );
+
+      // previous missed + current payment
+      const supposedOverrideAmount =
+        regularDeduction * 2;
+
+      // ✅ prevent overpayment
       const computedCredit =
-        Number(loanDetail.per_payroll_deduct) * 2;
+        remainingBalance < supposedOverrideAmount
+          ? remainingBalance
+          : supposedOverrideAmount;
 
       const record = await tx.over_ride_loan.create({
         data: {

@@ -107,6 +107,7 @@ export type EmpLoanResponse = {
   rounding_types: RoundingType;
   start_deduction_cycle:StartDeductLoan;
   term_value: number;
+  override_term: number;
   term_unit: TermUnit;
   start_date: string;
   deduct_allowance: boolean;
@@ -300,3 +301,13 @@ export type UpdateLedgerDateVariables = {
   transaction_date: string
   remarks: string
 }
+
+
+export type OverrideLoanPayload = {
+  newPerPayroll: number;
+};
+
+export type OverrideLoanVariables = {
+  loan_id: number;
+  payload: OverrideLoanPayload;
+};

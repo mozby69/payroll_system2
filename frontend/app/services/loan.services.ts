@@ -1,5 +1,5 @@
 import {api} from "./axios"
-import {AddLoanPayload, CloseLoanRequest, EmpLoansByCycleResponse, FetchEmpLoansPayload, LoanActionType, LoanFilters,LoanMonitoringRow,UpdateLoanPayload} from "../types/loanTypes"
+import {AddLoanPayload, CloseLoanRequest, EmpLoansByCycleResponse, FetchEmpLoansPayload, LoanActionType, LoanFilters,LoanMonitoringRow,OverrideLoanPayload,UpdateLoanPayload} from "../types/loanTypes"
 
 
 export const addEmployeeLoan = async (payload: AddLoanPayload) => {
@@ -145,6 +145,22 @@ export const updateLedgerDate = async (
       transaction_date,
       remarks
     }
+  );
+
+  return data;
+};
+
+
+
+
+export const overrideEmployeeLoan = async (
+  loan_id: number,
+  payload: OverrideLoanPayload
+) => {
+
+  const { data } = await api.patch(
+    `/loans/override-loan/${loan_id}`,
+    payload
   );
 
   return data;

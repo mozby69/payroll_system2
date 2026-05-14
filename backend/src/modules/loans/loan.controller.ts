@@ -571,3 +571,84 @@ export const updateLedgerDateController = async (
     });
   }
 };
+
+
+export const overrideEmployeeLoanController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+
+    const loan_id = Number(req.params.loan_id);
+
+    if (!loan_id || isNaN(loan_id)) {
+      return res.status(400).json({
+        message: "Invalid loan ID",
+      });
+    }
+
+    const { newPerPayroll } = req.body;
+
+    if (
+      newPerPayroll === undefined ||
+      Number(newPerPayroll) <= 0
+    ) {
+      return res.status(400).json({
+        message: "newPerPayroll is required",
+      });
+    }
+
+    const updatedLoan =
+      await loanService.overrideEmployeeLoan({
+        loan_id,
+        newPerPayroll: Number(newPerPayroll),
+      });
+
+    return res.status(200).json({
+      message: "Loan successfully overridden",
+      data: updatedLoan,
+    });
+
+    } catch (error: unknown) {
+
+    const err = error as Error;
+
+    if (err.message === "Loan not found") {
+      return res.status(404).json({
+        message: err.message,
+      });
+    }
+
+    if (
+      err.message ===
+      "At least one deduction schedule must be enabled"
+    ) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+
+    // FIX
+    if (
+      err.message ===
+      "Payroll deduction exceeds remaining loan balance"
+    ) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+
+    if (
+      err.message ===
+      "Payroll deduction must be greater than zero"
+    ) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: err.message || "Failed to override loan",
+    });
+  }
+};

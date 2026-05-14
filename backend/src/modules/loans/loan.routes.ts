@@ -11,7 +11,8 @@ import { addEmployeeLoanController,
     searchEmployeeController,
     getLoanSummaryController,
     removeLoanLedgerController,
-    updateLedgerDateController
+    updateLedgerDateController,
+    overrideEmployeeLoanController
     } from "./loan.controller";
 
 
@@ -43,6 +44,9 @@ router.patch(
   "/:loan_id/ledger/date",
   updateLedgerDateController
 );
-
+router.patch(
+  "/override-loan/:loan_id",
+  overrideEmployeeLoanController
+);
 
 export default router;

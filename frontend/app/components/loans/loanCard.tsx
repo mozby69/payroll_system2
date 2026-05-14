@@ -117,7 +117,11 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
       <div className="flex justify-between items-center">
         <span
           className={`text-sm font-medium px-2 py-1 rounded ${
-            loan.status === "ACTIVE" ? "bg-positive" : "bg-negative"
+            loan.status === "ACTIVE"
+            ? "bg-positive"
+            : loan.status === "COMPLETED"
+            ? "bg-mainBg"
+            : "bg-negative"
           } text-white`}
         >
           {loan.status}
