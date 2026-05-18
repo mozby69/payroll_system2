@@ -4,12 +4,13 @@ import { TabItem, Tabs } from "@/app/components/Tab";
 import PagibigPage from "@/app/ui/StatutoryPage/PagibigPage";
 import PhilhealthPage from "@/app/ui/StatutoryPage/PhilHealthPage";
 import SSSPage from "@/app/ui/StatutoryPage/SSSPage";
+import WtaxComputation from "@/app/ui/StatutoryPage/WtaxComputation";
 import WTaxPage from "@/app/ui/StatutoryPage/WtaxPage";
 import { useState } from "react";
 
 
 
-type DeductionTab = "SSS" | "Pagibig" | "Philhealth" | "Wtax";
+type DeductionTab = "SSS" | "Pagibig" | "Philhealth" | "Wtax" | "Wtax_computation";
 
 export default function StatutoryDeductions() {
     const [activeTab, setActiveTab] = useState<DeductionTab>("SSS");
@@ -19,6 +20,7 @@ export default function StatutoryDeductions() {
         { key: "Pagibig", label: "Pagibig" },
         { key: "Philhealth", label: "Philhealth" },
         { key: "Wtax", label: "WHTax" },
+        { key: "Wtax_computation", label: "WHTax Computation" },
     ];
 
 
@@ -49,6 +51,10 @@ export default function StatutoryDeductions() {
 
             {activeTab === "Wtax" && (
                 <WTaxPage />
+            )}
+
+              {activeTab === "Wtax_computation" && (
+                <WtaxComputation />
             )}
 
 

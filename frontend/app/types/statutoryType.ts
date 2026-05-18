@@ -62,3 +62,32 @@ export interface WTaxItem {
 }
 
 export type WTaxResponse = WTaxItem[];
+
+
+
+
+
+
+
+export interface TaxBracket {
+  start_range: number;
+  end_range: number;
+  annual_base_tax_bracket: string;
+  annual_base_tax_per_year: string;
+  rate_per_bracket: string;
+}
+
+export interface WtaxComputationListProps {
+  EmpCode:string;
+  Name:string;
+  basic_salary:number;
+  philhealth_emp:number;
+  sss_emp:number;
+  pagibig_emp:number;
+  tax:TaxBracket[];
+}
+
+export interface WtaxListComputaionResponse {
+  data: WtaxComputationListProps[];
+  meta: PagibigMeta;
+}

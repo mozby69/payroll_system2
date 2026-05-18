@@ -111,6 +111,8 @@ export interface ComputedProps{
   TotalUndertime?:number;
   TotalOvertime?:number;
   gross_pay_edit?:number;
+  philhealth_employee?:number;
+  philhealth_employer?:number;
   EmpCode:{
     Firstname:string;
     Lastname:string;

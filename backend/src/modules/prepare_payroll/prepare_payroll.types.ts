@@ -169,4 +169,6 @@ export type UpdateDeductionPayload = {
   TotalOvertime:number;
   gross_pay_edit:number;
   gross_edited:boolean;
+  philhealth_employee:number;
+  philhealth_employer:number;
 };

@@ -20,9 +20,9 @@ export default function EditDeduction({ employee, onClose }: Props) {
   const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isGrossEdited, setIsGrossEdited] = useState(false);
-
-
   console.log(isDetailModalOpen);
+
+
 
   const [late, setLate] = useState<string>(
     employee.LateCount && employee.LateCount > 0 ? String(employee.LateCount) : ""
@@ -49,6 +49,18 @@ export default function EditDeduction({ employee, onClose }: Props) {
     employee.gross_pay_edit && employee.gross_pay_edit > 0 ? String(employee.gross_pay_edit) : ""
   );
 
+  const [philhealthEmployee,setPhilhealthEmployee] = useState<string>(
+     employee.philhealth_employee && Number(employee.philhealth_employee) > 0
+      ? String(employee.philhealth_employee)
+      : ""
+  )
+
+    const [philhealthEmployer,setPhilhealthEmployer] = useState<string>(
+     employee.philhealth_employer && Number(employee.philhealth_employer) > 0
+      ? String(employee.philhealth_employer)
+      : ""
+  )
+
   const verifyPasswordMutation = useVerifyPassword();
 
 const handleSubmit = () => {
@@ -62,6 +74,8 @@ const handleSubmit = () => {
     TotalOvertime: number;
     gross_pay_edit?: number;
     gross_edited?: boolean;
+    philhealth_employee?:number;
+    philhealth_employer?:number;
   } = {
     PayCode: employee.PayCode,
     EmpCodeId: employee.EmpCodeId,
@@ -70,6 +84,8 @@ const handleSubmit = () => {
     TotalAbsentHours: absent === "" ? 0 : Number(absent),
     TotalUndertime: undertime === "" ? 0 : Number(undertime),
     TotalOvertime: overtime === "" ? 0 : Number(overtime),
+    philhealth_employee: philhealthEmployee === "" ? 0 : Number(philhealthEmployee),
+    philhealth_employer: philhealthEmployer === "" ? 0 : Number(philhealthEmployer),
   };
 
   // 👇 ONLY include gross if user edited it
@@ -154,6 +170,32 @@ const handleSubmit = () => {
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
+
+
+        <div className="flex flex-col w-full">
+          <label className="pb-1">PHILHEALTH EMPLOYEE</label>
+          <input
+            type="number"
+            value={philhealthEmployee}
+            placeholder="Input amount.."
+            onChange={(e) => setPhilhealthEmployee((e.target.value))}
+            className="border border-gray-400 p-2 rounded w-full"
+          />
+        </div>
+
+
+
+        <div className="flex flex-col w-full">
+          <label className="pb-1">PHILHEALTH EMPLOYER</label>
+          <input
+            type="number"
+            value={philhealthEmployer}
+            placeholder="Input amount.."
+            onChange={(e) => setPhilhealthEmployer((e.target.value))}
+            className="border border-gray-400 p-2 rounded w-full"
+          />
+        </div>
+
 
 
         <div className={`flex flex-col w-full ${verifiedUserId ? "visible" : "invisible"}`}>

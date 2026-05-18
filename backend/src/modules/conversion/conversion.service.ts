@@ -548,3 +548,67 @@ export async function getConversionArchive(id: number) {
   }
 }
 
+
+
+
+
+
+
+
+export async function getConversionArchiveForBank(id: number) {
+  try {
+    return prisma.conversionArchive.findMany({
+      where: {
+        totalConversionArchiveId: id,
+        
+        leave_amount_for_conversion:{
+          not: 0,
+        }
+      },
+      select: {
+        EmpCodeId: true,
+        Sick: true,
+        Vacation: true,
+        basic_salary: true,
+        daily_rate: true,
+        tenure: true,
+        leave_amount_for_conversion: true,
+        EmployementDate:true,
+        leave_convert:true,
+        total_leave_for_conversion:true,
+        as_of_date:true,
+        totalConversionArchive:{
+          select:{
+            created_at:true,
+          }
+        },
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Lastname: true,
+            employeepayroll:{
+              select:{
+                bank_account:true,
+              }
+            },
+            BranchCode:{
+              select:{
+                company_id:true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        EmpCode: {
+          Lastname: 'asc',
+        }
+      }
+    }
+
+    );
+  }
+  catch (error) {
+    console.error(`Server Error occured ${error}`)
+  }
+}

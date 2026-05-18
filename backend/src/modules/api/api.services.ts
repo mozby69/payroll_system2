@@ -66,31 +66,38 @@ export function transformAttendanceData(
 
 
 
-  export async function saveEmployeeAttendance(
-    employees: EmployeeSummaryTypes[],
-    branchCycle: string
-  ) {
+  export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],branchCycle: string) {
     if (!employees.length) return;
-  
     await prisma.$transaction(async (tx) => {
-      // 🚫 BLOCK if already for approval
-      // const hasForApproval = await tx.employeeSummary.count({
-      //   where: {
-      //     status: "FOR_APPROVAL",
-      //   },
-      // });
-  
-      // if (hasForApproval > 0) {
-      //   throw new Error("There is an existing approval payroll");
-      // }
-  
-      // 👉 Prepare additional data
-      const bodAttendance = await appendMissingBodEmployees(tx, employees);
-      const probiAttendance = await probitionaryEmployees(tx, employees);
-      const specialLeaveAttendance = await specialLeaveEmployeesServices(tx, employees);
+
+      //EXCEPT COMPANY 
+      const excludedEmployees = await tx.employee.findMany({
+      where: {
+        EmpCode: {
+          in: employees.map((e) => e.EmpCode_id),
+        },
+        BranchCode: {
+          company_id: {
+            in: [],
+          },
+        },
+      },
+      select: {
+        EmpCode: true,
+      },
+    });
+    const excludedSet = new Set(excludedEmployees.map((e) => e.EmpCode));
+    const filteredEmployees = employees.filter((emp) => !excludedSet.has(emp.EmpCode_id));
+    // END OF EXCEPT COMPANY
+
+
+
+      const bodAttendance = await appendMissingBodEmployees(tx, filteredEmployees);
+      const probiAttendance = await probitionaryEmployees(tx, filteredEmployees);
+      const specialLeaveAttendance = await specialLeaveEmployeesServices(tx, filteredEmployees);
   
       const finalData = [
-        ...employees.map((emp) => ({
+        ...filteredEmployees.map((emp) => ({
           EmpCodeId: emp.EmpCode_id,
           PayCode: emp.PayCode,
           CycleCategory: emp.CycleCategory,

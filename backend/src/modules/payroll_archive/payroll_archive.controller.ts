@@ -47,9 +47,17 @@ export async function savePayrollController(req: Request, res: Response) {
 
     const result = await saveComputedPayroll(company_id);
     return res.json({ success: true, res: result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to save payroll" });
+  } catch (error:any) {
+     if (error.message === "PENDING_PAYROLL") {
+      return res.status(409).json({
+        message: "Cannot save: There is a previous pending payroll",
+      });
+    }
+
+    console.error("SAVE ALLOWANCE ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to save allowance",
+    });
   }
 }
 

@@ -60,6 +60,9 @@ export interface conversionArchiveList {
   EmpCode:{
     Firstname:string;
     Lastname:string;
+    employeepayroll:{
+      bank_account:string;
+    }
   }
   totalConversionArchive:{
     created_at:string;

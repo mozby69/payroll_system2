@@ -141,3 +141,22 @@ export const useConversionArchiveDetails = (id: number | null) => {
     enabled: !!id,
   });
 };
+
+
+
+
+
+export const useConversionArchiveDetailsBank = (id: number | null) => {
+  return useQuery<conversionArchiveList[]>({
+    queryKey: ['conversion-archive-bank-list', id],
+    queryFn: async () => {
+      if (!id) throw new Error("No ID provided");
+
+      const res = await api.get<conversionArchiveList[]>(
+        `/conversion/conversion-bank/${id}`
+      );
+      return res.data;
+    },
+    enabled: !!id,
+  });
+};

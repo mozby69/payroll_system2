@@ -7,13 +7,14 @@ import { useState } from "react";
 
 
 
+
 type EditBranchProps = {
     data: AllowanceProps | null;
     selectedMonth:string;
     onClose: () => void;
   };
   
-  export default function EditBranchAllowance({ data,selectedMonth, onClose }: EditBranchProps) {
+  export default function EditBranchAllowance({ data, selectedMonth, onClose }: EditBranchProps) {
     const { data: branches = [] } = useFetchBranches();
     const updateBranch = useUpdateBranch();
     const [selectedBranch, setSelectedBranch] = useState<string>(data?.BranchCode.branchCode ?? "");
@@ -46,17 +47,21 @@ type EditBranchProps = {
       <div>
 
         <div className="grid grid-rows-2 gap-y-4">
+
+
+          <div>
+            <label>Employee</label>
+            <h2 className="border border-gray-300 p-2 rounded mt-2">{`${data?.Lastname}, ${data?.Firstname}`}</h2>
+          </div>
        
         <div>
+
           <label className="block mb-2 text-sm text-gray-600">
           Select Branch
           </label>
     
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
+          <select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded">
-            {/* current branch shown automatically via value */}
             {branches.map((b) => (
               <option key={b.branchCode} value={b.branchCode}>
                 {b.branchCode} 

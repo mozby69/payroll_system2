@@ -1,7 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import {  StatutoryProps } from "./statutory.types";
+import {  StatutoryProps, WtaxListProps } from "./statutory.types";
 import { fi } from "zod/v4/locales";
+import { computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution } from "../prepare_payroll/prepare_payroll.computation";
+import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 
 
 
@@ -272,4 +274,134 @@ export async function updateWTax(id:number,
         annual_base_tax_per_year:data.annual_base_tax_per_year,
       }
   })
+}
+
+
+
+
+
+
+//wtax conmputation
+
+
+export async function wtaxComputationList({page,limit,search}:WtaxListProps){
+ try{
+      const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
+      const bodPhil = await getBodPhilhealth();
+      const sssTable = await getSSSContributions();
+      const tax_list = await getTaxTable();
+
+      const searchFilter = search
+      ? {
+          OR: [
+          { EmpCode: { contains: search } },
+          { Firstname: { contains: search } },
+          { Lastname: { contains: search } },
+          ],
+        }
+      : {};
+        
+        const statusOverride = {
+          OR: [
+            {
+              EmployeeStatus: {
+                notIn: ["Resigned", "Inactive", "Terminate"],
+              },
+            },
+            {
+              bod_member: {
+                in: ["bod1", "bod2"],
+              },
+            },
+          ],
+        };
+
+        const finalWhere: Prisma.EmployeeWhereInput = {
+          AND: [
+            {
+              Taxable:true,
+            },
+            searchFilter,
+            statusOverride,
+          ],
+        };
+        
+          
+
+           const employeeList = await prisma.employee.findMany({
+            where: finalWhere,
+            skip: (page - 1) * limit,
+            take: limit,
+            select:{
+              Firstname:true,
+              Lastname:true,
+              EmpCode:true,
+              bod_member:true,
+              employeepayroll:{
+                select:{
+                  basic_salary:true,
+                }
+              },
+              pagibig_list:{
+                select:{
+                  pagibig_employee_share:true,
+                }
+              }
+            }
+           })
+
+           const normalized = employeeList.map((emp) => {
+            const firstname = emp.Firstname ?? '';
+            const lastname = emp.Lastname ?? '';
+            const name = `${lastname}, ${firstname}`;
+            const basicSalary = Number(emp.employeepayroll?.basic_salary ?? 0);
+            const semiMonthly =  computeSemiMonthlySalary(basicSalary);
+            const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
+            const rawPagibigEmployee = emp.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
+
+            const bodMap = new Map(
+              bodPhil.map((b) => [
+                b.EmpCodeId.trim().toUpperCase(),
+                b.employee_share?.toNumber() ?? 0,
+              ])
+            );
+        
+            const normalizedId = emp.EmpCode.trim().toUpperCase();
+            const bodShare = bodMap.get(normalizedId) ?? 0;
+
+            const isBod = emp.bod_member?.trim().toLowerCase() === "bod1";
+            const philhealth = computePhilRateEmployee(semiMonthly,phil_percentage,isBod,bodShare);
+            const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable));
+            const pagibigEmployeeShare = computePagibig(rawPagibigEmployee);
+
+                return {
+                    EmpCode: emp.EmpCode,   
+                    Name: name,   
+                    basic_salary:emp.employeepayroll?.basic_salary,
+                    philhealth_emp:philhealth,
+                    sss_emp:sssContribEmployee,
+                    pagibig_emp:pagibigEmployeeShare,
+                    tax:tax_list,
+                };
+            });
+
+            const total = await prisma.employee.count({ where: finalWhere });
+
+            return {
+                data: normalized,
+                meta: {
+                  total,
+                  page,
+                  limit,
+                  totalPages: Math.ceil(total / limit),
+                },
+              };
+    }
+
+    catch(error){
+        console.error("error occured",error);
+    }
+
+
+
 }
