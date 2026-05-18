@@ -34,12 +34,13 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
 
 
       <div className="font-semibold text-lg"><span className="font-bold">Payroll Period: </span>{paycode}</div>
-      <div className="flex justify-between items-center">
-        <CompanyFilter
-          value={company ?? ""}
-          cycle={cycleCategory ?? ""}
-          onChange={(val) => setCompany(val || null)}
-        />
+      
+        <div className="flex justify-between items-center">
+          <CompanyFilter
+            value={company ?? ""}
+            cycle={cycleCategory ?? ""}
+            onChange={(val) => setCompany(val || null)}
+          />
 
       <div className="flex gap-x-4">
             {selectedBank && company  && !no_data && (
@@ -56,12 +57,10 @@ export default function ViewBank({data2,cycleCategory,company,paycode,setCompany
                       company 
                     )
                   }
-                  className={`${
-                    selectedBank === "BDO"
+                  className={`${selectedBank === "BDO"
                       ? "bg-green-700 hover:bg-green-600"
                       : "bg-blue-700 hover:bg-blue-600"
-                  } text-white rounded-lg px-6 py-2.5`}
-                >
+                  } text-white rounded-lg px-6 py-2.5`}>
                   Generate {selectedBank}
                 </button>
               )}

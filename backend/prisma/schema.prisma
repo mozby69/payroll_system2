@@ -1035,7 +1035,8 @@ model SummaryTableOverride {
   TotalOvertime Decimal? @db.Decimal(10,2)
   gross_pay_edit Decimal? @db.Decimal(10,2)
   gross_edited Boolean @default(false)
-
+  philhealth_employee Decimal? @db.Decimal(10,2)
+  philhealth_employer Decimal? @db.Decimal(10,2)
   created_at      DateTime @default(now())
 
   employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId,PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])

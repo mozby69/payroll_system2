@@ -98,12 +98,31 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
 
   const daysInPrevMonth = getDaysInMonth(prev.year, prev.month);
 
+
+
+  //OVERRIDE FOR ABSENT
+  const absentOverrides = await prisma.employeeAbsentOverride.findMany({
+    where: {
+      selectedMonth,
+      EmpCodeId: { in: empCodes },
+    },
+  });
+
+  const overrideAbsentMap = new Map(absentOverrides.map(o => [o.EmpCodeId, Number(o.absent_hours ?? 0)]));
+  //END OVERRIDE FOR ABSENT
+
+
+
   const normalized = employees.map((emp) => {
 
-    const totalAbsentHours = emp.employeesummary.reduce(
-      (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
-      0,
-    );
+    // const totalAbsentHours = emp.employeesummary.reduce(
+    //   (sum, row) => sum + Number(row.TotalAbsentHours ?? 0),
+    //   0,
+    // );
+
+    const computedAbsent = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
+    const totalAbsentHours = overrideAbsentMap.has(emp.EmpCode) ? overrideAbsentMap.get(emp.EmpCode)! : computedAbsent;
+
     const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
 
     const ecola = emp.employeepayroll?.ecola?.toNumber() ?? 0;
@@ -140,6 +159,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
       total: finalTotal,
       loan: 0,
       totalDeduction: totalDeductions,
+      absent_hours:totalAbsentHours,
       BranchCode: {
         branchCode: overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode,
       },
@@ -598,6 +618,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     summary,
   };
 }
+
 
 
 
@@ -1289,20 +1310,20 @@ export async function getVarianceEmployees(selectedMonth: string): Promise<Emplo
         const isPositiveIncrease = varianceCash > 0 || varianceEcola > 0 || varianceTotal > 0;
         const hasAbsent = curr.absent > 0;
 
-      const action = hasHistory && isPositiveIncrease
-        ? {
-            type: "ADD" as const,
-            data: {
-              remarks: history?.remarks,
-              created_at: history?.createdAt,
-            },
-          }
-        : hasAbsent
-        ? {
-            type: "LESS" as const,
-            data: {},
-          }
-        : null;
+        const action = hasHistory && isPositiveIncrease
+          ? {
+              type: "ADD" as const,
+              data: {
+                remarks: history?.remarks,
+                created_at: history?.createdAt,
+              },
+            }
+          : hasAbsent
+          ? {
+              type: "LESS" as const,
+              data: {},
+            }
+          : null;
 
        return {
             EmpCode: empCode,

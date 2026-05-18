@@ -33,6 +33,7 @@ export default function ConversionArchive({ archiveId }: Props) {
             <table className="min-w-full border border-gray-200 text-center">
                 <thead className="bg-slate-800 text-white">
                     <tr>
+                        <th className="px-4 py-2 border border-slate-400">#</th>
                         <th className="px-4 py-2 border border-slate-400">Employee</th>
                         <th className="px-4 py-2 border border-slate-400">Date Hired</th>
                         <th className="px-4 py-2 border border-slate-400">Tenure</th>
@@ -46,8 +47,9 @@ export default function ConversionArchive({ archiveId }: Props) {
                     </tr>
                 </thead>
                 <tbody>
-                    {data?.map((item: conversionArchiveList) => (
+                    {data?.map((item: conversionArchiveList, index) => (
                         <tr key={item.EmpCodeId} className="border-t">
+                            <td className="px-4 py-2">{index + 1}</td>
                             <td className="px-4 py-2">{`${item.EmpCode.Lastname} ${item.EmpCode.Firstname}`}</td>
                             <td className="px-4 py-2">{formatDate(item.EmployementDate)}</td>
                             <td className="px-4 py-2">{item.tenure}</td>
@@ -63,7 +65,7 @@ export default function ConversionArchive({ archiveId }: Props) {
                         </tr>
                     ))}
                     <tr>
-                        <td className="font-semibold border border-gray-200 p-2" colSpan={3}>
+                        <td className="font-semibold border border-gray-200 p-2" colSpan={4}>
                             TOTAL
                         </td>
 

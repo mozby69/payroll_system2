@@ -786,6 +786,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       TotalUndertime: override?.TotalUndertime ?? emp.TotalUndertime ?? 0,
       TotalOvertime: override?.TotalOvertime ?? computedOvertime,
       gross_pay_edit: override?.gross_pay_edit ?? grossPay,
+      philhealth_employee : override?.philhealth_employee ?? 0,
     };
   });
 
@@ -1284,7 +1285,7 @@ export async function ViewDeduction(company_id:string){
 
 
 
-export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit,gross_edited,}: UpdateDeductionPayload) {
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit,gross_edited,philhealth_employee,philhealth_employer}: UpdateDeductionPayload) {
   try{
     return await prisma.summaryTableOverride.upsert({
         where: {
@@ -1299,6 +1300,8 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalAbsentHours,
           TotalUndertime,
           TotalOvertime,
+          philhealth_employee,
+          philhealth_employer,
           ...(gross_pay_edit !== undefined && {
             gross_pay_edit,
             gross_edited: true,
@@ -1312,6 +1315,8 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalAbsentHours,
           TotalUndertime,
           TotalOvertime,
+          philhealth_employee,
+          philhealth_employer,
          ...(gross_pay_edit !== undefined && {
           gross_pay_edit,
           gross_edited: true,

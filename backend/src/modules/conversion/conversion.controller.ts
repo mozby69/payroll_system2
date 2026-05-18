@@ -1,4 +1,4 @@
-import getAttendanceCount, { conversionReport, DisplayConversionArchive, getConversionArchive, saveConversionArchive, updateVacationLeave } from "./conversion.service";
+import getAttendanceCount, { conversionReport, DisplayConversionArchive, getConversionArchive, getConversionArchiveForBank, saveConversionArchive, updateVacationLeave } from "./conversion.service";
 import { Request,Response } from "express";
 
 
@@ -109,6 +109,23 @@ export const getConversionArchiveController = async (req:Request, res:Response) 
   try{
     const id = Number(req.params.id);
     const data = await getConversionArchive(Number(id));
+    return res.status(200).json(data);
+  }
+  catch(error){
+    console.error("server error occured",error);
+    return res.status(500).json({message:"failed to fetch data"});
+  }
+}
+
+
+
+
+
+
+export const getConversionArchiveForBankController = async (req:Request, res:Response) => {
+  try{
+    const id = Number(req.params.id);
+    const data = await getConversionArchiveForBank(Number(id));
     return res.status(200).json(data);
   }
   catch(error){

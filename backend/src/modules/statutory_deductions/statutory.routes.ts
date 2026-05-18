@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { displayPagibigContributionsController, displayPhilhealthContributionController, displaySSSContributionsController, displayWTaxController, updatePagibigContributionController, updatePhilhealthController, updateSSSContributionController, updateWTaxController } from "./statutory.controller";
+import { displayPagibigContributionsController, displayPhilhealthContributionController, displaySSSContributionsController, displayWTaxController, updatePagibigContributionController, updatePhilhealthController, updateSSSContributionController, updateWTaxController, wtaxComputationListController } from "./statutory.controller";
 
 
 const router = Router();
@@ -12,7 +12,7 @@ router.get("/philhealth-list",displayPhilhealthContributionController);
 router.put("/philhealth-edit/:id",updatePhilhealthController);
 router.get("/display-wtax",displayWTaxController);
 router.put("/wtax-edit/:id",updateWTaxController);
-
+router.get("/get-wtax-computation-list",wtaxComputationListController);
 
 
 

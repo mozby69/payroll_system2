@@ -87,9 +87,22 @@ export function useSavePayroll(onSuccess?: () => void) {
       onSuccess?.();
     },
     
-    onError: () => {
-      SweetAlert.errorAlert("Failed to save payroll");
-    },
+   onError: (error: AxiosError<ApiErrorResponse>) => {
+        const status = error.response?.status;
+        const message = error.response?.data?.message;
+  
+        if (status === 409) {
+          SweetAlert.warningAlert(
+            "PENDING PAYROLL",
+            message ?? "Cannot save: There is a previous pending payroll"
+          );
+          return;
+        }
+  
+        SweetAlert.errorAlert(
+          message ?? "Failed to save allowance"
+        );
+      },
   });
 }
 
@@ -316,10 +329,7 @@ export function useGenerateBankFile() {
     rows: { bankAccount: string; amount: number }[],
     company: string,
   ) => {
-    const response = await api.post(
-      `/payroll-archive/generate-bank-file?bank=${bank}&company_id=${company}`,
-      rows
-    );
+    const response = await api.post(`/payroll-archive/generate-bank-file?bank=${bank}&company_id=${company}`,rows);
 
     const { filename, file, mime } = response.data;
 

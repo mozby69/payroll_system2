@@ -9,6 +9,7 @@ import { Column } from "@/app/types/preparePayroll";
 import { useState } from "react";
 import ConversionArchive from "./conversionArchive";
 import { formatCurrency } from "@/app/utils/currencyConverter";
+import ConversionBank from "./conversionBank";
 
 
 
@@ -48,7 +49,9 @@ export default function ArchivedConversionTab() {
                         View
                     </button>
 
-                    <button className="px-8 py-2.5 text-sm bg-blue-800 hover:bg-blue-600 hover:cursor-pointer text-white rounded">
+                    <button
+                     onClick={ () => handleOpenModal2(row.id)}
+                     className="px-8 py-2.5 text-sm bg-blue-800 hover:bg-blue-600 hover:cursor-pointer text-white rounded">
                         Bank
                     </button>
                 </div>
@@ -61,9 +64,18 @@ export default function ArchivedConversionTab() {
         setOpenModal(false);
     }
 
+    const closeModal2 = () => {
+        setOpenModal2(false);
+    }
+
     const handleOpenModal = (id:number) => {
         setSelectedArchiveId(id);
         setOpenModal(true);
+    }
+
+    const handleOpenModal2 = (id:number) => {
+        setSelectedArchiveId(id);
+        setOpenModal2(true);
     }
 
     const handleSearchChange = (value: string) => {
@@ -104,6 +116,13 @@ export default function ArchivedConversionTab() {
           <RequestModal size="xxxl" title="VIEW CONVERSION ARCHIVE" onClose={closeModal}>
             <ConversionArchive archiveId={selectedArchiveId}/>
           </RequestModal>
+        )}
+
+
+        {openModal2 && selectedArchiveId &&(
+            <RequestModal size="xxl" title="Conversion Bank" onClose={closeModal2}>
+                <ConversionBank archiveId={selectedArchiveId}/>
+            </RequestModal>
         )}
 
 

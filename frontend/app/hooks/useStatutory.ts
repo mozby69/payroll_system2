@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { PagibigResponse, PhilResponse, SSSResponse, WTaxResponse } from "../types/statutoryType";
+import { PagibigResponse, PhilResponse, SSSResponse, WtaxListComputaionResponse, WTaxResponse } from "../types/statutoryType";
 import SweetAlert from "../components/Swal";
 
 
@@ -168,6 +168,26 @@ export function useFetchPhilList() {
           queryKey: ["employees"],
         });
 
+      },
+    });
+  }
+
+
+
+
+
+
+    export function useFetchWtaxComputationList(params: {page: number; limit: number; search?: string}) {
+    return useQuery<WtaxListComputaionResponse>({
+      queryKey: [
+        "wtax-computation-list",
+        params.page,
+        params.limit,
+        params.search ?? "",
+      ],
+      queryFn: async () => {
+        const res = await api.get("/statutory/get-wtax-computation-list", {params});
+        return res.data;
       },
     });
   }

@@ -547,6 +547,19 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                                 +  computePhilRateEmployee(semiMonthly, phil_percentage,isNewProbi)
                                 + pagibigEmployeeShare;
 
+        const finalPhilhealthEmployee = override?.philhealth_employee !== null && override?.philhealth_employee !== undefined
+            ? Number(override.philhealth_employee)
+            : philhealthRateEmployee
+              ? Number(philhealthRateEmployee)
+              : 0;
+
+        const finalPhilhealthEmployer = override?.philhealth_employer !== null && override?.philhealth_employer !== undefined
+            ? Number(override.philhealth_employer)
+            : philhealthRateEmployer
+              ? Number(philhealthRateEmployer)
+              : 0;
+
+
 
     
         // Loan Code ↓
@@ -607,7 +620,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         const are_loan_temp = loanDeduct(loans.ARE_LOAN);
         const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan_temp + calamity_loan;
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee + totalLoanDeduction + finalWtax);
+        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + finalPhilhealthEmployee + totalLoanDeduction + finalWtax);
 
         const are_loan = isDisbursing ? are_loan_temp + netPay : are_loan_temp;
 
@@ -618,9 +631,9 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
 
-        const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + philhealthRateEmployee;
+        const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + finalPhilhealthEmployee;
 
-        console.log('disburse',forDisburse);
+   
       
         return {
           ...emp,
@@ -644,8 +657,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
           sss_contrib_employee:sssContribEmployee,
           sss_contrib_employer:sssContribEmployer,
-          philhealth_contrib_employee:philhealthRateEmployee,
-          philhealth_contrib_employer:philhealthRateEmployer,
+          philhealth_contrib_employee:finalPhilhealthEmployee,
+          philhealth_contrib_employer:finalPhilhealthEmployer,
           pagibig_contrib_employee:pagibigEmployeeShare,
           pagibig_contrib_employer:pagibigEmployerShare,
           net_pay:finalNetPay,
@@ -689,6 +702,24 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
   export async function saveComputedPayroll(company_id:string) {
+
+    const pendingPayroll = await prisma.employeeSummary.findFirst({
+      where:{
+        status:{
+          in: ["FOR_CHECKER","FOR_APPROVER"],
+        },
+        EmpCode:{
+          BranchCode:{
+            company_id:company_id,
+          },
+          isAlien:false,
+        }
+      }
+    })
+
+    if (pendingPayroll) {
+    throw new Error("PENDING_PAYROLL");
+    }
    
     const result = await prisma.employeeSummary.updateMany({
       where: {
@@ -1298,6 +1329,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             in: ["PENDING", "FOR_CHECKER", "FOR_APPROVER"]
           },
           CycleCategory: cycle,
+          PayCode:payrollPeriod,
         },
       });
   
@@ -1314,7 +1346,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       io.emit("payroll:calendarUpdate");
       return count;
     });
-  }
+}
   
 
 
