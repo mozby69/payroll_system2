@@ -69,7 +69,7 @@ function LoanApplyContent() {
     const { data: employees } = useEmployeeSearch(searchloan);
 
     const [loanType, setLoanType] = useState<LoanType>("FCH_LOAN");
-    const [roundingType, setRoundingType] = useState<RoundingType>("Tens");
+    const [roundingType, setRoundingType] = useState<RoundingType>("");
     const [startDeductLoan, setStartDeductLoan] = useState<StartDeductLoan>("10");
     const [principal, setPrincipal] = useState<number | "">("");
     const [termValue, setTermValue] = useState(1);
@@ -86,7 +86,7 @@ function LoanApplyContent() {
       setSelectedEmp(null);
       setSearch("");
       setLoanType("FCH_LOAN");
-      setRoundingType("Tens");
+      setRoundingType("");
       setStartDeductLoan("10");
       setPrincipal("");
       setTermValue(1);
@@ -310,6 +310,7 @@ function LoanApplyContent() {
                               >
                                   <option value="Tens">Nearest Tens</option>
                                   <option value="Ones">Nearest Ones</option>
+                                  <option value="Two">Nearest Two</option>
                                   <option value="Five">Nearest Five</option>
                               </select>
                           </div>
@@ -479,6 +480,7 @@ function AreApplyContent(){
 
     const [areType, setAreType] = useState<AreType>("HOUSING");
     const [principal, setPrincipal] = useState<number | "">("");
+    const [roundingType, setRoundingType] = useState<RoundingType>("Tens");
     const [termValue, setTermValue] = useState(1);
     const [termUnit, setTermUnit] = useState<"MONTHS" | "YEARS">("MONTHS");
     const [startDeductLoan, setStartDeductLoan] = useState<StartDeductLoan>("10");
@@ -534,6 +536,7 @@ function AreApplyContent(){
       setSelectedEmpAre(null);
       setSearchare("");
       setAreType("HOUSING");
+      setRoundingType("Tens");
       setPrincipal("");
       setTermValue(1);
       setStartDeductLoan("10");
@@ -709,6 +712,25 @@ function AreApplyContent(){
                         <option value="YEARS">Years</option>
                     </select>
                 </div>
+
+                  <div className="flex flex-col gap-2">
+                              <label className="text-sm font-semibold">
+                                  Type of Rounding
+                              </label>
+                              <select 
+                                  value={roundingType} 
+                                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setRoundingType(e.target.value as RoundingType)
+                                  }
+                                  className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-mainNeutral focus:outline-none focus:ring-2 focus:ring-mainDark focus:border-transparent transition-all"
+                              >
+                                  <option value="">Select Rounding</option>
+                                  <option value="Tens">Nearest Tens</option>
+                                  <option value="Ones">Nearest Ones</option>
+                                  <option value="Two">Nearest Two</option>
+                                  <option value="Five">Nearest Five</option>
+                              </select>
+                          </div>
 
                           
                 <div className="flex flex-col gap-4 col-span-full">

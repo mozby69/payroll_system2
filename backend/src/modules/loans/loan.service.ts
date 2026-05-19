@@ -965,15 +965,21 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
     const rawPerPayroll =
         Number(data.principal) / totalTerms / deductionsPerMonth;
         
-    if(data.loan_type === "FCH_LOAN"){
+    if(data.loan_type === "FCH_LOAN" || data.loan_type === "ARE_LOAN"){
         if (data.rounding_type === "Tens") {
           perPayroll = Math.round(rawPerPayroll / 10) * 10;
         } 
+        else if (data.rounding_type === "Two") {
+          perPayroll = Math.round(rawPerPayroll / 2) * 2
+        }
         else if (data.rounding_type === "Five"){
           perPayroll = Math.round(rawPerPayroll / 5) * 5;
         }
-        else {
+        else if (data.rounding_type === "Ones"){
           perPayroll = Math.ceil(rawPerPayroll);
+        }
+        else {
+          perPayroll = Math.round(rawPerPayroll * 100) / 100;
         }
     }
     else{
@@ -1066,6 +1072,14 @@ export const updateLoanStatus = async (loan_id:number,remarks:string) =>{
       select: {
         EmpCodeId: true,
         status: true,
+        principal: true,
+        ledger: {
+            where: {
+              transaction_type: {
+                not: "LOAN_UPDATED",
+              },
+            },
+          },
       },
     });
 
@@ -1084,9 +1098,25 @@ export const updateLoanStatus = async (loan_id:number,remarks:string) =>{
         loan_id:loan_id,
       },
       data:{
-        status:"CLOSED",
+        status:"COMPLETED",
       }
     });
+
+   const totalPaid =
+      existingLoan.ledger.reduce(
+        (sum, item) => {
+          return sum + Number(item.credit_amount);
+        },
+        0
+      );
+
+    // =========================
+    // REMAINING BALANCE
+    // =========================
+    const remainingBalance = Math.max(
+      Number(existingLoan.principal) - totalPaid,
+      0
+    );
 
   await tx.loan_ledger.create({
       data:{
@@ -1095,7 +1125,7 @@ export const updateLoanStatus = async (loan_id:number,remarks:string) =>{
         transaction_date: new Date(),
         transaction_type: "LOAN_CLOSED",
         debit_amount: 0,
-        credit_amount: 0,
+        credit_amount: remainingBalance,
         remarks: remarks,
         payment_status: "CLOSED",
       }
