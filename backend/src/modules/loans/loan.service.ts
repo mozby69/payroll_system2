@@ -54,12 +54,18 @@ export async function saveEmployeeLoan(data: loanProps){
       if(data.loan_type === "FCH_LOAN"){
         if (data.rounding_type === "Tens") {
           perPayroll = Math.round(rawPerPayroll / 10) * 10;
+        } 
+        else if (data.rounding_type === "Two") {
+          perPayroll = Math.ceil(rawPerPayroll / 2) * 2
         }
         else if (data.rounding_type === "Five"){
           perPayroll = Math.round(rawPerPayroll / 5) * 5;
         }
-        else {
+        else if (data.rounding_type === "Ones"){
           perPayroll = Math.ceil(rawPerPayroll);
+        }
+        else {
+          perPayroll = Math.round(rawPerPayroll * 100) / 100;
         }
       }
       else{
@@ -970,7 +976,7 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
           perPayroll = Math.round(rawPerPayroll / 10) * 10;
         } 
         else if (data.rounding_type === "Two") {
-          perPayroll = Math.round(rawPerPayroll / 2) * 2
+          perPayroll = Math.ceil(rawPerPayroll / 2) * 2
         }
         else if (data.rounding_type === "Five"){
           perPayroll = Math.round(rawPerPayroll / 5) * 5;
