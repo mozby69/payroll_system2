@@ -1159,52 +1159,221 @@ function getLastDayOfMonth(year: number, month: number) {
 
 function getNextPayroll(
   deduct_allowance: boolean,
+  deduct_first_pay: boolean,
+  deduct_second_pay: boolean,
   transactionDate: Date,
   payrollCycle: PayrollCycle,
   cycleCategory: CycleCategory
 ) {
-  const year = transactionDate.getFullYear();
-  const month = transactionDate.getMonth();
 
-  const rule = CYCLE_RULES[cycleCategory];
-  const { first, second } = rule;
-  const third = "third" in rule ? rule.third : null;
+  const year =
+    transactionDate.getFullYear();
 
-  const lastDayOfMonth = getLastDayOfMonth(year, month);
+  const month =
+    transactionDate.getMonth();
 
+  const rule =
+    CYCLE_RULES[cycleCategory];
 
-  if (String(payrollCycle) === String(first)) {
-    return {
-      transaction_date: new Date(
-        year,
-        month,
-        Math.min(second, lastDayOfMonth)
-      ),
-      payroll_cycle: String(second) as PayrollCycle,
-    };
+  const first =
+    rule.first;
+
+  const second =
+    rule.second;
+
+  const lastDayOfMonth =
+    getLastDayOfMonth(
+      year,
+      month
+    );
+
+  // =====================================
+  // ALLOWANCE
+  // =====================================
+
+  let third: number | null =
+    null;
+
+  if (
+    "third" in rule
+  ) {
+    third =
+      lastDayOfMonth;
+  }
+
+  // =====================================
+  // BUILD ACTIVE CYCLES
+  // =====================================
+
+  const activeCycles: number[] = [];
+
+  if (deduct_first_pay) {
+    activeCycles.push(first);
+  }
+
+  if (deduct_second_pay) {
+    activeCycles.push(second);
   }
 
   if (
     deduct_allowance &&
-    third &&
-    String(payrollCycle) === String(second)
+    third
   ) {
+    activeCycles.push(third);
+  }
+
+  // =====================================
+  // FALLBACK
+  // =====================================
+
+  if (
+    activeCycles.length === 0
+  ) {
+    activeCycles.push(first);
+  }
+
+  // =====================================
+  // REMOVE DUPLICATES
+  // =====================================
+
+  const uniqueCycles =
+    [...new Set(activeCycles)];
+
+  // =====================================
+  // SORT ASC
+  // =====================================
+
+  uniqueCycles.sort(
+    (a, b) => a - b
+  );
+
+  const currentCycle =
+    Number(payrollCycle);
+
+  // =====================================
+  // FIND NEXT CYCLE
+  // =====================================
+
+  const nextCycle =
+    uniqueCycles.find(
+      (c) => c > currentCycle
+    );
+
+  // =====================================
+  // SAME MONTH
+  // =====================================
+
+  if (nextCycle) {
+
+    let transactionDay =
+      nextCycle;
+
+    // =====================================
+    // 15-30-Cycle February Fix
+    // =====================================
+
+    if (
+      cycleCategory ===
+        "15-30-Cycle" &&
+      nextCycle === 29 &&
+      lastDayOfMonth < 29
+    ) {
+
+      // Feb 28 -> 27
+      transactionDay =
+        lastDayOfMonth - 1;
+    }
+
     return {
-      transaction_date: new Date(
-        year,
-        month,
-        Math.min(third, lastDayOfMonth)
-      ),
-      payroll_cycle: String(third) as PayrollCycle,
+
+      transaction_date:
+        new Date(
+          year,
+          month,
+          transactionDay
+        ),
+
+      payroll_cycle:
+        String(
+          nextCycle
+        ) as PayrollCycle,
     };
   }
 
+  // =====================================
+  // NEXT MONTH
+  // =====================================
+
+  const nextMonthLastDay =
+    getLastDayOfMonth(
+      year,
+      month + 1
+    );
+
+  const nextMonthCycles: number[] = [];
+
+  if (deduct_first_pay) {
+    nextMonthCycles.push(first);
+  }
+
+  if (deduct_second_pay) {
+    nextMonthCycles.push(second);
+  }
+
+  if (
+    deduct_allowance
+  ) {
+    nextMonthCycles.push(
+      nextMonthLastDay
+    );
+  }
+
+  // =====================================
+  // REMOVE DUPLICATES
+  // =====================================
+
+  const uniqueNextMonthCycles =
+    [...new Set(nextMonthCycles)];
+
+  uniqueNextMonthCycles.sort(
+    (a, b) => a - b
+  );
+
+  const nextMonthCycle =
+    uniqueNextMonthCycles[0];
+
+  let nextMonthTransactionDay =
+    nextMonthCycle;
+
+  // =====================================
+  // 15-30-Cycle February Fix
+  // =====================================
+
+  if (
+    cycleCategory ===
+      "15-30-Cycle" &&
+    nextMonthCycle === 29 &&
+    nextMonthLastDay < 29
+  ) {
+
+    nextMonthTransactionDay =
+      nextMonthLastDay - 1;
+  }
 
   return {
-    transaction_date: new Date(year, month + 1, first),
-    payroll_cycle: String(first) as PayrollCycle,
-  };
 
+    transaction_date:
+      new Date(
+        year,
+        month + 1,
+        nextMonthTransactionDay
+      ),
+
+    payroll_cycle:
+      String(
+        nextMonthCycle
+      ) as PayrollCycle,
+  };
 }
 
 export const insertLoanPayment = async (
@@ -1277,15 +1446,51 @@ export const insertLoanPayment = async (
       const lastDay = getLastDayOfMonth(year, month);
 
       if (startCycle) {
-        const cycleDay = Number(startCycle);
 
-        transaction_date = new Date(
-          year,
-          month,
-          Math.min(cycleDay, lastDay)
-        );
+        let cycleDay =
+          Number(startCycle);
 
-        payroll_cycle = startCycle as PayrollCycle;
+
+        if (
+          cycleCategory ===
+            "15-30-Cycle" &&
+          cycleDay === 30
+        ) {
+          cycleDay = 29;
+        }
+
+      
+
+        let transactionDay =
+          cycleDay;
+
+
+        if (
+          cycleCategory ===
+            "15-30-Cycle" &&
+          cycleDay === 29 &&
+          lastDay < 29
+        ) {
+
+       
+          transactionDay =
+            lastDay - 1;
+        }
+
+        transaction_date =
+          new Date(
+            year,
+            month,
+            Math.min(
+              transactionDay,
+              lastDay
+            )
+          );
+
+        payroll_cycle =
+          String(
+            cycleDay
+          ) as PayrollCycle;
       } else {
         const rule = CYCLE_RULES[cycleCategory];
 
@@ -1298,11 +1503,12 @@ export const insertLoanPayment = async (
 
       const next = getNextPayroll(
         fetchLoan.deduct_allowance,
+        fetchLoan.deduct_first_pay,
+        fetchLoan.deduct_second_pay,
         latestValidLedger.transaction_date,
         latestValidLedger.payroll_cycle as PayrollCycle,
         cycleCategory
       );
-
       transaction_date = next.transaction_date;
       payroll_cycle = next.payroll_cycle;
     }
@@ -1324,25 +1530,7 @@ export const insertLoanPayment = async (
       0
     );
 
-    // const totalMonths =
-    //   fetchLoan.term_unit === "YEARS"
-    //     ? fetchLoan.term_value * 12
-    //     : fetchLoan.term_value;
 
-    // const deductionsPerMonth = fetchLoan.deduct_allowance ? 3 : 2;
-
-    // const totalExpectedDeductions =
-    //   totalMonths * deductionsPerMonth;
-
-    // const isLastPayment =
-    //   paidLedgers.length + 1 === totalExpectedDeductions;
-
-    // const remainingBalance =
-    //   Number(fetchLoan.principal) - totalPaidSoFar;
-
-    // const creditAmount = isLastPayment
-    //   ? remainingBalance
-    //   : Number(fetchLoan.per_payroll_deduct);
 
     // ======================================
     // DEDUCTIONS PER MONTH
@@ -1490,7 +1678,6 @@ export const insertLoanPayment = async (
     }
   });
 };
-
 
 export const fetchLoanByEmpCode = async (payCyclePeriod: PayCyclePeriod): Promise<LoanResult> => {
   const [payrollYear, payrollMonth] = payCyclePeriod.payPeriod

@@ -32,7 +32,7 @@ export interface updateLoanProps{
 
 export const CYCLE_RULES = {
   "10-25-Cycle": { first: 10, second: 25, third: 30 },
-  "15-30-Cycle": { first: 15, second: 25, third: 30 },
+  "15-30-Cycle": { first: 15, second: 29, third: 30 },
 } as const;
 
 export const DEFAULT_CYCLE_CATEGORY: CycleCategory = "10-25-Cycle";

@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { ConversionProps, conversionReport, displayConversionProps } from "./conversion.types";
+import { ConversionProps, conversionReportProps, displayConversionProps } from "./conversion.types";
 import { computeDailyRate } from "../prepare_payroll/prepare_payroll.computation";
 import { computeCustomTenure, computeTenure, getJune30 } from "./conversion.helper";
 
@@ -175,7 +175,7 @@ export async function updateVacationLeave(ID: number, data: { leave_convert: num
 
 
 
-export async function conversionReport({ company_id }: conversionReport) {
+export async function conversionReport({ company_id }: conversionReportProps) {
   try {
 
     const statusOverride = {
@@ -356,7 +356,7 @@ export async function conversionReport({ company_id }: conversionReport) {
 
 
 
-export async function saveConversionArchive({ company_id }: conversionReport) {
+export async function saveConversionArchive({ company_id }: conversionReportProps) {
   const currentYear = new Date().getFullYear();
 
   const existing = await prisma.conversionArchive.findFirst({
