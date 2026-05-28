@@ -8,10 +8,6 @@ export type MenuChild = {
 }
 
 
-
-
-
-
 export interface MenuItem {
   label: string
   path?: string

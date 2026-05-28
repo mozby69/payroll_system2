@@ -84,7 +84,7 @@ export function transformAttendanceData(
       //   throw new Error("There is an existing approval payroll");
       // }
   
-      // 👉 Prepare additional data
+      // Prepare additional data
       const bodAttendance = await appendMissingBodEmployees(tx, employees);
       const probiAttendance = await probitionaryEmployees(tx, employees);
       const specialLeaveAttendance = await specialLeaveEmployeesServices(tx, employees);
@@ -112,7 +112,7 @@ export function transformAttendanceData(
         ...specialLeaveAttendance,
       ];
   
-      // 🚀 UPSERT LOOP (SAFE — keeps relations)
+      // UPSERT LOOP (SAFE — keeps relations)
       for (const emp of finalData) {
         await tx.employeeSummary.upsert({
           where: {
