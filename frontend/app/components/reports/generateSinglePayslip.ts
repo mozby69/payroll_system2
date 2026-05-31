@@ -16,7 +16,7 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
       <div class="payslip">
             <div class="payslip-main">
                 <div class="payslip-company">
-                    <p> EMB CAPITAL LENDING CORP.</p>
+                     <p style="text-transform: uppercase;"> ${item.EmpCode.BranchCode.CompanyCode.CompanyName ?? ""}</p>
                     <p>**PAYSLIP**</p>
                 </div>
                 <div class="payslip-details">
@@ -191,9 +191,9 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                               <div class="flex justify-between" style="width: 50%" > 
                                 <div>      NET PAYABLE : </div>
                                 <div> 
-                                  ${
+                                 ${
                                         Number(item.Netpay) === 0
-                                        ? "0.00"
+                                        ? Number(item.disburse_amount).toFixed(2)
                                         : Number(item.Netpay).toFixed(2)
                                       }
                                  
@@ -212,8 +212,8 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
 
             <div class="payslip-acknowledge">
                     <div class="flex flex-col">
-                         <div class="payslip-company" style="margin-bottom: 2px;">
-                            <p> EMB CAPITAL LENDING CORP.</p>
+                         <div class="payslip-company" style="margin-bottom: 2px;  text-transform: uppercase;">
+                             <p> ${item.EmpCode.BranchCode.CompanyCode.CompanyName ?? ""}</p>
                         </div>
                         <div class="flex">
                             <div class="flex" style="width: 45%; ">
@@ -255,7 +255,11 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                                        </div>
                                     <div>
                                             <p >
-                                                  ${item.Netpay}
+                                                     ${
+                                        Number(item.Netpay) === 0
+                                        ? Number(item.disburse_amount)
+                                        : Number(item.Netpay).toFixed(2)
+                                      }
                                             </p>
                                     </div>
                                 </div>
@@ -266,10 +270,14 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                             <p >  Received the amount of:</p>
                         </div>
                         <div style="text-align: center; border-bottom: 1px dotted black;"> 
-                            <p>${numberToPesoWords(Number(item.Netpay)) } </p>
+                          <p>${numberToPesoWords(Number(item.Netpay) === 0 ? Number(item.disburse_amount): Number(item.Netpay)) } </p>
                         </div>
                         <div> 
-                            <p style="line-height: 1.6;">I acknowledge receipt of the amount stated in full payment of my salary ${item.Netpay}</p>
+                            <p style="line-height: 1.6;">I acknowledge receipt of the amount stated in full payment of my salary ${
+                                        Number(item.Netpay) === 0
+                                        ? Number(item.disburse_amount)
+                                        : Number(item.Netpay).toFixed(2)
+                                      }</p>
                             
                         </div>
                        

@@ -1825,6 +1825,15 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
                   gmail_account:true,
                 },
               },
+              BranchCode:{
+                select:{
+                  CompanyCode:{
+                      select:{
+                        CompanyName: true
+                      }
+                  }
+                }
+              }
             }
           }
         },
@@ -1865,11 +1874,26 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
     };
   
     if (selectedCompany || selectedBranch) {
-      where.EmpCode = {
-        BranchCode: {
-          ...(selectedCompany && { company_id: selectedCompany }),
-          ...(selectedBranch && { branchCode: selectedBranch }),
-        },
+       where.EmpCode = {
+        OR: [
+          // Regular employee
+          {
+            isAlien: false,
+            BranchCode: {
+              ...(selectedCompany && { company_id: selectedCompany }),
+              ...(selectedBranch && { branchCode: selectedBranch }),
+            },
+          },
+    
+          // Alien employee
+          {
+            isAlien: true,
+            secondaryBranch: {
+              ...(selectedCompany && { company_id: selectedCompany }),
+              ...(selectedBranch && { branchCode: selectedBranch }),
+            },
+          },
+        ],
       };
     }
   
@@ -1896,7 +1920,16 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
             Firstname: true,
             Middlename: true,
             Lastname: true,
-            BranchCodeId: true
+            BranchCodeId: true,
+            BranchCode:{
+              select:{
+                CompanyCode: {
+                  select:{
+                    CompanyName: true
+                  }
+                }
+              }
+            }
           }
         }
       },

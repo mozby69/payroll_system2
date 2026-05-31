@@ -226,6 +226,8 @@ export default function FinancialPage(){
             acc.rfc += toNumber(row.rfc);
             acc.fch += toNumber(row.fch);
             acc.salaryLoan += toNumber(row.salaryLoan);
+            acc.calamityLoan += toNumber(row.calamityLoan);
+            acc.pagibigSalaryLoan += toNumber(row.pagibigSalaryLoan);
             acc.netPayable += toNumber(row.netPayable);
             acc.sssEmployer += toNumber(row.sssEmployer);
             acc.philEmployer += toNumber(row.philEmployer);
