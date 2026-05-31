@@ -1,7 +1,7 @@
   export interface loanProps{
     empCode: string;
     loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN" | "OTHERS";
-    rounding_type: "Tens" | "Ones" | "Five";
+    rounding_type: "Tens" | "Ones" | "Five" | "Two";
     start_deduction_cycle:"10" | "25" | "15" | "30";
     principal: number;
     term_value: number;
@@ -16,7 +16,7 @@
 export interface updateLoanProps{
     loan_id: number;
     loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "ARE_LOAN" | "OTHERS";
-    rounding_type: "Tens" | "Ones" | "Five"
+    rounding_type: "Tens" | "Ones" | "Five" | "Two"
     start_deduction_cycle:"10" | "25" | "15" | "30";
     principal: number;
     term_value: number;
@@ -32,7 +32,7 @@ export interface updateLoanProps{
 
 export const CYCLE_RULES = {
   "10-25-Cycle": { first: 10, second: 25, third: 30 },
-  "15-30-Cycle": { first: 15, second: 25, third: 30 },
+  "15-30-Cycle": { first: 15, second: 29, third: 30 },
 } as const;
 
 export const DEFAULT_CYCLE_CATEGORY: CycleCategory = "10-25-Cycle";
@@ -73,3 +73,13 @@ export type UpdateLedgerDatePayload = {
   transaction_date: Date
   remarks: string
 }
+
+
+
+
+
+export interface overridedLoanProps{
+  loan_id: number;
+  newPerPayroll: number;
+}
+

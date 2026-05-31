@@ -1,6 +1,6 @@
 import { useQueryClient, useMutation, useQuery,keepPreviousData} from "@tanstack/react-query";
-import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, fetchLoanSummary, loanSearchEmployees, payEmployeeLoan, removeLoanLedger, updateEmployeeLoan, updateLedgerDate } from "../services/loan.services";
-import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem, LoanMonitoringRow, RemoveLedgerPayload, UpdateLedgerDateVariables } from "../types/loanTypes";
+import { addEmployeeLoan, closedEmployeeLoan, fetchAllLoans,fetchBonusRules,fetchEmpLoanById,fetchLoanDetails, fetchLoansByEmpCode, fetchLoanSummary, loanSearchEmployees, overrideEmployeeLoan, payEmployeeLoan, removeLoanLedger, updateEmployeeLoan, updateLedgerDate } from "../services/loan.services";
+import { LoanFilters, LoanResponse,EmpLoanResponse, UpdateLoanVariables, CloseLoanVariables, PayLoanPayload, FetchEmpLoansPayload, EmpLoansByCycleResponse, BonusRules, EmployeeSearchItem, LoanMonitoringRow, RemoveLedgerPayload, UpdateLedgerDateVariables, OverrideLoanVariables } from "../types/loanTypes";
 
 
 
@@ -239,5 +239,39 @@ export const useUpdateLedgerDate = () => {
       });
 
     }
+  });
+};
+
+
+export const useOverrideEmployeeLoan = () => {
+
+  const queryClient = useQueryClient();
+
+  return useMutation({
+
+    mutationFn: ({
+      loan_id,
+      payload,
+    }: OverrideLoanVariables) =>
+      overrideEmployeeLoan(
+        loan_id,
+        payload
+      ),
+
+    onSuccess: (_, variables) => {
+
+      queryClient.invalidateQueries({
+        queryKey: ["emp-loan", variables.loan_id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loan-details", variables.loan_id],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["loans"],
+      });
+
+    },
   });
 };

@@ -436,6 +436,7 @@ model loan_details {
   principal            Decimal  @db.Decimal(10,2)
   loan_type            String   @db.VarChar(100)
   term_value           Int
+  override_term        Int @default(0)
   term_unit            String  @db.VarChar(10) 
   start_date           DateTime @db.Date
   deduct_allowance     Boolean  @default(true)
@@ -522,6 +523,16 @@ model over_ride_loan{
 
   user User @relation(fields: [userId], references: [id])
   loan loan_details @relation(fields: [loan_id], references: [loan_id], onDelete: Cascade)
+}
+
+model loan_details_logs{
+  id Int @id @default(autoincrement())
+  loan_id Int
+  old_payroll_deduct Decimal  @db.Decimal(10,2)
+  old_term_value           Int
+  old_term_unit            String  @db.VarChar(10) 
+  created_at DateTime @default(now())
+
 }
 
 // Bonus Schema 

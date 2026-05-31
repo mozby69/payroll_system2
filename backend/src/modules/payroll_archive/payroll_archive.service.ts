@@ -313,6 +313,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         EmpCodeId: true,
         loan_type: true,
         per_payroll_deduct: true,
+        principal: true, 
         others_types: true,
         deduct_first_pay: true,
         deduct_second_pay: true,
@@ -323,6 +324,26 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
     const loanIds = loans.map(l => l.loan_id);
+
+    // ✅ TOTAL PAID PER LOAN
+    const paymentSums = await prisma.loan_ledger.groupBy({
+      by: ["loan_id"],
+      where: {
+        loan_id: { in: loanIds },
+      },
+      _sum: {
+        credit_amount: true,
+      },
+    });
+
+    const paymentMap = new Map<number, number>();
+
+    for (const p of paymentSums) {
+      paymentMap.set(
+        p.loan_id,
+        Number(p._sum.credit_amount ?? 0)
+      );
+    }
 
     // ✅ FETCH OVERRIDES
     const overridesLoan = await prisma.over_ride_loan.findMany({
@@ -437,10 +458,25 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         loanByEmp[loan.EmpCodeId][key].isOverridden = true;
       }
 
-      if (!alreadyDeducted && shouldDeduct) {
-        loanByEmp[loan.EmpCodeId][key].amount += amountToUse;
-      }
+      // ✅ COMPUTE REMAINING BALANCE
+      const totalPaid = Number(paymentMap.get(loan.loan_id) ?? 0);
 
+      const remainingBalance =
+        Number(loan.principal) - totalPaid;
+
+      // ✅ DEDUCT ONLY REMAINING BALANCE
+      const finalDeduction =
+        remainingBalance < amountToUse
+          ? remainingBalance
+          : amountToUse;
+
+      if (
+        !alreadyDeducted &&
+        shouldDeduct &&
+        remainingBalance > 0
+      ) {
+        loanByEmp[loan.EmpCodeId][key].amount += finalDeduction;
+      }
       loanByEmp[loan.EmpCodeId][key].alreadyDeducted =
         loanByEmp[loan.EmpCodeId][key].alreadyDeducted || alreadyDeducted;
     }
@@ -818,6 +854,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           loan_type: true,
           per_payroll_deduct: true,
           others_types: true,
+          principal: true,
           deduct_first_pay: true,
           deduct_second_pay: true,
           start_deduction_cycle:true,
@@ -825,6 +862,26 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       });
 
       const loanIds = loans.map((l) => l.loan_id);
+
+      // ✅ TOTAL PAID PER LOAN
+      const paymentSums = await tx.loan_ledger.groupBy({
+        by: ["loan_id"],
+        where: {
+          loan_id: { in: loanIds },
+        },
+        _sum: {
+          credit_amount: true,
+        },
+      });
+
+      const paymentMap = new Map<number, number>();
+
+      for (const p of paymentSums) {
+        paymentMap.set(
+          p.loan_id,
+          Number(p._sum.credit_amount ?? 0)
+        );
+      }
 
       // ✅ FETCH OVERRIDES (FIXED: use payrollCycle not payCycle)
       const overridesLoan = await tx.over_ride_loan.findMany({
@@ -925,6 +982,27 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         }
 
         // ✅ APPLY OVERRIDE
+        // let amountToUse = Number(loan.per_payroll_deduct);
+
+        // if (override && override.credit_amount != null) {
+        //   amountToUse = Number(override.credit_amount);
+        // }
+
+        // if (!loanByEmp[loan.EmpCodeId][key]) {
+        //   loanByEmp[loan.EmpCodeId][key] = {
+        //     loan_id: loan.loan_id,
+        //     amount: 0,
+        //     alreadyDeducted: false,
+        //     isOverridden: false,
+        //   };
+        // }
+
+        // if (!alreadyDeducted && shouldDeduct) {
+        //   loanByEmp[loan.EmpCodeId][key].amount += amountToUse;
+        // }
+
+
+        // ✅ APPLY OVERRIDE
         let amountToUse = Number(loan.per_payroll_deduct);
 
         if (override && override.credit_amount != null) {
@@ -940,8 +1018,24 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           };
         }
 
-        if (!alreadyDeducted && shouldDeduct) {
-          loanByEmp[loan.EmpCodeId][key].amount += amountToUse;
+        // ✅ COMPUTE REMAINING BALANCE
+        const totalPaid = Number(paymentMap.get(loan.loan_id) ?? 0);
+
+        const remainingBalance =
+          Number(loan.principal) - totalPaid;
+
+        // ✅ USE ONLY REMAINING BALANCE
+        const finalDeduction =
+          remainingBalance < amountToUse
+            ? remainingBalance
+            : amountToUse;
+
+        if (
+          !alreadyDeducted &&
+          shouldDeduct &&
+          remainingBalance > 0
+        ) {
+          loanByEmp[loan.EmpCodeId][key].amount += finalDeduction;
         }
 
         if (override) {
@@ -1145,6 +1239,48 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           if (processedLoanIds.has(loan.loan_id)) continue;
           processedLoanIds.add(loan.loan_id);
 
+          // ✅ GET TOTAL PAID
+          const paymentAgg = await tx.loan_ledger.aggregate({
+            where: {
+              loan_id: loan.loan_id,
+            },
+            _sum: {
+              credit_amount: true,
+            },
+          });
+
+          // ✅ GET LOAN PRINCIPAL
+          const loanDetail = await tx.loan_details.findUnique({
+            where: {
+              loan_id: loan.loan_id,
+            },
+            select: {
+              principal: true,
+            },
+          });
+
+          const totalPaid = Number(
+            paymentAgg._sum.credit_amount ?? 0
+          );
+
+          const principal = Number(
+            loanDetail?.principal ?? 0
+          );
+
+          // remaining BEFORE this payroll
+          const remainingBeforePayment =
+            principal - totalPaid;
+
+          // remaining AFTER this payroll
+          const remainingAfterPayment =
+            remainingBeforePayment - Number(loan.amount);
+
+          // ✅ DETERMINE STATUS
+          const paymentStatus =
+            remainingAfterPayment <= 0
+              ? "COMPLETED"
+              : "PAID";
+
           // ✅ CASE: OVERRIDE EXISTS
           if (loan.isOverridden) {
 
@@ -1174,9 +1310,20 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 debit_amount:     0,
                 credit_amount:    loan.amount,
                 remarks:          "Override payment applied",
-                payment_status:   "PAID",
+                payment_status: paymentStatus,
               },
             });
+
+            if (remainingAfterPayment <= 0) {
+              await tx.loan_details.update({
+                where: {
+                  loan_id: loan.loan_id,
+                },
+                data: {
+                  status: "COMPLETED",
+                },
+              });
+            }
 
           } else {
             // ✅ NORMAL FLOW
@@ -1190,9 +1337,20 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                 debit_amount:     0,
                 credit_amount:    loan.amount,
                 remarks:          "Loan Credited to Payroll",
-                payment_status:   "PAID",
+                payment_status: paymentStatus,
               },
             });
+
+            if (remainingAfterPayment <= 0) {
+                await tx.loan_details.update({
+                  where: {
+                    loan_id: loan.loan_id,
+                  },
+                  data: {
+                    status: "COMPLETED",
+                  },
+                });
+              }
           }
         }
       }
@@ -1674,6 +1832,15 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
                   gmail_account:true,
                 },
               },
+              BranchCode:{
+                select:{
+                  CompanyCode:{
+                      select:{
+                        CompanyName: true
+                      }
+                  }
+                }
+              }
             }
           }
         },
@@ -1714,11 +1881,26 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
     };
   
     if (selectedCompany || selectedBranch) {
-      where.EmpCode = {
-        BranchCode: {
-          ...(selectedCompany && { company_id: selectedCompany }),
-          ...(selectedBranch && { branchCode: selectedBranch }),
-        },
+       where.EmpCode = {
+        OR: [
+          // Regular employee
+          {
+            isAlien: false,
+            BranchCode: {
+              ...(selectedCompany && { company_id: selectedCompany }),
+              ...(selectedBranch && { branchCode: selectedBranch }),
+            },
+          },
+    
+          // Alien employee
+          {
+            isAlien: true,
+            secondaryBranch: {
+              ...(selectedCompany && { company_id: selectedCompany }),
+              ...(selectedBranch && { branchCode: selectedBranch }),
+            },
+          },
+        ],
       };
     }
   
@@ -1745,7 +1927,16 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
             Firstname: true,
             Middlename: true,
             Lastname: true,
-            BranchCodeId: true
+            BranchCodeId: true,
+            BranchCode:{
+              select:{
+                CompanyCode: {
+                  select:{
+                    CompanyName: true
+                  }
+                }
+              }
+            }
           }
         }
       },

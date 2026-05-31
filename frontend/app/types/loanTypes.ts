@@ -6,7 +6,7 @@ export type StartDeductLoan = "10" | "25" | "15" | "30"
 export type AddLoanPayload = {
   empCode: string;
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN" ;
-  rounding_type?: "Tens" | "Ones" | "Five"
+  rounding_type?: "Tens" | "Ones" | "Five" | "Two" | ""
   start_deduction_cycle?:StartDeductLoan;
   principal: number;
   term_value: number;
@@ -95,7 +95,7 @@ export type LoanLedgerItem = {
 
 
 export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
-export type RoundingType = "Tens" | "Ones" | "Five"
+export type RoundingType = "Tens" | "Ones" | "Five" | "Two" | ""
 
 export type AreType = "HOUSING" | "CASH ADV." | "OTHERS";
 export type TermUnit = "MONTHS" | "YEARS";
@@ -107,6 +107,7 @@ export type EmpLoanResponse = {
   rounding_types: RoundingType;
   start_deduction_cycle:StartDeductLoan;
   term_value: number;
+  override_term: number;
   term_unit: TermUnit;
   start_date: string;
   deduct_allowance: boolean;
@@ -300,3 +301,13 @@ export type UpdateLedgerDateVariables = {
   transaction_date: string
   remarks: string
 }
+
+
+export type OverrideLoanPayload = {
+  newPerPayroll: number;
+};
+
+export type OverrideLoanVariables = {
+  loan_id: number;
+  payload: OverrideLoanPayload;
+};

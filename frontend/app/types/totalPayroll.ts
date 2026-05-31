@@ -72,7 +72,13 @@ export type TotalPayroll = {
       BranchCodeId: string
       employeepayroll:{
       gmail_account:string;
+      
     }
+      BranchCode: {
+        CompanyCode:{
+          CompanyName: string
+        }
+      }
     }
   }
 

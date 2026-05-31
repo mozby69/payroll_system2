@@ -8,7 +8,7 @@ export interface ConversionProps{
 }
 
 
-export interface conversionReport{
+export interface conversionReportProps{
     company_id:string;
 }
 
