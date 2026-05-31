@@ -63,6 +63,7 @@ export type TotalPayroll = {
     totalPayrollId: number
     total_deductions:number;
     EmpCodeId: string
+    disburse_amount:number;
     
     EmpCode: {
       Firstname: string

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchCompanies, fetchLoanTypes, getBranchesService, getCompanyDetailsByCodeServices, getCompanyDetailsServices, reorderBranchesService } from "../services/general.services";
+import { fetchCompanies, fetchLoanTypes, getBranchesService, getCompanyDetailsByCodeServices, getCompanyDetailsServices, getLocalModeService, reorderBranchesService, updateLocalModeService } from "../services/general.services";
 import { BranchesType, CompaniesResponse, CompanyDetailsType, FecthCompany, ReorderBranchesPayload } from "../types/generalTypes";
 import api from "../services/axios";
 
@@ -113,3 +113,36 @@ export function useFetchBranches() {
 }
 
 
+
+
+
+export function useGetLocalMode() {
+
+  return useQuery({
+    queryKey: ["local-mode"],
+    queryFn: getLocalModeService,
+  });
+
+}
+
+export function useUpdateLocalMode() {
+
+  const queryClient =
+    useQueryClient();
+
+  return useMutation({
+
+    mutationFn:
+      updateLocalModeService,
+
+    onSuccess: () => {
+
+      queryClient.invalidateQueries({
+        queryKey: ["local-mode"],
+      });
+
+    },
+
+  });
+
+}

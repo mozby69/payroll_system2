@@ -216,7 +216,8 @@ export async function updateDeductionController(req: Request, res: Response) {
       gross_pay_edit,
       gross_edited,
       philhealth_employee,
-      philhealth_employer
+      philhealth_employer,
+      final_wtax,
     } = req.body;
 
     if (!PayCode || !EmpCodeId || !PayrollPeriod) {
@@ -234,7 +235,8 @@ export async function updateDeductionController(req: Request, res: Response) {
       gross_pay_edit,
       gross_edited,
       philhealth_employee,
-      philhealth_employer
+      philhealth_employer,
+      final_wtax
     });
 
     return res.json(result);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import SweetAlert from "../Swal";
-import { useSaveWtaxOverride } from "@/app/hooks/usePayrollArchive";
+//import { useSaveWtaxOverride } from "@/app/hooks/usePayrollArchive";
 import AuthenticationModal from "@/app/components/editableLoanModal/AuthenticationModal"
 import { useVerifyPassword } from "@/app/hooks/useEditableLoan";
 import RequestModal from "../Modal";
@@ -68,89 +68,89 @@ interface Props {
 }
 
 
-interface EditableProps {
-  value: number;
-  rowKey: string;
-  emp: {
-    PayCode: string;
-    EmpCodeId: string;
-    PayrollPeriod: string;
-    computedWtax: number;
-  };
-  onChange: (key: string, value: number) => void;
-}
+// interface EditableProps {
+//   value: number;
+//   rowKey: string;
+//   emp: {
+//     PayCode: string;
+//     EmpCodeId: string;
+//     PayrollPeriod: string;
+//     computedWtax: number;
+//   };
+//   onChange: (key: string, value: number) => void;
+// }
 
-function EditableWtax({
-  value,
-  rowKey,
-  emp,
-  onChange
-}: EditableProps) {
-  const [editing, setEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const saveOverride = useSaveWtaxOverride();
+// function EditableWtax({
+//   value,
+//   rowKey,
+//   emp,
+//   onChange
+// }: EditableProps) {
+//   const [editing, setEditing] = useState(false);
+//   const [isSaving, setIsSaving] = useState(false);
+//   const saveOverride = useSaveWtaxOverride();
 
-  const handleSave = async () => {
+//   const handleSave = async () => {
    
-    if (value === emp.computedWtax) {
-      return;
-    }
+//     if (value === emp.computedWtax) {
+//       return;
+//     }
 
-    if (isSaving) return;
+//     if (isSaving) return;
 
-    try {
-      setIsSaving(true);
+//     try {
+//       setIsSaving(true);
 
-      await saveOverride.mutateAsync({
-        PayCode: emp.PayCode,
-        EmpCodeId: emp.EmpCodeId,
-        PayrollPeriod: emp.PayrollPeriod,
-        computedWtax: emp.computedWtax,
-        editedValue: value
-      });
+//       await saveOverride.mutateAsync({
+//         PayCode: emp.PayCode,
+//         EmpCodeId: emp.EmpCodeId,
+//         PayrollPeriod: emp.PayrollPeriod,
+//         computedWtax: emp.computedWtax,
+//         editedValue: value
+//       });
 
-      SweetAlert.successAlert("Saved successfully");
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+//       SweetAlert.successAlert("Saved successfully");
+//     } catch (error) {
+//       console.error(error);
+//     } finally {
+//       setIsSaving(false);
+//     }
+//   };
 
-  if (editing) {
-    return (
-      <input
-        type="number"
-        value={value}
-        autoFocus
-        onChange={(e) =>
-          onChange(rowKey, Number(e.target.value))
-        }
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            setEditing(false);
-            handleSave();
-          }
-        }}
-        onBlur={() => {
-          setEditing(false);
-          handleSave();
-        }}
-        className="w-20 border px-1"
-      />
-    );
-  }
+//   if (editing) {
+//     return (
+//       <input
+//         type="number"
+//         value={value}
+//         autoFocus
+//         onChange={(e) =>
+//           onChange(rowKey, Number(e.target.value))
+//         }
+//         onKeyDown={(e) => {
+//           if (e.key === "Enter") {
+//             setEditing(false);
+//             handleSave();
+//           }
+//         }}
+//         onBlur={() => {
+//           setEditing(false);
+//           handleSave();
+//         }}
+//         className="w-20 border px-1"
+//       />
+//     );
+//   }
 
 
 
-  return (
-    <div onDoubleClick={() => setEditing(true)}>
-      {value.toFixed(2)}
-    </div>
-  );
-}
+//   return (
+//     <div onDoubleClick={() => setEditing(true)}>
+//       {value.toFixed(2)}
+//     </div>
+//   );
+// }
 
-export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
+export default function SpreadSheet({ data,totals }: Props) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -249,8 +249,8 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                 <td className="py-2 text-center">{row.undertime.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.absence.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.gross}</td>
-                <td>
-                  <EditableWtax
+                <td> {row.wtax}
+                  {/* <EditableWtax
                     value={row.wtax}
                     rowKey={row.rowKey}
                     emp={{
@@ -260,7 +260,7 @@ export default function SpreadSheet({ data,totals,onWtaxChange }: Props) {
                       computedWtax: row.computedWtax
                     }}
                     onChange={onWtaxChange}
-                  />
+                  /> */}
                 </td>
                 <td className="py-2 text-center">{row.sss}</td>
                 <td className="py-2 text-center">{row.philhealth}</td>

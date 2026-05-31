@@ -75,3 +75,33 @@ export const assignBranchGroupService = async ({
 
   return res.data;
 };
+
+
+
+
+
+
+
+
+export async function updateLocalModeService(
+  local_mode: boolean
+) {
+
+  const response = await api.put(
+    "/general/local-mode",
+    {
+      local_mode,
+    }
+  );
+
+  return response.data;
+}
+
+export async function getLocalModeService() {
+
+  const response = await api.get(
+    "/general/local-mode"
+  );
+
+  return response.data;
+}

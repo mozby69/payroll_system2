@@ -8,7 +8,6 @@ import { generatePayCode } from "./api.utils";
 import { io } from "../../server";
 import { appendMissingBodEmployees, probitionaryEmployees, specialLeaveEmployeesServices } from "../general/general.services";
 import { totalmem } from "os";
-
 export async function fetchHrAttendance(params: ApiParams){
   const {startDate, endDate, branchCycle} = params;
 
@@ -23,7 +22,10 @@ export async function fetchHrAttendance(params: ApiParams){
     }
   })
  const  prevPeriod = totatPayroll?.payroll_period ?? "";
-  const response = await hrApi.get("/attendance/summary/", {
+ const api = await hrApi();
+
+
+  const response = await api.get("/api/attendance/summary/", {
       params: {
           startDate,
           endDate,
@@ -128,6 +130,7 @@ export function transformAttendanceData(
               EmpCodeId: emp.EmpCodeId,
               PayrollPeriod: emp.PayrollPeriod,
             },
+            status:"PENDING",
           },
           update: {
             CycleCategory: emp.CycleCategory,

@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Building2, Layers, ShieldCheck } from "lucide-react";
+import { Users, Building2, Layers, ShieldCheck, File } from "lucide-react";
 
 import AccountConfigurationModal from "../users/modal/AccountConfigurationModal";
 import BranchList from "../general/BranchList";
 import RoleConfigurationModal from "../users/modal/RoleConfiguration";
 import BranchGroupManager from "../branch-groups/BranchGroupManager";
+import LocalModePage from "../general/LocalMode";
 
-type TabType = "users" | "branches" | "groups" | "permissions";
+type TabType = "users" | "branches" | "groups" | "permissions" | "local_data";
 
 export default function SettingsModal() {
   const [activeTab, setActiveTab] = useState<TabType>("users");
+
 
   return (
     <div className="flex h-150">
@@ -53,6 +55,14 @@ export default function SettingsModal() {
           }`}
         >
           <ShieldCheck size={16}/> Permissions
+        </button>
+
+
+         <button onClick={() => setActiveTab("local_data")}
+          className={`flex items-center gap-2 p-2 rounded-md ${
+            activeTab === "local_data" ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
+          }`}>
+          <File size={16}/> Local Data
         </button>
 
       </div>
@@ -129,6 +139,13 @@ export default function SettingsModal() {
       </div>
         )}
 
+
+       {activeTab === "local_data" && (
+        <LocalModePage>
+          </LocalModePage>
+          )}
+
+          
       </div>
     </div>
   );

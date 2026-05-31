@@ -12,6 +12,7 @@ import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useReCheckPayrollToChecker, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
+import { toNamespacedPath } from "path";
 import { useMemo, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print"
 
@@ -108,26 +109,28 @@ export default function FinancialPage(){
     
         const finalWtax = editedWtax[key] ?? Number(emp.wtax);
     
-        const net =
-          Number(emp.gross_pay) -
-          (
-            finalWtax +
-            Number(emp.sss_contrib_employee) +
-            Number(emp.philhealth_contrib_employee) +
-            Number(emp.pagibig_contrib_employee) +
-            Number(emp.are_loan) +
-            Number(emp.rfc_loan) +
-            Number(emp.fch_loan) +
-            Number(emp.sss_loan) +
-            Number(emp.pagibig_loan) +
-            Number(emp.calamity_loan)
-          );
+        // const net =
+        //   Number(emp.gross_pay) -
+        //   (
+        //     finalWtax +
+        //     Number(emp.sss_contrib_employee) +
+        //     Number(emp.philhealth_contrib_employee) +
+        //     Number(emp.pagibig_contrib_employee) +
+        //     Number(emp.are_loan) +
+        //     Number(emp.rfc_loan) +
+        //     Number(emp.fch_loan) +
+        //     Number(emp.sss_loan) +
+        //     Number(emp.pagibig_loan) +
+        //     Number(emp.calamity_loan)
+        //   );
 
 
 
-
+          
+         console.log('pagibig',emp.pagibig_loan);
     
         return {
+
           name: `${emp.EmpCode.Lastname}, ${emp.EmpCode.Firstname}`,
           basicPay: emp.semi_monthly,
           overtime: emp.overtime,
@@ -145,7 +148,7 @@ export default function FinancialPage(){
           salaryLoan: emp.sss_loan,
           calamityLoan: emp.calamity_loan,
           pagibigSalaryLoan: emp.pagibig_loan,
-          netPayable: net,
+          netPayable: emp.net_pay,
           sssEmployer: emp.sss_contrib_employer,
           philEmployer: emp.philhealth_contrib_employer,
           pagibigEmployer: emp.pagibig_contrib_employer,
@@ -157,6 +160,7 @@ export default function FinancialPage(){
           PayrollPeriod: emp.PayrollPeriod,
           computedWtax: Number(emp.computedWtax),
           officers_allowance:emp.officers_allowance,
+
               };
             });
     
@@ -226,6 +230,8 @@ export default function FinancialPage(){
             acc.rfc += toNumber(row.rfc);
             acc.fch += toNumber(row.fch);
             acc.salaryLoan += toNumber(row.salaryLoan);
+            acc.calamityLoan += toNumber(row.calamityLoan);
+            acc.pagibigSalaryLoan += toNumber(row.pagibigSalaryLoan);
             acc.netPayable += toNumber(row.netPayable);
             acc.sssEmployer += toNumber(row.sssEmployer);
             acc.philEmployer += toNumber(row.philEmployer);

@@ -113,6 +113,7 @@ export interface ComputedProps{
   gross_pay_edit?:number;
   philhealth_employee?:number;
   philhealth_employer?:number;
+  final_wtax?:number;
   EmpCode:{
     Firstname:string;
     Lastname:string;

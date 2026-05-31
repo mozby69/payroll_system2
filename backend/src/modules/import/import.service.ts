@@ -7,20 +7,29 @@ import { mapLeaveName, mapLeaveStatus } from "./import.helper";
 import { nowPH } from "../../utils/timezone";
 
 
+const DJANGO_BASE_URL_LOCAL = process.env.HR_API_BASE_URL_LOCAL;
 const DJANGO_BASE_URL = process.env.DJANGO_BASE_URL;
 const DJANGO_EXPORT_API_KEY = process.env.DJANGO_EXPORT_API_KEY;
 
 
 
 export const fetchFromDjango = async (): Promise<DjangoExportResponse> => {
-  const { data } = await axios.get<DjangoExportResponse>(
-    `${DJANGO_BASE_URL}/api/export/emp/`,
-    {
-      headers: {
-        "X-PAYROLL-TOKEN": DJANGO_EXPORT_API_KEY,
-      },
-    }
-  );
+    const localMode = await prisma.localMode.findFirst({
+        orderBy: {
+          created_at: "desc",
+        },
+      });
+
+    const baseUrl = localMode?.local_mode ? DJANGO_BASE_URL_LOCAL: DJANGO_BASE_URL;
+
+    const { data } = await axios.get<DjangoExportResponse>(
+      `${baseUrl}/api/export/emp/`,
+      {
+        headers: {
+          "X-PAYROLL-TOKEN": DJANGO_EXPORT_API_KEY,
+        },
+      }
+    );
 
   return data;
 };
@@ -149,14 +158,14 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
   for (let i = 0; i < validEmployees.length; i += chunkSize) {
     const chunk = validEmployees.slice(i, i + chunkSize);
 
-    
     await Promise.all(
       chunk.map(async (e) => {
+        const empCode = e.EmpCode.trim();
  
         await prisma.employee.upsert({
-          where: { EmpCode: e.EmpCode },
+          where: { EmpCode: empCode },
           create: {
-            EmpCode: e.EmpCode,
+            EmpCode: empCode,
             Firstname: e.Firstname,
             Middlename: e.Middlename,
             BranchCodeId: e.BranchCode__BranchCode!,
@@ -191,9 +200,9 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
 
       
         await prisma.employee_payroll.upsert({
-          where: { EmpCodeId: e.EmpCode },
+          where: { EmpCodeId: empCode },
           create: {
-            EmpCodeId: e.EmpCode,
+            EmpCodeId: empCode,
             basic_salary: new Prisma.Decimal(0),
             cash_assistance: new Prisma.Decimal(0),
           },
@@ -202,9 +211,9 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
 
 
         await prisma.pagIbig_List.upsert({
-          where: { EmpCodeId: e.EmpCode },
+          where: { EmpCodeId: empCode },
           create: {
-            EmpCodeId: e.EmpCode,
+            EmpCodeId: empCode,
             pagibig_employee_share: new Prisma.Decimal(0),
             pagibig_employer_share: 200,
           },

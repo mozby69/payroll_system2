@@ -501,3 +501,43 @@ export async function getAllowanceEmergency() {
       },
     });
   }
+
+
+
+
+
+  //localmode 
+  export async function updateLocalMode(localMode: boolean) {
+
+  const existing =
+    await prisma.localMode.findFirst({
+      orderBy: {
+        created_at: "asc",
+      },
+    });
+
+  if (!existing) {
+    throw new Error(
+      "Local mode record not found"
+    );
+  }
+
+  return prisma.localMode.update({
+    where: {
+      id: existing.id,
+    },
+
+    data: {
+      local_mode: localMode,
+    },
+  });
+}
+
+export async function getLocalMode() {
+
+  return prisma.localMode.findFirst({
+    orderBy: {
+      created_at: "asc",
+    },
+  });
+}

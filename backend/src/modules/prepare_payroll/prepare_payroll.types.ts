@@ -171,4 +171,5 @@ export type UpdateDeductionPayload = {
   gross_edited:boolean;
   philhealth_employee:number;
   philhealth_employer:number;
+  final_wtax:number;
 };

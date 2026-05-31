@@ -598,10 +598,18 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         const computedWtax  = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
 
-        const key = `${emp.PayCode}_${emp.EmpCodeId}_${emp.PayrollPeriod}`;
-        const overrideValue = overrideMap.get(key);
+
+ 
+        const finalWtax = override?.final_wtax !== undefined && override?.final_wtax !== null
+        ? Number(override.final_wtax)
+        : computedWtax
+        ? Number(computedWtax)
+        : 0;
+        
+        // const key = `${emp.PayCode}_${emp.EmpCodeId}_${emp.PayrollPeriod}`;
+        // const overrideValue = overrideMap.get(key);
     
-        const finalWtax = overrideValue ?? computedWtax;
+        // const finalWtax = overrideValue ?? computedWtax;
 
         // const semi_monthly_modified = override?.gross_pay_edit instanceof Decimal ? override.gross_pay_edit.toNumber()
         // : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
@@ -1315,7 +1323,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
    
     },
-
 
     data: {
       isNewEmployee: false,

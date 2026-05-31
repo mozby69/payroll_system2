@@ -225,4 +225,5 @@ export type UpdateDeductionPayload = {
   TotalUndertime: number;
   TotalOvertime:number;
   gross_pay_edit?:number;
+  final_wtax?:number;
 };

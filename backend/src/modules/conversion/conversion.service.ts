@@ -118,13 +118,20 @@ export default async function getAttendanceCount({ page, limit, search, company_
       //   total_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
       // }
 
-      if (leave_convert != 0) {
-        const sick_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
-        const leave_for_convert = dailyRate * (item.leave_convert ?? 0);
-        total_amount = sick_amount + leave_for_convert;
-      }
-      else {
-        total_amount = dailyRate * (item.Sick?.toNumber() ?? 0);
+      const leaveConvert = item.leave_convert?.toNumber() ?? 0;
+
+      if (leaveConvert !== 0) {
+        const sick_amount =
+          dailyRate * (item.Sick?.toNumber() ?? 0);
+
+        const leave_for_convert =
+          dailyRate * leaveConvert;
+
+        total_amount =
+          sick_amount + leave_for_convert;
+      } else {
+        total_amount =
+          dailyRate * (item.Sick?.toNumber() ?? 0);
       }
 
 
@@ -281,7 +288,7 @@ export async function conversionReport({ company_id }: conversionReport) {
       const dailyRate = computeDailyRate(basic,isSixDaysWork);
       const employmentDate = emp.EmpCode.EmployementDate;
       const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate) : 0;
-      const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert ?? 0;
+      const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert?.toNumber() ?? 0;
       let sickLeave = emp.Sick?.toNumber?.() ?? Number(emp.Sick) ?? 0;
       let vacationLeave = emp.Vacation?.toNumber?.() ?? Number(emp.Vacation) ?? 0;
 
@@ -476,9 +483,7 @@ export async function DisplayConversionArchive({ page, limit, search, company_id
 
     const formatted = data.map((item) => ({
       id: item.id,
-      created_at: item.created_at
-        ? new Date(item.created_at).getFullYear()
-        : null,
+      created_at: item.created_at ? new Date(item.created_at).getFullYear(): null,
       total_amount: item.total_amount,
     }));
 

@@ -61,6 +61,13 @@ export default function EditDeduction({ employee, onClose }: Props) {
       : ""
   )
 
+
+    const [wtax,setWtax] = useState<string>(
+     employee.final_wtax && Number(employee.final_wtax) > 0
+      ? String(employee.final_wtax)
+      : ""
+  )
+
   const verifyPasswordMutation = useVerifyPassword();
 
 const handleSubmit = () => {
@@ -76,6 +83,7 @@ const handleSubmit = () => {
     gross_edited?: boolean;
     philhealth_employee?:number;
     philhealth_employer?:number;
+    final_wtax?:number;
   } = {
     PayCode: employee.PayCode,
     EmpCodeId: employee.EmpCodeId,
@@ -86,6 +94,7 @@ const handleSubmit = () => {
     TotalOvertime: overtime === "" ? 0 : Number(overtime),
     philhealth_employee: philhealthEmployee === "" ? 0 : Number(philhealthEmployee),
     philhealth_employer: philhealthEmployer === "" ? 0 : Number(philhealthEmployer),
+    final_wtax: wtax === "" ? 0 : Number(wtax),
   };
 
   // 👇 ONLY include gross if user edited it
@@ -195,6 +204,20 @@ const handleSubmit = () => {
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
+
+
+
+        <div className="flex flex-col w-full">
+          <label className="pb-1">WTAX</label>
+          <input
+            type="number"
+            value={wtax}
+            placeholder="Input amount.."
+            onChange={(e) => setWtax((e.target.value))}
+            className="border border-gray-400 p-2 rounded w-full"
+          />
+        </div>
+
 
 
 

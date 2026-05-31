@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { assignBranchService, createGroupService, deleteGroupService, fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getGroupsService, getUniqueLoan, reorderBranchesService } from "./general.services";
+import { assignBranchService, createGroupService, deleteGroupService, fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getGroupsService, getLocalMode, getUniqueLoan, reorderBranchesService, updateLocalMode } from "./general.services";
 import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
 
@@ -282,3 +282,52 @@ export const assignBranch = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to assign branch" });
   }
 };
+
+
+
+//local mode
+export async function getLocalModeController(req: Request,res: Response) {
+
+  try {
+
+    const data = await getLocalMode();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
+
+}
+
+export async function updateLocalModeController(req: Request,res: Response) {
+
+  try {
+
+    const { local_mode } = req.body as { local_mode: boolean;};
+
+    const data = await updateLocalMode(local_mode);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
+
+}

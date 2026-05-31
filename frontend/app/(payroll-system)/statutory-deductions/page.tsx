@@ -20,7 +20,7 @@ export default function StatutoryDeductions() {
         { key: "Pagibig", label: "Pagibig" },
         { key: "Philhealth", label: "Philhealth" },
         { key: "Wtax", label: "WHTax" },
-        { key: "Wtax_computation", label: "WHTax Computation" },
+        // { key: "Wtax_computation", label: "WHTax Computation" },
     ];
 
 

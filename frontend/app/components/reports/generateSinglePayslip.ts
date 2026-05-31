@@ -193,7 +193,7 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                                 <div> 
                                   ${
                                         Number(item.Netpay) === 0
-                                        ? "0.00"
+                                        ? Number(item.disburse_amount)
                                         : Number(item.Netpay).toFixed(2)
                                       }
                                  

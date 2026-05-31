@@ -148,6 +148,7 @@ model Employee {
   conversionArchive conversionArchive?
 
   includePayrollLogs IncludePayrollLogs[] @relation()
+  ManualEmployeeSummary ManualEmployeeSummary[] @relation()
 
   @@map("employee")
 }
@@ -905,7 +906,7 @@ model AttendanceCount {
   ID Int @id @default(autoincrement())
   Vacation Decimal @db.Decimal(10,2)
   Sick Decimal @db.Decimal(10,2)
-  leave_convert Int? 
+  leave_convert Decimal? @db.Decimal(10,1)
 
   EmpCodeId String @unique @db.VarChar(20) @map("EmpCode_id")
   EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
@@ -1037,6 +1038,7 @@ model SummaryTableOverride {
   gross_edited Boolean @default(false)
   philhealth_employee Decimal? @db.Decimal(10,2)
   philhealth_employer Decimal? @db.Decimal(10,2)
+  final_wtax Decimal? @db.Decimal(10,2)
   created_at      DateTime @default(now())
 
   employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId,PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
@@ -1113,4 +1115,49 @@ model EmployeeAbsentOverride {
 
   @@map("allowance_absent_override")
 }
+
+
+
+
+
+
+model ManualEmployeeSummary{
+  PayCode String  @db.VarChar(20)
+  CycleCategory String @db.VarChar(50)
+  PayrollPeriod String @db.VarChar(50)
+  LateCount Int?
+  TotalAbsentHours Decimal? @db.Decimal(10,2)
+  TotalUndertime Int? 
+  TotalOvertime Decimal? @db.Decimal(10,2)
+  RegularAtt Json?
+  OvertimeAtt Json?
+  NightShiftAtt Json?
+  NightShiftOtAtt Json?
+  createdAt DateTime?
+  updatedAt DateTime?
+  status String? @db.VarChar(100) @default("PENDING")
+  selected_payroll_date Json? @map("selected_payroll_date")
+
+  EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+
+
+  @@id([PayCode, EmpCodeId,PayrollPeriod])
+  @@map("manual_employee_summary")
+  @@index([PayCode, EmpCodeId,PayrollPeriod])
+
+}
+
+
+model LocalMode{
+  id Int @id @default(autoincrement())
+  local_mode Boolean @default(false)
+  created_at DateTime @default(now())
+
+  @@map("local_mode")
+}
+
+
+
 

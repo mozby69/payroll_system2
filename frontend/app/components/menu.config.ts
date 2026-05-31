@@ -115,6 +115,18 @@ export const MENU_SECTIONS: MenuSection[] = [
           permission: "CONVERSION_VIEW"
         },
       ]
+    },
+    {
+      title: "Super Admin",
+      items: [
+        {
+          label: "Manual Payroll",
+          path: "/manual_payroll",
+          icon: CircleDollarSign,
+          permission: "ADMIN_MANUAL_PAYROLL"
+        },
+    
+      ]
     }
   ]
   

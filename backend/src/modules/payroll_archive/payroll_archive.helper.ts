@@ -49,12 +49,38 @@ export function groupByCompany(data: PayrollRow[]) {
 
 
 
-export function generateBankTxt(rows: BankFileRow[]): string {
-  return rows
-    .map((row) => `${row.bankAccount}\t${row.amount.toFixed(2)}`)
-    .join("\n");
-}
+// export function generateBankTxt(rows: BankFileRow[]): string {
+//   return rows
+//     .map((row) => `${row.bankAccount}\t${row.amount.toFixed(2)}`)
+//     .join("\n");
+// }
 
+
+export function generateBankTxt(
+  rows: BankFileRow[]
+): string {
+
+  return rows
+    .filter((row) => {
+
+      const hasValidAmount =
+        Number(row.amount) > 0;
+
+      const hasValidBankAccount =
+        row.bankAccount &&
+        row.bankAccount.toString().trim() !== "" &&
+        row.bankAccount.toString() !== "0";
+
+      return hasValidAmount && hasValidBankAccount;
+
+    })
+    .map(
+      (row) =>
+        `${row.bankAccount}\t${row.amount.toFixed(2)}`
+    )
+    .join("\n");
+
+}
 
 export async function generatePNBExcel(rows: BankFileRow[]) {
   const templatePath = path.join(
@@ -75,9 +101,22 @@ export async function generatePNBExcel(rows: BankFileRow[]) {
     worksheet.spliceRows(2, lastRow - 1);
   }
 
+   // FILTER INVALID ROWS
+  const filteredRows = rows.filter((row) => {
+    const hasValidAmount = Number(row.amount) > 0;
+
+    const hasValidBankAccount =
+      row.bankAccount &&
+      row.bankAccount.toString().trim() !== "" &&
+      row.bankAccount.toString() !== "0";
+
+    return hasValidAmount && hasValidBankAccount;
+  });
+
+
   let startRow = 2;
 
-  rows.forEach((row) => {
+  filteredRows.forEach((row) => {
     worksheet.getCell(`B${startRow}`).value = row.bankAccount;
     worksheet.getCell(`C${startRow}`).value = row.amount;
     startRow++;
@@ -86,9 +125,9 @@ export async function generatePNBExcel(rows: BankFileRow[]) {
   const date = new Date();
   const formattedDate = new Intl.DateTimeFormat('en-US').format(date);
 
-  const total = rows.reduce((sum, r) => sum + r.amount, 0);
+  const total = filteredRows.reduce((sum, r) => sum + r.amount, 0);
   worksheet.getCell("L1").value = total;
-  worksheet.getCell("N1").value = rows.length;
+  worksheet.getCell("N1").value = filteredRows.length;
   worksheet.getCell("H1").value = formattedDate;
   const manilaNow = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" })

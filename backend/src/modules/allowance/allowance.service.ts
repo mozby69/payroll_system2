@@ -1175,8 +1175,11 @@ export async function ViewAllList(selectedMonth: string) {
 
     for (const company of Object.keys(branchesByCompany)) {
       for (const branch of Object.keys(branchesByCompany[company])) {
+        // branchesByCompany[company][branch].sort((a, b) => {
+        //   return (a.EmpCode ?? "").localeCompare(b.EmpCode ?? "");
+        // });
         branchesByCompany[company][branch].sort((a, b) => {
-          return (a.EmpCode ?? "").localeCompare(b.EmpCode ?? "");
+          return (a.name ?? "").localeCompare(b.name ?? "");
         });
       }
     }
