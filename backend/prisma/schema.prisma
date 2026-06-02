@@ -1010,6 +1010,7 @@ model officersAllowance {
   id Int @id @default(autoincrement())
   create_at DateTime @default(now())
   basic_salary Decimal @db.Decimal(10,2) 
+  paid_every_cutoff Boolean @default(false)
 
 
   EmpCodeId                   String           @unique @map("EmpCode_id") @db.VarChar(20)
@@ -1174,7 +1175,7 @@ model LocalMode{
 
 
 
-model monthlyTaxPayment{
+model monthlyTaxPayment {
   id String @id @default(uuid())
   month String @db.VarChar(100)
   year String @db.VarChar(100)
