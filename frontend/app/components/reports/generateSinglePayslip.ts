@@ -16,7 +16,12 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
       <div class="payslip">
             <div class="payslip-main">
                 <div class="payslip-company">
-                     <p style="text-transform: uppercase;"> ${item.EmpCode.BranchCode.CompanyCode.CompanyName ?? ""}</p>
+                     <p style="text-transform: uppercase;">
+                             ${
+                                item.EmpCode.isAlien ?  item.EmpCode.secondaryBranch.CompanyCode.CompanyName :
+                                item.EmpCode.BranchCode.CompanyCode.CompanyName ?? ""
+                             }
+                      </p>
                     <p>**PAYSLIP**</p>
                 </div>
                 <div class="payslip-details">
@@ -213,7 +218,12 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
             <div class="payslip-acknowledge">
                     <div class="flex flex-col">
                          <div class="payslip-company" style="margin-bottom: 2px;  text-transform: uppercase;">
-                             <p> ${item.EmpCode.BranchCode.CompanyCode.CompanyName ?? ""}</p>
+                             <p> 
+                                ${
+                                    item.EmpCode.isAlien ?  item.EmpCode.secondaryBranch.CompanyCode.CompanyName :
+                                    item.EmpCode.BranchCode.CompanyCode.CompanyName ?? ""
+                                }
+                             </p>
                         </div>
                         <div class="flex">
                             <div class="flex" style="width: 45%; ">

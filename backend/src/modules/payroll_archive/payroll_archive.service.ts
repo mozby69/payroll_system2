@@ -1827,12 +1827,22 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
               Middlename: true,
               Lastname: true,
               BranchCodeId: true,
+              isAlien: true,
               employeepayroll:{
                 select:{
                   gmail_account:true,
                 },
               },
               BranchCode:{
+                select:{
+                  CompanyCode:{
+                      select:{
+                        CompanyName: true
+                      }
+                  }
+                }
+              },
+                secondaryBranch:{
                 select:{
                   CompanyCode:{
                       select:{
@@ -1928,7 +1938,17 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
             Middlename: true,
             Lastname: true,
             BranchCodeId: true,
+            isAlien: true,
             BranchCode:{
+              select:{
+                CompanyCode: {
+                  select:{
+                    CompanyName: true
+                  }
+                }
+              }
+            },
+            secondaryBranch:{
               select:{
                 CompanyCode: {
                   select:{
