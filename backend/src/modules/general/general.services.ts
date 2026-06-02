@@ -60,6 +60,7 @@ export async function getOfficerAllowance() {
         basic_salary: true,
         EmpCode: true,
         EmpCodeId:true,
+        paid_every_cutoff:true,
       },
     });
   }

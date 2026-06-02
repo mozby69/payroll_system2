@@ -515,11 +515,14 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
   
 
       const oaMap = new Map(
-        oa.map((o) => [
-          o.EmpCodeId.trim().toUpperCase(),
-          Number(o.basic_salary),
-        ])
-      );
+          oa.map((o) => [
+            o.EmpCodeId.trim().toUpperCase(),
+            {
+              basicSalary: Number(o.basic_salary),
+              paidEveryCutoff: o.paid_every_cutoff,
+            },
+          ])
+        );
 
       const normalized = employeeList.map((emp) => {
         const override = emp.SummaryTableOverride?.[0]; 
@@ -549,7 +552,13 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const isBod = emp.EmpCode.bod_member?.trim().toLowerCase() === "bod1";
         const isTaxable = emp.EmpCode.Taxable;
         const empId = emp.EmpCodeId.trim().toUpperCase();
-        const officerAllowance = isSecondCutoff(emp.PayCode) ? 0 : oaMap.get(empId) ?? 0;
+        //const officerAllowance = isSecondCutoff(emp.PayCode) ? 0 : oaMap.get(empId) ?? 0;
+
+        const officerAllowanceData = oaMap.get(empId);
+
+        const officerAllowance = officerAllowanceData?.paidEveryCutoff ? officerAllowanceData.basicSalary: isSecondCutoff(emp.PayCode)
+        ? 0 : officerAllowanceData?.basicSalary ?? 0;
+
         const isDisbursing = emp.EmpCode.Disbursing === true;
         const hasNoAtm = emp.EmpCode.WithAtm === false;
    
@@ -2069,18 +2078,29 @@ export async function displayBankAdminBDO(){
   
        const oa = await getOfficerAllowance();
 
-       const oaMap = new Map<string, number>(
+     
+      const oaMap = new Map(
           oa.map((o) => [
             o.EmpCodeId.trim().toUpperCase(),
-            Number(o.basic_salary),
+            {
+              basicSalary: Number(o.basic_salary),
+              paidEveryCutoff: o.paid_every_cutoff,
+            },
           ])
         );
 
       const normalized: PayrollRow[] = employeeList.map((row) => {
 
       const empId = row.EmpCodeId.trim().toUpperCase();
-      //const officerAllowance = oaMap.get(empId) ?? 0;
-      const officerAllowance = isSecondCutoff(row.PayCode) ? 0 : oaMap.get(empId) ?? 0;
+
+
+
+      const officerAllowanceData = oaMap.get(empId);
+
+      const officerAllowance = officerAllowanceData?.paidEveryCutoff ? officerAllowanceData.basicSalary: isSecondCutoff(row.PayCode)
+        ? 0 : officerAllowanceData?.basicSalary ?? 0;
+        
+      //const officerAllowance = isSecondCutoff(row.PayCode) ? 0 : oaMap.get(empId) ?? 0;
       const baseNetpay = row.Netpay?.toNumber() ?? 0;
 
       return {
