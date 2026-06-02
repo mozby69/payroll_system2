@@ -108,7 +108,7 @@ export default function ConversionTab(){
       "Please wait while processing data."
     );
 
-    generateAttendance(undefined, {
+    generateAttendance(company_id ?? '', {
       onSuccess: () => {
         Swal.close();
         // setHasGenerated(true);

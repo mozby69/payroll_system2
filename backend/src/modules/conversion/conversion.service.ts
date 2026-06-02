@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { ConversionProps, conversionReportProps, displayConversionProps } from "./conversion.types";
 import { computeDailyRate } from "../prepare_payroll/prepare_payroll.computation";
-import { computeCustomTenure, computeTenure, getJune30 } from "./conversion.helper";
+import { computeCustomTenure, computeTenure, getCompanyCutOffDate } from "./conversion.helper";
 
 
 
@@ -229,6 +229,9 @@ export async function conversionReport({ company_id }: conversionReportProps) {
     };
 
     const as_of_date = await prisma.conversionAsOfDate.findFirst({
+      where:{
+        company_id:company_id,
+      },
       select: {
         as_of_date: true,
       },
@@ -250,6 +253,7 @@ export async function conversionReport({ company_id }: conversionReportProps) {
             Firstname: true,
             Lastname: true,
             isSixDaysWork:true,
+            BranchCodeId:true,
             BranchCode: {
               select: {
                 company_id: true,
@@ -279,15 +283,16 @@ export async function conversionReport({ company_id }: conversionReportProps) {
 
     const referenceDate = as_of_date?.as_of_date ? new Date(as_of_date.as_of_date) : new Date();
     //const referenceDate = new Date("2026-04-14");
-    const june30 = getJune30(referenceDate);
+    const june30 = getCompanyCutOffDate(referenceDate,company_id);
 
     const normalized = data.map((emp) => {
       const fullName = `${emp.EmpCode.Lastname} ${emp.EmpCode.Firstname}`;
+      const branchCode = emp.EmpCode.BranchCodeId;
       const basic = emp.EmpCode.employeepayroll?.basic_salary?.toNumber() ?? 0;
       const isSixDaysWork = emp.EmpCode.isSixDaysWork;
       const dailyRate = computeDailyRate(basic,isSixDaysWork);
       const employmentDate = emp.EmpCode.EmployementDate;
-      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate) : 0;
+      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate,company_id) : 0;
       const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert?.toNumber() ?? 0;
       let sickLeave = emp.Sick?.toNumber?.() ?? Number(emp.Sick) ?? 0;
       let vacationLeave = emp.Vacation?.toNumber?.() ?? Number(emp.Vacation) ?? 0;

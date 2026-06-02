@@ -59,6 +59,7 @@ interface TotalsType{
   sssEmployer: number;
   philEmployer: number;
   pagibigEmployer: number;
+  officers_allowance:number;
 }
 
 interface Props {
@@ -321,7 +322,7 @@ export default function SpreadSheet({ data,totals }: Props) {
           <td className="text-center border border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.philEmployer.toFixed(2)}</td>
           <td className="text-center border border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{}</td>
+          <td className="text-center border border-gray-400">{totals.officers_allowance.toFixed(2)}</td>
         </tr>
       </tfoot>
 

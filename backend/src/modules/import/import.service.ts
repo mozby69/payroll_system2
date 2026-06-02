@@ -382,15 +382,33 @@ export const saveSpecialLeaves = async (
   };
 
 
-  export const saveAttendanceCount = async (
-    records: attendance_countDTO[]
-  ): Promise<number> => {
+  export const saveAttendanceCount = async (records: attendance_countDTO[],company_id:string): Promise<number> => {
     if (!Array.isArray(records)) {
       throw new Error("Invalid new table payload");
     }
+
+     const employees = await prisma.employee.findMany({
+        where: {
+          BranchCode: {
+            company_id,
+          },
+        },
+        select: {
+          EmpCode: true,
+        },
+      });
+
+  const employeeCodes = new Set(
+    employees.map((e) => e.EmpCode)
+  );
+
+  const filteredRecords = records.filter((record) =>
+    employeeCodes.has(record.EmpCode__EmpCode)
+  );
+
   
     await prisma.$transaction(
-      records.map((r) =>
+      filteredRecords.map((r) =>
         prisma.attendanceCount.upsert({
           where: { ID: r.ID },
           create: {
@@ -407,7 +425,7 @@ export const saveSpecialLeaves = async (
       )
     );
   
-    return records.length;
+    return filteredRecords.length;
   };
 
 
@@ -426,21 +444,24 @@ export const saveSpecialLeaves = async (
   // };
 
 
-export const importAttendanceCountService = async () => {
-  // 1. Fetch data
+export const importAttendanceCountService = async (company_id:string) => {
+
   const { attendance_count } = await fetchAttendanceCountFromDjango();
 
   if (!Array.isArray(attendance_count)) {
     throw new Error("attendance_count payload is invalid");
   }
 
-  // 2. Save attendance (keep your existing logic)
-  const count = await saveAttendanceCount(attendance_count);
+
+  const count = await saveAttendanceCount(attendance_count,company_id);
+
+
 
 
   await prisma.conversionAsOfDate.create({
     data: {
       as_of_date: nowPH(),
+      company_id:company_id,
     },
   });
 

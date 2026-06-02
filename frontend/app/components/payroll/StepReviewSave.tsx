@@ -162,6 +162,7 @@ export default function StepReviewSave({ onBack }: Props) {
       acc.sssEmployer += toNumber(row.sssEmployer);
       acc.philEmployer += toNumber(row.philEmployer);
       acc.pagibigEmployer += toNumber(row.pagibigEmployer);
+      acc.officers_allowance += toNumber(row.officers_allowance);
       return acc;
     },
     {
@@ -185,6 +186,7 @@ export default function StepReviewSave({ onBack }: Props) {
       sssEmployer: 0,
       philEmployer: 0,
       pagibigEmployer: 0,
+      officers_allowance: 0,
     }
   );
 

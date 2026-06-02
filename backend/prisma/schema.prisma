@@ -150,6 +150,8 @@ model Employee {
   includePayrollLogs IncludePayrollLogs[] @relation()
   ManualEmployeeSummary ManualEmployeeSummary[] @relation()
 
+  monthlyTaxPayment monthlyTaxPayment?
+
   @@map("employee")
 }
 
@@ -961,6 +963,7 @@ model conversionAsOfDate{
   id Int @id @default(autoincrement())
   as_of_date DateTime @db.Date
   created_at DateTime @default(now())
+  company_id String? @db.VarChar(100)
 
   @@map("conversion_as_of_date")
 }
@@ -1169,6 +1172,20 @@ model LocalMode{
   @@map("local_mode")
 }
 
+
+
+model monthlyTaxPayment{
+  id String @id @default(uuid())
+  month String @db.VarChar(100)
+  year String @db.VarChar(100)
+  tax_amount Int 
+  is_paid Boolean @default(false)
+
+  EmpCodeId String @unique @db.VarChar(20)
+  EmpCode Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@map("monthly_tax_payment")
+}
 
 
 

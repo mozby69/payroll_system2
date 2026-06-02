@@ -15,8 +15,8 @@ import { DateRange } from "../types/utilsTypes";
 
 
 
-export const importAttendanceCount = async (): Promise<ImportAttendanceResponse> => {
-  const { data } = await api.post<ImportAttendanceResponse>("/import/attendance-count");
+export const importAttendanceCount = async (company_id:string): Promise<ImportAttendanceResponse> => {
+  const { data } = await api.post<ImportAttendanceResponse>(`/import/attendance-count?company_id=${company_id}`);
   return data;
 };
 

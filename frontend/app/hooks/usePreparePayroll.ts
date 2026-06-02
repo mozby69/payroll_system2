@@ -50,14 +50,14 @@ export type ImportAttendanceResponse = {
   inserted: ImportResult;
 };
 
-export const useImportAttendanceCount = () => {
+export const useImportAttendanceCount = (company_id?: string) => {
   const queryClient = useQueryClient();
 
-  return useMutation<ImportAttendanceResponse, Error>({
+  return useMutation<ImportAttendanceResponse,Error,string>({
     mutationFn: importAttendanceCount,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["conversion-list"],
+        queryKey: ["conversion-list", company_id],
       });
     },
   });

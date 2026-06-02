@@ -1,8 +1,8 @@
 "use client";
 import GenButton from "@/app/components/Buttons";
-import CompanyCycleFilter from "@/app/components/Company_CycleFilter";
-import CompanyFilterCycle from "@/app/components/Company_CycleFilter";
-import CompanyFilter from "@/app/components/CompanyFilter";
+// import CompanyCycleFilter from "@/app/components/Company_CycleFilter";
+// import CompanyFilterCycle from "@/app/components/Company_CycleFilter";
+// import CompanyFilter from "@/app/components/CompanyFilter";
 import RequestModal from "@/app/components/Modal";
 import PayrollSpreadsheetPrint from "@/app/components/reports/PrintPayrollSpreadsheet";
 import SpreadSheet, { SpreadsheetRow } from "@/app/components/reports/SpreadSheet";
@@ -12,7 +12,7 @@ import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useReCheckPayrollToChecker, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
-import { toNamespacedPath } from "path";
+//import { toNamespacedPath } from "path";
 import { useMemo, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print"
 
@@ -236,6 +236,7 @@ export default function FinancialPage(){
             acc.sssEmployer += toNumber(row.sssEmployer);
             acc.philEmployer += toNumber(row.philEmployer);
             acc.pagibigEmployer += toNumber(row.pagibigEmployer);
+            acc.officers_allowance += toNumber(row.officers_allowance);
             return acc;
           },
           {
@@ -259,6 +260,7 @@ export default function FinancialPage(){
             sssEmployer: 0,
             philEmployer: 0,
             pagibigEmployer: 0,
+            officers_allowance:0,
           }
         );
 
