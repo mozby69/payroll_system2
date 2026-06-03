@@ -123,6 +123,7 @@ export function transformAttendanceData(
   
       // 🚀 UPSERT LOOP (SAFE — keeps relations)
       for (const emp of finalData) {
+         try {
          const existing = await tx.employeeSummary.findFirst({
             where: {
               PayCode: emp.PayCode,
@@ -162,6 +163,16 @@ export function transformAttendanceData(
               },
             });
           }
+        }catch(error){
+          console.error("Failed Employee:", {
+          PayCode: emp.PayCode,
+          EmpCodeId: emp.EmpCodeId,
+          PayrollPeriod: emp.PayrollPeriod,
+        });
+
+        throw error; // rollback entire transaction
+        }
+
       }
     });
   }
