@@ -123,30 +123,56 @@ export function transformAttendanceData(
   
       // 🚀 UPSERT LOOP (SAFE — keeps relations)
       for (const emp of finalData) {
-        await tx.employeeSummary.upsert({
-          where: {
-            PayCode_EmpCodeId_PayrollPeriod: {
+         try {
+         const existing = await tx.employeeSummary.findFirst({
+            where: {
               PayCode: emp.PayCode,
               EmpCodeId: emp.EmpCodeId,
               PayrollPeriod: emp.PayrollPeriod,
             },
-            status:"PENDING",
-          },
-          update: {
-            CycleCategory: emp.CycleCategory,
-            LateCount: emp.LateCount,
-            TotalAbsentHours: emp.TotalAbsentHours,
-            TotalUndertime: emp.TotalUndertime,
-            TotalOvertime: emp.TotalOvertime,
-            RegularAtt: emp.RegularAtt,
-            OvertimeAtt: emp.OvertimeAtt,
-            NightShiftAtt: emp.NightShiftAtt,
-            NightShiftOtAtt: emp.NightShiftOtAtt,
-            selected_payroll_date: emp.selected_payroll_date,
-            updatedAt: nowPH(),
-          },
-          create: emp,
+          });
+
+          if (!existing) {
+            await tx.employeeSummary.create({
+              data: {
+                ...emp,
+                status: "PENDING",
+              },
+            });
+          } else if (existing.status === "PENDING") {
+            await tx.employeeSummary.update({
+              where: {
+                PayCode_EmpCodeId_PayrollPeriod: {
+                  PayCode: emp.PayCode,
+                  EmpCodeId: emp.EmpCodeId,
+                  PayrollPeriod: emp.PayrollPeriod,
+                },
+              },
+              data: {
+                CycleCategory: emp.CycleCategory,
+                LateCount: emp.LateCount,
+                TotalAbsentHours: emp.TotalAbsentHours,
+                TotalUndertime: emp.TotalUndertime,
+                TotalOvertime: emp.TotalOvertime,
+                RegularAtt: emp.RegularAtt,
+                OvertimeAtt: emp.OvertimeAtt,
+                NightShiftAtt: emp.NightShiftAtt,
+                NightShiftOtAtt: emp.NightShiftOtAtt,
+                selected_payroll_date: emp.selected_payroll_date,
+                updatedAt: nowPH(),
+              },
+            });
+          }
+        }catch(error){
+          console.error("Failed Employee:", {
+          PayCode: emp.PayCode,
+          EmpCodeId: emp.EmpCodeId,
+          PayrollPeriod: emp.PayrollPeriod,
         });
+
+        throw error; // rollback entire transaction
+        }
+
       }
     });
   }
