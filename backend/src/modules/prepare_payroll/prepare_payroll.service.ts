@@ -780,13 +780,13 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       overtime:finalOvertime,
       undertime:undertimeCount,
       gross_pay:grossPay,
-
       LateCount: override?.LateCount ?? emp.LateCount ?? 0,
       TotalAbsentHours: override?.TotalAbsentHours ?? emp.TotalAbsentHours ?? 0,
       TotalUndertime: override?.TotalUndertime ?? emp.TotalUndertime ?? 0,
       TotalOvertime: override?.TotalOvertime ?? computedOvertime,
       gross_pay_edit: override?.gross_pay_edit ?? grossPay,
       philhealth_employee : override?.philhealth_employee ?? 0,
+      philhealth_employer : override?.philhealth_employer ?? 0,
       final_wtax: override?.final_wtax ?? 0,
     };
   });

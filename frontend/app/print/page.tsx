@@ -100,3 +100,5 @@ export default async function AllowancePrintPage({ searchParams }: Props) {
     </div>
   );
 }
+
+

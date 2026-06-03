@@ -27,8 +27,7 @@ export default function AllowancePage() {
   const saveAllowance = useSaveAllowance(month);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalOpen2, setIsModalOpen2] = useState(false);
-  const [selectedAllowance, setSelectedAllowance] =
-    useState<AllowanceProps | null>(null);
+  const [selectedAllowance, setSelectedAllowance] = useState<AllowanceProps | null>(null);
   const { data: allowance_data } = useFetchAllowance({
     page,
     limit: 10,

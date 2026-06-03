@@ -592,18 +592,17 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                                 +  computePhilRateEmployee(semiMonthly, phil_percentage,isNewProbi)
                                 + pagibigEmployeeShare;
 
-        const finalPhilhealthEmployee = override?.philhealth_employee !== null && override?.philhealth_employee !== undefined
-            ? Number(override.philhealth_employee)
-            : philhealthRateEmployee
-              ? Number(philhealthRateEmployee)
-              : 0;
+        const finalPhilhealthEmployee = override?.philhealth_employee !== null &&
+        override?.philhealth_employee !== undefined &&
+        Number(override.philhealth_employee) > 0
+          ? Number(override.philhealth_employee)
+          : Number(philhealthRateEmployee ?? 0);
 
-        const finalPhilhealthEmployer = override?.philhealth_employer !== null && override?.philhealth_employer !== undefined
+          const finalPhilhealthEmployer = override?.philhealth_employer !== null &&
+          override?.philhealth_employer !== undefined &&
+          Number(override.philhealth_employer) > 0
             ? Number(override.philhealth_employer)
-            : philhealthRateEmployer
-              ? Number(philhealthRateEmployer)
-              : 0;
-
+            : Number(philhealthRateEmployer ?? 0);
 
 
     
