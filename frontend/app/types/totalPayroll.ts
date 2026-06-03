@@ -70,11 +70,17 @@ export type TotalPayroll = {
       Middlename: string
       Lastname: string
       BranchCodeId: string
+      isAlien: boolean
       employeepayroll:{
       gmail_account:string;
       
     }
       BranchCode: {
+        CompanyCode:{
+          CompanyName: string
+        }
+      }
+      secondaryBranch: {
         CompanyCode:{
           CompanyName: string
         }

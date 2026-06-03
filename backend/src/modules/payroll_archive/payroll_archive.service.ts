@@ -598,7 +598,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           ? Number(override.philhealth_employee)
           : Number(philhealthRateEmployee ?? 0);
 
-          const finalPhilhealthEmployer = override?.philhealth_employer !== null &&
+        const finalPhilhealthEmployer = override?.philhealth_employer !== null &&
           override?.philhealth_employer !== undefined &&
           Number(override.philhealth_employer) > 0
             ? Number(override.philhealth_employer)
@@ -1835,12 +1835,22 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
               Middlename: true,
               Lastname: true,
               BranchCodeId: true,
+              isAlien: true,
               employeepayroll:{
                 select:{
                   gmail_account:true,
                 },
               },
               BranchCode:{
+                select:{
+                  CompanyCode:{
+                      select:{
+                        CompanyName: true
+                      }
+                  }
+                }
+              },
+                secondaryBranch:{
                 select:{
                   CompanyCode:{
                       select:{
@@ -1936,7 +1946,17 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
             Middlename: true,
             Lastname: true,
             BranchCodeId: true,
+            isAlien: true,
             BranchCode:{
+              select:{
+                CompanyCode: {
+                  select:{
+                    CompanyName: true
+                  }
+                }
+              }
+            },
+            secondaryBranch:{
               select:{
                 CompanyCode: {
                   select:{
