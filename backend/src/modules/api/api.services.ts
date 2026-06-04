@@ -45,13 +45,6 @@ export function transformAttendanceData(
     const referenceDate = params.endDate;
     const payCode = generatePayCode(cyclePay, referenceDate);
 
-    const checker = prisma.totalPayroll.findFirst({
-      where:{
-        PayCycle: payCode,
-      }
-    })
-
-    
   
     return (hrData.data ?? []).map((emp: any) => ({
       EmpCode_id: emp.EmpCode_id,
@@ -217,7 +210,7 @@ export const checkPayCodeExists = async(
 
     if(payroll){
       throw new Error(
-          `Payroll ${payCode} already submitted for approval.`
+        "Payroll already exists for the selected payroll period. Please check and revise the start and end dates."
       );
     }
 }

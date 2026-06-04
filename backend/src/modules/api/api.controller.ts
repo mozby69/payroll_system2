@@ -49,7 +49,7 @@ export const getAttendance = async (req: Request, res: Response) => {
 
   } catch (error: any) {
 
-    if (error.message?.includes("already submitted for approval")) {
+    if (error.message?.includes("Payroll already exists")) {
       return res.status(409).json({
         message: error.message,
       });

@@ -605,7 +605,6 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             : Number(philhealthRateEmployer ?? 0);
 
 
-
     
         // Loan Code ↓
         const loans = loanByEmp[emp.EmpCodeId] ?? {};

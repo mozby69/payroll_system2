@@ -17,26 +17,26 @@ export default function WtaxComputationModal({ data }: WTaxComputationProps) {
     let res1 = 0;
     let res2 = 0;
 
-    if(month === 1){
+    if (month === 1) {
         res1 = basic * 11.5
         res2 = basic * 0.5;
     }
 
 
-     const res3 = res1 + res2;
+    const res3 = res1 + res2;
 
-     const remaining_months = 11;
-     const philhealth_rem = data?.philhealth_emp * remaining_months;
-     const sss_rem = data?.sss_emp * remaining_months;
-     const pagibig_rem = data?.pagibig_emp  * remaining_months;
+    const remaining_months = 11;
+    const philhealth_rem = data?.philhealth_emp * remaining_months;
+    const sss_rem = data?.sss_emp * remaining_months;
+    const pagibig_rem = data?.pagibig_emp * remaining_months;
 
-     const philhealttotal = philhealth_rem + data?.philhealth_emp;
-     const sssRemTotal = sss_rem + data?.sss_emp;
-     const pagibigtotal = pagibig_rem + data?.pagibig_emp;
+    const philhealttotal = philhealth_rem + data?.philhealth_emp;
+    const sssRemTotal = sss_rem + data?.sss_emp;
+    const pagibigtotal = pagibig_rem + data?.pagibig_emp;
 
-     const totalContrib  = philhealttotal + sssRemTotal + pagibigtotal;
+    const totalContrib = philhealttotal + sssRemTotal + pagibigtotal;
 
-     const res4 = res3 - totalContrib;
+    const res4 = res3 - totalContrib;
 
     const matchedTax = data?.tax?.find((item) => {
         return (
@@ -159,7 +159,7 @@ export default function WtaxComputationModal({ data }: WTaxComputationProps) {
                 <div className="w-full grid grid-cols-3">
                     <div className="place-items-center">
                         <div className="font-semibold">TAX PAID TO DATE</div>
-                        <div className="font-semibold bg-yellow-500 px-4 py-1 rounded mt-1">9,902</div>
+                        <div className="font-semibold bg-yellow-500 px-4 py-1 rounded mt-1">{formatCurrency(9902)}</div>
                     </div>
                     <div>
                         <div>JANUARY</div>
@@ -168,6 +168,12 @@ export default function WtaxComputationModal({ data }: WTaxComputationProps) {
                         <div>APRIL</div>
                         <div>MAY</div>
                         <div>JUNE</div>
+                        <div>JULY</div>
+                        <div>AUGUST</div>
+                        <div>SEPTEMBER</div>
+                        <div>OCTOBER</div>
+                        <div>NOVEMBER</div>
+                        <div>DECEMBER</div>
                     </div>
                     <div>
                         <div>23423</div>
@@ -176,8 +182,20 @@ export default function WtaxComputationModal({ data }: WTaxComputationProps) {
                         <div>23423</div>
                         <div>23423</div>
                         <div>23423</div>
+                        <div>500</div>
+                        <div>500</div>
+                        <div>500</div>
+                        <div>500</div>
+                        <div>500</div>
+                        <div>500</div>
+                        <div className="border-t border-gray-500 w-5/12">
+                            <h2 className="mt-1 text-center">{formatAmount(1000)}</h2>
+                        </div>
                     </div>
                 </div>
+
+
+
 
             </div>
 

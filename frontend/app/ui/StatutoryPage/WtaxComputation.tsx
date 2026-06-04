@@ -94,7 +94,7 @@ export default function WtaxComputation(){
                 />
 
 
-            { isModal && selectedWtaxData &&(
+               {isModal && selectedWtaxData && (
                 <RequestModal size="xxxl" title={`Wtax Contributions`} onClose={closeModal}>
                     <WtaxComputationModal data={selectedWtaxData}/>
                 </RequestModal>

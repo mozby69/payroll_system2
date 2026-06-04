@@ -5,6 +5,7 @@ import AuthenticationModal from "@/app/components/editableLoanModal/Authenticati
 import { useVerifyPassword } from "@/app/hooks/useEditableLoan";
 import RequestModal from "../Modal";
 import EditLoanModal from "../editableLoanModal/EditLoanModal";
+import { formatAmount } from "@/app/utils/currencyConverter";
 
 export interface SpreadsheetRow {
   name: string;
@@ -302,27 +303,27 @@ export default function SpreadSheet({ data,totals }: Props) {
             GRAND TOTAL
           </td>
 
-          <td className="text-center border border-gray-400">{totals.basicPay.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.overtime.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.late.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.undertime.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.absence.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.gross.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.wtax.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.sss.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.philhealth.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.pagibig.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.arE.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.rfc.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.fch.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.salaryLoan.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.calamityLoan.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.pagibigSalaryLoan.toFixed(2)}</td>
-          <td className="text-center bg-blue-200 border border-gray-400">{totals.netPayable.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.philEmployer.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.officers_allowance.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{formatAmount(totals.basicPay)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.overtime.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.late.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.undertime.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.absence.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 bg-blue-200 font-mono">{formatAmount(totals.gross)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.wtax.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.sss.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.philhealth.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.pagibig.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.arE.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.rfc.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.fch.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.salaryLoan.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.calamityLoan.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.pagibigSalaryLoan.toFixed(2)}</td>
+          <td className="text-center px-1 bg-blue-200 border border-gray-400 font-mono">{formatAmount(totals.netPayable)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.philEmployer.toFixed(2)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.officers_allowance.toFixed(2)}</td>
         </tr>
       </tfoot>
 

@@ -306,12 +306,23 @@ const computeSource = (
     const value = source[label];
     if (typeof value !== "string") continue;
 
-    const hours = timeToHours(value);
+    const hours = Number(
+  timeToHours(value).toFixed(2)
+);
+    const baseHourlyRate = dailyRate / 8;
 
-    const otHourlyRate = (dailyRate / 8) * multiplier;
-    const otPay = otHourlyRate * hours;
+    const otHourlyRate = Number(
+      (baseHourlyRate * multiplier).toFixed(2)
+    );
 
-    total += Number(otPay.toFixed(2));
+    const otPay = Number(
+      (otHourlyRate * hours).toFixed(2)
+    );
+
+    total += otPay;
+
+
+  
   }
 
   return total;
