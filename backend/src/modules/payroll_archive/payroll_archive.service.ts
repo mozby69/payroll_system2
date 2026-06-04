@@ -1225,7 +1225,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         skipDuplicates: true,
       });
 
-      console.log(archivePayload)
+   
   
 
       

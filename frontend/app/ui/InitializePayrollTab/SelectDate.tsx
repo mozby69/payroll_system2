@@ -13,6 +13,7 @@ import Datatable from "@/app/components/Datatable";
 import { Column } from "@/app/types/preparePayroll";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pagination } from "@/app/components/Pagination";
+import toast from "react-hot-toast";
 
 
 interface props{
@@ -42,7 +43,7 @@ export default function SelectDate({branchCycle}:props){
       
        const tableData: ComputedProps[] = employee_payroll?.data ?? [];
 
-        const { isFetching,dataUpdatedAt  } = useFetchApiAttendance(
+        const { isFetching,dataUpdatedAt, error  } = useFetchApiAttendance(
           range
             ? {
                 startDate: range.startDate,
@@ -51,6 +52,16 @@ export default function SelectDate({branchCycle}:props){
               }
             : null
         );
+
+
+        useEffect(() => {
+          if (error) {
+            const message =
+              (error as any)?.response?.data?.message ||
+              "Something went wrong";
+            SweetAlert.errorAlert(message)
+          }
+        }, [error]);
       
         const showProcessing = isFetching && !!range;
 
