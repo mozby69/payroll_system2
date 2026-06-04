@@ -44,6 +44,14 @@ export function transformAttendanceData(
     const cyclePay = hrData.CyclePay;   
     const referenceDate = params.endDate;
     const payCode = generatePayCode(cyclePay, referenceDate);
+
+    const checker = prisma.totalPayroll.findFirst({
+      where:{
+        PayCycle: payCode,
+      }
+    })
+
+    
   
     return (hrData.data ?? []).map((emp: any) => ({
       EmpCode_id: emp.EmpCode_id,
@@ -97,6 +105,8 @@ export function transformAttendanceData(
       const bodAttendance = await appendMissingBodEmployees(tx, filteredEmployees);
       const probiAttendance = await probitionaryEmployees(tx, filteredEmployees);
       const specialLeaveAttendance = await specialLeaveEmployeesServices(tx, filteredEmployees);
+
+
   
       const finalData = [
         ...filteredEmployees.map((emp) => ({
@@ -120,33 +130,48 @@ export function transformAttendanceData(
         ...probiAttendance,
         ...specialLeaveAttendance,
       ];
-  
       // 🚀 UPSERT LOOP (SAFE — keeps relations)
       for (const emp of finalData) {
-        await tx.employeeSummary.upsert({
+        const existing = await tx.employeeSummary.findFirst({
           where: {
-            PayCode_EmpCodeId_PayrollPeriod: {
-              PayCode: emp.PayCode,
-              EmpCodeId: emp.EmpCodeId,
-              PayrollPeriod: emp.PayrollPeriod,
-            },
-            status:"PENDING",
+            PayCode: emp.PayCode,
+            EmpCodeId: emp.EmpCodeId,
+            PayrollPeriod: emp.PayrollPeriod,
           },
-          update: {
-            CycleCategory: emp.CycleCategory,
-            LateCount: emp.LateCount,
-            TotalAbsentHours: emp.TotalAbsentHours,
-            TotalUndertime: emp.TotalUndertime,
-            TotalOvertime: emp.TotalOvertime,
-            RegularAtt: emp.RegularAtt,
-            OvertimeAtt: emp.OvertimeAtt,
-            NightShiftAtt: emp.NightShiftAtt,
-            NightShiftOtAtt: emp.NightShiftOtAtt,
-            selected_payroll_date: emp.selected_payroll_date,
-            updatedAt: nowPH(),
-          },
-          create: emp,
         });
+        
+        if (!existing) {
+          await tx.employeeSummary.create({
+            data: {
+              ...emp,
+              status: "PENDING",
+              
+            },
+          });
+        } else if (existing.status === "PENDING") {
+          await tx.employeeSummary.update({
+            where: {
+              PayCode_EmpCodeId_PayrollPeriod: {
+                PayCode: emp.PayCode,
+                EmpCodeId: emp.EmpCodeId,
+                PayrollPeriod: emp.PayrollPeriod,
+              },
+            },
+            data: {
+              CycleCategory: emp.CycleCategory,
+              LateCount: emp.LateCount,
+              TotalAbsentHours: emp.TotalAbsentHours,
+              TotalUndertime: emp.TotalUndertime,
+              TotalOvertime: emp.TotalOvertime,
+              RegularAtt: emp.RegularAtt,
+              OvertimeAtt: emp.OvertimeAtt,
+              NightShiftAtt: emp.NightShiftAtt,
+              NightShiftOtAtt: emp.NightShiftOtAtt,
+              selected_payroll_date: emp.selected_payroll_date,
+              updatedAt: nowPH(),
+            },
+          });
+        }
       }
     });
   }
@@ -178,5 +203,22 @@ export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
           "start_date" in r &&
           "end_date" in r
       );
+}
+
+
+export const checkPayCodeExists = async(
+  payCode: string
+): Promise<void> =>{
+    const payroll = await prisma.totalPayroll.findFirst({
+      where:{
+        PayCycle: payCode,
+      },
+    });
+
+    if(payroll){
+      throw new Error(
+          `Payroll ${payCode} already submitted for approval.`
+      );
+    }
 }
   

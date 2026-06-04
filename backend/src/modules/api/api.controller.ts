@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { hrApi } from "../../lib/hrApi";
 import { ApiParams } from "../../types/utilsTypes";
-import { fetchHrAttendance, getDisabledPayrollRangesByCycle, saveEmployeeAttendance, transformAttendanceData } from "./api.services";
+import { checkPayCodeExists, fetchHrAttendance, getDisabledPayrollRangesByCycle, saveEmployeeAttendance, transformAttendanceData } from "./api.services";
+import { generatePayCode } from "./api.utils";
 
 export const getAttendance = async (req: Request, res: Response) => {
   try {
@@ -19,8 +20,15 @@ export const getAttendance = async (req: Request, res: Response) => {
       });
     }
 
+    
+
     // Fetch data from HR system
     const data = await fetchHrAttendance(params);
+
+    const payCode = generatePayCode(data.CyclePay, params.endDate);
+
+    // Check if payroll already exists
+    await checkPayCodeExists(payCode);
     
     // Transform the data
     const employees = transformAttendanceData(data, params);
@@ -40,7 +48,6 @@ export const getAttendance = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error("HR API ERROR:", error.response?.data || error.message);
 
     if (error.message?.includes("already submitted for approval")) {
       return res.status(409).json({
