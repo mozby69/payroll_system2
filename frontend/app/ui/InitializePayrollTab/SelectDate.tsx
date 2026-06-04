@@ -14,6 +14,8 @@ import { Column } from "@/app/types/preparePayroll";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pagination } from "@/app/components/Pagination";
 import toast from "react-hot-toast";
+import { AxiosError } from "axios";
+import { ErrorResponse } from "@/app/types/generalTypes";
 
 
 interface props{
@@ -57,9 +59,10 @@ export default function SelectDate({branchCycle}:props){
         useEffect(() => {
           if (error) {
             const message =
-              (error as any)?.response?.data?.message ||
+              (error as AxiosError<ErrorResponse>)
+                .response?.data?.message ??
               "Something went wrong";
-            SweetAlert.errorAlert(message)
+            SweetAlert.errorAlert(message);
           }
         }, [error]);
       

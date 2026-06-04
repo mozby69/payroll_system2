@@ -211,7 +211,7 @@ interface Props {
                   )}
 
                   {isModalOpen2 && selectedRow && (
-                    <RequestModal size="xxl" title={`EDIT DEDUCTION`} onClose={closeModal2}>
+                    <RequestModal size="lg" title={`VIEW TIME OF OVERTIME`} onClose={closeModal2}>
                       <ViewOvertime employee={selectedRow} onClose={closeModal2}/>
                     </RequestModal>
                   )}
