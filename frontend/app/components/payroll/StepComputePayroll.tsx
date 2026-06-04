@@ -13,9 +13,10 @@ import { useQueryClient } from "@tanstack/react-query";
 // import { useDisabledPayrollDates } from "@/app/hooks/useApiProcess";
 // import { normalizeDisabledRanges } from "@/app/helper/flatPickerHelper";
 import { useAuth } from "../UserContext";
-import { Edit } from "lucide-react";
+import { Edit, Timer } from "lucide-react";
 import RequestModal from "../Modal";
 import EditDeduction from "@/app/ModalContent/PreparePayroll/EditDeducution";
+import ViewOvertime from "@/app/ModalContent/PreparePayroll/ViewOvertime";
 
 
 interface Props {
@@ -42,7 +43,8 @@ interface Props {
       const { user } = useAuth()
       const companyId = user?.company_id;
       const [isModalOpen, setIsModalOpen] = useState(false);
-       const [selectedRow, setSelectedRow] = useState<ComputedProps | null>(null);
+      const [isModalOpen2, setIsModalOpen2] = useState(false);
+      const [selectedRow, setSelectedRow] = useState<ComputedProps | null>(null);
       //const flatpickrDisabled = normalizeDisabledRanges(disabledRanges);
 
       const { data: employee_payroll } = useComputedPayroll({
@@ -101,9 +103,16 @@ interface Props {
                   setSelectedRow(row);
                   setIsModalOpen(true);
                 }}
-                className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
-              >
-                <Edit />
+                className="shadow px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded">
+                <Edit /> 
+              </button>
+              <button
+              onClick={() => {
+                setSelectedRow(row);
+                setIsModalOpen2(true);
+              }} 
+              className="px-3 py-2 text-sm bg-sky-800 hover:bg-sky-600 text-white rounded shadow">
+                  <Timer/>
               </button>
             </div>
           ),
@@ -127,6 +136,11 @@ interface Props {
     const closeModal = () => {
       setIsModalOpen(false);
     };
+
+      const closeModal2 = () => {
+      setIsModalOpen2(false);
+    };
+      
       
  
     return (
@@ -195,6 +209,15 @@ interface Props {
                       <EditDeduction employee={selectedRow} onClose={closeModal}/>
                     </RequestModal>
                   )}
+
+                  {isModalOpen2 && selectedRow && (
+                    <RequestModal size="xxl" title={`EDIT DEDUCTION`} onClose={closeModal2}>
+                      <ViewOvertime employee={selectedRow} onClose={closeModal2}/>
+                    </RequestModal>
+                  )}
+              
+
+
               
 
 

@@ -788,6 +788,7 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       philhealth_employee : override?.philhealth_employee ?? 0,
       philhealth_employer : override?.philhealth_employer ?? 0,
       final_wtax: override?.final_wtax ?? 0,
+
     };
   });
 

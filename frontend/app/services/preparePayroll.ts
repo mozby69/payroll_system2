@@ -96,6 +96,9 @@ export function searchEmployees(q: string) {
 
 
 
+export interface AttendanceBreakdown {
+  [key: string]: string;
+}
 
 export interface ComputedProps{
   PayCode:string;
@@ -114,6 +117,10 @@ export interface ComputedProps{
   philhealth_employee?:number;
   philhealth_employer?:number;
   final_wtax?:number;
+  RegularAtt:AttendanceBreakdown;
+  OvertimeAtt:AttendanceBreakdown;
+  NightShiftAtt:AttendanceBreakdown;
+  NightShiftOtAtt:AttendanceBreakdown;
   EmpCode:{
     Firstname:string;
     Lastname:string;
