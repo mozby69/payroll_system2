@@ -42,7 +42,7 @@ export default function SelectDate({branchCycle}:props){
       
        const tableData: ComputedProps[] = employee_payroll?.data ?? [];
 
-        const { isFetching,isSuccess  } = useFetchApiAttendance(
+        const { isFetching,dataUpdatedAt  } = useFetchApiAttendance(
           range
             ? {
                 startDate: range.startDate,
@@ -92,13 +92,16 @@ export default function SelectDate({branchCycle}:props){
                 }
               ] 
 
-              useEffect(() => {
-                  if (isSuccess) {
-                    queryClient.invalidateQueries({
-                      queryKey: ["employees-computed-initialize"],
-                    });
-                  }
-                }, [isSuccess, queryClient]);
+             useEffect(() => {
+                if (dataUpdatedAt > 0) {
+                  queryClient.invalidateQueries({
+                    queryKey: ["payroll-display"],
+                  });
+                   queryClient.invalidateQueries({
+                    queryKey: ["employees-computed-initialize"],
+                  });
+                }
+              }, [dataUpdatedAt, queryClient]);
 
                 const handleSearchChange = (value: string) => {
                   setSearch(value);
@@ -141,14 +144,14 @@ export default function SelectDate({branchCycle}:props){
 
 
                 <div className="flex justify-end mb-4 pt-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Search..."
-                                        value={search}
-                                        onChange={(e) => handleSearchChange(e.target.value)}
-                                        className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                                    />   
-                                </div>
+                    <input
+                        type="text"
+                        placeholder="Search..."
+                        value={search}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    />   
+                </div>
 
 
                 <Datatable columns={columns} data={tableData} />
