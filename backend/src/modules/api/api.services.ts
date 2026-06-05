@@ -81,7 +81,7 @@ export function transformAttendanceData(
         },
         BranchCode: {
           company_id: {
-            in: [],
+            in: ['KOHI-MANJU','KOHI','likhain','LIKHAIN'],
           },
         },
       },
