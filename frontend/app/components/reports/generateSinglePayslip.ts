@@ -161,11 +161,14 @@ export function generateSinglePayslip(item: EmployeeArchivedType) {
                             <div class="flex justify-between"" style="border: none;"> 
                                 <div>     Calamity : </div>
                                 <div> 
-                                     ${
-                                        Number(item.sss_calamity_loan) === 0
-                                        ? "0.00"
-                                        : Number(item.sss_calamity_loan).toFixed(2)
-                                      }
+                                    ${
+  (Number(item.sss_calamity_loan) + Number(item.pagibig_calamity_loan)) === 0
+    ? "0.00"
+    : (
+        Number(item.sss_calamity_loan) +
+        Number(item.pagibig_calamity_loan)
+      ).toFixed(2)
+}
                                  </div>
                             </div>
                             <div class="flex justify-between"" style="border: none;"> 

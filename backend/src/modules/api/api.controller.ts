@@ -28,7 +28,7 @@ export const getAttendance = async (req: Request, res: Response) => {
     const payCode = generatePayCode(data.CyclePay, params.endDate);
 
     // Check if payroll already exists
-    await checkPayCodeExists(payCode);
+    await checkPayCodeExists(payCode, params.branchCycle);
     
     // Transform the data
     const employees = transformAttendanceData(data, params);
