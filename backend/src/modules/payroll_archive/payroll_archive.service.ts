@@ -12,30 +12,13 @@ import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 import { Decimal } from "@prisma/client/runtime/library";
 
-// export async function employeeProbationary(){
-
-//   try{
-//     // const computed = await displayCompletePayroll(["PENDING"]);
-//     // if (!computed || computed.length === 0) return 0;
-//     // const payCycle = computed[0].PayCode;
-
-//     // const data1 = await prisma.employee.findMany({
-//     //   where:{
-//     //     EmploymentStatus:"Probationary",
-//     //     EmployeeStatus:"Active"
-//     //   }
-//     // })
-
-//     // return {data1,payCycle};
-    
-//   }
-
-
-//   catch(error){
-//     console.log('error occured',error);
-//   }
-
-// }
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
 
 
@@ -1628,6 +1611,7 @@ export async function reCheckPayrollToChecker(company_id:string,approvedBy:numbe
   
 
 
+
 export async function SaveToApproverPayroll(company_id:string,approvedBy:number){
   const computed = await displayCompletePayroll(["FOR_CHECKER"]);
   if (!computed || computed.length === 0) return 0;
@@ -1689,12 +1673,42 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
   });
 
 
+  try {
+    await transporter.sendMail({
+      from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+      to: "tynz0304@yahoo.com",
+      subject: `Pending Payroll Approval for ${company_id} (${paycode})`,
+      html: `
+        <p>Dear Approver,</p>
+
+        <p>You have a pending payroll that requires your approval.</p>
+
+        <p>Please log in to the Payroll System and process the approval at your earliest convenience.</p>
+
+        <br />
+
+        <p>Regards,</p>
+        <p><strong>Payroll Department</strong></p>
+      `,
+    });
+
+    console.log("Approval email sent.");
+  } catch (error) {
+    console.error(
+      "Failed to send approval email:",
+      error
+    );
+  }
+
+
    
 
   io.emit("payroll:changed");
 
   return data;
 }
+
+
 
 
 
@@ -2458,13 +2472,7 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 // services/email.service.ts
 
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+
 
 
 export async function sendPayslipEmailService(employee: SendPayslipType) {
