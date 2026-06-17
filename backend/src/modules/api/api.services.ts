@@ -8,6 +8,7 @@ import { generatePayCode } from "./api.utils";
 import { io } from "../../server";
 import { appendMissingBodEmployees, probitionaryEmployees, specialLeaveEmployeesServices } from "../general/general.services";
 import { totalmem } from "os";
+import axios from "axios";
 export async function fetchHrAttendance(params: ApiParams){
   const {startDate, endDate, branchCycle} = params;
 
@@ -217,3 +218,24 @@ export const checkPayCodeExists = async(
     }
 }
   
+
+
+export const sendSmsToGateway = async (
+  number: string,
+  message: string
+) => {
+  const url = process.env.SMS_GATEWAY_URL as string;
+
+  try {
+    const response = await axios.post(url, {
+      number,
+      message,
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("SMS Gateway URL:", url);
+    console.error("SMS Gateway Error:", error.response?.data || error.message);
+    throw error;
+  }
+};

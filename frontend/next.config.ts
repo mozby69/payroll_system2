@@ -8,8 +8,9 @@ const nextConfig: NextConfig = {
     "192.168.1.180",
     "192.168.1.219",
     "192.168.1.217",
+    "192.168.1.195",
     "localhost"
   ],
-};
+};``
 
-export default nextConfig;
+export default nextConfig;``

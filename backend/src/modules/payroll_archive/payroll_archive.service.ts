@@ -11,6 +11,7 @@ import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 import { Decimal } from "@prisma/client/runtime/library";
+import { sendSmsToGateway } from "../api/api.services";
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -1673,26 +1674,44 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
   });
 
 
+const alert = await prisma.alertConfiguration.findUnique({
+  where: {
+    id: 1
+  }
+})
+
   try {
-    await transporter.sendMail({
-      from: `"Payroll System" <${process.env.EMAIL_USER}>`,
-      to: "tynz0304@yahoo.com",
-      subject: `Pending Payroll Approval for ${company_id} (${paycode})`,
-      html: `
-        <p>Dear Approver,</p>
 
-        <p>You have a pending payroll that requires your approval.</p>
+    if(alert?.isEmail && alert.email){
+      await transporter.sendMail({
+        from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+        to: `${alert.email}`,
+        subject: `Pending Payroll Approval for ${company_id} (${paycode})`,
+        html: `
+          <p>Dear Approver,</p>
+  
+          <p>You have a pending payroll that requires your approval.</p>
+  
+          <p>Please log in to the Payroll System and process the approval at your earliest convenience.</p>
+  
+          <br />
+  
+          <p>Regards,</p>
+          <p><strong>Payroll Department</strong></p>
+        `,
+      });
 
-        <p>Please log in to the Payroll System and process the approval at your earliest convenience.</p>
+      console.log("Approval email sent.");
+    }
+  
 
-        <br />
-
-        <p>Regards,</p>
-        <p><strong>Payroll Department</strong></p>
-      `,
-    });
-
-    console.log("Approval email sent.");
+    if(alert?.isSms && alert.phoneNumber){
+      await sendSmsToGateway(
+        `${alert.phoneNumber}`,
+        `Pending Payroll Approval for ${company_id} (${paycode})`
+      )
+    }
+  
   } catch (error) {
     console.error(
       "Failed to send approval email:",
