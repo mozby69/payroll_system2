@@ -91,3 +91,86 @@ export interface WtaxListComputaionResponse {
   data: WtaxComputationListProps[];
   meta: PagibigMeta;
 }
+
+
+
+
+export interface DisplayWtaxPaidItem {
+  PayCode: string;
+  Grosspay: number;
+  EmpCodeId: string;
+}
+
+export interface DisplayWtaxPaidResponse {
+  data: {
+    records: DisplayWtaxPaidItem[];
+    totalGrossPay: number;
+  };
+}
+
+
+
+export interface MonthlyTaxPayment {
+  id: string;
+  taxAmount: number;
+  isPaid: boolean;
+  taxPeriod: {
+    id: string;
+    month: number;
+    year: number;
+  };
+}
+
+export interface DisplayWtaxResponse {
+  data: MonthlyTaxPayment[];
+}
+
+
+export type MonthList = {
+  January: number;
+  February: number;
+  March: number;
+  April: number;
+  May: number;
+  June: number;
+  July: number;
+  August: number;
+  September: number;
+  October: number;
+  November: number;
+  December: number;
+};
+
+// types/wtax.types.ts
+export type DisplayWtaxFetch = {
+  basic_salary: number;
+  b2: number;
+  a2: number;
+  sss_employe_contrib: number;
+  philhealth_contrib: number;
+  pagibig_contrib: number;
+  b3: number;
+  b4: number;
+  b5: number;
+  c3: number;
+  c4: number;
+  c5: number;
+  c2: number;
+  d2: number;
+  e2: number;
+  f2: number;
+  h2: number;
+  g2: number;
+  h3: number;
+  i3: number;
+  j3: number;
+  l3: number;
+  j4: number;
+  j5: number;
+  k3:number;
+  month_list: MonthList;
+};
+
+export type DisplayWtaxFetchResponse = {
+  data: DisplayWtaxFetch | null;
+};

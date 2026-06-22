@@ -1,5 +1,7 @@
 import { displayPagibigContributions, displayPhilhealthContribution, displaySSSContributions, 
-  displayWTax, updatePagibigContribution, updatePhilhealth, updateSSSContribution, updateWTax, wtaxComputationList } from "./statutory.service";
+  DisplayWtax, 
+  displayWTax, DisplayWtaxPaid, SaveWtaxMonthly, updatePagibigContribution, updatePhilhealth, updateSSSContribution, updateWTax, wtaxComputationList, 
+  WtaxFetchData} from "./statutory.service";
 
 import { Request,Response } from "express";
 
@@ -127,3 +129,85 @@ export const wtaxComputationListController = async (req:Request, res:Response) =
     return res.status(500).json({message: `SERVER ERROR ${error}`});
   }
 }
+
+export const saveWtaxMonthlyController =async (req: Request,res: Response) => {
+    try {
+      const { month,year,taxAmount, empCodeId } = req.body;
+
+      const result =
+        await SaveWtaxMonthly({
+          month,
+          year,
+          taxAmount,
+          empCodeId,
+        });
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: `SERVER ERROR: ${error}`,
+      });
+    }
+  };
+
+
+
+
+  export const displayWtaxController = async (req: Request,res: Response) => {
+    try {
+
+      const { empCodeId } = req.params;
+      const data = await DisplayWtax({empCodeId});
+      return res.status(200).json({data});
+
+    } catch (error) {
+      return res.status(500).json({
+        message: `SERVER ERROR ${error}`,
+      });
+    }
+  };
+
+
+
+export const DisplayWtaxPaidController = async (req:Request, res:Response) =>  {
+  try{
+
+    const { empCodeId } = req.params;
+    const month = (Number(req.query.month));
+    const year = (Number(req.query.year));
+
+    const data = await DisplayWtaxPaid({empCodeId,month,year});
+
+
+
+    return res.status(200).json({data});
+
+  }
+  catch(error){
+    return res.status(500).json({message: `server error ${error}`})
+  }
+}
+
+
+
+
+export const WtaxFetchDataController = async (req: Request,res: Response) => {
+  try {
+    const empcode = String(req.query.empcode);
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
+
+    const data = await WtaxFetchData({empcode,month,year});
+
+    return res.status(200).json({ data });
+  } catch (error) {
+    return res.status(500).json({
+      message: `server error ${error}`,
+    });
+  }
+};

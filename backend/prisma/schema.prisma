@@ -126,6 +126,7 @@ model Employee {
   secondaryBranch     Branch?  @relation("EmployeesSecond",fields: [secondaryBranchId ], references: [branchCode])
   isOfficerAllowance Boolean? @default(false)
   isSixDaysWork Boolean? @default(false)
+  CivilStatus String? @db.VarChar(100)
 
 
   officersAllowance officersAllowance?
@@ -149,6 +150,7 @@ model Employee {
 
   includePayrollLogs IncludePayrollLogs[] @relation()
   ManualEmployeeSummary ManualEmployeeSummary[] @relation()
+  TaxArchive TaxArchive[] @relation()
 
   MonthlyTaxPayment MonthlyTaxPayment[] @relation()
 
@@ -1176,27 +1178,37 @@ model LocalMode{
 
 
  model TaxPeriod {
-  id              String @id @default(uuid())
+  id Int @id @default(autoincrement())
   month            Int
   year             Int
   payments        MonthlyTaxPayment[]
 
-  @@map("employee_annual_tax")
+  @@map("tax_period")
+
+  @@unique([month, year])
+
 }
 
 model MonthlyTaxPayment {
-  id              String @id @default(uuid())
+  id Int @id @default(autoincrement())
   taxAmount       Decimal @db.Decimal(12,2)
   isPaid          Boolean @default(false)
   created_at      DateTime @default(now())
+  col1 Json?
+  col2 Json?
+  col3 Json?
+  col4 Json?
+  month_list Json?
 
-  taxPeriodId     String
+  taxPeriodId     Int
   taxPeriod       TaxPeriod @relation(fields: [taxPeriodId], references: [id])
 
   EmpCodeId       String @db.VarChar(20)
   EmpCode         Employee @relation(fields: [EmpCodeId], references: [EmpCode])
 
-  @@map("monthly_tax_payment")
+
+  @@unique([EmpCodeId, taxPeriodId])
+  @@map("tax_monthly_payment")
 }
 
 model AlertConfiguration {
@@ -1213,3 +1225,19 @@ model AlertConfiguration {
 
     @@map("alert_configuration")    
 }
+model TaxArchive {
+  id Int @id @default(autoincrement())
+  PayCode         String   @db.VarChar(20) @map("paycode")
+  cycle_category  String?  @db.VarChar(100) @map("cycle_category")
+  payroll_period  String?  @db.VarChar(100) @map("payroll_period")
+  Grosspay        Decimal? @db.Decimal(10, 2) @map("grosspay")
+  created_at DateTime @default(now())
+
+  EmpCodeId String   @db.VarChar(20)
+  EmpCode   Employee @relation(fields: [EmpCodeId], references: [EmpCode])
+
+  @@unique([PayCode, EmpCodeId])
+  @@map("tax_archive")
+}
+
+

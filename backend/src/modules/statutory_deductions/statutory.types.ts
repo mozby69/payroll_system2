@@ -12,3 +12,11 @@ export interface WtaxListProps{
     limit:number;
     search?:string;
 }
+
+
+export type SaveWtaxMonthlyParams = {
+  month: number;
+  year: number;
+  taxAmount: number;
+  empCodeId: string;
+};

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { PagibigResponse, PhilResponse, SSSResponse, WtaxListComputaionResponse, WTaxResponse } from "../types/statutoryType";
+import { DisplayWtaxFetchResponse, DisplayWtaxPaidResponse, DisplayWtaxResponse, PagibigResponse, PhilResponse, SSSResponse, WtaxListComputaionResponse, WTaxResponse } from "../types/statutoryType";
 import SweetAlert from "../components/Swal";
 
 
@@ -191,3 +191,104 @@ export function useFetchPhilList() {
       },
     });
   }
+
+
+
+export type SaveMonthlyTaxPayload = {
+  month: number;
+  year: number;
+  taxAmount: number;
+  empCodeId: string;
+};
+
+export function useSaveMonthlyTax() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      payload: SaveMonthlyTaxPayload
+    ) => {
+      const res = await api.post(
+        "/statutory/save-monthly-tax",
+        payload
+      );
+
+      return res.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "display-wtax-monthly",
+          variables.empCodeId,
+        ],
+      });
+    },
+  });
+}
+
+
+
+export function useDisplayWtax(empCodeId: string) {
+  return useQuery<DisplayWtaxResponse>({
+    queryKey: ["display-wtax-monthly",empCodeId],
+    queryFn: async () => {
+      const res = await api.get(`/statutory/display-wtax-monthly/${empCodeId}`);
+      return res.data;
+    },
+    enabled: !!empCodeId,
+  });
+}
+
+
+
+
+export function useDisplayWtaxPaid(empCodeId: string,month: number,year: number) {
+  return useQuery<DisplayWtaxPaidResponse>({
+    queryKey: [
+      "display-wtax-monthly-paid",
+      empCodeId,
+      month,
+      year,
+    ],
+    queryFn: async () => {
+      const res = await api.get(
+        `/statutory/display-tax-paid/${empCodeId}`,
+        {
+          params: {
+            month,
+            year,
+          },
+        }
+      );
+
+      return res.data;
+    },
+    enabled: !!empCodeId && month > 0 && year > 0,
+  });
+}
+
+
+
+
+
+export function useDisplayWtaxFetch(empCodeId: string,month: number,year:number) {
+  return useQuery<DisplayWtaxFetchResponse>({
+    queryKey: ["display-wtax-fetch",empCodeId,month,year],
+    queryFn: async () => {
+      const res = await api.get<DisplayWtaxFetchResponse>(
+        `/statutory/wtax-fetch`,
+        {
+          params: {
+            empcode: empCodeId,
+            month,
+            year
+          },
+        }
+      );
+
+      return res.data;
+    },
+    enabled: Boolean(empCodeId) && month > 0,
+  });
+}

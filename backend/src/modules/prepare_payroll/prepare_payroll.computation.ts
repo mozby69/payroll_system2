@@ -1,6 +1,8 @@
 import { prisma } from "../../config/prismaClient";
 import { Prisma } from "@prisma/client";
 import { SSSRange, TaxField } from "./prepare_payroll.types";
+import { table } from "console";
+import { MathRound } from "../../utils/toFixed";
 
 export const computeSemiMonthlySalary = (basicSalary?: number | null): number => {
     if (!basicSalary) 
@@ -139,9 +141,40 @@ export const computePagibig = (pagibigContrib:number | null, payCode?: string | 
 
 
 
-export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[],taxable:boolean, payCode?: string | null): number => {
-  if (!taxFields.length) return 0;
-  if (!taxable) return 0;
+// export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFields: TaxField[],taxable:boolean, payCode?: string | null): number => {
+//   if (!taxFields.length) return 0;
+//   if (!taxable) return 0;
+
+//   if (payCode) {
+//     const parts = payCode.split("-");
+//     if (parts.length < 4) return 0;
+//     const startDay = Number(parts[1]);
+//     if (startDay !== 16) return 0;
+//   }
+
+//   const monthlyTaxable = monthlySalary - (completeContrib);
+  
+//   if (monthlyTaxable <= 0) return 0;
+//   const annualTaxable = monthlyTaxable * 12;
+
+//   const bracket = taxFields.find((r) => {
+//     if (r.start_range === null || r.end_range === null) return false;
+//     return (
+//       annualTaxable > r.start_range && annualTaxable <= r.end_range
+//     );
+//   });
+  
+//   if (!bracket) return 0;
+//   const baseTax = bracket.annual_base_tax_per_year?.toNumber() ?? 0;
+//   const excessOver = bracket.annual_base_tax_bracket?.toNumber() ?? 0;
+//   const rate = bracket.rate_per_bracket?.toNumber() ?? 0;
+
+//   const annualTax = baseTax + (annualTaxable - excessOver) * rate;
+//   return Number((annualTax / 12).toFixed(2));
+// };
+
+
+export const computeWHTx = (taxAmount:number, taxable:boolean, payCode:string) => {
 
   if (payCode) {
     const parts = payCode.split("-");
@@ -150,28 +183,12 @@ export const computeWHTx = (monthlySalary: number, completeContrib: number,taxFi
     if (startDay !== 16) return 0;
   }
 
-  const monthlyTaxable = monthlySalary - (completeContrib);
-  
-  if (monthlyTaxable <= 0) return 0;
-  const annualTaxable = monthlyTaxable * 12;
+  if(taxable === false){
+    return 0;
+  }
 
-  const bracket = taxFields.find((r) => {
-    if (r.start_range === null || r.end_range === null) return false;
-    return (
-      annualTaxable > r.start_range && annualTaxable <= r.end_range
-    );
-  });
-  
-  if (!bracket) return 0;
-  const baseTax = bracket.annual_base_tax_per_year?.toNumber() ?? 0;
-  const excessOver = bracket.annual_base_tax_bracket?.toNumber() ?? 0;
-  const rate = bracket.rate_per_bracket?.toNumber() ?? 0;
-
-  const annualTax = baseTax + (annualTaxable - excessOver) * rate;
-  return Number((annualTax / 12).toFixed(2));
-};
-
-
+  return MathRound(taxAmount);
+}
 
 export const computeSSSContribution = (monthlySalary: number,ranges: SSSRange[],isNewProbi?: boolean,payCode?: string | null): string => {
   if (!monthlySalary || !ranges.length) return "0.00";

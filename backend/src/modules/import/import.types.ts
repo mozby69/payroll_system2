@@ -22,6 +22,7 @@ export type BranchDTO = {
     SecondaryBranch:string;
     isAlien:boolean;
     EndDate:string;
+    CivilStatus:string;
   };
 
   export type CompanyDTO = {

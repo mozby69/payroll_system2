@@ -12,6 +12,8 @@ import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 import { Decimal } from "@prisma/client/runtime/library";
 import { sendSmsToGateway } from "../api/api.services";
+import { WtaxFetchData } from "../statutory_deductions/statutory.service";
+
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -20,6 +22,7 @@ import { sendSmsToGateway } from "../api/api.services";
       pass: process.env.EMAIL_PASS,
     },
   });
+
 
 
 
@@ -508,6 +511,21 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           ])
         );
 
+
+    const taxLookup: Record<string, number> = {};
+
+      await Promise.all(
+        employeeList.map(async (emp) => {
+          const s1 = await WtaxFetchData({
+            empcode: emp.EmpCodeId,
+            month: payMonth,
+            year: payYear,
+          });
+
+          taxLookup[emp.EmpCodeId] = s1?.j5 ?? 0;
+        })
+      );
+
       const normalized = employeeList.map((emp) => {
         const override = emp.SummaryTableOverride?.[0]; 
 
@@ -624,14 +642,21 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         ? Number(computedOvertime)
         : 0;
 
-        const computedWtax  = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+        //const computedWtax  = computeWHTx(basicSalary,complete_contrib,tax_list,isTaxable,Paycodes);
+
+
+         const computedWtax = taxLookup[emp.EmpCodeId] ?? 0;
+
+         const employeeTax = computeWHTx(computedWtax, emp.EmpCode.Taxable,Paycodes);
+
+
 
 
  
         const finalWtax = override?.final_wtax !== undefined && override?.final_wtax !== null
         ? Number(override.final_wtax)
-        : computedWtax
-        ? Number(computedWtax)
+        : employeeTax
+        ? Number(employeeTax)
         : 0;
         
         // const key = `${emp.PayCode}_${emp.EmpCodeId}_${emp.PayrollPeriod}`;
@@ -1395,6 +1420,105 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           companyCode:companyId,
         }
       });
+
+
+      //start save employee with tax only
+      const taxableEmployees = computed.filter(
+        (emp) => emp.EmpCode?.Taxable
+      );
+
+         for (const emp of taxableEmployees) {
+        const existing = await tx.taxArchive.findFirst({
+          where: {
+            PayCode: payrollPeriod,
+            EmpCodeId: emp.EmpCodeId,
+          },
+        });
+
+        if (!existing) {
+          await tx.taxArchive.create({
+            data: {
+              PayCode: payrollPeriod,
+              payroll_period: payCycle,
+              cycle_category: cycleCategory,
+              Grosspay: emp.gross_pay,
+              EmpCodeId: emp.EmpCodeId,
+            },
+          });
+        }
+
+
+       let taxPeriod = await tx.taxPeriod.findUnique({
+        where: {
+          month_year: {
+            month: payMonth,
+            year: payYear,
+          },
+        },
+      });
+
+      if (!taxPeriod) {
+        taxPeriod = await tx.taxPeriod.create({
+          data: {
+            month: payMonth,
+            year: payYear,
+          },
+        });
+      }
+
+
+        const wtax = await WtaxFetchData({
+          empcode: emp.EmpCodeId,
+          month: payMonth,
+          year: payYear,
+        });
+        const taxAmounts = wtax?.j5;
+
+       await tx.monthlyTaxPayment.create({
+        data:{
+          EmpCodeId:emp.EmpCodeId,
+          taxAmount:Number(taxAmounts),
+          taxPeriodId:taxPeriod.id,
+          col1: {
+            a2: wtax?.a2 ?? 0,
+            basic_salary: wtax?.basic_salary ?? 0,
+            b2: wtax?.b2 ?? 0,
+            c2: wtax?.c2 ?? 0,
+            d2: wtax?.d2 ?? 0,
+            e2: wtax?.e2 ?? 0,
+            f2: wtax?.f2 ?? 0,
+            g2: wtax?.g2 ?? 0,
+            h2: wtax?.h2 ?? 0,
+          },
+          col2:{
+            philhealth_contrib: wtax?.philhealth_contrib ?? 0,
+            b3: wtax?.b3 ?? 0,
+            c3: wtax?.c3 ?? 0,
+            h3: wtax?.h3 ?? 0,
+            i3: wtax?.i3 ?? 0,
+            j3: wtax?.j3 ?? 0,
+            k3: wtax?.k3 ?? 0,
+            l3: wtax?.l3 ?? 0,
+          },
+          col3:{
+            sss_employe_contrib: wtax?.sss_employe_contrib ?? 0,
+            b4: wtax?.b4 ?? 0,
+            c3: wtax?.c3 ?? 0,
+            j4: wtax?.j4 ?? 0,
+          },
+          col4:{
+            pagibig_contrib: wtax?.pagibig_contrib ?? 0,
+            b5: wtax?.b5 ?? 0,
+            c5: wtax?.c5 ?? 0,
+            j5: wtax?.j5 ?? 0,
+          },
+            month_list: wtax?.month_list ?? {},
+        }
+      })
+      }
+
+
+      //end save employee with tax only
 
   
    
