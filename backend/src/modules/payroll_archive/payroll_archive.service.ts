@@ -13,7 +13,6 @@ import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../pr
 import { Decimal } from "@prisma/client/runtime/library";
 import { WtaxFetchData } from "../statutory_deductions/statutory.service";
 
-
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -21,7 +20,6 @@ import { WtaxFetchData } from "../statutory_deductions/statutory.service";
       pass: process.env.EMAIL_PASS,
     },
   });
-
 
 
 
@@ -1735,6 +1733,7 @@ export async function reCheckPayrollToChecker(company_id:string,approvedBy:numbe
   
 
 
+
 export async function SaveToApproverPayroll(company_id:string,approvedBy:number){
   const computed = await displayCompletePayroll(["FOR_CHECKER"]);
   if (!computed || computed.length === 0) return 0;
@@ -1799,7 +1798,7 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
   try {
     await transporter.sendMail({
       from: `"Payroll System" <${process.env.EMAIL_USER}>`,
-      to: "mozbygreen13@gmail.com",
+      to: "tynz0304@yahoo.com",
       subject: `Pending Payroll Approval for ${company_id} (${paycode})`,
       html: `
         <p>Dear Approver,</p>
@@ -1830,6 +1829,8 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
 
   return data;
 }
+
+
 
 
 
@@ -2591,6 +2592,8 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 
 
 // services/email.service.ts
+
+
 
 
 

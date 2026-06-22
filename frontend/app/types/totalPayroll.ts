@@ -58,6 +58,7 @@ export type TotalPayroll = {
     pagibig_loan: string
     sss_loan: string
     sss_calamity_loan: string
+    pagibig_calamity_loan: string
     status: string
     created_at: string
     totalPayrollId: number

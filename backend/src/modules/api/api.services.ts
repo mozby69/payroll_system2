@@ -81,7 +81,7 @@ export function transformAttendanceData(
         },
         BranchCode: {
           company_id: {
-            in: [],
+            in: ['KOHI-MANJU','KOHI','likhain','LIKHAIN'],
           },
         },
       },
@@ -200,11 +200,13 @@ export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
 
 
 export const checkPayCodeExists = async(
-  payCode: string
+  payCode: string,
+  branchCycle: string
 ): Promise<void> =>{
     const payroll = await prisma.totalPayroll.findFirst({
       where:{
         PayCycle: payCode,
+        cycle_category: branchCycle
       },
     });
 
