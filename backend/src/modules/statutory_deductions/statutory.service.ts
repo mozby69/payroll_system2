@@ -1,12 +1,12 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { SaveWtaxMonthlyParams, StatutoryProps, WtaxListProps } from "./statutory.types";
+import { SaveWtaxMonthlyParams, StatutoryProps, WtaxListProps, WTaxTaxPeriodProps } from "./statutory.types";
 import { fi } from "zod/v4/locales";
 import { computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution } from "../prepare_payroll/prepare_payroll.computation";
 import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 import { MathRound } from "../../utils/toFixed";
 import { match } from "assert";
-import { generateMonthlyTaxMap } from "./statutory.helper";
+import { generateMonthlyTaxMap, MONTH_NAMES } from "./statutory.helper";
 
 
 
@@ -568,11 +568,11 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
       select: {
         EmpCode: true,
         bod_member: true,
-        BranchCode:{
-          select:{
-            CompanyCode:{
-              select:{
-                CompanyCycle:true,
+        BranchCode: {
+          select: {
+            CompanyCode: {
+              select: {
+                CompanyCycle: true,
               }
             }
           }
@@ -587,7 +587,7 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
             pagibig_employee_share: true,
           },
         },
-        
+
 
       },
     });
@@ -660,14 +660,14 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
 
     //for k3 
     const taxPaid = await prisma.monthlyTaxPayment.aggregate({
-      where:{
-        EmpCodeId:empcode,
-        taxPeriod:{
+      where: {
+        EmpCodeId: empcode,
+        taxPeriod: {
           year,
         }
       },
-      _sum:{
-        taxAmount:true,
+      _sum: {
+        taxAmount: true,
       }
     });
 
@@ -714,13 +714,9 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
     const h2 = matchedTax?.rate_per_bracket ?? 0;
     const g2 = Number(e2) - Number(f2);
     const i3 = matchedTax?.annual_base_tax_per_year ?? 0;
-
     const h3 = g2 * Number(h2);
-
-
     const j3 = h3 + Number(i3);
     const k3 = taxPaid._sum.taxAmount?.toNumber() ?? 0;
-
     const l3 = (-k3) + j3;
     const j4 = remaining_months + 1;
     const j5_tax_amount = l3 / j4;
@@ -753,7 +749,7 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
       j4,
       j5: MathRound(j5_tax_amount),
       k3,
-      month_list:month_list,
+      month_list: month_list,
     };
 
     return normalized;
@@ -761,6 +757,118 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
   }
 
   catch (error) {
+    console.error(`error occured ${error}`);
+  }
+}
+
+
+
+
+export async function WtaxTaxPeriodArchive({ page, limit, search }: WTaxTaxPeriodProps) {
+  try {
+    const searchNumber = Number(search);
+
+    const matchedMonthNumbers = search
+      ? Object.entries(MONTH_NAMES)
+        .filter(([, monthName]) =>
+          monthName.toLowerCase().includes(search.toLowerCase())
+        )
+        .map(([monthNumber]) => Number(monthNumber))
+      : [];
+
+    const searchFilter: Prisma.TaxPeriodWhereInput =
+      search
+        ? {
+          OR: [
+            ...(!Number.isNaN(searchNumber)
+              ? [
+                { month: searchNumber },
+                { year: searchNumber },
+              ]
+              : []),
+
+            ...(matchedMonthNumbers.length > 0
+              ? [
+                {
+                  month: {
+                    in: matchedMonthNumbers,
+                  },
+                },
+              ]
+              : []),
+          ],
+        }
+        : {};
+
+    const finalWhere: Prisma.TaxPeriodWhereInput = {
+      AND: [searchFilter],
+    };
+
+    const taxPeriodList = await prisma.taxPeriod.findMany({
+      where: finalWhere,
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        month: true,
+        year: true,
+        payments: {
+          select: {
+            id: true,
+            taxAmount: true,
+            isPaid: true,
+            created_at: true,
+            EmpCodeId: true,
+            col1: true,
+            col2: true,
+            col3: true,
+            col4: true,
+            month_list: true,
+            EmpCode: {
+              select: {
+                EmpCode: true,
+                Firstname: true,
+                Lastname: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const normalized = taxPeriodList.map((period) => {
+      return {
+        id: period.id,
+        month: MONTH_NAMES[period.month] ?? "Unknown",
+        monthNumber: period.month,
+        year: period.year,
+        payments: period.payments.map((payment) => ({
+          EmpCodeId: payment.EmpCodeId,
+          taxAmount: Number(payment.taxAmount),
+          col1: payment.col1,
+          col2: payment.col2,
+          col3: payment.col3,
+          col4: payment.col4,
+          month_list: payment.month_list,
+          name: `${payment.EmpCode.Lastname}, ${payment.EmpCode.Firstname}`,
+        })),
+      };
+    });
+
+    const total = await prisma.taxPeriod.count({
+      where: finalWhere,
+    });
+
+    return {
+      data: normalized,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
     console.error(`error occured ${error}`);
   }
 }

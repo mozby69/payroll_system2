@@ -1502,6 +1502,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             b4: wtax?.b4 ?? 0,
             c3: wtax?.c3 ?? 0,
             j4: wtax?.j4 ?? 0,
+            c4: wtax?.c4 ?? 0,
           },
           col4:{
             pagibig_contrib: wtax?.pagibig_contrib ?? 0,

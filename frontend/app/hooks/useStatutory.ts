@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { DisplayWtaxFetchResponse, DisplayWtaxPaidResponse, DisplayWtaxResponse, PagibigResponse, PhilResponse, SSSResponse, WtaxListComputaionResponse, WTaxResponse } from "../types/statutoryType";
+import { DisplayWtaxFetchResponse, DisplayWtaxPaidResponse, DisplayWtaxResponse, PagibigResponse, PhilResponse, SSSResponse, WtaxListComputaionResponse, WTaxResponse, WtaxTaxPeriodResponse } from "../types/statutoryType";
 import SweetAlert from "../components/Swal";
 
 
@@ -292,3 +292,22 @@ export function useDisplayWtaxFetch(empCodeId: string,month: number,year:number)
     enabled: Boolean(empCodeId) && month > 0,
   });
 }
+
+
+
+
+
+export function useFetchWtaxTaxPeriod(params: {page: number; limit: number; search?: string}) {
+    return useQuery<WtaxTaxPeriodResponse>({
+      queryKey: [
+        "wtax-tax-period-list",
+        params.page,
+        params.limit,
+        params.search ?? "",
+      ],
+      queryFn: async () => {
+        const res = await api.get("/statutory/wtax-tax-period-list", {params});
+        return res.data;
+      },
+    });
+  }

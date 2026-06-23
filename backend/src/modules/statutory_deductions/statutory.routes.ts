@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { displayPagibigContributionsController, displayPhilhealthContributionController, displaySSSContributionsController, displayWtaxController, displayWTaxController, DisplayWtaxPaidController, saveWtaxMonthlyController, updatePagibigContributionController, updatePhilhealthController, updateSSSContributionController, updateWTaxController, wtaxComputationListController, WtaxFetchDataController } from "./statutory.controller";
+import { displayPagibigContributionsController, displayPhilhealthContributionController, displaySSSContributionsController, displayWtaxController, displayWTaxController, DisplayWtaxPaidController, saveWtaxMonthlyController, updatePagibigContributionController, updatePhilhealthController, updateSSSContributionController, updateWTaxController, wtaxComputationListController, WtaxFetchDataController, WtaxTaxPeriodArchiveController } from "./statutory.controller";
 
 
 const router = Router();
@@ -17,5 +17,6 @@ router.post("/save-monthly-tax",saveWtaxMonthlyController);
 router.get('/display-wtax-monthly/:empCodeId',displayWtaxController);
 router.get("/display-tax-paid/:empCodeId",DisplayWtaxPaidController);
 router.get("/wtax-fetch",WtaxFetchDataController);
+router.get("/wtax-tax-period-list",WtaxTaxPeriodArchiveController);
 
 export default router;
