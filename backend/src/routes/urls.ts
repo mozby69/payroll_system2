@@ -22,6 +22,8 @@ import conversionRouites from '../modules/conversion/conversion.routes';
 import editableLoanRoutes from '../modules/editableLoan/editableLoan.routes';
 import manualPayrollRoutes from '../modules/manual_payroll/manual_payroll.routes';
 
+import alertRoutes from '../modules/alert/alert.routes'
+
 
 const router = Router();
 
@@ -66,5 +68,7 @@ router.use("/print", printeRoutes)
 
 router.use("/conversion", conversionRouites)
 router.use("/manual-payroll",manualPayrollRoutes);
+
+router.use("/alert", alertRoutes)
 
 export default router;

@@ -22,7 +22,7 @@ export const useCreateGroup = () => {
       qc.invalidateQueries({ queryKey: ["branch-groups"] });
     },
   });
-};
+}; 
 
 // DELETE
 export const useDeleteGroup = () => {

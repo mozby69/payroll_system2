@@ -11,7 +11,9 @@ import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
 import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 import { Decimal } from "@prisma/client/runtime/library";
+import { sendSmsToGateway } from "../api/api.services";
 import { WtaxFetchData } from "../statutory_deductions/statutory.service";
+
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -1444,6 +1446,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           });
         }
 
+        if(isSecondCutoff(payrollPeriod)){
+
 
        let taxPeriod = await tx.taxPeriod.findUnique({
         where: {
@@ -1471,50 +1475,94 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         });
         const taxAmounts = wtax?.j5;
 
-       await tx.monthlyTaxPayment.create({
-        data:{
-          EmpCodeId:emp.EmpCodeId,
-          taxAmount:Number(taxAmounts),
-          taxPeriodId:taxPeriod.id,
-          col1: {
-            a2: wtax?.a2 ?? 0,
-            basic_salary: wtax?.basic_salary ?? 0,
-            b2: wtax?.b2 ?? 0,
-            c2: wtax?.c2 ?? 0,
-            d2: wtax?.d2 ?? 0,
-            e2: wtax?.e2 ?? 0,
-            f2: wtax?.f2 ?? 0,
-            g2: wtax?.g2 ?? 0,
-            h2: wtax?.h2 ?? 0,
+        await tx.monthlyTaxPayment.upsert({
+          where: {
+            EmpCodeId_taxPeriodId: {
+              EmpCodeId: emp.EmpCodeId,
+              taxPeriodId: taxPeriod.id,
+            },
           },
-          col2:{
-            philhealth_contrib: wtax?.philhealth_contrib ?? 0,
-            b3: wtax?.b3 ?? 0,
-            c3: wtax?.c3 ?? 0,
-            h3: wtax?.h3 ?? 0,
-            i3: wtax?.i3 ?? 0,
-            j3: wtax?.j3 ?? 0,
-            k3: wtax?.k3 ?? 0,
-            l3: wtax?.l3 ?? 0,
-          },
-          col3:{
-            sss_employe_contrib: wtax?.sss_employe_contrib ?? 0,
-            b4: wtax?.b4 ?? 0,
-            c3: wtax?.c3 ?? 0,
-            j4: wtax?.j4 ?? 0,
-            c4: wtax?.c4 ?? 0,
-          },
-          col4:{
-            pagibig_contrib: wtax?.pagibig_contrib ?? 0,
-            b5: wtax?.b5 ?? 0,
-            c5: wtax?.c5 ?? 0,
-            j5: wtax?.j5 ?? 0,
-          },
+          update: {
+            taxAmount: Number(taxAmounts ?? 0),
+            col1: {
+              a2: wtax?.a2 ?? 0,
+              basic_salary: wtax?.basic_salary ?? 0,
+              b2: wtax?.b2 ?? 0,
+              c2: wtax?.c2 ?? 0,
+              d2: wtax?.d2 ?? 0,
+              e2: wtax?.e2 ?? 0,
+              f2: wtax?.f2 ?? 0,
+              g2: wtax?.g2 ?? 0,
+              h2: wtax?.h2 ?? 0,
+            },
+            col2: {
+              philhealth_contrib: wtax?.philhealth_contrib ?? 0,
+              b3: wtax?.b3 ?? 0,
+              c3: wtax?.c3 ?? 0,
+              h3: wtax?.h3 ?? 0,
+              i3: wtax?.i3 ?? 0,
+              j3: wtax?.j3 ?? 0,
+              k3: wtax?.k3 ?? 0,
+              l3: wtax?.l3 ?? 0,
+            },
+            col3: {
+              sss_employe_contrib: wtax?.sss_employe_contrib ?? 0,
+              b4: wtax?.b4 ?? 0,
+              c3: wtax?.c3 ?? 0,
+              j4: wtax?.j4 ?? 0,
+              c4: wtax?.c4 ?? 0,
+            },
+            col4: {
+              pagibig_contrib: wtax?.pagibig_contrib ?? 0,
+              b5: wtax?.b5 ?? 0,
+              c5: wtax?.c5 ?? 0,
+              j5: wtax?.j5 ?? 0,
+            },
             month_list: wtax?.month_list ?? {},
-        }
-      })
+          },
+          create: {
+            EmpCodeId: emp.EmpCodeId,
+            taxAmount: Number(taxAmounts ?? 0),
+            taxPeriodId: taxPeriod.id,
+            col1: {
+              a2: wtax?.a2 ?? 0,
+              basic_salary: wtax?.basic_salary ?? 0,
+              b2: wtax?.b2 ?? 0,
+              c2: wtax?.c2 ?? 0,
+              d2: wtax?.d2 ?? 0,
+              e2: wtax?.e2 ?? 0,
+              f2: wtax?.f2 ?? 0,
+              g2: wtax?.g2 ?? 0,
+              h2: wtax?.h2 ?? 0,
+            },
+            col2: {
+              philhealth_contrib: wtax?.philhealth_contrib ?? 0,
+              b3: wtax?.b3 ?? 0,
+              c3: wtax?.c3 ?? 0,
+              h3: wtax?.h3 ?? 0,
+              i3: wtax?.i3 ?? 0,
+              j3: wtax?.j3 ?? 0,
+              k3: wtax?.k3 ?? 0,
+              l3: wtax?.l3 ?? 0,
+            },
+            col3: {
+              sss_employe_contrib: wtax?.sss_employe_contrib ?? 0,
+              b4: wtax?.b4 ?? 0,
+              c3: wtax?.c3 ?? 0,
+              j4: wtax?.j4 ?? 0,
+              c4: wtax?.c4 ?? 0,
+            },
+            col4: {
+              pagibig_contrib: wtax?.pagibig_contrib ?? 0,
+              b5: wtax?.b5 ?? 0,
+              c5: wtax?.c5 ?? 0,
+              j5: wtax?.j5 ?? 0,
+            },
+            month_list: wtax?.month_list ?? {},
+          },
+        });
       }
-
+    }
 
       //end save employee with tax only
 
@@ -1796,26 +1844,44 @@ export async function SaveToApproverPayroll(company_id:string,approvedBy:number)
   });
 
 
+const alert = await prisma.alertConfiguration.findUnique({
+  where: {
+    id: 1
+  }
+})
+
   try {
-    await transporter.sendMail({
-      from: `"Payroll System" <${process.env.EMAIL_USER}>`,
-      to: "tynz0304@yahoo.com",
-      subject: `Pending Payroll Approval for ${company_id} (${paycode})`,
-      html: `
-        <p>Dear Approver,</p>
 
-        <p>You have a pending payroll that requires your approval.</p>
+    if(alert?.isEmail && alert.email){
+      await transporter.sendMail({
+        from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+        to: `${alert.email}`,
+        subject: `Pending Payroll Approval for ${company_id} (${paycode})`,
+        html: `
+          <p>Dear Approver,</p>
+  
+          <p>You have a pending payroll that requires your approval.</p>
+  
+          <p>Please log in to the Payroll System and process the approval at your earliest convenience.</p>
+  
+          <br />
+  
+          <p>Regards,</p>
+          <p><strong>Payroll Department</strong></p>
+        `,
+      });
 
-        <p>Please log in to the Payroll System and process the approval at your earliest convenience.</p>
+      console.log("Approval email sent.");
+    }
+  
 
-        <br />
-
-        <p>Regards,</p>
-        <p><strong>Payroll Department</strong></p>
-      `,
-    });
-
-    console.log("Approval email sent.");
+    if(alert?.isSms && alert.phoneNumber){
+      await sendSmsToGateway(
+        `${alert.phoneNumber}`,
+        `Pending Payroll Approval for ${company_id} (${paycode})`
+      )
+    }
+  
   } catch (error) {
     console.error(
       "Failed to send approval email:",

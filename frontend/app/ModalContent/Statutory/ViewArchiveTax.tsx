@@ -33,6 +33,25 @@ export default function ArchiveTax({ data }: WTaxTaxPeriodListProps) {
     ).reduce((sum, value) => sum + Number(value), 0);
 
 
+    const payrollRows = selectedPayment?.archive_employee_payroll ?? [];
+
+    const totals = payrollRows.reduce(
+        (sum, item) => ({
+            grossPay: sum.grossPay + Number(item.Grosspay ?? 0),
+            philhealth: sum.philhealth + Number(item.philhealth_employee_share ?? 0),
+            sss: sum.sss + Number(item.SSS_employee_share ?? 0),
+            pagibig: sum.pagibig + Number(item.Pagibig_employee_share ?? 0),
+            wtax: sum.wtax + Number(item.w_tax ?? 0),
+        }),
+        {
+            grossPay: 0,
+            philhealth: 0,
+            sss: 0,
+            pagibig: 0,
+            wtax: 0,
+        }
+    );
+
     return (
         <div className="p-4">
 
@@ -51,9 +70,9 @@ export default function ArchiveTax({ data }: WTaxTaxPeriodListProps) {
                 </div>
 
 
-                <div>
+                <div className="w-full">
                     {selectedPayment && (
-                        <div className="mt-4">
+                        <div className="grid grid-cols-2 gap-x-4 border border-slate-300 p-4 rounded">
                             <table className="w-full border-collapse rounded-lg overflow-hidden">
                                 <thead>
                                     <tr>
@@ -135,36 +154,140 @@ export default function ArchiveTax({ data }: WTaxTaxPeriodListProps) {
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
-                    )}
-                </div>
 
 
 
+                            <div className="border border-slate-300 rounded p-3 min-w-45">
+                                <div className="flex flex-col items-center border-b border-slate-500 pb-4">
+                                    <div className="font-semibold">
+                                        TAX PAID TO DATE
+                                    </div>
 
-                <div className="w-full grid grid-cols-[200px_1fr] gap-2">
-                    <div className="flex flex-col items-center">
-                        <div className="font-semibold">
-                            TAX PAID TO DATE
-                        </div>
+                                    <div className="font-semibold bg-yellow-500 px-4 py-1 rounded mt-1">
+                                        {formatCurrency(selectedPayment?.taxAmount)}
+                                    </div>
+                                </div>
+                                {Object.entries(selectedPayment?.month_list || {}).map(
+                                    ([month, value]) => (
+                                        <div
+                                            key={month}
+                                            className="grid grid-cols-[1fr_auto] gap-6 py-2 font-semibold text-sm">
+                                            <span>{month}</span>
+                                            <span className="text-right">
+                                                {formatCurrency(Number(value))}
+                                            </span>
+                                        </div>
+                                    )
+                                )}
 
-                        <div className="font-semibold bg-yellow-500 px-4 py-1 rounded mt-1">
-                            {formatCurrency(selectedPayment?.taxAmount)}
-                        </div>
-                    </div>
-                    <div className="border border-slate-300 rounded p-2 text-left">
-                        {Object.entries(selectedPayment?.month_list || {}).map(([month, value]) => (
-                            <div key={month} className="flex justify-between px-4 space-y-2 font-semibold text-md">
-                                <span>{month}</span>
-                                <span>{value}</span>
+                                <div className="grid grid-cols-[1fr_auto] gap-6 pt-2 mt-2 border-t border-slate-400 font-bold">
+                                    <span>TOTAL</span>
+                                    <span className="text-right">
+                                        {formatCurrency(totalMonthList)}
+                                    </span>
+                                </div>
                             </div>
-                        ))}
-                        <div className="flex justify-between px-4 space-y-1 font-bold border-t border-slate-400 pt-2">
-                            <div className="">TOTAL</div>
-                            <div>{formatCurrency(totalMonthList)}</div>
+
+
+
+                        </div>
+
+
+
+
+                    )}
+
+                    <div className="border border-slate-300 rounded w-full p-4 mt-4">
+
+                        <div className="flex justify-between mb-2 font-extrabold uppercase">
+                            <h2>{selectedPayment?.name}</h2>
+                            <h2>status: {selectedPayment?.civil_status}</h2>
+                        </div>
+                        <div>
+                            <table className="w-full border border-slate-300">
+                                <thead>
+                                    <tr>
+                                        <th className="p-1">PAYDATE</th>
+                                        <th>SALARY</th>
+                                        <th>GROSS</th>
+                                        <th>PHILHLTH</th>
+                                        <th>S.S.S</th>
+                                        <th>PAGIBIG</th>
+                                        <th>TAX</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedPayment?.archive_employee_payroll?.length ? (
+                                        selectedPayment.archive_employee_payroll.map((item) => (
+                                            <tr key={item.PayCode}>
+                                                <td className="border border-slate-300 p-1 text-center">
+                                                    {item.PayCode}
+                                                </td>
+                                                <td className="border border-slate-300 p-1 text-right">
+                                                    {formatCurrency(item.Basic_salary * 2)}
+                                                </td>
+                                                <td className="border border-slate-300 p-1 text-right">
+                                                    {formatCurrency(item.Grosspay)}
+                                                </td>
+                                                <td className="border border-slate-300 p-1 text-right">
+                                                    {formatCurrency(item.philhealth_employee_share)}
+                                                </td>
+                                                <td className="border border-slate-300 p-1 text-right">
+                                                    {formatCurrency(item.SSS_employee_share)}
+                                                </td>
+                                                <td className="border border-slate-300 p-1 text-right">
+                                                    {formatCurrency(item.Pagibig_employee_share)}
+                                                </td>
+                                                <td className="border border-slate-300 p-1 text-right">
+                                                    {formatCurrency(item.w_tax)}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td
+                                                colSpan={7}
+                                                className="border border-slate-300 p-2 text-center text-slate-500">
+                                                No archive payroll data
+                                            </td>
+                                        </tr>
+                                    )}
+                                    <tr>
+                                        <td className="text-center px-2 py-2 border border-slate-300 font-bold">
+                                            TOTAL
+                                        </td>
+                                        <td className="text-right px-2 border border-slate-300 font-bold"></td>
+                                        <td className="text-right px-2 border border-slate-300 font-bold">
+                                            {formatCurrency(totals.grossPay)}
+                                        </td>
+                                        <td className="text-right px-2 border border-slate-300 font-bold">
+                                            {formatCurrency(totals.philhealth)}
+                                        </td>
+                                        <td className="text-right px-2 border border-slate-300 font-bold">
+                                            {formatCurrency(totals.sss)}
+                                        </td>
+                                        <td className="text-right px-2 border border-slate-300 font-bold">
+                                            {formatCurrency(totals.pagibig)}
+                                        </td>
+                                        <td className="text-right px-2 border border-slate-300 font-bold">
+                                            {formatCurrency(totals.wtax)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
+
+
+
+
+
+
+
+
+
+
 
 
 

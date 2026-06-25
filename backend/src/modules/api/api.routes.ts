@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAttendance, getDisabledPayrollDatesController } from "./api.controller";
+import { approveRequest, getAttendance, getDisabledPayrollDatesController } from "./api.controller";
 
 
 const router = Router();
@@ -7,6 +7,7 @@ const router = Router();
 
 router.post("/employee-attendance", getAttendance);
 router.get("/disabled-dates",getDisabledPayrollDatesController);
+router.post("/sms",approveRequest);
 
 
 export default router;

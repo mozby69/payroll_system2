@@ -204,7 +204,7 @@ interface col3Props {
   b4: number;
   c3: number;
   j4: number;
-  c4:number;
+  c4: number;
 }
 interface col4Props {
   pagibig_contrib: number;
@@ -212,10 +212,10 @@ interface col4Props {
   c5: number;
   j5: number;
 }
-interface monthProps{
-  January:number;
-  February:number;
-  March:number;
+interface monthProps {
+  January: number;
+  February: number;
+  March: number;
   April: number;
   May: number;
   June: number;
@@ -224,7 +224,18 @@ interface monthProps{
   September: number;
   October: number;
   November: number;
-  December: number; 
+  December: number;
+}
+interface taxEmpProps {
+  EmpCodeId: string;
+  PayCode: string;
+  Basic_salary: number;
+  Grosspay: number;
+  philhealth_employee_share: number;
+  SSS_employee_share: number
+  Pagibig_employee_share: number
+  w_tax: number
+
 }
 export interface paymentProps {
   EmpCodeId: string;
@@ -235,6 +246,8 @@ export interface paymentProps {
   col4: col4Props;
   month_list: monthProps;
   name: string;
+  civil_status: string;
+  archive_employee_payroll: taxEmpProps[];
 }
 
 

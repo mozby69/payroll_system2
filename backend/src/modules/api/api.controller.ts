@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { hrApi } from "../../lib/hrApi";
 import { ApiParams } from "../../types/utilsTypes";
-import { checkPayCodeExists, fetchHrAttendance, getDisabledPayrollRangesByCycle, saveEmployeeAttendance, transformAttendanceData } from "./api.services";
+import { checkPayCodeExists, fetchHrAttendance, getDisabledPayrollRangesByCycle, saveEmployeeAttendance, sendSmsToGateway, transformAttendanceData } from "./api.services";
 import { generatePayCode } from "./api.utils";
 
 export const getAttendance = async (req: Request, res: Response) => {
@@ -77,3 +77,18 @@ export async function getDisabledPayrollDatesController(req: Request,res: Respon
 
   res.json(data);
 }
+
+
+export const approveRequest = async (req: Request, res: Response) => {
+  // your approval logic here
+
+  await sendSmsToGateway(
+    "09123456789",
+    "Your request has been approved."
+  );
+
+  return res.json({
+    success: true,
+    message: "Request approved and SMS sent.",
+  });
+};

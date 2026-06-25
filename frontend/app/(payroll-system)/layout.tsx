@@ -5,11 +5,12 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../components/UserContext";
 import { redirect } from "next/navigation";
 import SweetAlert from "../components/Swal";
-import { Home, LogOut, Settings, User, User2 } from "lucide-react";
+import { Bell, Home, LogOut, Settings, User, User2 } from "lucide-react";
 import RequestModal from "../components/Modal";
 import AccountConfigurationModal from "../components/users/modal/AccountConfigurationModal";
 import BranchList from "../components/general/BranchList";
 import SettingsModal from "../components/settings/SettingsModal";
+import AlertConfigurationModal from "../components/users/modal/AlertConfigurationModal";
 
 
 
@@ -19,13 +20,12 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
   const[openBranchModal, setOpenBranchModal] = useState(false)
   const [openSettings, setOpenSettings] = useState(false);
   const { user, loading, logout, hasPermission } = useAuth();
+  const [openAlert, setOpenAlert] = useState(false)
 
   const [userModal, setUserModal] = useState(false)
 
   if (loading) return null;
   if (!user) redirect("/login");
-
-
 
 
   return (
@@ -74,6 +74,14 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
                  >
                   <Home/>
                   Branches
+                </li>
+
+                <li 
+                   className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                  onClick={()=>setOpenAlert(true)}
+                  >
+                    <Bell />
+                    Alerts
                 </li>
                 <li 
                   onClick={() => {
@@ -126,6 +134,12 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
           <SettingsModal />
         </RequestModal>
       )}
+      {openAlert && (
+        <RequestModal title="Configure Alert Notification" size="md" onClose={()=>setOpenAlert(false)} >
+          <AlertConfigurationModal />
+        </RequestModal>
+      )
+      }
               
 
     </div>

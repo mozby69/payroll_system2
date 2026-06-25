@@ -1211,6 +1211,20 @@ model MonthlyTaxPayment {
   @@map("tax_monthly_payment")
 }
 
+model AlertConfiguration {
+    id          Int      @id
+
+    isSms       Boolean  @default(false)
+    phoneNumber String?
+
+    isEmail     Boolean  @default(false)
+    email       String?
+
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@map("alert_configuration")    
+}
 model TaxArchive {
   id Int @id @default(autoincrement())
   PayCode         String   @db.VarChar(20) @map("paycode")

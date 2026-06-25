@@ -149,13 +149,13 @@ export default function WtaxComputationModal({ data }: WTaxComputationProps) {
 
     // return dbAmount ?? monthList?.[tab.key] ?? 0;
     // });
-   const totalTaxAmount = MONTH_TABS.reduce((sum, tab) => {
-                                        const monthNumber = MONTH_MAP[tab.key];
-                                        const dbAmount = paidTaxMap.get(`${year}-${monthNumber}`);
-                                        const taxAmount = dbAmount ?? wtax_data?.data?.month_list?.[tab.key] ?? 0;
+    const totalTaxAmount = MONTH_TABS.reduce((sum, tab) => {
+        const monthNumber = MONTH_MAP[tab.key];
+        const dbAmount = paidTaxMap.get(`${year}-${monthNumber}`);
+        const taxAmount = dbAmount ?? wtax_data?.data?.month_list?.[tab.key] ?? 0;
 
-                                        return sum + Number(taxAmount);
-                                    }, 0);
+        return sum + Number(taxAmount);
+    }, 0);
 
 
     return (
@@ -281,55 +281,54 @@ export default function WtaxComputationModal({ data }: WTaxComputationProps) {
                         </table>
 
 
-                        <div className="w-full grid grid-cols-[180px_1fr] gap-6">
-                            {/* LEFT */}
-                            <div className="flex flex-col items-center">
-                                <div className="font-semibold">
-                                    TAX PAID TO DATE
+                        <div className="w-full">
+
+                            <div className="border border-slate-300 rounded p-3 w-full">
+                                <div className="flex flex-col items-center mb-4">
+                                    <div className="font-semibold uppercase">
+                                        TAX PAID TO DATE
+                                    </div>
+
+                                    <div className="font-semibold bg-yellow-500 px-4 py-1 rounded mt-1">
+                                        {formatCurrency(totalTaxPaid)}
+                                    </div>
                                 </div>
 
-                                <div className="font-semibold bg-yellow-500 px-4 py-1 rounded mt-1">
-                                    {formatCurrency(totalTaxPaid)}
+                                <div className="border-t border-slate-400 pt-2">
+                                    {MONTH_TABS.map((tab) => {
+                                        const monthNumber = MONTH_MAP[tab.key];
+                                        const dbAmount = paidTaxMap.get(`${year}-${monthNumber}`);
+                                        const taxAmount = dbAmount ?? wtax_data?.data?.month_list?.[tab.key] ?? 0;
+
+                                        return (
+                                            <div
+                                                key={tab.key}
+                                                className="grid grid-cols-[1fr_auto_70px] gap-4 py-1 font-semibold">
+                                                <div>{tab.label}</div>
+
+                                                <div className="text-right">
+                                                    {formatCurrency(taxAmount)}
+                                                </div>
+
+                                                <div>
+                                                    {dbAmount !== undefined && (
+                                                        <span className="text-green-600">
+                                                            PAID
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </div>
-
-
-                            <div className="border border-slate-300 rounded p-2">
-                                {MONTH_TABS.map((tab) => {
-                                    const monthNumber = MONTH_MAP[tab.key];
-                                    const dbAmount = paidTaxMap.get(`${year}-${monthNumber}`);
-                                    const taxAmount = dbAmount ?? wtax_data?.data?.month_list?.[tab.key] ?? 0;
-
-                                 
-
-
-                                    return (
-                                        <div
-                                            key={tab.key}
-                                            className="grid grid-cols-[120px_100px_80px] py-1">
-                                            <div>{tab.label}</div>
-
-                                            <div className="text-right">
-                                                {formatAmount(taxAmount)}
-                                            </div>
-
-                                            <div>
-                                                {dbAmount !== undefined && (
-                                                    <span className="font-semibold text-green-600">
-                                                        - PAID
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                        </div>
-
-                                    );
-                                })}
 
                                 <div className="border-t border-slate-300 mt-2 pt-2">
-                                    <div className="flex justify-evenly font-semibold">
-                                    <div className="invisible">none</div>
-                                    <div>{formatCurrency(totalTaxAmount)}</div>
+                                    <div className="grid grid-cols-[1fr_auto_70px] gap-4 font-bold">
+                                        <div>TOTAL</div>
+                                        <div className="text-right">
+                                            {formatCurrency(totalTaxAmount)}
+                                        </div>
+                                        {/* <div /> */}
                                     </div>
                                 </div>
                             </div>

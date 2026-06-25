@@ -34,7 +34,8 @@ async function main() {
 
     { code: "USER_MANAGE", name: "Manage Users" },
     { code: "ADMIN_MANAGE", name: "Manage Admin" },
-    { code: "ADMIN_MANUAL_PAYROLL", name: "Manual payroll" }
+    { code: "ADMIN_MANUAL_PAYROLL", name: "Manual payroll" },
+    { code: "ADMIN_MANUAL_PAYROLL", name: "Manual payroll" },
   ]
 
   for (const p of permissions) {

@@ -10,7 +10,8 @@ import {
     PhilippinePeso,
     CreditCard,
     FilePlus,
-    WorkflowIcon
+    WorkflowIcon,
+    Calendar1
   } from "lucide-react"
 import { MenuSection } from "../types/sideTypes"
   
@@ -72,6 +73,12 @@ export const MENU_SECTIONS: MenuSection[] = [
           path: "/employee-list",
           icon: User,
           permission: "EMPLOYEE_VIEW"
+        },
+        {
+          label:"Annual List",
+          path:"/annual-list",
+          icon: Calendar1,
+          permission:"EMPLOYEE_VIEW"
         },
      
       ]

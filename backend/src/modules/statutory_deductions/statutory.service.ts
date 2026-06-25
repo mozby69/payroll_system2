@@ -6,7 +6,7 @@ import { computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, comp
 import { getBodPhilhealth, getSSSContributions, getTaxTable } from "../general/general.services";
 import { MathRound } from "../../utils/toFixed";
 import { match } from "assert";
-import { generateMonthlyTaxMap, MONTH_NAMES } from "./statutory.helper";
+import { filterArchiveByTaxPeriod, generateMonthlyTaxMap, MONTH_NAMES } from "./statutory.helper";
 
 
 
@@ -763,46 +763,41 @@ export async function WtaxFetchData({ empcode, month, year }: WtaxProps) {
 
 
 
-
-export async function WtaxTaxPeriodArchive({ page, limit, search }: WTaxTaxPeriodProps) {
+export async function WtaxTaxPeriodArchive({
+  page,
+  limit,
+  search,
+}: WTaxTaxPeriodProps) {
   try {
     const searchNumber = Number(search);
 
     const matchedMonthNumbers = search
       ? Object.entries(MONTH_NAMES)
-        .filter(([, monthName]) =>
-          monthName.toLowerCase().includes(search.toLowerCase())
-        )
-        .map(([monthNumber]) => Number(monthNumber))
+          .filter(([, monthName]) =>
+            monthName.toLowerCase().includes(search.toLowerCase())
+          )
+          .map(([monthNumber]) => Number(monthNumber))
       : [];
 
-    const searchFilter: Prisma.TaxPeriodWhereInput =
-      search
-        ? {
+    const finalWhere: Prisma.TaxPeriodWhereInput = search
+      ? {
           OR: [
             ...(!Number.isNaN(searchNumber)
-              ? [
-                { month: searchNumber },
-                { year: searchNumber },
-              ]
+              ? [{ month: searchNumber }, { year: searchNumber }]
               : []),
 
             ...(matchedMonthNumbers.length > 0
               ? [
-                {
-                  month: {
-                    in: matchedMonthNumbers,
+                  {
+                    month: {
+                      in: matchedMonthNumbers,
+                    },
                   },
-                },
-              ]
+                ]
               : []),
           ],
         }
-        : {};
-
-    const finalWhere: Prisma.TaxPeriodWhereInput = {
-      AND: [searchFilter],
-    };
+      : {};
 
     const taxPeriodList = await prisma.taxPeriod.findMany({
       where: finalWhere,
@@ -829,12 +824,50 @@ export async function WtaxTaxPeriodArchive({ page, limit, search }: WTaxTaxPerio
                 EmpCode: true,
                 Firstname: true,
                 Lastname: true,
+                CivilStatus: true,
               },
             },
           },
         },
       },
+      orderBy: {
+        id: "desc",
+      },
     });
+
+    const empCodeIds = [
+      ...new Set(
+        taxPeriodList.flatMap((period) =>
+          period.payments.map((payment) => payment.EmpCodeId)
+        )
+      ),
+    ];
+
+    const years = [...new Set(taxPeriodList.map((period) => period.year))];
+
+    const archivePayrollList =
+      await prisma.employeePayrollArchive.findMany({
+        where: {
+          EmpCodeId: {
+            in: empCodeIds,
+          },
+          OR: years.map((year) => ({
+            PayCode: {
+              endsWith: `-${year}`,
+            },
+          })),
+        },
+        select: {
+          EmpCodeId: true,
+          PayCode: true,
+          Basic_salary: true,
+          Grosspay: true,
+          philhealth_employee_share: true,
+          SSS_employee_share: true,
+          Pagibig_employee_share: true,
+          w_tax: true,
+        },
+      });
 
     const normalized = taxPeriodList.map((period) => {
       return {
@@ -842,16 +875,31 @@ export async function WtaxTaxPeriodArchive({ page, limit, search }: WTaxTaxPerio
         month: MONTH_NAMES[period.month] ?? "Unknown",
         monthNumber: period.month,
         year: period.year,
-        payments: period.payments.map((payment) => ({
-          EmpCodeId: payment.EmpCodeId,
-          taxAmount: Number(payment.taxAmount),
-          col1: payment.col1,
-          col2: payment.col2,
-          col3: payment.col3,
-          col4: payment.col4,
-          month_list: payment.month_list,
-          name: `${payment.EmpCode.Lastname}, ${payment.EmpCode.Firstname}`,
-        })),
+
+        payments: period.payments.map((payment) => {
+          const employeeArchivePayroll = archivePayrollList.filter(
+            (archive) => archive.EmpCodeId === payment.EmpCodeId
+          );
+
+          const filteredArchivePayroll = filterArchiveByTaxPeriod(
+            employeeArchivePayroll,
+            period.month,
+            period.year
+          );
+
+          return {
+            EmpCodeId: payment.EmpCodeId,
+            taxAmount: Number(payment.taxAmount),
+            col1: payment.col1,
+            col2: payment.col2,
+            col3: payment.col3,
+            col4: payment.col4,
+            month_list: payment.month_list,
+            name: `${payment.EmpCode.Lastname}, ${payment.EmpCode.Firstname}`,
+            civil_status: payment.EmpCode.CivilStatus,
+            archive_employee_payroll: filteredArchivePayroll,
+          };
+        }),
       };
     });
 
@@ -870,5 +918,6 @@ export async function WtaxTaxPeriodArchive({ page, limit, search }: WTaxTaxPerio
     };
   } catch (error) {
     console.error(`error occured ${error}`);
+    throw error;
   }
 }
