@@ -647,7 +647,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
          const computedWtax = taxLookup[emp.EmpCodeId] ?? 0;
 
          const employeeTax = computeWHTx(computedWtax, emp.EmpCode.Taxable,Paycodes);
-
+     
 
 
 
@@ -667,20 +667,21 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         // : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
 
 
+        const basic_salary = override?.basic_salary && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
 
         const computedGrossPay = computeGrossPay(
           finalOvertime,
-          semiMonthly,
+          basic_salary,
           lateCount,
           undertimeCount,
           absent
         );
 
-        const grossPay = override?.gross_edited && override?.gross_pay_edit !== null ? Number(override.gross_pay_edit): computedGrossPay;
+        //const grossPay = override?.gross_edited && override?.gross_pay_edit !== null ? Number(override.gross_pay_edit): computedGrossPay;
 
         const are_loan_temp = loanDeduct(loans.ARE_LOAN);
         const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan_temp + calamity_loan;
-        const netPay = grossPay - (sssContribEmployee + pagibigEmployeeShare + finalPhilhealthEmployee + totalLoanDeduction + finalWtax);
+        const netPay = computedGrossPay - (sssContribEmployee + pagibigEmployeeShare + finalPhilhealthEmployee + totalLoanDeduction + finalWtax);
 
         const are_loan = isDisbursing ? are_loan_temp + netPay : are_loan_temp;
 
@@ -697,12 +698,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       
         return {
           ...emp,
-          semi_monthly:semiMonthly.toFixed(2),
+          semi_monthly:basic_salary.toFixed(2),
           overtime:finalOvertime,
           late_count:lateCount,
           undertime:undertimeCount,
           absence:absent,
-          gross_pay:grossPay,
+          gross_pay:computedGrossPay,
 
           // Loan Code ↓
           fch_loan,

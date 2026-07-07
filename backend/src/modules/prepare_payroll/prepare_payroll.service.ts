@@ -763,9 +763,14 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       absent
     );
 
-    const grossPay = override?.gross_edited && override?.gross_pay_edit !== null
-        ? Number(override.gross_pay_edit)
-        : computedGrossPay;
+    // const grossPay = override?.gross_edited && override?.gross_pay_edit !== null
+    //     ? Number(override.gross_pay_edit)
+    //     : computedGrossPay;
+
+                const FinalbasicSalary = override?.basic_salary && override?.basic_salary !== null
+        ? Number(override.basic_salary)
+        : semi_monthly;
+        
         
     //const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
 
@@ -779,16 +784,16 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       absence_count:absent,
       overtime:finalOvertime,
       undertime:undertimeCount,
-      gross_pay:grossPay,
+      gross_pay:computedGrossPay,
       LateCount: override?.LateCount ?? emp.LateCount ?? 0,
       TotalAbsentHours: override?.TotalAbsentHours ?? emp.TotalAbsentHours ?? 0,
       TotalUndertime: override?.TotalUndertime ?? emp.TotalUndertime ?? 0,
       TotalOvertime: override?.TotalOvertime ?? computedOvertime,
-      gross_pay_edit: override?.gross_pay_edit ?? grossPay,
+      //gross_pay_edit: override?.gross_pay_edit ?? grossPay,
       philhealth_employee : override?.philhealth_employee ?? 0,
       philhealth_employer : override?.philhealth_employer ?? 0,
       final_wtax: override?.final_wtax ?? 0,
-
+      basic_salary:FinalbasicSalary,
     };
   });
 
@@ -1287,7 +1292,7 @@ export async function ViewDeduction(company_id:string){
 
 
 
-export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit,gross_edited,philhealth_employee,philhealth_employer,final_wtax}: UpdateDeductionPayload) {
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit,gross_edited,philhealth_employee,philhealth_employer,final_wtax,basic_salary}: UpdateDeductionPayload) {
   try{
     return await prisma.summaryTableOverride.upsert({
         where: {
@@ -1305,10 +1310,7 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           philhealth_employee,
           philhealth_employer,
           final_wtax,
-          ...(gross_pay_edit !== undefined && {
-            gross_pay_edit,
-            gross_edited: true,
-          }),
+          basic_salary
         },
         create: {
           PayCode,
@@ -1320,11 +1322,7 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalOvertime,
           philhealth_employee,
           philhealth_employer,
-          final_wtax,
-         ...(gross_pay_edit !== undefined && {
-          gross_pay_edit,
-          gross_edited: true,
-        }),
+          basic_salary
         },
       });
   }

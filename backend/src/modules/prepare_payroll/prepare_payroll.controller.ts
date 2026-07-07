@@ -203,6 +203,7 @@ export const ViewDeductionController = async (req:Request, res:Response) => {
 
 
 
+
 export async function updateDeductionController(req: Request, res: Response) {
   try {
     const {
@@ -218,6 +219,7 @@ export async function updateDeductionController(req: Request, res: Response) {
       philhealth_employee,
       philhealth_employer,
       final_wtax,
+      basic_salary,
     } = req.body;
 
     if (!PayCode || !EmpCodeId || !PayrollPeriod) {
@@ -236,7 +238,8 @@ export async function updateDeductionController(req: Request, res: Response) {
       gross_edited,
       philhealth_employee,
       philhealth_employer,
-      final_wtax
+      final_wtax,
+      basic_salary
     });
 
     return res.json(result);

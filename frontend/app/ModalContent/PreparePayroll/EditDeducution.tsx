@@ -19,7 +19,7 @@ export default function EditDeduction({ employee, onClose }: Props) {
   const [isChecked, setIsChecked] = useState(false);
   const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isGrossEdited, setIsGrossEdited] = useState(false);
+  //const [isGrossEdited, setIsGrossEdited] = useState(false);
   console.log(isDetailModalOpen);
 
 
@@ -45,9 +45,15 @@ export default function EditDeduction({ employee, onClose }: Props) {
       : ""
   );
 
-    const [grossPay, setGrossPay] = useState<string>(
-    employee.gross_pay_edit && employee.gross_pay_edit > 0 ? String(employee.gross_pay_edit) : ""
-  );
+  //   const [grossPay, setGrossPay] = useState<string>(
+  //   employee.gross_pay_edit && employee.gross_pay_edit > 0 ? String(employee.gross_pay_edit) : ""
+  // );
+
+  const [basicSalary,setBasicSalary] = useState<string>(
+     employee.basic_salary && Number(employee.basic_salary) > 0
+      ? String(employee.basic_salary)
+      : ""
+  )
 
   const [philhealthEmployee,setPhilhealthEmployee] = useState<string>(
      employee.philhealth_employee && Number(employee.philhealth_employee) > 0
@@ -84,6 +90,7 @@ const handleSubmit = () => {
     philhealth_employee?:number;
     philhealth_employer?:number;
     final_wtax?:number;
+    basic_salary?:number;
   } = {
     PayCode: employee.PayCode,
     EmpCodeId: employee.EmpCodeId,
@@ -95,13 +102,14 @@ const handleSubmit = () => {
     philhealth_employee: philhealthEmployee === "" ? 0 : Number(philhealthEmployee),
     philhealth_employer: philhealthEmployer === "" ? 0 : Number(philhealthEmployer),
     final_wtax: wtax === "" ? 0 : Number(wtax),
+    basic_salary: basicSalary === "" ? 0 : Number(basicSalary),
   };
 
   // 👇 ONLY include gross if user edited it
-  if (isGrossEdited) {
-    payload.gross_pay_edit = grossPay === "" ? 0 : Number(grossPay);
-    payload.gross_edited = true;
-  }
+  // if (isGrossEdited) {
+  //   payload.gross_pay_edit = grossPay === "" ? 0 : Number(grossPay);
+  //   payload.gross_edited = true;
+  // }
 
   mutate(payload, {
     onSuccess: () => {
@@ -222,14 +230,13 @@ const handleSubmit = () => {
 
 
         <div className={`flex flex-col w-full ${verifiedUserId ? "visible" : "invisible"}`}>
-          <label className="pb-1">GROSS PAY</label>
+          <label className="pb-1">BASIC SALARY</label>
           <input
             type="number"
-            value={grossPay}
-            placeholder="Input gross amount..."
+            value={basicSalary}
+            placeholder="Input basic salary amount..."
             onChange={(e) => {
-              setGrossPay(e.target.value);
-              setIsGrossEdited(true); 
+              setBasicSalary(e.target.value);
             }}
             className="border border-gray-400 p-2 rounded w-full"
           />

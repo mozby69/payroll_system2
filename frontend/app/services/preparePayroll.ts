@@ -113,10 +113,11 @@ export interface ComputedProps{
   TotalAbsentHours?:number;
   TotalUndertime?:number;
   TotalOvertime?:number;
-  gross_pay_edit?:number;
+  //gross_pay_edit?:number;
   philhealth_employee?:number;
   philhealth_employer?:number;
   final_wtax?:number;
+  basic_salary:number;
   RegularAtt:AttendanceBreakdown;
   OvertimeAtt:AttendanceBreakdown;
   NightShiftAtt:AttendanceBreakdown;

@@ -172,4 +172,5 @@ export type UpdateDeductionPayload = {
   philhealth_employee:number;
   philhealth_employer:number;
   final_wtax:number;
+  basic_salary:number;
 };
