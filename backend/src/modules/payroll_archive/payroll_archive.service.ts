@@ -1685,32 +1685,26 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
   export async function reCheckPayroll(company_id:string){
    
     const data = await prisma.employeeSummary.updateMany({
-       where: { 
-        AND:[
-          {
-            status: "FOR_CHECKER",
-          },
-          {
-            OR: [
-              { 
-              EmpCode:{
-                BranchCode:{
-                  company_id:company_id,
-                }
-              }
+       where: {
+      status: "FOR_CHECKER",
+
+      EmpCode: {
+          OR: [
+            {
+              isAlien: false,
+              BranchCode: {
+                company_id:company_id,
               },
-              {
-                EmpCode:{
-                  secondaryBranch:{
-                    company_id: company_id
-                  }
-                }
-              }
-            ]
-          }
-        ]
-       
-       },
+            },
+            {
+              isAlien: true,
+              secondaryBranch: {
+                company_id,
+              },
+            },
+          ],
+        },
+    },
       data: { status: "PENDING" },
     });
 
@@ -1742,32 +1736,26 @@ export async function reCheckPayrollToChecker(company_id:string,approvedBy:numbe
 
    
   const data = await prisma.employeeSummary.updateMany({
-    where: { 
-      AND:[
-        {
-          status: "FOR_APPROVER",
-        },
-        {
+     where: {
+      status: "FOR_APPROVER",
+
+      EmpCode: {
           OR: [
-            { 
-            EmpCode:{
-              BranchCode:{
+            {
+              isAlien: false,
+              BranchCode: {
                 company_id:company_id,
-              }
-            }
+              },
             },
             {
-              EmpCode:{
-                secondaryBranch:{
-                  company_id: company_id
-                }
-              }
-            }
-          ]
-        }
-      ]
-     
-     },
+              isAlien: true,
+              secondaryBranch: {
+                company_id,
+              },
+            },
+          ],
+        },
+    },
     data: { status: "FOR_CHECKER" },
   });
 
