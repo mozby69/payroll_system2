@@ -219,6 +219,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
               Firstname:true,
               Lastname:true,
               EmploymentStatus:true,
+              EmployeeStatus:true,
               isNewEmployee:true,
               bod_member:true,
               Taxable:true,
