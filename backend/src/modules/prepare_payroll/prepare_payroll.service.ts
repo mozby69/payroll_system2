@@ -766,11 +766,10 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     // const grossPay = override?.gross_edited && override?.gross_pay_edit !== null
     //     ? Number(override.gross_pay_edit)
     //     : computedGrossPay;
-
-                const FinalbasicSalary = override?.basic_salary && override?.basic_salary !== null
-        ? Number(override.basic_salary)
-        : semi_monthly;
-        
+    
+    const FinalbasicSalary = override?.basic_salary_edited && override?.basic_salary && override?.basic_salary !== null
+    ? Number(override.basic_salary)
+    : semi_monthly;
         
     //const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
 
@@ -1292,7 +1291,8 @@ export async function ViewDeduction(company_id:string){
 
 
 
-export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,gross_pay_edit,gross_edited,philhealth_employee,philhealth_employer,final_wtax,basic_salary}: UpdateDeductionPayload) {
+
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,philhealth_employee,philhealth_employer,final_wtax,basic_salary,basic_salary_edited}: UpdateDeductionPayload) {
   try{
     return await prisma.summaryTableOverride.upsert({
         where: {
@@ -1310,7 +1310,10 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           philhealth_employee,
           philhealth_employer,
           final_wtax,
-          basic_salary
+          ...( basic_salary != undefined && {
+            basic_salary,
+            basic_salary_edited:true,
+          }),
         },
         create: {
           PayCode,
@@ -1322,7 +1325,10 @@ export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,La
           TotalOvertime,
           philhealth_employee,
           philhealth_employer,
-          basic_salary
+          ...( basic_salary != undefined && {
+            basic_salary,
+            basic_salary_edited:true,
+          }),
         },
       });
   }

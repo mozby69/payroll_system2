@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../services/axios";
-import { VarianceResponse } from "../types/varianceType";
+import { CycleCategory, EmployeeVarianceResponse, VarianceResponse } from "../types/varianceType";
 
 
 
@@ -11,28 +11,40 @@ import { VarianceResponse } from "../types/varianceType";
 
 
 
-export function useDisplayVariance(companyCode?: string) {
+export function useDisplayVariance(companyCode?: string,cycle?: CycleCategory) {
   return useQuery<VarianceResponse>({
-    queryKey: ["variance-display-summary", companyCode],
+    queryKey: ["variance-display-summary", companyCode, cycle],
     queryFn: async () => {
-      const res = await api.get("/variance/fetch-variance", {
-        params: { company_id: companyCode }
+      const res = await api.get<VarianceResponse>("/variance/fetch-variance", {
+        params: {
+          company_id: companyCode,
+          cycle,
+        },
       });
+
       return res.data;
     },
-    enabled: !!companyCode
+    enabled: Boolean(companyCode && cycle),
   });
 }
 
-export function useDisplayVarianceEmp(companyCode: string) {
-  return useQuery({
-    queryKey: ["variance-display-emp", companyCode], 
+
+export function useDisplayEmployeeVariance(companyCode?: string, cycle?: CycleCategory) {
+  return useQuery<EmployeeVarianceResponse>({
+    queryKey: ["employee-variance", companyCode, cycle],
     queryFn: async () => {
-      const res = await api.get("/variance/fetch-variance-emp", {
-        params: { company_id: companyCode }
-      });
+      const res = await api.get<EmployeeVarianceResponse>(
+        "/variance/fetch-emp-variance",
+        {
+          params: {
+            company_id: companyCode,
+            cycle,
+          },
+        }
+      );
+
       return res.data;
     },
-    enabled: !!companyCode
+    enabled: Boolean(companyCode && cycle),
   });
 }

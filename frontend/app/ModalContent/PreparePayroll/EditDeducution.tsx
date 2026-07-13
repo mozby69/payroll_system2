@@ -19,7 +19,7 @@ export default function EditDeduction({ employee, onClose }: Props) {
   const [isChecked, setIsChecked] = useState(false);
   const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  //const [isGrossEdited, setIsGrossEdited] = useState(false);
+  const [isBasicSalaryEdited, setIsBasicSalaryEdited] = useState(false);
   console.log(isDetailModalOpen);
 
 
@@ -86,7 +86,7 @@ const handleSubmit = () => {
     TotalUndertime: number;
     TotalOvertime: number;
     gross_pay_edit?: number;
-    gross_edited?: boolean;
+    basic_salary_edited?: boolean;
     philhealth_employee?:number;
     philhealth_employer?:number;
     final_wtax?:number;
@@ -102,14 +102,14 @@ const handleSubmit = () => {
     philhealth_employee: philhealthEmployee === "" ? 0 : Number(philhealthEmployee),
     philhealth_employer: philhealthEmployer === "" ? 0 : Number(philhealthEmployer),
     final_wtax: wtax === "" ? 0 : Number(wtax),
-    basic_salary: basicSalary === "" ? 0 : Number(basicSalary),
+    // basic_salary: basicSalary === "" ? 0 : Number(basicSalary),
   };
 
   // 👇 ONLY include gross if user edited it
-  // if (isGrossEdited) {
-  //   payload.gross_pay_edit = grossPay === "" ? 0 : Number(grossPay);
-  //   payload.gross_edited = true;
-  // }
+  if (isBasicSalaryEdited) {
+    payload.basic_salary = basicSalary === "" ? 0 : Number(basicSalary);
+    payload.basic_salary_edited = true;
+  }
 
   mutate(payload, {
     onSuccess: () => {
@@ -237,6 +237,7 @@ const handleSubmit = () => {
             placeholder="Input basic salary amount..."
             onChange={(e) => {
               setBasicSalary(e.target.value);
+              setIsBasicSalaryEdited(true);
             }}
             className="border border-gray-400 p-2 rounded w-full"
           />

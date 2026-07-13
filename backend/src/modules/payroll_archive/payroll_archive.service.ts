@@ -667,7 +667,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         // : override?.gross_pay_edit ?? (semiMonthly ? Number(semiMonthly) : 0);
 
 
-        const basic_salary = override?.basic_salary && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
+        //const basic_salary = override?.basic_salary && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
+          const basic_salary = override?.basic_salary_edited && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
 
         const computedGrossPay = computeGrossPay(
           finalOvertime,

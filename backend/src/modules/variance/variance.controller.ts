@@ -1,13 +1,25 @@
-import {  fetchEmployeeVariance, fetchVariance, fetchVarianceEmp } from "./variance.service";
+
 import { Request, Response } from "express";
+import { FetchEmployeeVariance, fetchVariance } from "./variance.service";
 
 
 
 export async function fetchVarianceController(req: Request, res: Response) {
   try {
-    const company_id = req.query.company_id as string;
+    const company_id = req.query.company_id as string | undefined;
+    const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
 
-    if (!req.user) {
+    if (!cycle) {
+      return res.status(400).json({ message: "cycle is required" });
+    }
+
+    if (!company_id) {
+      return res.status(400).json({
+        message: "company_id is required",
+      });
+    }
+
+     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -17,62 +29,51 @@ export async function fetchVarianceController(req: Request, res: Response) {
 
     const userAcc = roles[0];
 
-    const result = await fetchVariance(userAcc, company_id);
+    const data = await fetchVariance(company_id,cycle,userAcc);
+    return res.status(200).json({data});
 
-    return res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch variance" });
+  } catch (error) {
+    console.error(`error occurred ${error}`);
+    return res.status(500).json({
+      message: "Failed to fetch variance",
+    });
   }
 }
 
-export async function fetchEmployeeVarianceController(req:Request, res:Response){
+
+
+
+
+export async function FetchEmployeeVarianceController(req:Request, res:Response){
   try{
+   const company_id = req.query.company_id as string | undefined;
+    const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
 
-    const data = await fetchEmployeeVariance();
-    return res.status(200).json(data);
-  }
-  catch(error){
-    console.error("error occured in controller",error);
-    res.status(500).json({message:"failed to save payroll"});
-  }
-} 
+    if (!cycle) {
+      return res.status(400).json({ message: "cycle is required" });
+    }
 
-
-
-export async function fetchVarianceControllerEmp(req: Request, res: Response) {
-  try {
-
-    const companyId = req.query.company_id as string;
-
-    if (!companyId) {
+    if (!company_id) {
       return res.status(400).json({
-        message: "company_id is required"
+        message: "company_id is required",
       });
     }
-    
-    if (!req.user) {
+
+      if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    
     const roles = Array.isArray(req.user.roles)
       ? req.user.roles
       : [req.user.roles];
 
     const userAcc = roles[0];
 
-    const result = await fetchVarianceEmp(userAcc,companyId);
-
-    return res.json(result);
-
-  } catch (error) {
-
-    console.error("Variance Controller Error:", error);
-
-    return res.status(500).json({
-      message: "Failed to fetch variance"
-    });
-
+    const data = await FetchEmployeeVariance(company_id,cycle,userAcc);
+    return res.status(200).json({data});
+  }
+  catch(error){
+    console.error(`error occured ${error}`);
+    return res.status(500).json({message:`error occured ${error}`})
   }
 }

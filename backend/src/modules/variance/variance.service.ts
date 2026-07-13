@@ -1,1140 +1,892 @@
-import { Prisma } from "@prisma/client";
+import { LeaveName, LeaveStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
 import { parsePayCycleToDate } from "./variance.helper";
-
-
-export async function fetchVariance(userAcc:string ,companyId: string) {
-  let computed: any[] = [];
-
-  if (userAcc === "PAYROLL_CHECKER") {
-    computed = (await displayCompletePayroll(["PENDING"])) ?? [];
-  }
-
-  if (userAcc === "FINANCIAL_CHECKER") {
-    computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
-  }
-
-  if (userAcc === "FINANCE_APPROVER") {
-    computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
-  }
-
-  computed = computed.filter(
-    r => r.EmpCode?.BranchCode?.company_id === companyId
-  );
-
-
-  const { CycleCategory } = computed[0];
-  const payrollPeriod = computed[0].PayrollPeriod;
-
-  const includePagibigAndTax =
-    payrollPeriod === "25-pay-cycle" || payrollPeriod === "30-pay-cycle";
-
-
-  
-
-  // -----------------------------
-  // PREVIOUS TOTAL PAYROLL
-  // -----------------------------
-  const payrollTotals = await prisma.totalPayroll.findMany({
-    where: { cycle_category: CycleCategory },
-    orderBy: { id: "desc" },
-    take: 2
-  });
-
-  const previousPayrolls = payrollTotals.reverse();
-
-  const olderPrevious = previousPayrolls.length > 1 ? previousPayrolls[0] : null;
-
-  const recentPrevious = previousPayrolls.length > 0 ? previousPayrolls[previousPayrolls.length - 1]: null;
-
-  const olderPreviousAdjusted = olderPrevious
-    ? {
-        ...olderPrevious,
-        total_basic_salary: 0
-      }
-    : null;
-
-  const recentPreviousAdjusted = recentPrevious
-    ? {
-        ...recentPrevious,
-        Total_SSSContributionEmployee: 0,
-        Total_SSSContributionEmployer: 0,
-        Total_PhilhealthContributionEmployee: 0,
-        Total_PhilhealthContributionEmployer: 0,
-        Total_PagibigContributionEmployee: 0,
-        Total_PagibigContributionEmployer: 0,
-        total_wtax: 0
-      }
-    : null;
-
-
-
-  // -----------------------------
-  // CURRENT TOTALS FROM COMPUTED
-  // -----------------------------
-  const currentTotals = computed.reduce(
-    (acc, row) => {
-      acc.total_basic_salary += Number(row.semi_monthly ?? 0);
-      acc.Total_SSSContributionEmployee += Number(row.sss_contrib_employee ?? 0);
-      acc.Total_SSSContributionEmployer += Number(row.sss_contrib_employer ?? 0);
-      acc.Total_PhilhealthContributionEmployee += Number(row.philhealth_contrib_employee ?? 0);
-      acc.Total_PhilhealthContributionEmployer += Number(row.philhealth_contrib_employer ?? 0);
-
-      if (includePagibigAndTax) {
-        acc.Total_PagibigContributionEmployee += Number(row.pagibig_contrib_employee ?? 0);
-        acc.Total_PagibigContributionEmployer += Number(row.pagibig_contrib_employer ?? 0);
-        acc.total_wtax += Number(row.wtax ?? 0);
-      }
-
-      return acc;
-    },
-    {
-      total_basic_salary: 0,
-      Total_SSSContributionEmployee: 0,
-      Total_SSSContributionEmployer: 0,
-      Total_PhilhealthContributionEmployee: 0,
-      Total_PhilhealthContributionEmployer: 0,
-      Total_PagibigContributionEmployee: 0,
-      Total_PagibigContributionEmployer: 0,
-      total_wtax: 0
-    }
-  );
-
-  // -----------------------------
-  // TOTAL VARIANCE
-  // -----------------------------
-  const varianceRow = {
-    PayCycle: "VARIANCE",
-    total_basic_salary:
-      currentTotals.total_basic_salary -
-      Number(recentPreviousAdjusted?.total_basic_salary ?? 0),
-
-    Total_SSSContributionEmployee:
-      currentTotals.Total_SSSContributionEmployee -
-      Number(olderPreviousAdjusted?.Total_SSSContributionEmployee ?? 0),
-
-    Total_SSSContributionEmployer:
-      currentTotals.Total_SSSContributionEmployer -
-      Number(olderPreviousAdjusted?.Total_SSSContributionEmployer ?? 0),
-
-    Total_PhilhealthContributionEmployee:
-      currentTotals.Total_PhilhealthContributionEmployee -
-      Number(olderPreviousAdjusted?.Total_PhilhealthContributionEmployee ?? 0),
-
-    Total_PhilhealthContributionEmployer:
-      currentTotals.Total_PhilhealthContributionEmployer -
-      Number(olderPreviousAdjusted?.Total_PhilhealthContributionEmployer ?? 0),
-
-    Total_PagibigContributionEmployee: includePagibigAndTax
-      ? currentTotals.Total_PagibigContributionEmployee -
-        Number(olderPreviousAdjusted?.Total_PagibigContributionEmployee ?? 0)
-      : 0,
-
-    Total_PagibigContributionEmployer: includePagibigAndTax
-      ? currentTotals.Total_PagibigContributionEmployer -
-        Number(olderPreviousAdjusted?.Total_PagibigContributionEmployer ?? 0)
-      : 0,
-
-    total_wtax: includePagibigAndTax
-      ? currentTotals.total_wtax - Number(olderPreviousAdjusted?.total_wtax ?? 0)
-      : 0
-  };
-
-  // -----------------------------
-  // GROUP CURRENT BY COMPANY
-  // -----------------------------
-  const companyGroups = {
-    [companyId ?? "UNKNOWN"]: computed
-  };
-  
-  // -----------------------------
-  // PREVIOUS COMPANY TOTALS
-  // -----------------------------
-  const previousCompanyTotals = await prisma.totalPayrollByCompany.findMany({
-    where: {
-      ...(companyId && { company_id: companyId }),
-      total_payroll_id: {
-        in: [olderPrevious?.id, recentPrevious?.id].filter(Boolean) as number[]
-      }
-    }
-  });
-  // -----------------------------
-  // COMPANY VARIANCE
-  // -----------------------------
-  const companyVariance = Object.entries(companyGroups).map(
-    ([companyCode, rows]) => {
-
-      const current = rows.reduce(
-        (acc, row) => {
-          acc.total_basic_salary += Number(row.semi_monthly ?? 0);
-          acc.Total_SSSContributionEmployee += Number(row.sss_contrib_employee ?? 0);
-          acc.Total_SSSContributionEmployer += Number(row.sss_contrib_employer ?? 0);
-          acc.Total_PhilhealthContributionEmployee += Number(row.philhealth_contrib_employee ?? 0);
-          acc.Total_PhilhealthContributionEmployer += Number(row.philhealth_contrib_employer ?? 0);
-
-          if (includePagibigAndTax) {
-            acc.Total_PagibigContributionEmployee += Number(row.pagibig_contrib_employee ?? 0);
-            acc.Total_PagibigContributionEmployer += Number(row.pagibig_contrib_employer ?? 0);
-            acc.total_wtax += Number(row.wtax ?? 0);
-          }
-
-          return acc;
-        },
-        {
-          total_basic_salary: 0,
-          Total_SSSContributionEmployee: 0,
-          Total_SSSContributionEmployer: 0,
-          Total_PhilhealthContributionEmployee: 0,
-          Total_PhilhealthContributionEmployer: 0,
-          Total_PagibigContributionEmployee: 0,
-          Total_PagibigContributionEmployer: 0,
-          total_wtax: 0
-        }
-      );
-
-      const olderCompany = previousCompanyTotals.find(
-        c =>
-          c.company_id === companyCode &&
-          c.total_payroll_id === olderPrevious?.id
-      );
-
-      const recentCompany = previousCompanyTotals.find(
-        c =>
-          c.company_id === companyCode &&
-          c.total_payroll_id === recentPrevious?.id
-      );
-
-
-      const olderCompanyAdjusted = olderCompany
-        ? {
-            ...olderCompany,
-            total_basic_salary: 0
-          }
-        : null;
-
-      const recentCompanyAdjusted = recentCompany
-        ? {
-            ...recentCompany,
-            Total_SSSContributionEmployee: 0,
-            Total_SSSContributionEmployer: 0,
-            Total_PhilhealthContributionEmployee: 0,
-            Total_PhilhealthContributionEmployer: 0,
-            Total_PagibigContributionEmployee: 0,
-            Total_PagibigContributionEmployer: 0,
-            total_wtax: 0
-          }
-        : null;
-
-      const variance = {
-        total_basic_salary:
-          current.total_basic_salary -
-          Number(recentCompanyAdjusted?.total_basic_salary ?? 0),
-
-        Total_SSSContributionEmployee:
-          current.Total_SSSContributionEmployee -
-          Number(olderCompanyAdjusted?.Total_SSSContributionEmployee ?? 0),
-
-        Total_SSSContributionEmployer:
-          current.Total_SSSContributionEmployer -
-          Number(olderCompanyAdjusted?.Total_SSSContributionEmployer ?? 0),
-
-        Total_PhilhealthContributionEmployee:
-          current.Total_PhilhealthContributionEmployee -
-          Number(olderCompanyAdjusted?.Total_PhilhealthContributionEmployee ?? 0),
-
-        Total_PhilhealthContributionEmployer:
-          current.Total_PhilhealthContributionEmployer -
-          Number(olderCompanyAdjusted?.Total_PhilhealthContributionEmployer ?? 0),
-
-        Total_PagibigContributionEmployee: includePagibigAndTax
-          ? current.Total_PagibigContributionEmployee -
-            Number(olderCompanyAdjusted?.Total_PagibigContributionEmployee ?? 0)
-          : 0,
-
-        Total_PagibigContributionEmployer: includePagibigAndTax
-          ? current.Total_PagibigContributionEmployer -
-            Number(olderCompanyAdjusted?.Total_PagibigContributionEmployer ?? 0)
-          : 0,
-
-        total_wtax: includePagibigAndTax
-          ? current.total_wtax - Number(olderCompanyAdjusted?.total_wtax ?? 0)
-          : 0
-      };
-
-      return {
-        company: companyCode,
-        rows: [
-          {
-            PayCycle: olderPrevious?.PayCycle ?? "",
-            ...(olderCompanyAdjusted ?? {})
-          },
-          {
-            PayCycle: recentPrevious?.PayCycle ?? "",
-            ...(recentCompanyAdjusted ?? {})
-          },
-          {
-            PayCycle: computed[0].PayCode,
-            ...current
-          },
-          {
-            PayCycle: "VARIANCE",
-            ...variance
-          }
-        ]
-      };
-    }
-  );
-
-  const totalRows: any[] = [];
-
-  if (olderPreviousAdjusted) {
-    totalRows.push(olderPreviousAdjusted);
-  }
-  
-  if (recentPreviousAdjusted) {
-    totalRows.push(recentPreviousAdjusted);
-  }
-  
-  totalRows.push({
-    PayCycle: computed[0].PayCode,
-    ...currentTotals
-  });
-  
-  if (varianceRow) {
-    totalRows.push(varianceRow);
-  }
-  
-  return {
-    includePagibigAndTax,
-    total_variance: totalRows,
-    company_variance: companyVariance
-  };
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-interface VarianceEmployee {
-  empId: string
-  name: string
-
-  previousBasic?: number
-  currentBasic?: number
-
-  previousSSS?: number
-  currentSSS?: number
-
-  previousSSSEmployer?: number
-  currentSSSEmployer?: number
-
-  previousPhil?: number
-  currentPhil?: number
-
-  previousPhilEmployer?: number
-  currentPhilEmployer?: number
-
-  previousPag?: number
-  currentPag?: number
-
-  previousPagEmployer?: number
-  currentPagEmployer?: number
-
-  previousTaxEmploye?: number
-  currentTaxEmploye?: number
-  
-  leaveType?: string
-
-
-  difference?: number
-}
-
-interface VarianceAnalysis {
-  newEmployees: VarianceEmployee[]
-  salaryIncrease: VarianceEmployee[]
-  resignedEmployees: VarianceEmployee[]
-
-  sssVariance: VarianceEmployee[]
-  sssEmployerVariance: VarianceEmployee[]
-  philEmployerVariance: VarianceEmployee[]
-  philVariance: VarianceEmployee[]
-  pagEmployerVariance: VarianceEmployee[]
-  pagVariance: VarianceEmployee[]
-  taxVariance: VarianceEmployee[]
-  specialLeaveEmployees: VarianceEmployee[]
-}
-
-export async function fetchVarianceEmp(userAcc:String,companyId: string) {
-
-   let computed: any[] = [];
-
-  if (userAcc === "PAYROLL_CHECKER") {
-    computed = (await displayCompletePayroll(["PENDING"])) ?? [];
-  }
-
-  if (userAcc === "FINANCIAL_CHECKER") {
-    computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
-  }
-
-  if (userAcc === "FINANCE_APPROVER") {
-    computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
-  }
-
-  computed = computed.filter(
-    r => r.EmpCode?.BranchCode?.company_id === companyId
-  );
-
-  if (computed.length === 0) {
-    return {
-      includePagibigAndTax: false,
-      total_variance: [],
-      company_variance: [],
-      variance_analysis: {
-        newEmployees: [],
-        salaryIncrease: [],
-        resignedEmployees: [],
-        sssVariance: [],
-        sssEmployerVariance: [],
-        philEmployerVariance: [],
-        philVariance: [],
-        pagEmployerVariance: [],
-        pagVariance: [],
-        taxVariance: [],
-        specialLeaveVarian: [],
-      }
-    }
-  }
-
-  const { CycleCategory, PayrollPeriod, PayCode } = computed[0]
-
-  
-
-  const includePagibigAndTax =
-    PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle"
-
-  //--------------------------------
-  // Detect probationary new employees
-  //--------------------------------
-
-  const probationaryNewEmployees = computed.filter(
-    r =>
-      r.EmpCode?.EmploymentStatus === "Probationary" &&
-      r.EmpCode?.isNewEmployee === true
-  )
-
-  const hasProbationaryNewEmployees = probationaryNewEmployees.length > 0
-
-  //--------------------------------
-  // Determine if SSS/Phil should compute
-  //--------------------------------
-
-  const shouldComputeSSSPhil =
-    PayrollPeriod === "10-pay-cycle" ||
-    PayrollPeriod === "15-pay-cycle" ||
-    (
-      (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
-      hasProbationaryNewEmployees
-    )
-
-  //--------------------------------
-  // CURRENT TOTAL BASIC
-  //--------------------------------
-
-  const currentTotals = computed.reduce(
-    (acc, row) => {
-      acc.total_basic_salary += Number(row.semi_monthly ?? 0)
-      return acc
-    },
-    { total_basic_salary: 0 }
-  )
-
-  //--------------------------------
-  // GET CURRENT PAYROLL RECORD
-  //--------------------------------
-
-  const currentPayroll = await prisma.totalPayroll.findFirst({
-    where: {
-      cycle_category: CycleCategory,
-      PayCycle: PayCode
-    },
-    orderBy: { id: "desc" }
-  })
-
-  //--------------------------------
-  // PREVIOUS PAYROLL
-  //--------------------------------
-
-  const previousPayrollBasic = await prisma.totalPayroll.findFirst({
-    where: {
-      cycle_category: CycleCategory,
-      id: { lt: currentPayroll?.id }
-    },
-    orderBy: { id: "desc" }
-  })
-
-  const previousPayrollSSS = await prisma.totalPayroll.findFirst({
-    where: {
-      cycle_category: CycleCategory,
-      payroll_period: PayrollPeriod,
-      id: { lt: currentPayroll?.id }
-    },
-    orderBy: { id: "desc" }
-  })
-
-  //--------------------------------
-  // PREVIOUS EMPLOYEES
-  //--------------------------------
-
-  const previousEmployeesBasic = await prisma.employeePayrollArchive.findMany({
-    where: {
-      totalPayrollId: previousPayrollBasic?.id,
-      EmpCode: { BranchCode: { company_id: companyId } }
-    },
-    include: {
-      EmpCode: {
-        include: {
-          specialLeaves: true
-        }
-      }
-    }
-  })
-
-
-  const previousEmployeesSSS = await prisma.employeePayrollArchive.findMany({
-    where: {
-      totalPayrollId: previousPayrollSSS?.id,
-      EmpCode: { BranchCode: { company_id: companyId } }
-    },
-    include: { EmpCode: true }
-  })
-
-  //--------------------------------
-  // MAPS
-  //--------------------------------
-
-  const currentMap = new Map<string, typeof computed[0]>()
-
-  for (const row of computed) {
-    if (!row.EmpCodeId) continue
-    currentMap.set(row.EmpCodeId, row)
-  }
-
-  const previousMapBasic = new Map<string, typeof previousEmployeesBasic[0]>()
-
-  for (const row of previousEmployeesBasic) {
-    previousMapBasic.set(row.EmpCodeId, row)
-  }
-
-  const previousMapSSS = new Map<string, typeof previousEmployeesSSS[0]>()
-
-  for (const row of previousEmployeesSSS) {
-    previousMapSSS.set(row.EmpCodeId, row)
-  }
-
-  //--------------------------------
-  // VARIANCE ANALYSIS
-  //--------------------------------
-
-  const varianceAnalysis: VarianceAnalysis = {
-    newEmployees: [],
-    salaryIncrease: [],
-    resignedEmployees: [],
-    sssVariance: [],
-    sssEmployerVariance: [],
-    philEmployerVariance: [],
-    philVariance: [],
-    pagEmployerVariance: [],
-    pagVariance: [],
-    taxVariance: [],
-    specialLeaveEmployees: [],
-  }
-
-  const specialLeaveTypes = ["Maternity", "Paternity", "Health"]
-
-  //--------------------------------
-  // NEW EMPLOYEES
-  //--------------------------------
-
-  for (const [empId, row] of currentMap) {
-    if (
-      !previousMapBasic.has(empId) &&
-      row.EmpCode?.EmploymentStatus === "Active"
-    ) {
-      varianceAnalysis.newEmployees.push({
-        empId,
-        name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
-        currentBasic: Number(row.semi_monthly ?? 0)
-      })
-    }
-  }
-
-  //--------------------------------
-  // MISSING EMPLOYEES (LEFT PAYROLL)
-  //--------------------------------
-
-  for (const [empId, prevRow] of previousMapBasic) {
-
-    if (!currentMap.has(empId)) {
-
-        const employee = prevRow.EmpCode
-
-        const leave = employee?.specialLeaves?.find(l =>
-          specialLeaveTypes.includes(l.leaveName)
-        )
-
-        if (leave) {
-          varianceAnalysis.specialLeaveEmployees.push({
-            empId,
-            name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
-            leaveType: leave.leaveName,
-            previousBasic: Number(prevRow.Basic_salary ?? 0)
-          })
-        }
-
-    }
-
-  }
-  
-  //--------------------------------
-  // SALARY INCREASE
-  //--------------------------------
-  for (const [empId, row] of currentMap) {
-
-    const prev = previousMapBasic.get(empId)
-    if (!prev) continue
-
-    const currentBasic = Number(row.semi_monthly ?? 0)
-    const previousBasic = Number(prev.Basic_salary ?? 0)
-
-    if (currentBasic > previousBasic) {
-
-      varianceAnalysis.salaryIncrease.push({
-        empId,
-        name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
-        previousBasic,
-        currentBasic,
-        difference: currentBasic - previousBasic
-      })
-
-    }
-
-  }
-  //--------------------------------
-  // RESIGNED EMPLOYEES
-  //--------------------------------
-
-  for (const [empId, prevRow] of previousMapBasic) {
-
-    const currentRow = currentMap.get(empId)
-
-    const employee = prevRow.EmpCode
-
-    const isResigned =
-       employee?.EmployeeStatus === "RESIGNED"
-
-    if (isResigned) {
-
-      varianceAnalysis.resignedEmployees.push({
-        empId,
-        name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
-        previousBasic: Number(prevRow.Basic_salary ?? 0)
-      })
-
-    }
-
-  }
-
-  //--------------------------------
-  // SSS + PHIL (conditional)
-  //--------------------------------
-
-  if (shouldComputeSSSPhil) {
-
-    
-
-    for (const [empId, row] of currentMap) {
-
-      const employee = row.EmpCode
-      
-
-      if (
-        (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
-        (
-          employee?.EmploymentStatus !== "Probationary" ||
-          row.EmpCode?.isNewEmployee !== true
-        )
-      ) {
-        continue
-      }
-
-      const prev = previousMapSSS.get(empId)
-
-      
-
-      const currentSSS = Number(row.sss_contrib_employee ?? 0)
-      const previousSSS = Number(prev?.SSS_employee_share ?? 0)
-
-      
-
-      if (currentSSS !== previousSSS) {
-        varianceAnalysis.sssVariance.push({
-          empId,
-          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
-          previousSSS,
-          currentSSS,
-          difference: currentSSS - previousSSS
-        })
-      }
-
-      const currentSSSEmployer = Number(row.sss_contrib_employer ?? 0)
-      const previousSSSEmployer = Number(prev?.SSS_employer_share ?? 0)
-
-      if (currentSSSEmployer !== previousSSSEmployer) {
-        varianceAnalysis.sssEmployerVariance.push({
-          empId,
-          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
-          previousSSSEmployer,
-          currentSSSEmployer,
-          difference: currentSSSEmployer - previousSSSEmployer
-        })
-      }
-
-      const currentPhil = Number(row.philhealth_contrib_employee ?? 0)
-      const previousPhil = Number(prev?.philhealth_employee_share ?? 0)
-
-      if (currentPhil !== previousPhil) {
-        varianceAnalysis.philVariance.push({
-          empId,
-          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
-          previousPhil,
-          currentPhil,
-          difference: currentPhil - previousPhil
-        })
-      }
-
-      const currentPhilEmployer = Number(row.philhealth_contrib_employer ?? 0)
-      const previousPhilEmployer = Number(prev?.philhealth_employer_share ?? 0)
-
-      if (currentPhilEmployer !== previousPhilEmployer) {
-        varianceAnalysis.philEmployerVariance.push({
-          empId,
-          name: `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`,
-          previousPhilEmployer,
-          currentPhilEmployer,
-          difference: currentPhilEmployer - previousPhilEmployer
-        })
-      }
-
-    }
-
-  }
-
-  //--------------------------------
-  // MISSING EMPLOYEES (SSS + PHIL)
-  //--------------------------------
-    for (const [empId, prevRow] of previousMapSSS) {
-
-      // skip if still exists in current
-      if (currentMap.has(empId)) continue
-
-      const employee = prevRow.EmpCode
-
-      // --------------------------------
-      // APPLY SAME FILTER LOGIC
-      // --------------------------------
-      if (
-        (PayrollPeriod === "25-pay-cycle" || PayrollPeriod === "30-pay-cycle") &&
-        (
-          employee?.EmploymentStatus !== "Probationary" ||
-          employee?.isNewEmployee !== true
-        )
-      ) {
-        continue
-      }
-
-      const fullName = `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`
-
-      // --------------------------------
-      // SSS EMPLOYEE
-      // --------------------------------
-      const previousSSS = Number(prevRow?.SSS_employee_share ?? 0)
-      const currentSSS = 0
-
-      if (previousSSS !== 0) {
-        varianceAnalysis.sssVariance.push({
-          empId,
-          name: fullName,
-          previousSSS,
-          currentSSS,
-          difference: currentSSS - previousSSS
-        })
-      }
-
-      // --------------------------------
-      // SSS EMPLOYER
-      // --------------------------------
-      const previousSSSEmployer = Number(prevRow?.SSS_employer_share ?? 0)
-      const currentSSSEmployer = 0
-
-      if (previousSSSEmployer !== 0) {
-        varianceAnalysis.sssEmployerVariance.push({
-          empId,
-          name: fullName,
-          previousSSSEmployer,
-          currentSSSEmployer,
-          difference: currentSSSEmployer - previousSSSEmployer
-        })
-      }
-
-      // --------------------------------
-      // PHIL EMPLOYEE
-      // --------------------------------
-      const previousPhil = Number(prevRow?.philhealth_employee_share ?? 0)
-      const currentPhil = 0
-
-      if (previousPhil !== 0) {
-        varianceAnalysis.philVariance.push({
-          empId,
-          name: fullName,
-          previousPhil,
-          currentPhil,
-          difference: currentPhil - previousPhil
-        })
-      }
-
-      // --------------------------------
-      // PHIL EMPLOYER
-      // --------------------------------
-      const previousPhilEmployer = Number(prevRow?.philhealth_employer_share ?? 0)
-      const currentPhilEmployer = 0
-
-      if (previousPhilEmployer !== 0) {
-        varianceAnalysis.philEmployerVariance.push({
-          empId,
-          name: fullName,
-          previousPhilEmployer,
-          currentPhilEmployer,
-          difference: currentPhilEmployer - previousPhilEmployer
-        })
-      }
-
-    }
-
-
-  //--------------------------------
-  // PAGIBIG + TAX (25 / 30 cycle)
-  //--------------------------------
-
-  if (includePagibigAndTax) {
-
-    for (const [empId, row] of currentMap) {
-
-      const prev = previousMapSSS.get(empId)
-
-      const currentPag = Number(row.pagibig_contrib_employee ?? 0)
-      const previousPag = Number(prev?.Pagibig_employee_share ?? 0)
-
-      if (currentPag !== previousPag) {
-        varianceAnalysis.pagVariance.push({
-          empId,
-          name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
-          previousPag,
-          currentPag,
-          difference: currentPag - previousPag
-        })
-      }
-
-      const currentPagEmployer = Number(row.pagibig_contrib_employer ?? 0)
-      const previousPagEmployer = Number(prev?.Pagibig_employer_share ?? 0)
-
-      if (currentPagEmployer !== previousPagEmployer) {
-        varianceAnalysis.pagEmployerVariance.push({
-          empId,
-          name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
-          previousPagEmployer,
-          currentPagEmployer,
-          difference: currentPagEmployer - previousPagEmployer
-        })
-      }
-
-      const currentTax = Number(row.wtax ?? 0)
-      const previousTax = Number(prev?.w_tax ?? 0)
-
-      if (currentTax !== previousTax) {
-        varianceAnalysis.taxVariance.push({
-          empId,
-          name: `${row.EmpCode?.Firstname ?? ""} ${row.EmpCode?.Lastname ?? ""}`,
-          previousTaxEmploye: previousTax,
-          currentTaxEmploye: currentTax,
-          difference: currentTax - previousTax
-        })
-      }
-
-    }
-
-    //--------------------------------
-    // MISSING EMPLOYEES (PAGIBIG + TAX)
-    //--------------------------------
-      for (const [empId, prevRow] of previousMapSSS) {
-
-      if (currentMap.has(empId)) continue
-
-      const employee = prevRow.EmpCode
-      const fullName = `${employee?.Firstname ?? ""} ${employee?.Lastname ?? ""}`
-
-      // --------------------------------
-      // PAGIBIG EMPLOYEE
-      // --------------------------------
-      const previousPag = Number(prevRow?.Pagibig_employee_share ?? 0)
-
-      if (previousPag !== 0) {
-        varianceAnalysis.pagVariance.push({
-          empId,
-          name: fullName,
-          previousPag,
-          currentPag: 0,
-          difference: -previousPag
-        })
-      }
-
-      // --------------------------------
-      // PAGIBIG EMPLOYER
-      // --------------------------------
-      const previousPagEmployer = Number(prevRow?.Pagibig_employer_share ?? 0)
-
-      if (previousPagEmployer !== 0) {
-        varianceAnalysis.pagEmployerVariance.push({
-          empId,
-          name: fullName,
-          previousPagEmployer,
-          currentPagEmployer: 0,
-          difference: -previousPagEmployer
-        })
-      }
-
-      // --------------------------------
-      // TAX
-      // --------------------------------
-      const previousTax = Number(prevRow?.w_tax ?? 0)
-
-      if (previousTax !== 0) {
-        varianceAnalysis.taxVariance.push({
-          empId,
-          name: fullName,
-          previousTaxEmploye: previousTax,
-          currentTaxEmploye: 0,
-          difference: -previousTax
-        })
-      }
-
-    }
-
-  }
-
-  //--------------------------------
-  // RETURN
-  //--------------------------------
-
-  return {
-    includePagibigAndTax,
-    variance_analysis: varianceAnalysis
-  }
-
-}
-
-
-
-
-
-
-
-
-
-
-export async function fetchEmployeeVariance() {
+import { MathRound } from "../../utils/toFixed";
+import { isSecondCutoff } from "../prepare_payroll/prepare_payroll.computation";
+import { empty } from "@prisma/client/runtime/library";
+
+export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "15-30-Cycle", userAcc: string) {
   try {
 
-    const computed = await displayCompletePayroll(["PENDING"]);
+    let pre_computed: any[] = [];
 
-    if (!computed || computed.length === 0) {
-      return { employees_with_variance: [] };
+    if (userAcc === "PAYROLL_CHECKER") {
+      pre_computed = (await displayCompletePayroll(["PENDING"])) ?? [];
     }
 
-    const { CycleCategory } = computed[0];
-    const payrollPeriod = computed[0].PayrollPeriod;
-
-    const includePagibigAndTax = payrollPeriod === "25-pay-cycle" || payrollPeriod === "30-pay-cycle";
-
-
-    // Get last two payroll summaries
-    const payrollTotals = await prisma.totalPayroll.findMany({
-      where: { cycle_category: CycleCategory },
-      orderBy: { id: "desc" },
-      take: 2,
-      select: {
-        id: true,
-        PayCycle: true
-      }
-    });
-
-    if (payrollTotals.length < 2) {
-      return { employees_with_variance: [] };
+    if (userAcc === "FINANCIAL_CHECKER") {
+      pre_computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
     }
 
-    const recentPrevious = payrollTotals[0];
-    const olderPrevious = payrollTotals[1];
+    if (userAcc === "FINANCE_APPROVER") {
+      pre_computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+    }
 
 
-    // Fetch archived employee payrolls
-    const archivedEmployees = await prisma.employeePayrollArchive.findMany({
+    const data = await prisma.totalPayrollByCompany.findMany({
       where: {
-        totalPayrollId: {
-          in: [recentPrevious.id, olderPrevious.id]
-        }
+        company_id: company_id,
+        cycle_category: cycle,
       },
       select: {
-        totalPayrollId: true,
-        PayCode: true,
+        PayCycle: true,
+        total_basic_salary: true,
+        Total_SSSContributionEmployee: true,
+        Total_SSSContributionEmployer: true,
+        Total_PhilhealthContributionEmployee: true,
+        Total_PhilhealthContributionEmployer: true,
+        Total_PagibigContributionEmployee: true,
+        Total_PagibigContributionEmployer: true,
+        total_wtax: true,
+      },
+      orderBy: {
+        id: "desc",
+      },
+      take: 2,
+    });
+
+    //const pre_computed = await displayCompletePayroll(["PENDING"]);
+
+    const computed = (pre_computed ?? []).filter((e) => {
+      const isRegularCompany =
+        e.company_id === company_id && e.EmpCode?.isAlien === false;
+
+      const isAlienSecondaryCompany =
+        e.EmpCode?.isAlien === true &&
+        e.EmpCode?.secondaryBranch?.company_id === company_id;
+
+      return isRegularCompany || isAlienSecondaryCompany;
+    });
+
+    const PayCode = computed[0].PayCode;
+
+    const currentBasicPay = computed.reduce((total, employee) => {
+      return total + Number(employee.semi_monthly ?? 0);
+    }, 0);
+
+    const currentSSSEmployee = computed.reduce((total, employee) => {
+      return total + Number(employee.sss_contrib_employee ?? 0)
+    }, 0)
+
+    const currentSSSEmployer = computed.reduce((total, employee) => {
+      return total + Number(employee.sss_contrib_employer ?? 0);
+    }, 0);
+
+    const currentPhilEmployee = computed.reduce((total, employee) => {
+      return total + Number(employee.philhealth_contrib_employee ?? 0);
+    }, 0);
+
+    const currentPhilEmployer = computed.reduce((total, employee) => {
+      return total + Number(employee.philhealth_contrib_employer ?? 0);
+    }, 0);
+
+    const currentPagibigEmployee = computed.reduce((total, employee) => {
+      return total + Number(employee.pagibig_contrib_employee ?? 0);
+    }, 0);
+
+    const currentPagibigEmployer = computed.reduce((total, employee) => {
+      return total + Number(employee.pagibig_contrib_employer ?? 0);
+    }, 0);
+
+    const currentWtax = computed.reduce((total, employee) => {
+      return total + Number(employee.wtax ?? 0);
+    }, 0);
+
+
+    const recentPrev = data[0];
+    const olderPrev = data[1];
+
+
+    if (isSecondCutoff(PayCode)) {
+      return {
+        current: {
+          paycode: PayCode,
+          basic_pay: currentBasicPay,
+          sss_employee: currentSSSEmployee,
+          sss_employer: currentSSSEmployer,
+          phil_employee: MathRound(currentPhilEmployee),
+          phil_employer: MathRound(currentPhilEmployer),
+          pagibig_employee: currentPagibigEmployee,
+          pagibig_employer: currentPagibigEmployer,
+          wtax: currentWtax,
+        },
+        recent_prev: {
+          paycode: recentPrev?.PayCycle,
+          basic_pay: Number(recentPrev?.total_basic_salary ?? 0),
+          sss_employee: 0,
+          sss_employer: 0,
+          phil_employee: 0,
+          phil_employer: 0,
+          pagibig_employee: Number(recentPrev?.Total_PagibigContributionEmployee ?? 0),
+          pagibig_employer: Number(recentPrev?.Total_PagibigContributionEmployer ?? 0),
+          wtax: Number(recentPrev?.total_wtax ?? 0),
+        },
+        older_prev: {
+          paycode: olderPrev?.PayCycle,
+          basic_pay: 0,
+          sss_employee: Number(olderPrev?.Total_SSSContributionEmployee ?? 0),
+          sss_employer: Number(olderPrev?.Total_SSSContributionEmployer ?? 0),
+          phil_employee: Number(olderPrev?.Total_PhilhealthContributionEmployee ?? 0),
+          phil_employer: Number(olderPrev?.Total_PhilhealthContributionEmployer ?? 0),
+          pagibig_employee: Number(olderPrev?.Total_PagibigContributionEmployee ?? 0),
+          pagibig_employer: Number(olderPrev?.Total_PagibigContributionEmployer ?? 0),
+          wtax: Number(olderPrev?.total_wtax ?? 0),
+        },
+        variance: {
+          paycode: "VARIANCE",
+          basic_pay_variance: currentBasicPay - Number(recentPrev?.total_basic_salary),
+          sss_employee: currentSSSEmployee,
+          sss_employer: currentSSSEmployer,
+          phil_employee: MathRound(currentPhilEmployee),
+          phil_employer: MathRound(currentPhilEmployer),
+          pagibig_employee: currentPagibigEmployee - Number(olderPrev?.Total_PagibigContributionEmployee ?? 0),
+          pagibig_employer: currentPagibigEmployer - Number(olderPrev?.Total_PagibigContributionEmployer ?? 0),
+          wtax: currentWtax - Number(olderPrev?.total_wtax ?? 0),
+        }
+      }
+    }
+    else {
+      return {
+        current: {
+          paycode: PayCode,
+          basic_pay: currentBasicPay,
+          sss_employee: currentSSSEmployee,
+          sss_employer: currentSSSEmployer,
+          phil_employee: MathRound(currentPhilEmployee),
+          phil_employer: MathRound(currentPhilEmployer),
+        },
+        recent_prev: {
+          paycode: recentPrev?.PayCycle,
+          basic_pay: Number(recentPrev?.total_basic_salary ?? 0),
+          sss_employee: 0,
+          sss_employer: 0,
+          phil_employee: 0,
+          phil_employer: 0,
+        },
+        older_prev: {
+          paycode: olderPrev?.PayCycle,
+          basic_pay: 0,
+          sss_employee: Number(olderPrev?.Total_SSSContributionEmployee ?? 0),
+          sss_employer: Number(olderPrev?.Total_SSSContributionEmployer ?? 0),
+          phil_employee: Number(olderPrev?.Total_PhilhealthContributionEmployee ?? 0),
+          phil_employer: Number(olderPrev?.Total_PhilhealthContributionEmployer ?? 0),
+        },
+        variance: {
+          paycode: "VARIANCE",
+          basic_pay_variance: currentBasicPay - Number(recentPrev?.total_basic_salary),
+          sss_employee_variance: currentSSSEmployee - Number(olderPrev?.Total_SSSContributionEmployee),
+          sss_employer_variance: currentSSSEmployer - Number(olderPrev?.Total_SSSContributionEmployer),
+          phil_employee_variance: MathRound(currentPhilEmployee - Number(olderPrev?.Total_PhilhealthContributionEmployee)),
+          phil_employer_variance: MathRound(currentPhilEmployer - Number(olderPrev?.Total_PhilhealthContributionEmployer)),
+        }
+      };
+    }
+
+
+  } catch (error) {
+    console.error(`error occurred in service ${error}`);
+    throw error;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//EMPLOYEE VARIANCE 
+export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cycle" | "15-30-Cycle", userAcc: string) {
+  try {
+    const payrolls = await prisma.totalPayrollByCompany.findMany({
+      where: {
+        company_id,
+        cycle_category: cycle,
+      },
+      select: {
+        PayCycle: true,
+      },
+      orderBy: {
+        id: "desc",
+      },
+      take: 2,
+    });
+
+    const latestPayroll = payrolls[0];
+    const secondLatestPayroll = payrolls[1];
+
+    if (!latestPayroll?.PayCycle || !secondLatestPayroll?.PayCycle) {
+      return {
+        Probationary: {
+          paycycles: [],
+          employees: [],
+        },
+      };
+    }
+
+
+
+    let pre_computed: any[] = [];
+
+    if (userAcc === "PAYROLL_CHECKER") {
+      pre_computed = (await displayCompletePayroll(["PENDING"])) ?? [];
+    }
+
+    if (userAcc === "FINANCIAL_CHECKER") {
+      pre_computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
+    }
+
+    if (userAcc === "FINANCE_APPROVER") {
+      pre_computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+    }
+
+    //const allComputed = await displayCompletePayroll(["PENDING"]);
+
+    const computed = (pre_computed ?? []).filter((employee) => {
+      const isRegularCompany =
+        employee.company_id === company_id &&
+        employee.EmpCode?.isAlien === false;
+
+      const isAlienSecondaryCompany =
+        employee.EmpCode?.isAlien === true &&
+        employee.EmpCode?.secondaryBranch?.company_id === company_id;
+
+      return isRegularCompany || isAlienSecondaryCompany;
+    });
+
+    if (computed.length === 0) {
+      return {
+        Probationary: {
+          paycycles: [latestPayroll.PayCycle, secondLatestPayroll.PayCycle],
+          employees: [],
+        },
+      };
+    }
+
+    const computedEmpCodes = computed.map((employee) => employee.EmpCodeId?.trim())
+      .filter((empCode): empCode is string => Boolean(empCode));
+
+
+    const archiveEmployees1 = await prisma.employeePayrollArchive.findMany({
+      where: {
+        PayCode: latestPayroll.PayCycle,
+        cycle_category: cycle,
+        payrollBranch: {
+          company_id,
+        },
+      },
+      select: {
         EmpCodeId: true,
+        PayCode: true,
         Basic_salary: true,
-        SSS_employee_share: true,
-        SSS_employer_share: true,
+      },
+    });
+
+    const archiveEmployees2 = await prisma.employeePayrollArchive.findMany({
+      where: {
+        PayCode: secondLatestPayroll.PayCycle,
+        cycle_category: cycle,
+        payrollBranch: {
+          company_id,
+        },
+      },
+      select: {
+        EmpCodeId: true,
+        PayCode: true,
         philhealth_employee_share: true,
         philhealth_employer_share: true,
+        SSS_employee_share: true,
+        SSS_employer_share: true,
         Pagibig_employee_share: true,
         Pagibig_employer_share: true,
         w_tax: true,
-        EmpCode: {
-          select: {
-            Firstname: true,
-            Lastname: true
-          }
-        }
-      }
+      },
     });
 
 
-    // Separate maps for recent and older payroll
-    const recentMap = new Map<string, typeof archivedEmployees[number]>();
-    const olderMap = new Map<string, typeof archivedEmployees[number]>();
 
-    for (const emp of archivedEmployees) {
-      if (emp.totalPayrollId === recentPrevious.id) {
-        recentMap.set(emp.EmpCodeId, emp);
-      } else if (emp.totalPayrollId === olderPrevious.id) {
-        olderMap.set(emp.EmpCodeId, emp);
-      }
-    }
+    const archiveBasicMap = new Map(
+      archiveEmployees1.map((employee) => [
+        employee.EmpCodeId.trim(),
+        employee,
+      ])
+    );
 
-    //find new probationary
+    const archiveContributionMap = new Map(
+      archiveEmployees2.map((employee) => [
+        employee.EmpCodeId.trim(),
+        employee,
+      ])
+    );
 
+    const currentComputedMap = new Map(
+      computed.map((employee) => [
+        employee.EmpCodeId.trim(),
+        employee,
+      ])
+    );
 
-    //find new probationary
+    const allVarianceEmpCodes = new Set<string>([
+      ...computedEmpCodes,
+      ...archiveEmployees1.map((employee) =>
+        employee.EmpCodeId.trim()
+      ),
+      ...archiveEmployees2.map((employee) =>
+        employee.EmpCodeId.trim()
+      ),
+    ]);
 
-    const salaryHistory = await prisma.employeeSalaryHistory.findMany({
+    const employeeInfoRecords = await prisma.employee.findMany({
       where: {
-        salary_type: "Basic"
+        EmpCode: {
+          in: [...allVarianceEmpCodes],
+        },
       },
       select: {
-        EmpCodeId: true,
-        remarks: true
-      }
+        EmpCode: true,
+        Lastname: true,
+        Firstname: true,
+        EmploymentStatus: true,
+        EmployeeStatus: true,
+        Taxable: true,
+      },
     });
 
-    const salaryHistoryMap = new Map(
-      salaryHistory.map(h => [h.EmpCodeId, h])
+    const employeeInfoMap = new Map(
+      employeeInfoRecords.map((employee) => [
+        employee.EmpCode.trim(),
+        employee,
+      ])
     );
 
 
-    // Compute employee variance
-    const employeeVariance = computed
-    .map((row) => {
-  
-      const history = salaryHistoryMap.get(row.EmpCodeId);
-      const reason = history?.remarks;
-  
-      const recent = recentMap.get(row.EmpCodeId);
-      const older = olderMap.get(row.EmpCodeId);
-  
-      if (!recent || !older) return null;
-  
-      const variance: Record<string, number | string> = {
-        compared_paycode: older.PayCode,
-        current_paycode: row.PayCode,
-        EmpCodeId: row.EmpCodeId,
-        name: `${row.EmpCode.Firstname} ${row.EmpCode.Lastname}`,
-  
-        basic_diff:
-          Number(row.semi_monthly ?? 0) -
-          Number(recent.Basic_salary ?? 0),
-  
-        sss_employee_diff:
-          Number(row.sss_contrib_employee ?? 0) -
-          Number(older.SSS_employee_share ?? 0),
-  
-        sss_employer_diff:
-          Number(row.sss_contrib_employer ?? 0) -
-          Number(older.SSS_employer_share ?? 0),
-  
-        phil_employee_diff:
-          Number(row.philhealth_contrib_employee ?? 0) -
-          Number(older.philhealth_employee_share ?? 0),
-  
-        phil_employer_diff:
-          Number(row.philhealth_contrib_employer ?? 0) -
-          Number(older.philhealth_employer_share ?? 0),
-      };
-  
-      if (includePagibigAndTax) {
-        variance.pagibig_employee_diff =
-          Number(row.pagibig_contrib_employee ?? 0) -
-          Number(older.Pagibig_employee_share ?? 0);
-  
-        variance.pagibig_employer_diff =
-          Number(row.pagibig_contrib_employer ?? 0) -
-          Number(older.Pagibig_employer_share ?? 0);
-  
-        variance.tax_diff =
-          Number(row.wtax ?? 0) -
-          Number(older.w_tax ?? 0);
+    const toCentavos = (
+      value: number | string | null | undefined
+    ): number => {
+      const numericValue = Number(value ?? 0);
+
+      if (!Number.isFinite(numericValue)) {
+        return 0;
       }
-  
-      const hasVariance = Object.values(variance).some(
-        v => typeof v === "number" && v !== 0
+
+      return Math.round(numericValue * 100);
+    };
+
+    const calculateMoneyVariance = (
+      currentValue: number | string | null | undefined,
+      previousValue: number | string | null | undefined
+    ): number => {
+      const currentCentavos = toCentavos(currentValue);
+      const previousCentavos = toCentavos(previousValue);
+
+      return (currentCentavos - previousCentavos) / 100;
+    };
+
+    const toVarianceEmployee = (empCode: string) => {
+      const current = currentComputedMap.get(empCode);
+      const basicArchive = archiveBasicMap.get(empCode);
+      const contributionArchive = archiveContributionMap.get(empCode);
+      const info = employeeInfoMap.get(empCode);
+
+      const currentBasic = Number(current?.semi_monthly ?? 0);
+      const previousBasic = Number(
+        basicArchive?.Basic_salary ?? 0
       );
-  
-      if (!hasVariance) return null;
-  
-      if (reason) {
-        return {
-          [reason]: variance
-        };
+
+      const currentSSSEmployee = Number(
+        current?.sss_contrib_employee ?? 0
+      );
+      const previousSSSEmployee = Number(
+        contributionArchive?.SSS_employee_share ?? 0
+      );
+
+      const currentSSSEmployer = Number(
+        current?.sss_contrib_employer ?? 0
+      );
+      const previousSSSEmployer = Number(
+        contributionArchive?.SSS_employer_share ?? 0
+      );
+
+      const currentPhilEmployee = Number(
+        current?.philhealth_contrib_employee ?? 0
+      );
+      const previousPhilEmployee = Number(
+        contributionArchive?.philhealth_employee_share ?? 0
+      );
+
+
+      const currentPhilEmployer = Number(
+        current?.philhealth_contrib_employer ?? 0
+      );
+      const previousPhilEmployer = Number(
+        contributionArchive?.philhealth_employer_share ?? 0
+      );
+
+      const currentPagibigEmployee = Number(
+        current?.pagibig_contrib_employee ?? 0
+      );
+      const previousPagibigEmployee = Number(
+        contributionArchive?.Pagibig_employee_share ?? 0
+      );
+
+      const currentPagibigEmployer = Number(
+        current?.pagibig_contrib_employer ?? 0
+      );
+      const previousPagibigEmployer = Number(
+        contributionArchive?.Pagibig_employer_share ?? 0
+      );
+      const currentEmployeeWTax = Number(
+        current?.wtax ?? 0
+      );
+      const previousEmployeeWTax = Number(
+        contributionArchive?.w_tax ?? 0
+      );
+
+      return {
+        EmpCode: empCode,
+        Lastname:
+          current?.EmpCode?.Lastname ??
+          info?.Lastname ??
+          null,
+        Firstname:
+          current?.EmpCode?.Firstname ??
+          info?.Firstname ??
+          null,
+        EmploymentStatus:
+          current?.EmpCode?.EmploymentStatus ??
+          info?.EmploymentStatus ??
+          null,
+        EmployeeStatus:
+          current?.EmpCode?.EmployeeStatus ??
+          info?.EmployeeStatus ??
+          null,
+        Taxable:
+          current?.EmpCode?.Taxable ??
+          info?.Taxable ??
+          null,
+
+        current_basic: currentBasic,
+        previous_basic: previousBasic,
+        basic_variance: MathRound(currentBasic - previousBasic),
+
+        current_sss_employee: currentSSSEmployee,
+        previous_sss_employee: previousSSSEmployee,
+        sss_employee_variance: MathRound(currentSSSEmployee - previousSSSEmployee),
+
+        current_sss_employer: currentSSSEmployer,
+        previous_sss_employer: previousSSSEmployer,
+        sss_employer_variance: MathRound(currentSSSEmployer - previousSSSEmployer),
+
+        current_phil_employee: currentPhilEmployee,
+        previous_phil_employee: previousPhilEmployee,
+        phil_employee_variance: MathRound(currentPhilEmployee - previousPhilEmployee),
+
+
+        current_phil_employer: currentPhilEmployer,
+        previous_phil_employer: previousPhilEmployer,
+        phil_employer_variance: MathRound(currentPhilEmployer - previousPhilEmployer),
+
+        current_pagibig_employee: currentPagibigEmployee,
+        previous_pagibig_employee: previousPagibigEmployee,
+        pagibig_employee_variance: MathRound(currentPagibigEmployee - previousPagibigEmployee),
+
+        current_pagibig_employer: currentPagibigEmployer,
+        previous_pagibig_employer: previousPagibigEmployer,
+        pagibig_employer_variance: MathRound(currentPagibigEmployer - previousPagibigEmployer),
+
+        // current_wtax: currentEmployeeWTax,
+        // previous_wtax: previousEmployeeWTax,
+        // wtax_variance: (currentEmployeeWTax - previousEmployeeWTax),
+        wtax_variance: calculateMoneyVariance(
+          currentEmployeeWTax,
+          previousEmployeeWTax
+        ),
+
+        isCurrentPayroll: Boolean(current),
+        isArchiveBasic: Boolean(basicArchive),
+        isArchiveContribution: Boolean(contributionArchive),
+      };
+    };
+
+    const hasVariance = (
+      employee: ReturnType<typeof toVarianceEmployee>
+    ) => {
+      return (
+        employee.basic_variance !== 0 ||
+        employee.sss_employee_variance !== 0 ||
+        employee.sss_employer_variance !== 0 ||
+        employee.phil_employee_variance !== 0 ||
+        employee.phil_employer_variance !== 0 ||
+        employee.pagibig_employee_variance !== 0 ||
+        employee.wtax_variance !== 0 ||
+        employee.pagibig_employer_variance !== 0
+      );
+    };
+
+    const allEmployeesWithVariance = [...allVarianceEmpCodes]
+      .map(toVarianceEmployee)
+      .filter(hasVariance);
+
+
+
+    //probationary
+    const probationaryEmployees = allEmployeesWithVariance.filter(
+      (employee) => {
+        const isProbationary =
+          employee.EmploymentStatus === "Probationary";
+
+        const hasLatestOrSecondLatestPayroll =
+          !employee.isArchiveBasic ||
+          !employee.isArchiveContribution;
+
+        return (
+          isProbationary &&
+          hasLatestOrSecondLatestPayroll
+        );
       }
-  
-      return variance;
+    );
+
+
+    //wtax
+    const wtaxAdjustment = allEmployeesWithVariance.filter(
+      (employee) => {
+        const isTaxable = employee.Taxable === true;
+
+        const hasWtaxVariance = toCentavos(employee.wtax_variance) !== 0;
+
+        return isTaxable && hasWtaxVariance;
+      }
+    );
+
+    //resigned
+    const resignedEmployees = allEmployeesWithVariance.filter(
+      (employee) => {
+        const isResigned =
+          employee.EmployeeStatus === "Resigned";
+
+        const hasLatestOrSecondLatestPayroll =
+          employee.isArchiveBasic &&
+          employee.isArchiveContribution;
+
+        return (
+          isResigned &&
+          hasLatestOrSecondLatestPayroll
+        );
+      }
+    );
+
+
+
+
+
+    //back to work with special leave 
+    const specialLeaveRecords =
+      await prisma.specialLeaves.findMany({
+        where: {
+          empCodeId: {
+            in: allEmployeesWithVariance.map((employee) =>
+              employee.EmpCode.trim()
+            ),
+          },
+          status: {
+            in: [
+              LeaveStatus.Completed,
+              LeaveStatus.Active,
+            ],
+          },
+        },
+        select: {
+          empCodeId: true,
+          leaveName: true,
+          status: true,
+          start: true,
+          end: true,
+        },
+      });
+
+    const specialLeaveMap = new Map(
+      specialLeaveRecords.map((leave) => [
+        leave.empCodeId.trim(),
+        leave,
+      ])
+    );
+
+    const backToWorkWithSpecialLeave = allEmployeesWithVariance.filter((employee) => {
+      const empCode = employee.EmpCode.trim();
+
+      const doesNotExistInLatestOrSecondLatest =
+        !employee.isArchiveBasic ||
+        !employee.isArchiveContribution;
+
+      const isNowPresentInCurrentPayroll =
+        employee.isCurrentPayroll;
+
+      const hasSpecialLeave =
+        specialLeaveMap.has(empCode);
+
+      return (
+        doesNotExistInLatestOrSecondLatest &&
+        isNowPresentInCurrentPayroll &&
+        hasSpecialLeave
+      );
     })
-    .filter(Boolean);
+      .map((employee) => {
+        const leave = specialLeaveMap.get(
+          employee.EmpCode.trim()
+        );
+
+        return {
+          ...employee,
+          leaveName: leave?.leaveName ?? null,
+        };
+      });
+
+
+    //back to work with no special leave 
+
+    const backToWorkWithoutSpecialeave = allEmployeesWithVariance.filter((employee) => {
+      const empCode = employee.EmpCode.trim();
+      const isProbationary =
+        employee.EmploymentStatus === "Probationary";
+
+      const doesNotExistInLatestOrSecondLatest =
+        !employee.isArchiveBasic ||
+        !employee.isArchiveContribution;
+
+      const isNowPresentInCurrentPayroll = employee.isCurrentPayroll;
+
+      const hasSpecialLeave = specialLeaveMap.has(empCode);
+
+      return (
+        doesNotExistInLatestOrSecondLatest &&
+        isNowPresentInCurrentPayroll && !hasSpecialLeave && !isProbationary
+
+      );
+    })
+      .map((employee) => {
+
+        return {
+          ...employee,
+
+        };
+      });
+
+
+    // missing in the current but with archive
+
+    const missingIntheCurrentWithSpecialLeave = allEmployeesWithVariance.filter((employee) => {
+      const empCode = employee.EmpCode.trim();
+
+      const doesExistInLatestOrSecondLatest =
+        employee.isArchiveBasic ||
+        employee.isArchiveContribution;
+
+      const isNowNotInCurrentPayroll =
+        !employee.isCurrentPayroll;
+
+      const hasSpecialLeave =
+        specialLeaveMap.has(empCode);
+
+      return (
+        doesExistInLatestOrSecondLatest &&
+        isNowNotInCurrentPayroll &&
+        hasSpecialLeave
+      );
+    })
+      .map((employee) => {
+        const leave = specialLeaveMap.get(
+          employee.EmpCode.trim()
+        );
+
+        return {
+          ...employee,
+          leaveName: leave?.leaveName ?? null,
+        };
+      });
+
+
+    const basicVarianceTotal = allEmployeesWithVariance.reduce(
+      (sum, employee) => sum + employee.basic_variance,
+      0
+    );
+
+
+    // missing in the current without speciaw leave 
+    const missingIntheCurrentWithoutSpecialLeave = allEmployeesWithVariance.filter((employee) => {
+      const empCode = employee.EmpCode.trim();
+      const isResigned = employee.EmployeeStatus === "Resigned";
+
+
+      const doesExistInLatestOrSecondLatest =
+        employee.isArchiveBasic ||
+        employee.isArchiveContribution;
+
+      const isNowNotInCurrentPayroll =
+        !employee.isCurrentPayroll;
+
+      const hasSpecialLeave =
+        specialLeaveMap.has(empCode);
+
+      return (
+        doesExistInLatestOrSecondLatest &&
+        !isResigned &&
+        isNowNotInCurrentPayroll &&
+        !hasSpecialLeave
+      );
+    })
+      .map((employee) => {
+
+
+        return {
+          ...employee,
+        };
+      });
+
+
+
+    // salary adjustment: 
+
+    const salaryHistoryRecords =
+      await prisma.employeeSalaryHistory.findMany({
+        where: {
+          EmpCodeId: {
+            in: allEmployeesWithVariance.map((employee) =>
+              employee.EmpCode.trim()
+            ),
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+    const latestSalaryHistoryMap = new Map<
+      string,
+      (typeof salaryHistoryRecords)[number]
+    >();
+
+    for (const history of salaryHistoryRecords) {
+      const empCode = history.EmpCodeId.trim();
+
+      if (!latestSalaryHistoryMap.has(empCode)) {
+        latestSalaryHistoryMap.set(empCode, history);
+      }
+    }
+
+    const salaryAdjustment = {
+      increase: allEmployeesWithVariance
+        .filter((employee) => {
+          const history = latestSalaryHistoryMap.get(
+            employee.EmpCode.trim()
+          );
+
+          if (!history) {
+            return false;
+          }
+
+          return (
+            Number(history.new_salary) >
+            Number(history.old_salary)
+          );
+        })
+        .map((employee) => {
+          const history = latestSalaryHistoryMap.get(
+            employee.EmpCode.trim()
+          );
+
+          return {
+            ...employee,
+            old_salary: Number(history?.old_salary ?? 0),
+            new_salary: Number(history?.new_salary ?? 0),
+            remarks: history?.remarks ?? null,
+          };
+        }),
+
+      decrease: allEmployeesWithVariance
+        .filter((employee) => {
+          const history = latestSalaryHistoryMap.get(
+            employee.EmpCode.trim()
+          );
+
+          if (!history) {
+            return false;
+          }
+
+          return (
+            Number(history.new_salary) <
+            Number(history.old_salary)
+          );
+        })
+        .map((employee) => {
+          const history = latestSalaryHistoryMap.get(
+            employee.EmpCode.trim()
+          );
+
+          return {
+            ...employee,
+            old_salary: Number(history?.old_salary ?? 0),
+            new_salary: Number(history?.new_salary ?? 0),
+            remarks: history?.remarks ?? null,
+          };
+        }),
+    };
+
 
 
     return {
-      employees_with_variance: employeeVariance
+      Probationary: {
+        employees: probationaryEmployees,
+      },
+      back_to_work_with_specialleave: {
+        employees: backToWorkWithSpecialLeave,
+      },
+      back_to_work_without_specialleave: {
+        employees: backToWorkWithoutSpecialeave,
+      },
+      missing_in_current_with_specialleave: {
+        employees: missingIntheCurrentWithSpecialLeave
+      },
+      missing_in_current_without_specialleave: {
+        employees: missingIntheCurrentWithoutSpecialLeave,
+      },
+      resigned: {
+        employees: resignedEmployees,
+      },
+      salary_adjustment: {
+        increase: salaryAdjustment.increase,
+        decrease: salaryAdjustment.decrease,
+      },
+      wtax_adjustment: {
+        employees: wtaxAdjustment,
+      },
+      // variance_check: {
+      //   paycycles: [
+      //     latestPayroll.PayCycle,
+      //     secondLatestPayroll.PayCycle,
+      //   ],
+      //   basic_total: basicVarianceTotal,
+      //   employees: allEmployeesWithVariance,
+      // },
     };
 
+
   } catch (error) {
-    console.error("fetchEmployeeVariance error:", error);
-    return { employees_with_variance: [] };
+    console.error(`error occurred in service ${error}`);
+    throw error;
   }
 }
-
-
-
-

@@ -167,10 +167,11 @@ export type UpdateDeductionPayload = {
   TotalAbsentHours: number;
   TotalUndertime: number;
   TotalOvertime:number;
-  gross_pay_edit:number;
-  gross_edited:boolean;
+  // gross_pay_edit:number;
+  // gross_edited:boolean;
   philhealth_employee:number;
   philhealth_employer:number;
   final_wtax:number;
   basic_salary:number;
+  basic_salary_edited:boolean;
 };

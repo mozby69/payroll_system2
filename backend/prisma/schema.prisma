@@ -1052,6 +1052,7 @@ model SummaryTableOverride {
   TotalUndertime Int? 
   TotalOvertime Decimal? @db.Decimal(10,2)
   basic_salary Decimal? @db.Decimal(10,2)
+  basic_salary_edited Boolean @default(false)
   // gross_pay_edit Decimal? @db.Decimal(10,2)
   // gross_edited Boolean @default(false)
   philhealth_employee Decimal? @db.Decimal(10,2)

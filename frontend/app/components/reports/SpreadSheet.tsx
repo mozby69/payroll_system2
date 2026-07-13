@@ -184,9 +184,9 @@ export default function SpreadSheet({ data,totals }: Props) {
   }
 
   return (
-    <div className="print-area1 w-full p-4">
+    <div className="print-area1 w-full max-h-[75vh] overflow-auto">
       <table className="w-full border-collapse text-[9pt] table-auto">
-        <thead>
+        <thead className="sticky top-0 z-20 bg-slate-100">
           <tr className="border border-gray-300">
             <th colSpan={15}></th>
             <th
@@ -202,6 +202,7 @@ export default function SpreadSheet({ data,totals }: Props) {
             >
               EMPLOYER SHARE
             </th>
+            <th colSpan={1}></th>
           </tr>
 
           <tr className="bg-gray-100 border border-slate-300">

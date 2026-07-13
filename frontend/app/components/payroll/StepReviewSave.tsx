@@ -16,6 +16,7 @@ import { useAuth } from "../UserContext";
 import { useReactToPrint } from "react-to-print";
 import PayrollSpreadsheetPrint from "../reports/PrintPayrollSpreadsheet";
 import ViewDeductionsOnly from "@/app/ModalContent/PreparePayroll/ViewDeductionsOnly";
+import { CycleCategory } from "@/app/types/varianceType";
 
 
 
@@ -43,7 +44,8 @@ export default function StepReviewSave({ onBack }: Props) {
   const payCode = data?.data?.[0]?.PayCode ?? "-";
   const companyCode = data?.data?.[0]?.EmpCode.BranchCode.company_id ?? "-";
 
-  const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
+  //const currentCycle = data?.data?.[0]?.CycleCategory ?? "";
+  const final_currentCycle = data?.data?.[0]?.CycleCategory as CycleCategory;
 
   const printRef = useRef<HTMLDivElement>(null)
 
@@ -327,9 +329,9 @@ export default function StepReviewSave({ onBack }: Props) {
                 <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={companyId} />
             </div>
 
-        {isModalOpen && (
-            <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
-              <FinancialVarianceModal paycode={payCode} cycle={currentCycle} company_id={companyId}/>
+     {isModalOpen && (
+            <RequestModal size="xxxl" title="VIEW VARIANCE" onClose={closeModal}>
+              <FinancialVarianceModal paycode={payCode} cycle={final_currentCycle} company_id={companyId}/>
             </RequestModal>
           )}
 
