@@ -1,5 +1,5 @@
 import { useFetchViewAll } from "@/app/hooks/useAllowance";
-import { loanlistProps, ViewAllItem } from "@/app/types/allowanceType";
+import {  ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
 
