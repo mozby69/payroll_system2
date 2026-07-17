@@ -12,6 +12,7 @@ import { toNumber } from "@/app/helper/SpreadsheetHelper";
 import {  useDisplayForApprovalPayroll, useReCheckPayroll, useReCheckPayrollToChecker, useSaveFinalPayroll, useSaveToApproverPayroll } from "@/app/hooks/usePayrollArchive";
 
 import FinancialVarianceModal from "@/app/ModalContent/Financial/financialVariance";
+import { CycleCategory } from "@/app/types/varianceType";
 //import { toNamespacedPath } from "path";
 import { useMemo, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print"
@@ -30,7 +31,8 @@ export default function FinancialPage(){
       const [isModalOpen, setIsModalOpen] = useState(false);
       const [loading] = useState(false);
       //const [selectedCompany, setSelectedCompany] = useState("");
-      const [cycle, setCycle] = useState("");
+      //const [cycle, setCycle] = useState("");
+     const [cycle, setCycle] = useState<CycleCategory | "">("");
       const [company, setCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
@@ -354,21 +356,30 @@ export default function FinancialPage(){
                 <div className="flex gap-4 px-4 mt-4">
 
                     {/* Cycle */}
-                    <select
-                      className="border px-3 py-2 rounded"
-                      value={cycle}
-                      onChange={(e) => {
-                        setCycle(e.target.value);
-                        setCompany(""); // reset company
-                      }}
-                    >
-                      <option value="">Select Cycle</option>
-                      {cycles.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
+                           <select
+  className="border px-3 py-2 rounded"
+  value={cycle}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    if (
+      value === "" ||
+      value === "10-25-Cycle" ||
+      value === "15-30-Cycle"
+    ) {
+      setCycle(value);
+      setCompany("");
+    }
+  }}
+>
+  <option value="">Select Cycle</option>
+
+  {cycles.map((c) => (
+    <option key={c} value={c}>
+      {c}
+    </option>
+  ))}
+</select>
 
                     {/* Company */}
                     <select
@@ -399,15 +410,20 @@ export default function FinancialPage(){
                       }
                     />
 
-              {isModalOpen && (
-                <RequestModal size="xxl" title="VIEW VARIANCE" onClose={closeModal}>
-                  <FinancialVarianceModal
-                    paycode={payCode}
-                    cycle={cycle}
-                    company_id={company}
-                  />
-                </RequestModal>
-              )}
+                {isModalOpen && cycle !== "" && (
+  <RequestModal
+    size="xxl"
+    title="VIEW VARIANCE"
+    onClose={closeModal}
+  >
+    <FinancialVarianceModal
+      paycode={payCode}
+      cycle={cycle}
+      company_id={company}
+    />
+  </RequestModal>
+)}
+
 
 
             <div className="hidden print:block">

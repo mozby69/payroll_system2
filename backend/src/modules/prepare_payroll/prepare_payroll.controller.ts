@@ -214,12 +214,13 @@ export async function updateDeductionController(req: Request, res: Response) {
       TotalAbsentHours,
       TotalUndertime,
       TotalOvertime,
-      gross_pay_edit,
-      gross_edited,
+      // gross_pay_edit,
+      // gross_edited,
       philhealth_employee,
       philhealth_employer,
       final_wtax,
       basic_salary,
+      basic_salary_edited,
     } = req.body;
 
     if (!PayCode || !EmpCodeId || !PayrollPeriod) {
@@ -234,12 +235,13 @@ export async function updateDeductionController(req: Request, res: Response) {
       TotalAbsentHours,
       TotalUndertime,
       TotalOvertime,
-      gross_pay_edit,
-      gross_edited,
+      // gross_pay_edit,
+      // gross_edited,
       philhealth_employee,
       philhealth_employer,
       final_wtax,
-      basic_salary
+      basic_salary,
+      basic_salary_edited,
     });
 
     return res.json(result);
