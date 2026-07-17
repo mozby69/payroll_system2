@@ -1,6 +1,8 @@
 
+export function MathRound(
+  amount?: number | string | null
+): number {
+  const value = Number(amount ?? 0);
 
-
-export function MathRound(amount:number):number{
-    return Math.round(amount * 100) / 100;
+  return Math.round(value * 100) / 100;
 }

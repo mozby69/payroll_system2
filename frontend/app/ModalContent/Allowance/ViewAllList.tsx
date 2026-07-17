@@ -428,7 +428,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                 )
                                                             )}
 
-                                                            <tr className="border-t bg-gray-100 font-semibold">
+                                                            {/* <tr className="border-t bg-gray-100 font-semibold">
                                                                 <td
                                                                     className="py-2"
                                                                     colSpan={2}
@@ -467,7 +467,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                                         branchTotals.total
                                                                     )}
                                                                 </td>
-                                                            </tr>
+                                                            </tr> */}
                                                         </tbody>
                                                     </table>
                                                 </div>
@@ -476,7 +476,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                     )}
 
                                     {/* COMPANY TOTAL */}
-                                    <table className="w-full border-collapse border border-gray-400 text-center">
+                                    {/* <table className="w-full border-collapse border border-gray-400 text-center">
                                         <tbody>
                                             <tr className="bg-gray-300 font-bold">
                                                 <td className="py-2" colSpan={2}>
@@ -516,7 +516,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                 </td>
                                             </tr>
                                         </tbody>
-                                    </table>
+                                    </table> */}
                                 </div>
                             );
                         }

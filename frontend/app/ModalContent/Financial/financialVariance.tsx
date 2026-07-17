@@ -1,6 +1,6 @@
-import { useDisplayVariance } from "@/app/hooks/useVariance";
-import { CycleCategory } from "@/app/types/varianceType";
-import EmployeeVariance from "./EmployeeVariance"; 
+import { useCompleteVariance, useDisplayVariance } from "@/app/hooks/useVariance";
+import { CompleteVarianceProp, CycleCategory } from "@/app/types/varianceType";
+import EmployeeVariance from "./EmployeeVariance";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 //import EmployeeVariance from "./EmployeeVariance";
@@ -95,6 +95,7 @@ export default function FinancialVarianceModal({
   company_id,
 }: Props) {
   const { data, isLoading } = useDisplayVariance(company_id, cycle);
+  const { data: all_variance  } = useCompleteVariance(company_id, cycle);
 
   const variance = data?.data;
 
@@ -171,6 +172,44 @@ export default function FinancialVarianceModal({
   });
 
 
+
+
+
+
+  const varianceLabels: Record<keyof CompleteVarianceProp, string> = {
+    final_basic_variance: "Basic Pay Variance",
+    final_pagibig_employee_var:"Pag-IBIG Employee Variance",
+    final_pagibig_employer_var:"Pag-IBIG Employer Variance",
+    final_wtax_var: "Withholding Tax Variance",
+    final_SSS_EE_var: "SSS Employee Variance",
+    final_SSS_ER_var: "SSS Employer Variance",
+    final_Phil_EE_var:"PhilHealth Employee Variance",
+    final_Phil_ER_var:"PhilHealth Employer Variance",
+  };
+
+  const finalVarianceRows = all_variance
+    ? (
+      Object.entries(all_variance) as Array<
+        [
+          keyof CompleteVarianceProp,
+          number | undefined
+        ]
+      >
+    )
+      .filter(
+        (
+          entry
+        ): entry is [
+          keyof CompleteVarianceProp,
+          number
+        ] => entry[1] !== undefined
+      )
+      .map(([key, value]) => ({
+        key,
+        label: varianceLabels[key],
+        value,
+      }))
+    : [];
   return (
     <div className="p-1">
 
@@ -240,6 +279,44 @@ export default function FinancialVarianceModal({
 
         <div className="py-4">
           <EmployeeVariance paycode={paycode} cycle={cycle} company_id={company_id} />
+        </div>
+
+
+
+
+
+        <div className="pt-4 px-4">
+          <h2 className="mb-3 font-bold">
+            Final Variance
+          </h2>
+
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-slate-400 px-3 py-2 text-left">
+                  Description
+                </th>
+
+                <th className="border border-slate-400 px-3 py-2 text-right">
+                  Variance
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {finalVarianceRows.map((item) => (
+                <tr key={item.key}>
+                  <td className="border border-slate-400 px-3 py-2">
+                    {item.label}
+                  </td>
+
+                  <td className="border border-slate-400 px-3 py-2 text-right">
+                    {formatAmount(item.value)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
       </div>

@@ -19,8 +19,8 @@ export interface VarianceComputedRow {
   sss_employer: number;
   phil_employee: number;
   phil_employer: number;
-  pagibig_employee: number;
-  pagibig_employer: number;
+  pagibig_employee_variance: number;
+  pagibig_employer_variance: number;
   wtax: number;
 }
 
@@ -80,6 +80,17 @@ export type VarianceEmployee = {
   remarks?: string;
 };
 
+
+export interface CompleteVarianceProp {
+  final_basic_variance?: number;
+  final_pagibig_employee_var?: number;
+  final_pagibig_employer_var?: number;
+  final_wtax_var?: number;
+  final_SSS_EE_var?: number;
+  final_SSS_ER_var?: number;
+  final_Phil_EE_var?: number;
+  final_Phil_ER_var?: number;
+}
 
 // export type EmployeeVarianceResponse = {
 //   data: {
