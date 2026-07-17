@@ -563,31 +563,37 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
 
     //wtax
+
+
+
+
     const wtaxAdjustment = allEmployeesWithVariance.filter(
       (employee) => {
+        const empCode = employee.EmpCode.trim();
         const isTaxable = employee.Taxable === true;
 
         const hasWtaxVariance = toCentavos(employee.wtax_variance) !== 0;
 
-        return isTaxable && hasWtaxVariance;
+
+        const isExcluded = ExcludeInTax.has(empCode);
+
+        return isTaxable && hasWtaxVariance && !isExcluded;
       }
     );
 
     //resigned
-    const resignedEmployees = allEmployeesWithVariance.filter(
-      (employee) => {
-        const isResigned =
-          employee.EmployeeStatus === "Resigned";
+    const resignedEmployees = allEmployeesWithVariance.filter((employee) => {
+      const isResigned = employee.EmployeeStatus === "Resigned";
 
-        const hasLatestOrSecondLatestPayroll =
-          employee.isArchiveBasic &&
-          employee.isArchiveContribution;
+      const hasLatestOrSecondLatestPayroll =
+        employee.isArchiveBasic ||
+        employee.isArchiveContribution;
 
-        return (
-          isResigned &&
-          hasLatestOrSecondLatestPayroll
-        );
-      }
+      return (
+        isResigned &&
+        hasLatestOrSecondLatestPayroll
+      );
+    }
     );
 
 
@@ -692,6 +698,9 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
     const missingIntheCurrentWithSpecialLeave = allEmployeesWithVariance.filter((employee) => {
       const empCode = employee.EmpCode.trim();
 
+      const isResigned = employee.EmployeeStatus === "Resigned";
+
+
       const doesExistInLatestOrSecondLatest =
         employee.isArchiveBasic ||
         employee.isArchiveContribution;
@@ -703,27 +712,27 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
         specialLeaveMap.has(empCode);
 
       return (
+        !isResigned &&
         doesExistInLatestOrSecondLatest &&
         isNowNotInCurrentPayroll &&
         hasSpecialLeave
       );
-    })
-      .map((employee) => {
-        const leave = specialLeaveMap.get(
-          employee.EmpCode.trim()
-        );
+    }).map((employee) => {
+      const leave = specialLeaveMap.get(
+        employee.EmpCode.trim()
+      );
 
-        return {
-          ...employee,
-          leaveName: leave?.leaveName ?? null,
-        };
-      });
+      return {
+        ...employee,
+        leaveName: leave?.leaveName ?? null,
+      };
+    });
 
 
-    const basicVarianceTotal = allEmployeesWithVariance.reduce(
-      (sum, employee) => sum + employee.basic_variance,
-      0
-    );
+    // const basicVarianceTotal = allEmployeesWithVariance.reduce(
+    //   (sum, employee) => sum + employee.basic_variance,
+    //   0
+    // );
 
 
     // missing in the current without speciaw leave 
@@ -759,6 +768,65 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
 
 
+
+    //exclude 
+
+
+    const ExcludeInTax = new Set<string>([
+
+
+      ...backToWorkWithoutSpecialeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...backToWorkWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...missingIntheCurrentWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+      ...resignedEmployees.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+  
+      ...missingIntheCurrentWithoutSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+    ]);
+
+    const excludedFromSalaryAdjustment = new Set<string>([
+
+      ...probationaryEmployees.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...backToWorkWithoutSpecialeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...backToWorkWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...missingIntheCurrentWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+      ...resignedEmployees.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+      ...wtaxAdjustment.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+      ...missingIntheCurrentWithoutSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+    ]);
+
+
+
+
+
     // salary adjustment: 
 
     const salaryHistoryRecords =
@@ -788,8 +856,27 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       }
     }
 
+    /*
+     * Only employees with a basic salary variance
+     * can appear in salary adjustment.
+     */
+    const salaryAdjustmentEmployees =
+      allEmployeesWithVariance.filter((employee) => {
+        const empCode = employee.EmpCode.trim();
+
+        if (excludedFromSalaryAdjustment.has(empCode)) {
+          return false;
+        }
+
+        if (employee.basic_variance === 0) {
+          return false;
+        }
+
+        return latestSalaryHistoryMap.has(empCode);
+      });
+
     const salaryAdjustment = {
-      increase: allEmployeesWithVariance
+      increase: salaryAdjustmentEmployees
         .filter((employee) => {
           const history = latestSalaryHistoryMap.get(
             employee.EmpCode.trim()
@@ -799,25 +886,42 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
             return false;
           }
 
-          return (
-            Number(history.new_salary) >
-            Number(history.old_salary)
-          );
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
+          return newSalary > oldSalary;
         })
         .map((employee) => {
           const history = latestSalaryHistoryMap.get(
             employee.EmpCode.trim()
           );
 
+          if (!history) {
+            return null;
+          }
+
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
           return {
             ...employee,
-            old_salary: Number(history?.old_salary ?? 0),
-            new_salary: Number(history?.new_salary ?? 0),
-            remarks: history?.remarks ?? null,
+            old_salary: oldSalary,
+            new_salary: newSalary,
+            salary_variance: calculateMoneyVariance(
+              newSalary,
+              oldSalary
+            ),
+            remarks: history.remarks ?? null,
           };
-        }),
+        })
+        .filter(
+          (
+            employee
+          ): employee is NonNullable<typeof employee> =>
+            employee !== null
+        ),
 
-      decrease: allEmployeesWithVariance
+      decrease: salaryAdjustmentEmployees
         .filter((employee) => {
           const history = latestSalaryHistoryMap.get(
             employee.EmpCode.trim()
@@ -827,23 +931,40 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
             return false;
           }
 
-          return (
-            Number(history.new_salary) <
-            Number(history.old_salary)
-          );
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
+          return newSalary < oldSalary;
         })
         .map((employee) => {
           const history = latestSalaryHistoryMap.get(
             employee.EmpCode.trim()
           );
 
+          if (!history) {
+            return null;
+          }
+
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
           return {
             ...employee,
-            old_salary: Number(history?.old_salary ?? 0),
-            new_salary: Number(history?.new_salary ?? 0),
-            remarks: history?.remarks ?? null,
+            old_salary: oldSalary,
+            new_salary: newSalary,
+            salary_variance: calculateMoneyVariance(
+              newSalary,
+              oldSalary
+            ),
+            remarks: history.remarks ?? null,
           };
-        }),
+        })
+        .filter(
+          (
+            employee
+          ): employee is NonNullable<typeof employee> =>
+            employee !== null
+        ),
     };
 
 

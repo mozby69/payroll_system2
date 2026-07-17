@@ -1,13 +1,17 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import {allowanceprops,AllowanceRow,ArchiveAllowanceDTO,ArchiveAllowanceFullResponse,BranchMeta,EmployeeVariance,SummaryAllowanceProps} from "./allowance.types";
-import {formatAllowanceMonth,getDaysInMonth,getPreviousMonth, round2, to2} from "./allowance.helper";
+import { allowanceprops, AllowanceRow, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchMeta, EmployeeVariance, SummaryAllowanceProps } from "./allowance.types";
+import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, round2, to2 } from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 import { generateAllowancePDF } from "../print/print.service";
 import nodemailer from "nodemailer";
 import { getAllowanceEmergency } from "../general/general.services";
 
-export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}: allowanceprops) {
+
+
+
+
+export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMonth }: allowanceprops) {
   const [year, month] = selectedMonth.split("-").map(Number);
   const prev = getPreviousMonth(year, month);
 
@@ -36,15 +40,15 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
 
       ...(search
         ? [
-            {
-              OR: [
-                { EmpCode: { contains: search } },
-                { Firstname: { contains: search } },
-                { Lastname: { contains: search } },
-                { BranchCodeId: { contains: search } },
-              ],
-            },
-          ]
+          {
+            OR: [
+              { EmpCode: { contains: search } },
+              { Firstname: { contains: search } },
+              { Lastname: { contains: search } },
+              { BranchCodeId: { contains: search } },
+            ],
+          },
+        ]
         : []),
     ],
   };
@@ -120,7 +124,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
     //   0,
     // );
 
-    const computedAbsent = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
+    const computedAbsent = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0), 0);
     const totalAbsentHours = overrideAbsentMap.has(emp.EmpCode) ? overrideAbsentMap.get(emp.EmpCode)! : computedAbsent;
 
     const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
@@ -159,7 +163,7 @@ export async function fetchAllowanceWithAbsent({page,limit,search,selectedMonth}
       total: finalTotal,
       loan: 0,
       totalDeduction: totalDeductions,
-      absent_hours:totalAbsentHours,
+      absent_hours: totalAbsentHours,
       BranchCode: {
         branchCode: overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode,
       },
@@ -287,58 +291,58 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
 
- const employees = await prisma.employee.findMany({
-  where: {
-    AND: [
-      {
-        OR: [
-          {
-            EmployeeStatus: {
-              notIn: ["Resigned", "Inactive", "Terminate"],
-            },
-          },
-          {
-            bod_member: {
-              in: ["bod1", "bod2", "bod3"],
-            },
-          },
-        ],
-      },
-
-      {
-        OR: [
-          // NON-ALIEN → filter using primary main branch
-          {
-            isAlien: false,
-            BranchCode: {
-              company_id: {
-                notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
+  const employees = await prisma.employee.findMany({
+    where: {
+      AND: [
+        {
+          OR: [
+            {
+              EmployeeStatus: {
+                notIn: ["Resigned", "Inactive", "Terminate"],
               },
-              branchCode:{
-                notIn:["SGI","NAH"],
-              }
             },
-          },
-
-          // ALIEN → ignore main branch, use secondaryBranch instead
-          {
-            isAlien: true,
-            secondaryBranch: {
-              company_id: {
-                notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
+            {
+              bod_member: {
+                in: ["bod1", "bod2", "bod3"],
               },
-                branchCode:{
-                notIn:["SGI","NAH"],
-              }
             },
-          },
-        ],
-      },
-    ],
-  },
+          ],
+        },
+
+        {
+          OR: [
+            // NON-ALIEN → filter using primary main branch
+            {
+              isAlien: false,
+              BranchCode: {
+                company_id: {
+                  notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
+                },
+                branchCode: {
+                  notIn: ["SGI", "NAH"],
+                }
+              },
+            },
+
+            // ALIEN → ignore main branch, use secondaryBranch instead
+            {
+              isAlien: true,
+              secondaryBranch: {
+                company_id: {
+                  notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
+                },
+                branchCode: {
+                  notIn: ["SGI", "NAH"],
+                }
+              },
+            },
+          ],
+        },
+      ],
+    },
 
 
-    
+
 
     select: {
       EmpCode: true,
@@ -346,14 +350,14 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       Lastname: true,
       bod_member: true,
       Position: true,
-      Department:true,
-      isAlien:true,
-      secondaryBranch:true,
-      secondaryBranchId:true,
+      Department: true,
+      isAlien: true,
+      secondaryBranch: true,
+      secondaryBranchId: true,
       BranchCode: {
         select: {
           branchCode: true,
-          company_id:true,
+          company_id: true,
         },
       },
       employeepayroll: {
@@ -395,7 +399,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
 
 
-    //override absent
+  //override absent
   const absentOverrides = await prisma.employeeAbsentOverride.findMany({
     where: {
       selectedMonth,
@@ -410,11 +414,11 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
   //return employees.map((emp) => {
   const rows = employees.map((emp) => {
     //const totalAbsentHours = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0), 0,);
-    const computedAbsent = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0),0);
+    const computedAbsent = emp.employeesummary.reduce((sum, row) => sum + Number(row.TotalAbsentHours ?? 0), 0);
     const totalAbsentHours = overrideAbsentMap.has(emp.EmpCode) ? overrideAbsentMap.get(emp.EmpCode)! : computedAbsent;
     const cashAssistance = emp.employeepayroll?.cash_assistance?.toNumber() ?? 0;
     const hasEcola = emp.employeepayroll?.with_ecola === true;
-   // const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
+    // const branchCode = overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode;
 
     const isEmergency = emergency_allowance?.is_emergency ?? false;
 
@@ -456,10 +460,10 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       emp.bod_member === "bod1" || emp.bod_member === "bod3"
         ? "board"
         : emp.Department === "M2"
-        ? "M2"
-        : emp.bod_member === "Mancom"
-        ? "Mancom"
-        : null;
+          ? "M2"
+          : emp.bod_member === "Mancom"
+            ? "Mancom"
+            : null;
 
 
     return {
@@ -476,16 +480,16 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       company_id: companyId,
       bod_member: bodMember,
       position: manCom,
-      Department:emp.Department,
+      Department: emp.Department,
       // loan code ↓
       fch_rfc_deducted,
       base_cash_assistance: cashAssistance,
       base_ecola: ecola,
-      isAlien:emp.isAlien,
-      secondaryBranchId:emp.secondaryBranchId,
+      isAlien: emp.isAlien,
+      secondaryBranchId: emp.secondaryBranchId,
       positionEmp,
-      is_emergency:isEmergency,
-      emergency_allowance_amount:emergencyAmount,
+      is_emergency: isEmergency,
+      emergency_allowance_amount: emergencyAmount,
       // loan code ↑
     };
   });
@@ -609,7 +613,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       totalDeduction: 0,
       deduct: 0,
       fch_rfc_deducted: 0,
-      emergency_allowance_amount:0,
+      emergency_allowance_amount: 0,
     },
   );
 
@@ -657,7 +661,7 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         totalDeduction: summary.totalDeduction,
         totalAbsent: summary.deduct,
         totalLoan: summary.fch_rfc_deducted,
-        total_emergency_allowance:summary.emergency_allowance_amount,
+        total_emergency_allowance: summary.emergency_allowance_amount,
         createdAt: nowPH(),
       },
     });
@@ -677,25 +681,25 @@ export async function saveAllowanceArchive(selectedMonth: string) {
 
         loan: emp.fch_rfc_deducted,
         branchCode: emp.branch_code,
-        base_cash_assistance:emp.base_cash_assistance,
+        base_cash_assistance: emp.base_cash_assistance,
         base_ecola: emp.base_ecola,
         position: emp.positionEmp,
         emergency_allowance_amount: emp.emergency_allowance_amount,
-        is_emergency:emp.is_emergency,
+        is_emergency: emp.is_emergency,
 
         createdAt: nowPH(),
       })),
     });
 
-    await tx.allowanceArchiveDetails.create({
-      data: {
-        selectedMonth,
-        company_list: data_archived.TOTAL_PER_COMPANY as Prisma.InputJsonValue,
-        loans: data_archived.LOANS as Prisma.InputJsonValue,
-        variance_allowance: data_archived.VARIANCE as Prisma.InputJsonValue,
-        variance_employee: data_archived.VARIANCE_EMP as Prisma.InputJsonValue,
-      },
-    });
+    // await tx.allowanceArchiveDetails.create({
+    //   data: {
+    //     selectedMonth,
+    //     company_list: data_archived.TOTAL_PER_COMPANY as Prisma.InputJsonValue,
+    //     loans: data_archived.LOANS as Prisma.InputJsonValue,
+    //     variance_allowance: data_archived.VARIANCE as Prisma.InputJsonValue,
+    //     variance_employee: data_archived.VARIANCE_EMP as Prisma.InputJsonValue,
+    //   },
+    // });
 
     for (const emp of rows) {
       if (!emp.fch_rfc_deducted || emp.fch_rfc_deducted <= 0) continue;
@@ -741,7 +745,7 @@ type UpdateAllowanceBranchParams = {
   branchCode: string;
 };
 
-export async function updateAllowanceBranch({EmpCode,selectedMonth,branchCode}: UpdateAllowanceBranchParams) {
+export async function updateAllowanceBranch({ EmpCode, selectedMonth, branchCode }: UpdateAllowanceBranchParams) {
   await prisma.allowance_branch_override.upsert({
     where: {
       EmpCode_selectedMonth: {
@@ -757,14 +761,14 @@ export async function updateAllowanceBranch({EmpCode,selectedMonth,branchCode}: 
       selectedMonth,
       branchCode,
     },
-  });  
+  });
 }
 
 
 
 
 
-export async function updateAbsentOverride({EmpCode,selectedMonth,absent_hours}: {
+export async function updateAbsentOverride({ EmpCode, selectedMonth, absent_hours }: {
   EmpCode: string;
   selectedMonth: string;
   absent_hours: number;
@@ -789,7 +793,7 @@ export async function updateAbsentOverride({EmpCode,selectedMonth,absent_hours}:
 
 
 
-export async function displayAllowanceList({page,limit,search}: SummaryAllowanceProps) {
+export async function displayAllowanceList({ page, limit, search }: SummaryAllowanceProps) {
 
   const allowanceWhere: Prisma.archive_allowance_summaryWhereInput = {
     ...(search && {
@@ -840,7 +844,7 @@ export async function displayAllowanceList({page,limit,search}: SummaryAllowance
 
 export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise<ArchiveAllowanceFullResponse> {
 
-  const [branches, list,details] = await Promise.all([
+  const [branches, list, details] = await Promise.all([
     prisma.branch.findMany({
       select: {
         branchCode: true,
@@ -866,8 +870,8 @@ export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise
         position: true,
         createdAt: true,
         branchCode: true,
-        emergency_allowance_amount:true,
-        is_emergency:true,
+        emergency_allowance_amount: true,
+        is_emergency: true,
       },
       orderBy: {
         EmpCode: {
@@ -877,11 +881,11 @@ export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise
     }),
 
     prisma.allowanceArchiveDetails.findFirst({
-      where:{
-         selectedMonth
+      where: {
+        selectedMonth
       },
     })
-]);
+  ]);
 
 
   const branchMap = new Map<string, BranchMeta>(
@@ -914,17 +918,17 @@ export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise
       branchCode: row.branchCode,
       branchPosition: meta?.position ?? 999,
       company_id: meta?.company_id ?? null,
-      emergency_allowance_amount: row.emergency_allowance_amount ? Number(row.emergency_allowance_amount): null,
+      emergency_allowance_amount: row.emergency_allowance_amount ? Number(row.emergency_allowance_amount) : null,
       is_emergency: row.is_emergency,
     };
   });
-   const parsedDetails = details
+  const parsedDetails = details
     ? {
-        company_list: details.company_list,
-        loans: details.loans,
-        variance_allowance: details.variance_allowance,
-        variance_employee: details.variance_employee,
-      }
+      company_list: details.company_list,
+      loans: details.loans,
+      variance_allowance: details.variance_allowance,
+      variance_employee: details.variance_employee,
+    }
     : null;
 
   return {
@@ -971,16 +975,16 @@ export async function getBranchesByCompany(companyCode: string) {
 
 
 
-export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,branch,empId}: {
+export async function getArchiveAllowanceByCompanyBranch({ selectedMonth, company, branch, empId }: {
   selectedMonth: string;
   company: string;
   branch: string;
-  empId?:string;
+  empId?: string;
 }) {
   return await prisma.archive_allowance.findMany({
     where: {
       selectedMonth,
-      ...(empId && { EmpCodeId: empId }), 
+      ...(empId && { EmpCodeId: empId }),
       EmpCode: {
         BranchCode: {
           branchCode: branch,
@@ -1007,9 +1011,9 @@ export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,
               company_id: true,
             },
           },
-          employeepayroll:{
-            select:{
-              gmail_account:true,
+          employeepayroll: {
+            select: {
+              gmail_account: true,
             }
           }
         },
@@ -1036,10 +1040,13 @@ export async function getLoanFor() {
             EmpCode: true,
             Firstname: true,
             Lastname: true,
-            BranchCodeId:true,
+            BranchCodeId: true,
+
           },
         },
         per_payroll_deduct: true,
+        loan_type: true,
+        others_types: true,
       },
     });
 
@@ -1048,7 +1055,9 @@ export async function getLoanFor() {
       Firstname: loan.EmpCode.Firstname,
       Lastname: loan.EmpCode.Lastname,
       per_payroll_deduct: loan.per_payroll_deduct?.toNumber() ?? 0,
-      BranchCodeId:loan.EmpCode.BranchCodeId,
+      BranchCodeId: loan.EmpCode.BranchCodeId,
+      loan_type: loan.loan_type,
+      others_types: loan.others_types,
     }));
   } catch (error) {
     console.error("Error occured", error);
@@ -1151,33 +1160,40 @@ export async function ViewAllList(selectedMonth: string) {
 
     const mancom = nonBoard.filter((row) => row.bod_member === "Mancom");
 
+    const MHMembers = filteredRows.filter(
+      (row) =>
+        row.branch_code === "EMB-MAIN" &&
+        row.Department !== "M2" &&
+        row.bod_member !== "bod1" &&
+        row.bod_member !== "bod3" &&
+        row.bod_member !== "Mancom"
+    );
+
     const regularEmployees = nonBoard.filter((row) => row.bod_member !== "Mancom" && row.Department !== "M2");
 
-    const branchesByCompany: Record<string,Record<string, AllowanceRow[]>> = {};
 
-    const COMPANY_ORDER = ["EMB", "FCH", "RFC", "ELC","PSPMI","DOJA"];
+    const branchesByCompany: Record<string, Record<string, AllowanceRow[]>> = {};
+
+    const COMPANY_ORDER = ["EMB", "FCH", "RFC", "ELC", "PSPMI", "DOJA"];
 
 
-   
-   for (const employee of regularEmployees) {
-   const branch = employee.branch_code ?? "NO_BRANCH";
-    const company = branch.split("-")[0] ?? "UNKNOWN";
 
-    if (!branchesByCompany[company]) {
-      branchesByCompany[company] = {};
+    for (const employee of regularEmployees) {
+      const branch = employee.branch_code ?? "NO_BRANCH";
+      const company = branch.split("-")[0] ?? "UNKNOWN";
+
+      if (!branchesByCompany[company]) {
+        branchesByCompany[company] = {};
+      }
+
+      if (!branchesByCompany[company][branch]) {
+        branchesByCompany[company][branch] = [];
+      }
+      branchesByCompany[company][branch].push(employee);
     }
-
-    if (!branchesByCompany[company][branch]) {
-      branchesByCompany[company][branch] = [];
-    }
-    branchesByCompany[company][branch].push(employee);
-  }
 
     for (const company of Object.keys(branchesByCompany)) {
       for (const branch of Object.keys(branchesByCompany[company])) {
-        // branchesByCompany[company][branch].sort((a, b) => {
-        //   return (a.EmpCode ?? "").localeCompare(b.EmpCode ?? "");
-        // });
         branchesByCompany[company][branch].sort((a, b) => {
           return (a.name ?? "").localeCompare(b.name ?? "");
         });
@@ -1186,40 +1202,125 @@ export async function ViewAllList(selectedMonth: string) {
 
 
 
-    const orderedBranches: Record<string,Record<string, AllowanceRow[]>> = {};
+    const orderedBranches: Record<
+      string,
+      Record<string, AllowanceRow[]>
+    > = {};
 
     for (const company of COMPANY_ORDER) {
-      if (!branchesByCompany[company]) continue;
-      const branchEntries = Object.entries(branchesByCompany[company]);
+      if (!branchesByCompany[company]) {
+        continue;
+      }
+
+      const branchEntries = Object.entries(
+        branchesByCompany[company]
+      );
 
       branchEntries.sort((a, b) => {
-        const posA = branchPositionMap.get(a[0]) ?? 999;
-        const posB = branchPositionMap.get(b[0]) ?? 999;
+        const posA =
+          branchPositionMap.get(a[0]) ?? 999;
+
+        const posB =
+          branchPositionMap.get(b[0]) ?? 999;
+
         return posA - posB;
       });
 
-      orderedBranches[company] = Object.fromEntries(branchEntries);
+      orderedBranches[company] =
+        Object.fromEntries(branchEntries);
     }
-
 
     if (M2Members.length > 0) {
       if (!orderedBranches["EMB"]) {
         orderedBranches["EMB"] = {};
       }
 
-      const entries = Object.entries(orderedBranches["EMB"]);
-      entries.splice(1, 0, ["BACOLOD_BRANCH", M2Members]);
-      orderedBranches["EMB"] = Object.fromEntries(entries);
+      const {
+        ["EMB-MAIN"]: _removedEmbMain,
+        ...embBranchesWithoutMain
+      } = orderedBranches["EMB"];
+
+      orderedBranches["EMB"] = {
+        BACOLOD_BRANCH: M2Members,
+        ...embBranchesWithoutMain,
+      };
+    }
+
+    const mhTotals = MHMembers.reduce(
+      (acc, employee) => {
+        acc.cash_allowance += Number(employee.cash_allowance ?? 0);
+        acc.computed_ecola += Number(employee.computed_ecola ?? 0);
+        acc.total += Number(employee.total ?? 0);
+
+        return acc;
+      },
+      {
+        cash_allowance: 0,
+        computed_ecola: 0,
+        total: 0,
+      }
+    );
+
+
+    const boardAndMancom = [
+      ...boardMembers,
+      ...mancom,
+    ];
+
+    const boardAndMancomTotals = boardAndMancom.reduce(
+      (acc, employee) => {
+        acc.cash_allowance += Number(employee.cash_allowance ?? 0);
+        acc.computed_ecola += Number(employee.computed_ecola ?? 0);
+        acc.total += Number(employee.total ?? 0);
+
+        return acc;
+      },
+      {
+        cash_allowance: 0,
+        computed_ecola: 0,
+        total: 0,
+      }
+    );
+
+
+    const fin_total_mh_boardmancom = {
+      cash_allowance: mhTotals.cash_allowance + boardAndMancomTotals.cash_allowance,
+      computed_ecola: mhTotals.computed_ecola + boardAndMancomTotals.computed_ecola,
+      total: mhTotals.total + boardAndMancomTotals.total,
+    }
+
+    const mhAndMancomLoans = loan_list.filter((loan) =>
+      new Set([
+        ...MHMembers.map((employee) => employee.EmpCode),
+        ...mancom.map((employee) => employee.EmpCode),
+      ]).has(loan.EmpCode)
+    );
+
+    const totalmhAndMancomLoans = mhAndMancomLoans.reduce(
+      (total, loan) => total + Number(loan.per_payroll_deduct),
+      0
+    );
+
+    const totalDisburse = {
+      cash_allowance: (mhTotals.cash_allowance + boardAndMancomTotals.cash_allowance) - totalmhAndMancomLoans,
+      computed_ecola: mhTotals.computed_ecola + boardAndMancomTotals.computed_ecola,
+      total: (mhTotals.total + boardAndMancomTotals.total) - totalmhAndMancomLoans,
     }
 
     return {
       BOARD_MEMBER: boardMembers,
       MANCOM: mancom,
+      MH: MHMembers,
+      mh_totals: mhTotals,
+      board_mancom_totals: boardAndMancomTotals,
+      total_mh_boardmancom: fin_total_mh_boardmancom,
+      mh_mancom_loans: mhAndMancomLoans,
+      totalmhAndMancomLoans,
+      total_disburse: totalDisburse,
       BRANCHES: orderedBranches,
-      LOANS: loan_list ?? [],
-      VARIANCE: variance_allowance ?? null,
-      VARIANCE_EMP: variance_employee ?? null,
-      TOTAL_PER_COMPANY: getTotalPerCompanyList ?? null,
+      // VARIANCE: variance_allowance ?? null,
+      // VARIANCE_EMP: variance_employee ?? null,
+      // TOTAL_PER_COMPANY: getTotalPerCompanyList ?? null,
     };
 
   } catch (error) {
@@ -1240,33 +1341,33 @@ export async function ViewAllList(selectedMonth: string) {
 
 
 export async function getVarianceEmployees(selectedMonth: string): Promise<EmployeeVariance[]> {
-  try {   
+  try {
     const prevMonth = getPreviousMonth2(selectedMonth);
 
     const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
 
-  
+
     const previousRows = await prisma.archive_allowance.findMany({
       where: { selectedMonth: prevMonth },
       select: {
         EmpCode: true,
         cash_allowance: true,
         ecola: true,
-        base_cash_assistance:true,
-        base_ecola:true,
+        base_cash_assistance: true,
+        base_ecola: true,
       },
     });
 
     const prevMap = new Map<string, typeof previousRows[number]>(
       previousRows.map((p) => [
-        p.EmpCode.EmpCode.trim().toUpperCase(), 
+        p.EmpCode.EmpCode.trim().toUpperCase(),
         p,
       ])
     );
 
 
     // salary history 
-     const histories = await prisma.employeeSalaryHistory.findMany({
+    const histories = await prisma.employeeSalaryHistory.findMany({
       where: {
         EmpCodeId: { in: currentRows.map((e) => e.EmpCode) },
         salary_type: "Allowance",
@@ -1284,74 +1385,74 @@ export async function getVarianceEmployees(selectedMonth: string): Promise<Emplo
       }
     }
     // salary history 
-   
 
-      const result: EmployeeVariance[] = currentRows.map((curr) => {
-        const empCode = curr.EmpCode.trim().toUpperCase();
-        const prev = prevMap.get(empCode);
-        const history = latestHistoryMap.get(empCode);
-        
 
-        const currentCash = curr.cash_allowance ?? 0;
-        const currentEcola = curr.computed_ecola ?? 0;
-        const currentTotal = curr.total ?? 0;
+    const result: EmployeeVariance[] = currentRows.map((curr) => {
+      const empCode = curr.EmpCode.trim().toUpperCase();
+      const prev = prevMap.get(empCode);
+      const history = latestHistoryMap.get(empCode);
 
-        //const prevCash = curr.base_cash_assistance ?? 0;
-        //const prevEcola = curr.base_ecola ?? 0;
 
-        const prevCash = Number(prev?.base_cash_assistance ?? 0);
-        const prevEcola = Number(prev?.base_ecola ?? 0);
-        const prevTotal = prevCash + prevEcola;
+      const currentCash = curr.cash_allowance ?? 0;
+      const currentEcola = curr.computed_ecola ?? 0;
+      const currentTotal = curr.total ?? 0;
 
-        const varianceCash = round2(currentCash - prevCash);
-        const varianceEcola = round2(currentEcola - prevEcola);
-        const varianceTotal = round2(varianceCash + varianceEcola);
-        //const varianceTotal = round2(currentTotal - prevTotal);
+      //const prevCash = curr.base_cash_assistance ?? 0;
+      //const prevEcola = curr.base_ecola ?? 0;
 
-        const hasHistory = Boolean(history?.remarks && history?.createdAt);
+      const prevCash = Number(prev?.base_cash_assistance ?? 0);
+      const prevEcola = Number(prev?.base_ecola ?? 0);
+      const prevTotal = prevCash + prevEcola;
 
-        const isPositiveIncrease = varianceCash > 0 || varianceEcola > 0 || varianceTotal > 0;
-        const hasAbsent = curr.absent > 0;
+      const varianceCash = round2(currentCash - prevCash);
+      const varianceEcola = round2(currentEcola - prevEcola);
+      const varianceTotal = round2(varianceCash + varianceEcola);
+      //const varianceTotal = round2(currentTotal - prevTotal);
 
-        const action = hasHistory && isPositiveIncrease
+      const hasHistory = Boolean(history?.remarks && history?.createdAt);
+
+      const isPositiveIncrease = varianceCash > 0 || varianceEcola > 0 || varianceTotal > 0;
+      const hasAbsent = curr.absent > 0;
+
+      const action = hasHistory && isPositiveIncrease
+        ? {
+          type: "ADD" as const,
+          data: {
+            remarks: history?.remarks,
+            created_at: history?.createdAt,
+          },
+        }
+        : hasAbsent
           ? {
-              type: "ADD" as const,
-              data: {
-                remarks: history?.remarks,
-                created_at: history?.createdAt,
-              },
-            }
-          : hasAbsent
-          ? {
-              type: "LESS" as const,
-              data: {},
-            }
+            type: "LESS" as const,
+            data: {},
+          }
           : null;
 
-       return {
-            EmpCode: empCode,
-            name: curr.name,
-            previous: {
-              cash_assistance: prevCash,
-              ecola: prevEcola,
-              total: prevTotal,
-            },
-            current: {
-              cash_assistance: currentCash,
-              ecola: currentEcola,
-              total: currentTotal,
-            },
-            variance: {
-              cash_assistance: varianceCash,
-              ecola: varianceEcola,
-              total: varianceTotal,
+      return {
+        EmpCode: empCode,
+        name: curr.name,
+        previous: {
+          cash_assistance: prevCash,
+          ecola: prevEcola,
+          total: prevTotal,
+        },
+        current: {
+          cash_assistance: currentCash,
+          ecola: currentEcola,
+          total: currentTotal,
+        },
+        variance: {
+          cash_assistance: varianceCash,
+          ecola: varianceEcola,
+          total: varianceTotal,
 
-              remarks: history?.remarks ?? null,
-              created_at: history?.createdAt ?? null,
-              action
-            },
-          };
-      })
+          remarks: history?.remarks ?? null,
+          created_at: history?.createdAt ?? null,
+          action
+        },
+      };
+    })
       .filter(
         (row) =>
           row.variance.cash_assistance !== 0 ||
@@ -1379,7 +1480,7 @@ type CompanyBranchSummary = Record<
     total_cash_allowance: number;
     ecola: number;
     total_num: number;
-    emergency_allowance_amount:number;
+    emergency_allowance_amount: number;
     branches: Record<
       string,
       {
@@ -1403,7 +1504,7 @@ export async function getTotalPerCompany(selectedMonth: string): Promise<Company
           total_cash_allowance: 0,
           ecola: 0,
           total_num: 0,
-          emergency_allowance_amount:0,
+          emergency_allowance_amount: 0,
           branches: {},
         };
       }
@@ -1455,9 +1556,9 @@ export async function getArchiveReport(selectedMonth: string) {
       total: true,
       totalDeduction: true,
       createdAt: true,
-      branchCode:true,
+      branchCode: true,
     },
-   orderBy: {
+    orderBy: {
       EmpCode: {
         BranchCode: {
           company_id: "asc"
@@ -1554,31 +1655,31 @@ export async function sendBulkAllowanceService({
   let failedCount = 0;
 
   for (const emp of employees) {
-  const email = emp.EmpCode?.employeepayroll?.gmail_account;
+    const email = emp.EmpCode?.employeepayroll?.gmail_account;
 
-  if (!email) continue;
+    if (!email) continue;
 
-  try {
-    await sendAllowanceEmailService(
-      {
-        ...emp,
-        email,
-        cash_allowance: emp.cash_allowance ? Number(emp.cash_allowance) : null,
-        ecola: emp.ecola ? Number(emp.ecola) : null,
-        deduct: emp.deduct ? Number(emp.deduct) : null,
-        loan: emp.loan ? Number(emp.loan) : null,
-        total: emp.total ? Number(emp.total) : null,
-      },
-      {
-        month,
-        company,
-        branch,
-      }
-    );
-  } catch (err) {
-    console.error(`Failed for ${emp.EmpCodeId}`, err);
+    try {
+      await sendAllowanceEmailService(
+        {
+          ...emp,
+          email,
+          cash_allowance: emp.cash_allowance ? Number(emp.cash_allowance) : null,
+          ecola: emp.ecola ? Number(emp.ecola) : null,
+          deduct: emp.deduct ? Number(emp.deduct) : null,
+          loan: emp.loan ? Number(emp.loan) : null,
+          total: emp.total ? Number(emp.total) : null,
+        },
+        {
+          month,
+          company,
+          branch,
+        }
+      );
+    } catch (err) {
+      console.error(`Failed for ${emp.EmpCodeId}`, err);
+    }
   }
-}
 
   return {
     success: true,
@@ -1599,22 +1700,22 @@ export async function sendBulkAllowanceService({
 
 
 
-export async function displayEmergencyAllowance(){
-  try{
+export async function displayEmergencyAllowance() {
+  try {
     const data = await prisma.allowance_emergency.findFirst();
     return data;
   }
-  catch(error){
-    console.error("error occured",error);
+  catch (error) {
+    console.error("error occured", error);
   }
 }
 
 
 
-export async function updateEmergencyAllowance(allowance_id:number, is_emergency:boolean, emergency_allowance_amount:number){
+export async function updateEmergencyAllowance(allowance_id: number, is_emergency: boolean, emergency_allowance_amount: number) {
   return prisma.allowance_emergency.update({
-    where :{ allowance_id },
-    data:{ 
+    where: { allowance_id },
+    data: {
       is_emergency: is_emergency,
       emergency_allowance_amount: new Prisma.Decimal(emergency_allowance_amount)
     },

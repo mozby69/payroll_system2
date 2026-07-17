@@ -177,7 +177,7 @@ export default function EmployeeVariance({
             title: "Resigned",
             employees: variance?.resigned?.employees ?? [],
         },
-           {
+        {
             title: "WTax Adjustment",
             employees: variance?.wtax_adjustment?.employees ?? [],
         },
@@ -242,6 +242,14 @@ export default function EmployeeVariance({
         ),
     };
 
+    const duplicateEmpCodes = allEmployees.filter(
+        (employee, index, array) =>
+            array.findIndex(
+                (item) => item.EmpCode === employee.EmpCode
+            ) !== index
+    );
+
+    console.log(duplicateEmpCodes);
 
     return (
         <div className="space-y-4 px-4">
@@ -288,8 +296,10 @@ export default function EmployeeVariance({
                         </thead>
 
                         <tbody>
-                            {allEmployees.map((employee) => (
-                                <tr key={`breakdown-${employee.EmpCode}`}>
+                            {allEmployees.map((employee,index) => (
+                                <tr
+                                    key={`breakdown-${employee.EmpCode}-${index}`}
+                                >
                                     <td className="border border-slate-400  p-2 text-right">
                                         {formatAmount(employee.basic_variance)}
                                     </td>

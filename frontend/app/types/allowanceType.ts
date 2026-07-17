@@ -154,19 +154,18 @@ export interface ViewAllItem {
   branch_code: string;
   bod_member: string | null;
   position: string | null;
-  fch_rfc_deducted: number;
   cash_assitance_deduct:number;
   ecola_deduct:number;
   is_emergency:boolean;
   emergency_allowance_amount:number;
 }
-export interface LoanItem{
-  EmpCode:string;
-  Firstname:string;
-  Lastname:string;
-  per_payroll_deduct?:number;
-  BranchCodeId:string;
-}
+// export interface LoanItem{
+//   EmpCode:string;
+//   Firstname:string;
+//   Lastname:string;
+//   per_payroll_deduct?:number;
+//   BranchCodeId:string;
+// }
 
 export interface CompanyData {
   total_cash_allowance: number;
@@ -177,16 +176,36 @@ export interface CompanyData {
   emergency_allowance_amount:number;
 }
 
+export interface allowanceTotals{
+    cash_allowance:number;
+    computed_ecola:number;
+    total:number;
+}
+export interface loanlistProps{
+    Firstname:string;
+    Lastname:string;
+    per_payroll_deduct:number;
+    loan_type:string;
+    others_types:string;
+}
 export type TotalPerCompany = Record<string, CompanyData>;
 
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
+  MH: ViewAllItem[];
+  mh_totals: allowanceTotals;
+  board_mancom_totals:allowanceTotals;
+  total_mh_boardmancom: allowanceTotals;
+  mh_mancom_loans:loanlistProps [];
+  total_disburse:allowanceTotals;
   BRANCHES: Record<string, Record<string, ViewAllItem[]>>;
-  LOANS: LoanItem[];
+
+  LOANS: loanlistProps[];
   VARIANCE:VarianceAllowance;
   VARIANCE_EMP: VarianceEmpItem[];
   TOTAL_PER_COMPANY: TotalPerCompany;
+  totalmhAndMancomLoans:number;
 }
 
 
