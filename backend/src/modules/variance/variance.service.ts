@@ -549,6 +549,8 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       (employee) => {
         const isProbationary =
           employee.EmploymentStatus === "Probationary";
+             const isResigned = employee.EmployeeStatus === "Resigned";
+
 
         const hasLatestOrSecondLatestPayroll =
           !employee.isArchiveBasic ||
@@ -556,7 +558,7 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
         return (
           isProbationary &&
-          hasLatestOrSecondLatestPayroll
+          hasLatestOrSecondLatestPayroll && !isResigned
         );
       }
     );
@@ -567,19 +569,7 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
 
 
-    const wtaxAdjustment = allEmployeesWithVariance.filter(
-      (employee) => {
-        const empCode = employee.EmpCode.trim();
-        const isTaxable = employee.Taxable === true;
-
-        const hasWtaxVariance = toCentavos(employee.wtax_variance) !== 0;
-
-
-        const isExcluded = ExcludeInTax.has(empCode);
-
-        return isTaxable && hasWtaxVariance && !isExcluded;
-      }
-    );
+  
 
     //resigned
     const resignedEmployees = allEmployeesWithVariance.filter((employee) => {
@@ -794,6 +784,20 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
         (employee) => employee.EmpCode.trim()
       ),
     ]);
+
+      const wtaxAdjustment = allEmployeesWithVariance.filter(
+      (employee) => {
+        const empCode = employee.EmpCode.trim();
+        const isTaxable = employee.Taxable === true;
+
+        const hasWtaxVariance = toCentavos(employee.wtax_variance) !== 0;
+
+
+        const isExcluded = ExcludeInTax.has(empCode);
+
+        return isTaxable && hasWtaxVariance && !isExcluded;
+      }
+    );
 
     const excludedFromSalaryAdjustment = new Set<string>([
 
