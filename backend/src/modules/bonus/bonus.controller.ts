@@ -553,13 +553,20 @@ export async function getEmployeesByBonusSummaryController(
 
         console.log("dawd", groupId)
 
-      //Select correct service
-      const service =
-        companyCode === "FCH"
-          ? getEmployeesFCHBonusSummaryService
-          : getEmployeesByBonusSummaryService;
+        let data;
 
-      const data = await service(companyCode, id, groupId);
+        if (companyCode === "FCH") {
+          data = await getEmployeesFCHBonusSummaryService(
+            companyCode,
+            id,
+            groupId
+          ); 
+        } else {
+          data = await getEmployeesByBonusSummaryService(
+            companyCode,
+            id
+          );
+        }
 
       return res.status(200).json({
         success: true,

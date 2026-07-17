@@ -1981,7 +1981,7 @@ const alert = await prisma.alertConfiguration.findUnique({
       prisma.totalPayroll.findMany({
         where,
         orderBy: {
-          PayCycle: "desc",
+          id: "desc",
         },
         skip,
         take: pageSize,

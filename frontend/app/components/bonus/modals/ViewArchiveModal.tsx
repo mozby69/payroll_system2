@@ -1,44 +1,36 @@
 import { useGetEmployeeGeneratedBonus } from "@/app/hooks/useBonus"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useAuth } from "../../UserContext"
+import { useBranchGroups } from "@/app/hooks/useBranchGroup"
 
 
 type ViewProps = {
     id: number | undefined
+    company: string | undefined
 }
 
-export default function ViewArchiveModal({id} : ViewProps){
+export default function ViewArchiveModal({id, company} : ViewProps){
     const [selectedCompany, setSelectedCompany] = useState<string | undefined>()
     const { user } = useAuth()
-    const companyId = user?.company_id ?? "";
+    const companyCode = company;
+    const companyId = user?.company_id ?? company;
+    const [selectedGroup, setSelectedGroup] = useState<number | undefined>()
     const { data } =
-      useGetEmployeeGeneratedBonus(companyId, id)
+      useGetEmployeeGeneratedBonus(companyId, selectedGroup, id)
     const summary = data?.data.summary
     const companies = data?.data.companies ?? []
     const employees = data?.data.employees ?? []
     const variance = data?.data.variance
-  
-  
-    // ✅ derive active company safely
-    const activeCompany =
-      selectedCompany ?? companies[0]?.companyCode
-      const totals = employees.reduce(
-        (acc, emp) => {
-          acc.basicSalary += Number(emp.basicSalary || 0)
-          acc.halfMonth += Number(emp.basicSalary || 0) / 2
-          acc.bonusAmount += Number(emp.bonusAmount || 0)
-          acc.fchLoan += Number(emp.fchLoan || 0)
-          acc.netAmount += Number(emp.netAmount || 0)
-          return acc
-        },
-        {
-          basicSalary: 0,
-          halfMonth: 0,
-          bonusAmount: 0,
-          fchLoan: 0,
-          netAmount: 0,
+    const { data: groupBranch } = useBranchGroups(); // to get groups
+   const groups = groupBranch?.groups ?? [];
+
+      useEffect(() => {
+        if (!selectedGroup && groups?.length) {
+          setSelectedGroup(groups[0].id)
         }
-      )
+      }, [groups])
+  
+  
 
           
     const varianceEmployees = variance?.varianceEmployees ?? []
@@ -55,9 +47,56 @@ export default function ViewArchiveModal({id} : ViewProps){
     
     const remainingVariance = varianceTotal - varianceBreakdownTotal
   
+  // Derive active company safely
+  const activeGroup =
+    selectedGroup ?? groups
+    const totals = employees.reduce(
+      (acc, emp) => {
+        acc.basicSalary += Number(emp.basicSalary || 0)
+        acc.halfMonth += Number(emp.basicSalary || 0) / 2
+        acc.bonusAmount += Number(emp.bonusAmount || 0)
+        acc.fchLoan += Number(emp.fchLoan || 0)
+        acc.netAmount += Number(emp.netAmount || 0)
+        return acc
+      },
+      {
+        basicSalary: 0,
+        halfMonth: 0,
+        bonusAmount: 0,
+        fchLoan: 0,
+        netAmount: 0,
+      }
+    )
+
  
    return (
       <div className="flex flex-col gap-6">
+         <div>
+              {/* Company Buttons */}
+              {( companyCode === "FCH" && groups.length > 0  ) && (
+                <div className="flex gap-3">
+                  {groups.map(branch => {
+                    const isActive =
+                    activeGroup === branch.id
+                    return (
+                      <button
+                        key={branch.name}
+                        onClick={() =>
+                          setSelectedGroup(branch.id)
+                        }
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          isActive
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {branch.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+          </div>
   
         {/* SUMMARY INFO */}
         {summary && (
