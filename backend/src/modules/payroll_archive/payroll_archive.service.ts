@@ -731,6 +731,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           total_deductions:totalDeductions,
           officers_allowance: officerAllowance,
           disburse_amount:forDisburse,
+          absent_count:totalAbsent,
         };
  
 
@@ -1225,6 +1226,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
                                          : emp.EmpCode.BranchCodeId ?? null,
           officers_allowance: emp.officers_allowance,
           disburse_amount: emp.disburse_amount,
+          absent_count: emp.absent_count,
         };
       });
 

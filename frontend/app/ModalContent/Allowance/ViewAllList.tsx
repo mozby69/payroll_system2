@@ -1,5 +1,5 @@
 import { useFetchViewAll } from "@/app/hooks/useAllowance";
-import {  ViewAllItem } from "@/app/types/allowanceType";
+import { ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
 
@@ -28,7 +28,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const total_disburse = data?.total_disburse;
 
 
-    const branches = data?.BRANCHES ?? {};
+    //const branches = data?.BRANCHES ?? {};
     //const loans = data?.LOANS ?? [];
     const variance = data?.VARIANCE;
     const total_per_company = Object.entries(data?.TOTAL_PER_COMPANY ?? {});
@@ -104,8 +104,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
-                            <tr className="bg-gray-300">
-                                <th></th>
+                            <tr className="bg-gray-200 border-b">
+                                <th>#</th>
                                 <th className="py-2">BOARD</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
@@ -145,8 +145,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
-                            <tr className="bg-gray-300">
-                                <th></th>
+                            <tr className="bg-gray-200">
+                                <th>#</th>
                                 <th className="py-2">MANCOM</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
@@ -186,8 +186,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
-                            <tr className="bg-gray-300">
-                                <th></th>
+                            <tr className="bg-gray-200">
+                                <th>#</th>
                                 <th className="py-2">Branch:MH</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
@@ -329,205 +329,257 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 </div>
 
 
+
+
+
                 {/* BRANCHES LIST */}
-  
-                <div className="pt-4">
-                    {Object.entries(branches).map(
-                        ([company, branchGroup]) => {
-                            const companyEmployees =
-                                Object.values(branchGroup).flat();
+                {Object.entries(data?.BRANCHES ?? {}).map(
+                    ([companyName, company]) => (
+                        <div key={companyName} className="mb-8">
+                            <h2 className="mb-2 text-lg font-bold">
+                                {companyName}
+                            </h2>
 
-                            const companyTotals = computeTotals(
-                                companyEmployees
-                            );
+                            {Object.entries(company.branches).map(
+                                ([branchName, branch]) => (
+                                    <table
+                                        key={branchName}
+                                        className="mb-6 w-full border-collapse text-sm"
+                                    >
+                                        <thead>
+                                            <tr className="bg-gray-200 font-bold">
+                                                <th className="border p-2 w-12">#</th>
+                                                <th className="border p-2 text-left">
+                                                    BRANCH: {branchName}
+                                                </th>
+                                                <th className="border p-2">
+                                                    CASH ASSISTANCE
+                                                </th>
+                                                <th className="border p-2">
+                                                    ECOLA
+                                                </th>
+                                                <th className="border p-2">
+                                                    ABSENT
+                                                </th>
+                                                <th className="border p-2">
+                                                    TOTAL
+                                                </th>
+                                            </tr>
+                                        </thead>
 
-                            return (
-                                <div key={company} className="mb-4">
-                                    <h2 className="mb-2 text-lg font-bold uppercase">
-                                        {company}
-                                    </h2>
-
-                                    {Object.entries(branchGroup).map(
-                                        ([branch, employees]) => {
-                                            const branchTotals =
-                                                computeTotals(employees);
-
-                                            return (
-                                                <div key={branch} className="mb-6">
-                                                    <table className="w-full border-collapse border border-gray-300 text-center">
-                                                        <thead>
-                                                            <tr className="bg-gray-300">
-                                                                <th className="py-2" />
-
-                                                                <th className="py-2">
-                                                                    {branch}
-                                                                </th>
-
-                                                                <th>CASH ASSISTANCE</th>
-                                                                <th>ECOLA</th>
-                                                                <th>ABSENCES</th>
-
-                                                                {showEmergency && (
-                                                                    <th>
-                                                                        EMERGENCY ALLOWANCE
-                                                                    </th>
-                                                                )}
-
-                                                                <th>NET TOTAL</th>
-                                                            </tr>
-                                                        </thead>
-
-                                                        <tbody>
-                                                            {employees.map(
-                                                                (employee, index) => (
-                                                                    <tr
-                                                                        key={employee.EmpCode}
-                                                                        className="border-t"
-                                                                    >
-                                                                        <td className="px-2">
-                                                                            {index + 1}
-                                                                        </td>
-
-                                                                        <td className="py-1">
-                                                                            {employee.name}
-                                                                        </td>
-
-                                                                        <td>
-                                                                            {formatCurrency(
-                                                                                employee.cash_allowance
-                                                                            )}
-                                                                        </td>
-
-                                                                        <td>
-                                                                            {formatCurrency(
-                                                                                employee.computed_ecola
-                                                                            )}
-                                                                        </td>
-
-                                                                        <td>
-                                                                            {formatCurrency(
-                                                                                employee.deduct
-                                                                            )}
-                                                                        </td>
-
-                                                                        {showEmergency && (
-                                                                            <td>
-                                                                                {formatCurrency(
-                                                                                    employee.emergency_allowance_amount ??
-                                                                                    0
-                                                                                )}
-                                                                            </td>
-                                                                        )}
-
-                                                                        <td className="font-semibold">
-                                                                            {formatCurrency(
-                                                                                employee.total
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                )
-                                                            )}
-
-                                                            {/* <tr className="border-t bg-gray-100 font-semibold">
-                                                                <td
-                                                                    className="py-2"
-                                                                    colSpan={2}
-                                                                >
-                                                                    BRANCH TOTAL
-                                                                </td>
-
-                                                                <td>
-                                                                    {formatCurrency(
-                                                                        branchTotals.cash_allowance
-                                                                    )}
-                                                                </td>
-
-                                                                <td>
-                                                                    {formatCurrency(
-                                                                        branchTotals.computed_ecola
-                                                                    )}
-                                                                </td>
-
-                                                                <td>
-                                                                    {formatCurrency(
-                                                                        branchTotals.deduct
-                                                                    )}
-                                                                </td>
-
-                                                                {showEmergency && (
-                                                                    <td>
-                                                                        {formatCurrency(
-                                                                            branchTotals.emergency_allowance_amount
-                                                                        )}
-                                                                    </td>
-                                                                )}
-
-                                                                <td>
-                                                                    {formatCurrency(
-                                                                        branchTotals.total
-                                                                    )}
-                                                                </td>
-                                                            </tr> */}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            );
-                                        }
-                                    )}
-
-                                    {/* COMPANY TOTAL */}
-                                    {/* <table className="w-full border-collapse border border-gray-400 text-center">
                                         <tbody>
-                                            <tr className="bg-gray-300 font-bold">
-                                                <td className="py-2" colSpan={2}>
-                                                    {company} GRAND TOTAL
+                                            {branch.employees.map(
+                                                (employee, index) => (
+                                                    <tr key={employee.EmpCode}>
+                                                        <td className="border p-2 text-center">
+                                                            {index + 1}
+                                                        </td>
+
+                                                        <td className="border p-2">
+                                                            {employee.name}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(
+                                                                employee.cash_allowance
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(
+                                                                employee.computed_ecola
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(
+                                                                employee.deduct
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(employee.total)}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            )}
+
+
+
+
+
+                                            <tr className="bg-gray-100 font-bold">
+                                                <td
+                                                    colSpan={2}
+                                                    className="border p-2 text-right"
+                                                >
+                                                    BRANCH TOTAL
                                                 </td>
 
-                                                <td>
-                                                    {formatCurrency(
-                                                        companyTotals.cash_allowance
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.cash_allowance
                                                     )}
                                                 </td>
 
-                                                <td>
-                                                    {formatCurrency(
-                                                        companyTotals.computed_ecola
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.computed_ecola
                                                     )}
                                                 </td>
 
-                                                <td>
-                                                    {formatCurrency(
-                                                        companyTotals.deduct
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.deduct
                                                     )}
                                                 </td>
 
-                                                {showEmergency && (
-                                                    <td>
-                                                        {formatCurrency(
-                                                            companyTotals.emergency_allowance_amount
-                                                        )}
-                                                    </td>
-                                                )}
-
-                                                <td>
-                                                    {formatCurrency(
-                                                        companyTotals.total
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.total
                                                     )}
                                                 </td>
                                             </tr>
+
+
+
+
+
+
+
+
+                                            {branch.loans.length > 0 && (
+                                                <>
+                                                    <tr className="bg-slate-100 font-semibold">
+                                                        <td colSpan={6}
+                                                            className="border border-slate-300 px-3 py-2 text-left">
+                                                            LOAN DEDUCTIONS
+                                                        </td>
+                                                    </tr>
+
+                                                    {branch.loans.map((loan, index) => (
+                                                        <tr
+                                                            key={`${loan.EmpCode}-${loan.loan_type}-${index}`}
+                                                        >
+                                                            <td className="border border-slate-300 px-3 py-2 text-center">
+                                                                {index + 1}
+                                                            </td>
+
+                                                            <td className="border border-slate-300 px-3 py-2">
+                                                                {loan.Lastname}, {loan.Firstname}
+                                                            </td>
+
+                                                            <td
+                                                                colSpan={1}
+                                                                className="border border-slate-300 px-3 py-2 text-right"
+                                                            >
+                                                                {formatAmount(
+                                                                    loan.per_payroll_deduct
+                                                                )}
+                                                            </td>
+
+                                                            <td colSpan={3}
+                                                                className="border border-slate-300 px-3 py-2">
+                                                                {loan.loan_type}, {loan.others_types}
+                                                            </td>
+
+
+                                                        </tr>
+                                                    ))}
+
+                                                    <tr className="font-semibold">
+                                                        <td
+                                                            colSpan={2}
+                                                            className="border border-slate-300 px-3 py-2 text-right">
+                                                            TOTAL LOAN DEDUCTION
+                                                        </td>
+
+                                                        <td className="border border-slate-300 px-3 py-2 text-right">
+                                                            {formatAmount(branch.total_loans)}
+                                                        </td>
+                                                        <td colSpan={3} className="border border-slate-300"></td>
+                                                    </tr>
+
+                                                    <tr className="bg-slate-100 font-bold">
+                                                        <td
+                                                            colSpan={2}
+                                                            className="border border-slate-400 px-3 py-2 text-right"
+                                                        >
+                                                            TOTAL DISBURSEMENT
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.cash_allowance
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.computed_ecola
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.deduct
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.total
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                </>
+                                            )}
+
                                         </tbody>
-                                    </table> */}
-                                </div>
-                            );
-                        }
-                    )}
-                </div>
+                                    </table>
+                                )
+                            )}
+
+                            <table className="w-full border-collapse text-sm">
+                                <tbody>
+                                    <tr className="bg-gray-300 font-bold">
+                                        <td
+                                            colSpan={2}
+                                            className="border p-2 text-right"
+                                        >
+                                            {companyName} GRAND TOTAL
+                                        </td>
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.cash_allowance
+                                            )}
+                                        </td>
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.computed_ecola
+                                            )}
+                                        </td>
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.deduct
+                                            )}
+                                        </td>
 
 
-
-
-
-
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.total
+                                            )}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )
+                )}
 
 
 

@@ -176,11 +176,11 @@ export interface CompanyData {
   emergency_allowance_amount:number;
 }
 
-export interface allowanceTotals{
-    cash_allowance:number;
-    computed_ecola:number;
-    total:number;
-}
+// export interface allowanceTotals{
+//     cash_allowance:number;
+//     computed_ecola:number;
+//     total:number;
+// }
 export interface loanlistProps{
     Firstname:string;
     Lastname:string;
@@ -190,16 +190,51 @@ export interface loanlistProps{
 }
 export type TotalPerCompany = Record<string, CompanyData>;
 
+export interface AllowanceTotals {
+  cash_allowance: number;
+  computed_ecola: number;
+  deduct:number;
+  total: number;
+}
+export interface AllowanceLoan {
+  EmpCode: string;
+  Firstname: string;
+  Lastname: string;
+  per_payroll_deduct: number;
+  BranchCodeId: string | null;
+  loan_type: string | null;
+  others_types: string | null;
+}
+
+export interface BranchSummary {
+  employees: ViewAllItem[];
+  loans: AllowanceLoan[];
+  total_loans: number;
+  totals: AllowanceTotals;
+  disbursement:AllowanceTotals;
+}
+export interface CompanyBranchSummary {
+  branches: Record<string, BranchSummary>;
+  grand_total: AllowanceTotals;
+}
+
+export type BranchesResponse = Record<
+  string,
+  CompanyBranchSummary
+>;
+
+
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
   MH: ViewAllItem[];
-  mh_totals: allowanceTotals;
-  board_mancom_totals:allowanceTotals;
-  total_mh_boardmancom: allowanceTotals;
+  mh_totals: AllowanceTotals;
+  board_mancom_totals:AllowanceTotals;
+  total_mh_boardmancom: AllowanceTotals;
   mh_mancom_loans:loanlistProps [];
-  total_disburse:allowanceTotals;
-  BRANCHES: Record<string, Record<string, ViewAllItem[]>>;
+  total_disburse:AllowanceTotals;
+
+  BRANCHES: BranchesResponse;
 
   LOANS: loanlistProps[];
   VARIANCE:VarianceAllowance;

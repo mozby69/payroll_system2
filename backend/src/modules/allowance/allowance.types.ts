@@ -103,3 +103,42 @@ export type ArchiveAllowanceFullResponse = {
   } | null;
 };
 
+
+
+
+export type AllowanceTotals = {
+  cash_allowance: number;
+  computed_ecola: number;
+  deduct:number;
+  total: number;
+};
+
+export type BranchAllowanceSummary = {
+  employees: AllowanceRow[];
+  loans: AllowanceLoan[];
+  total_loans: number;
+  totals: AllowanceTotals;
+  disbursement: AllowanceTotals;
+};
+
+export type CompanyAllowanceSummary = {
+  branches: Record<string, BranchAllowanceSummary>;
+  grand_total: AllowanceTotals;
+};
+
+export type AllowanceLoan = {
+  EmpCode: string;
+  Firstname: string;
+  Lastname: string;
+  per_payroll_deduct: number;
+  BranchCodeId: string | null;
+  loan_type: string | null;
+  others_types: string | null;
+};
+
+// type BranchAllowanceSummary = {
+//   employees: AllowanceRow[];
+//   loans: AllowanceLoan[];
+//   total_loans: number;
+//   totals: AllowanceTotals;
+// };
