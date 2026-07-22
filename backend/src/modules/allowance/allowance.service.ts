@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, SalaryType } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, SummaryAllowanceProps } from "./allowance.types";
 import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, round2, to2 } from "./allowance.helper";
@@ -452,7 +452,6 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
     const totalCashAllowance = cashAssistance - (ca_rate_per_absent);
 
-
     const totalEcola = hasEcola ? ecola - ecolaDailyRate * totalAbsentHours : 0;
 
     //const total = totalCashAllowance + totalEcola + emergencyAmount;
@@ -481,10 +480,10 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     return {
       EmpCode: emp.EmpCode,
       name: `${emp.Lastname ?? ""} ${emp.Firstname ?? ""}`.trim(),
-      cash_allowance: totalCashAllowance,
-      computed_ecola: totalEcola,
+      cash_allowance: MathRound(totalCashAllowance),
+      computed_ecola: MathRound(totalEcola),
       absent: totalAbsentHours,
-      total:MathRound(total),
+      total: MathRound(total),
       selectedMonth,
       deduct: totalDeduction,
       totalDeduction,
@@ -593,10 +592,12 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         ...row,
 
         totalDeduction: totalLoanDeduction + row.totalDeduction,
-        total: row.total - totalLoanDeduction,
+        total: row.total,
         fch_rfc_deducted: totalLoanDeduction,
         cash_allowance: row.cash_allowance,
+        // noloan_cash_allowance: row.cash_allowance,
         //cash_allowance: row.cash_allowance - totalLoanDeduction,
+        // total: row.total - totalLoanDeduction,
       };
     }
   }
@@ -1040,6 +1041,10 @@ export async function getArchiveAllowanceByCompanyBranch({ selectedMonth, compan
   });
 }
 
+
+
+
+
 export async function getLoanFor() {
   try {
     const data = await prisma.loan_details.findMany({
@@ -1147,7 +1152,7 @@ export async function ViewAllList(selectedMonth: string) {
     const { rows } = await computeAllowanceForMonth(selectedMonth);
     const loan_list = await getLoanFor();
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
-    const variance_employee = await getVarianceEmployees(selectedMonth);
+    // const variance_employee = await getVarianceEmployees(selectedMonth);
     const getTotalPerCompanyList = await getTotalPerCompany(selectedMonth);
 
     const branches = await prisma.branch.findMany({
@@ -1269,8 +1274,7 @@ export async function ViewAllList(selectedMonth: string) {
     for (const loan of loan_list) {
       const empCode = loan.EmpCode.trim();
 
-      const currentLoans =
-        loansByEmployee.get(empCode) ?? [];
+      const currentLoans = loansByEmployee.get(empCode) ?? [];
 
       currentLoans.push(loan);
 
@@ -1359,7 +1363,7 @@ export async function ViewAllList(selectedMonth: string) {
             branchTotals.deduct
           ),
           total: MathRound(
-            branchTotals.total
+            branchTotals.total - totalBranchLoans
           ),
         };
 
@@ -1521,132 +1525,435 @@ export async function ViewAllList(selectedMonth: string) {
 
 
 
-export async function getVarianceEmployees(selectedMonth: string): Promise<EmployeeVariance[]> {
+export async function getVarianceEmployees(selectedMonth: string) {
   try {
     const prevMonth = getPreviousMonth2(selectedMonth);
 
-    const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
+    const { rows: currentRows } =
+      await computeAllowanceForMonth(selectedMonth);
+
+    const previousRows =
+      await prisma.archive_allowance.findMany({
+        where: {
+          selectedMonth: prevMonth,
+        },
+        select: {
+          EmpCode: true,
+          cash_allowance: true,
+          ecola: true,
+          base_cash_assistance: true,
+          base_ecola: true,
+          selectedMonth: true,
+          absent_count: true,
+          loan: true,
+        },
+      });
+
+    const currentEmpCodes = currentRows.map((employee) =>
+      employee.EmpCode.trim()
+    );
+
+    /*
+     * Order newest first. The first record encountered
+     * for each EmpCodeId will be the latest history.
+     */
+    const salaryHistory =
+      await prisma.employeeSalaryHistory.findMany({
+        where: {
+          salary_type: SalaryType.Allowance,
+          EmpCodeId: {
+            in: currentEmpCodes,
+          },
+        },
+        select: {
+          EmpCodeId: true,
+          createdAt: true,
+          remarks: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+    const latestAllowanceHistoryMap = new Map<string,(typeof salaryHistory)[number]>();
+
+    for (const history of salaryHistory) {
+      const empCode = history.EmpCodeId.trim();
+
+      if (!latestAllowanceHistoryMap.has(empCode)) {
+        latestAllowanceHistoryMap.set(
+          empCode,
+          history
+        );
+      }
+    }
 
 
-    const previousRows = await prisma.archive_allowance.findMany({
-      where: { selectedMonth: prevMonth },
-      select: {
-        EmpCode: true,
-        cash_allowance: true,
-        ecola: true,
-        base_cash_assistance: true,
-        base_ecola: true,
-      },
-    });
 
-    const prevMap = new Map<string, typeof previousRows[number]>(
-      previousRows.map((p) => [
-        p.EmpCode.EmpCode.trim().toUpperCase(),
-        p,
+
+    const previousEmployeeMap = new Map(
+      previousRows.map((employee) => [
+        employee.EmpCode.EmpCode.trim(),
+        employee,
       ])
     );
 
+    const currentEmployeeMap = new Map(
+      currentRows.map((employee) => [
+        employee.EmpCode.trim(),
+        employee,
+      ])
+    );
 
-    // salary history 
-    const histories = await prisma.employeeSalaryHistory.findMany({
-      where: {
-        EmpCodeId: { in: currentRows.map((e) => e.EmpCode) },
-        salary_type: "Allowance",
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-    const latestHistoryMap = new Map<string, typeof histories[number]>();
+    type CurrentEmployee =
+      (typeof currentRows)[number];
 
-    for (const h of histories) {
-      const empId = h.EmpCodeId.trim().toUpperCase();
-      if (!latestHistoryMap.has(empId)) {
-        latestHistoryMap.set(empId, h);
-      }
-    }
-    // salary history 
+    type PreviousEmployee =
+      (typeof previousRows)[number];
 
+    type AddEmployee = {
+      EmpCode: string;
+      currentEmployee: CurrentEmployee | null;
+      previousEmployee: PreviousEmployee | null;
+      previous_cash_assistance: number;
+      current_cash_assistance: number;
+      cash_assistance_variance: number;
+      reasons: string[];
+      ecola_variance:number;
+      current_ecola:number;
+      base_ecola?:number;
+    };
 
-    const result: EmployeeVariance[] = currentRows.map((curr) => {
-      const empCode = curr.EmpCode.trim().toUpperCase();
-      const prev = prevMap.get(empCode);
-      const history = latestHistoryMap.get(empCode);
+    type LessEmployee = {
+      EmpCode: string;
+      currentEmployee: CurrentEmployee | null;
+      previousEmployee: PreviousEmployee | null;
+      reasons: Array<
+        | "ABSENT_IN_CURRENT_MONTH"
+        | "NOT_IN_CURRENT"
+      >;
+      cash_allowance_variance:number;
+      ecola_variance: number;
 
+    };
 
-      const currentCash = curr.cash_allowance ?? 0;
-      const currentEcola = curr.computed_ecola ?? 0;
-      const currentTotal = curr.total ?? 0;
+    const addEmployeeMap = new Map<
+      string,
+      AddEmployee
+    >();
 
-      //const prevCash = curr.base_cash_assistance ?? 0;
-      //const prevEcola = curr.base_ecola ?? 0;
+    const lessEmployeeMap = new Map<
+      string,
+      LessEmployee
+    >();
 
-      const prevCash = Number(prev?.base_cash_assistance ?? 0);
-      const prevEcola = Number(prev?.base_ecola ?? 0);
-      const prevTotal = prevCash + prevEcola;
+    /*
+     * ADD:
+     * Previous-month absences are added back.
+     */
+    for (const previousEmployee of previousRows) {
+      const empCode = previousEmployee.EmpCode.EmpCode.trim();
 
-      const varianceCash = round2(currentCash - prevCash);
-      const varianceEcola = round2(currentEcola - prevEcola);
-      const varianceTotal = round2(varianceCash + varianceEcola);
-      //const varianceTotal = round2(currentTotal - prevTotal);
-
-      const hasHistory = Boolean(history?.remarks && history?.createdAt);
-
-      const isPositiveIncrease = varianceCash > 0 || varianceEcola > 0 || varianceTotal > 0;
-      const hasAbsent = curr.absent > 0;
-
-      const action = hasHistory && isPositiveIncrease
-        ? {
-          type: "ADD" as const,
-          data: {
-            remarks: history?.remarks,
-            created_at: history?.createdAt,
-          },
-        }
-        : hasAbsent
-          ? {
-            type: "LESS" as const,
-            data: {},
-          }
-          : null;
-
-      return {
-        EmpCode: empCode,
-        name: curr.name,
-        previous: {
-          cash_assistance: prevCash,
-          ecola: prevEcola,
-          total: prevTotal,
-        },
-        current: {
-          cash_assistance: currentCash,
-          ecola: currentEcola,
-          total: currentTotal,
-        },
-        variance: {
-          cash_assistance: varianceCash,
-          ecola: varianceEcola,
-          total: varianceTotal,
-
-          remarks: history?.remarks ?? null,
-          created_at: history?.createdAt ?? null,
-          action
-        },
-      };
-    })
-      .filter(
-        (row) =>
-          row.variance.cash_assistance !== 0 ||
-          row.variance.ecola !== 0 ||
-          row.variance.total !== 0
+      const previousAbsentCount = Number(
+        previousEmployee.absent_count ?? 0
       );
 
-    return result;
+      if (previousAbsentCount <= 0) {
+        continue;
+      }
+
+      const currentEmployee = currentEmployeeMap.get(empCode) ?? null;
+
+      const previousCashAssistance = Number(
+        previousEmployee.cash_allowance ?? 0
+      );
+
+      const currentCashAssistance = Number(
+        currentEmployee?.cash_allowance ?? 0
+      );
+
+      const previousBaseCashAssitance = Number(
+        previousEmployee.base_cash_assistance ?? 0
+      );
+
+      const previousEcola = Number(
+        previousEmployee.ecola ?? 0
+      );
+
+      const previousBaseEcola = Number(
+        previousEmployee.base_ecola ?? 0
+      );
+
+      const currentEcola = Number(
+        currentEmployee?.computed_ecola ?? 0
+      );
+
+      addEmployeeMap.set(empCode, {
+        EmpCode: empCode,
+        currentEmployee,
+        previousEmployee,
+        previous_cash_assistance: previousCashAssistance,
+        current_cash_assistance: currentCashAssistance,
+        cash_assistance_variance: previousBaseCashAssitance - previousCashAssistance,
+        reasons: ["PREVIOUS_MONTH_ABSENCE"],
+        ecola_variance: previousBaseEcola - previousEcola,
+        current_ecola: currentEcola,
+      });
+    }
+
+    /*
+     * ADD:
+     * Current cash assistance increased compared
+     * with the previous month.
+     */
+    for (const currentEmployee of currentRows) {
+      const empCode =
+        currentEmployee.EmpCode.trim();
+
+      const previousEmployee =
+        previousEmployeeMap.get(empCode);
+
+      if (!previousEmployee) {
+        continue;
+      }
+
+      const previousCashAssistance = Number(
+        previousEmployee.cash_allowance ?? 0
+      );
+
+      const currentCashAssistance = Number(
+        currentEmployee.cash_allowance ?? 0
+      );
+
+      const currentEcola = Number(
+        currentEmployee.computed_ecola ?? 0
+      );
+      const currentBaseEcola = Number(
+        currentEmployee.base_ecola ?? 0
+      );
+
+      if (
+        currentCashAssistance <=
+        previousCashAssistance
+      ) {
+        continue;
+      }
+
+      const latestHistory = latestAllowanceHistoryMap.get(empCode);
+      const increaseReason = latestHistory?.remarks?.trim() || "CASH_ASSISTANCE_INCREASE";
+      const existingEmployee = addEmployeeMap.get(empCode);
+
+      if (existingEmployee) {
+        if (
+          !existingEmployee.reasons.includes(
+            increaseReason
+          )
+        ) {
+          existingEmployee.reasons.push(
+            increaseReason
+          );
+        }
+
+        existingEmployee.currentEmployee =
+          currentEmployee;
+
+        existingEmployee.previousEmployee =
+          previousEmployee;
+
+        existingEmployee.previous_cash_assistance =
+          previousCashAssistance;
+
+        existingEmployee.current_cash_assistance =
+          currentCashAssistance;
+
+        existingEmployee.cash_assistance_variance =
+          currentCashAssistance -
+          previousCashAssistance;
+
+        existingEmployee.current_ecola = currentEcola;
+        existingEmployee.base_ecola = currentBaseEcola;
+
+
+        continue;
+      }
+
+      addEmployeeMap.set(empCode, {
+        EmpCode: empCode,
+        currentEmployee,
+        previousEmployee,
+        previous_cash_assistance:previousCashAssistance,
+        current_cash_assistance:currentCashAssistance,
+        cash_assistance_variance: currentCashAssistance - previousCashAssistance,
+        reasons: [increaseReason],
+        ecola_variance: 0,
+        current_ecola: currentEcola,
+      });
+    }
+
+
+    
+    /*
+     * LESS:
+     * Current-month absences.
+     */
+    for (const currentEmployee of currentRows) {
+      const empCode = currentEmployee.EmpCode.trim();
+      const baseCashAllowance = currentEmployee.base_cash_assistance;
+      const currentAllowance = currentEmployee.cash_allowance;
+      const baseEcola = currentEmployee.base_ecola;
+      const currentEcola = currentEmployee.computed_ecola;
+
+      const cashAllowanceVariance = baseCashAllowance - currentAllowance;
+      const ecolaVariance = baseEcola - currentEcola;
+
+
+
+      /*
+       * currentRows uses "absent", not "absent_count".
+       */
+      const currentAbsentCount = Number(
+        currentEmployee.absent ?? 0
+      );
+
+      if (currentAbsentCount <= 0) {
+        continue;
+      }
+
+      lessEmployeeMap.set(empCode, {
+        EmpCode: empCode,
+        currentEmployee,
+        previousEmployee: previousEmployeeMap.get(empCode) ?? null,
+        reasons: ["ABSENT_IN_CURRENT_MONTH"],
+        cash_allowance_variance:cashAllowanceVariance,
+        ecola_variance: ecolaVariance
+      });
+    }
+
+
+
+    /*
+     * LESS:
+     * Employee existed previously but no longer
+     * exists in currentRows.
+     */
+
+    for (const previousEmployee of previousRows) {
+      const empCode = previousEmployee.EmpCode.EmpCode.trim();
+      const previousCashAssistance = Number(previousEmployee.cash_allowance ?? 0);
+      const previousEcola = Number(previousEmployee.ecola ?? 0);
+
+      if (currentEmployeeMap.has(empCode)) {
+        continue;
+      }
+
+      lessEmployeeMap.set(empCode, {
+        EmpCode: empCode,
+        currentEmployee: null,
+        previousEmployee,
+        reasons: ["NOT_IN_CURRENT"],
+        cash_allowance_variance:previousCashAssistance,
+        ecola_variance:previousEcola,
+      });
+    }
+
+
+
+
+
+
+
+
+    const formattedAdd = Array.from(addEmployeeMap.values()).map((employee) => ({
+      EmpCode: employee.EmpCode,
+      name: employee.currentEmployee?.name ??
+        [
+          employee.previousEmployee?.EmpCode.Lastname,
+          employee.previousEmployee?.EmpCode.Firstname,
+          employee.previousEmployee?.EmpCode.Middlename,
+        ]
+          .filter(Boolean)
+          .join(" "),
+
+      previous_cash_assistance: employee.previous_cash_assistance,
+
+      current_cash_assistance: employee.current_cash_assistance,
+
+      cash_assistance_variance: MathRound(employee.cash_assistance_variance),
+
+      ecola_variance: MathRound(employee.ecola_variance),
+
+      reasons: employee.reasons,
+    }));
+
+
+
+
+    const formattedLess = Array.from(lessEmployeeMap.values()).map((employee) => ({
+      EmpCode: employee.EmpCode,
+
+      name:
+        employee.currentEmployee?.name ??
+        [
+          employee.previousEmployee?.EmpCode.Lastname,
+          employee.previousEmployee?.EmpCode.Firstname,
+          employee.previousEmployee?.EmpCode.Middlename,
+        ]
+          .filter(Boolean)
+          .join(" "),
+
+      branch_code:
+        employee.currentEmployee?.branch_code ??
+        employee.previousEmployee?.EmpCode.BranchCodeId ??
+        null,
+
+      position:
+        employee.currentEmployee?.position ??
+        employee.previousEmployee?.EmpCode.Position ??
+        null,
+
+      absent_count:
+        employee.currentEmployee?.absent ??
+        Number(employee.previousEmployee?.absent_count ?? 0),
+
+      current_cash_assistance:
+        Number(
+          employee.currentEmployee?.cash_allowance ?? 0
+        ),
+
+      previous_cash_assistance:
+        Number(
+          employee.previousEmployee?.cash_allowance ?? 0
+        ),
+
+      reasons: employee.reasons,
+
+      cash_allowance_variance: MathRound(employee.cash_allowance_variance),
+      ecola_variance: MathRound(employee.ecola_variance),
+
+    }));
+
+    return {
+      ADD: formattedAdd,
+      LESS: formattedLess,
+    };
   } catch (error) {
-    console.error("error occured -", error);
+    console.error("Error occurred:", error);
     throw error;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
