@@ -32,7 +32,7 @@ export default function FinancialPage(){
       const [loading] = useState(false);
       //const [selectedCompany, setSelectedCompany] = useState("");
       //const [cycle, setCycle] = useState("");
-      const [cycle, setCycle] = useState<CycleCategory | "">("");
+     const [cycle, setCycle] = useState<CycleCategory | "">("");
       const [company, setCompany] = useState("");
       const printRef = useRef<HTMLDivElement>(null)
 
@@ -356,7 +356,7 @@ export default function FinancialPage(){
                 <div className="flex gap-4 px-4 mt-4">
 
                     {/* Cycle */}
-                   <select
+                           <select
   className="border px-3 py-2 rounded"
   value={cycle}
   onChange={(e) => {
@@ -410,7 +410,7 @@ export default function FinancialPage(){
                       }
                     />
 
-            {isModalOpen && cycle !== "" && (
+                {isModalOpen && cycle !== "" && (
   <RequestModal
     size="xxl"
     title="VIEW VARIANCE"

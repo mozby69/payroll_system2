@@ -882,9 +882,13 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
     const salaryAdjustment = {
       increase: salaryAdjustmentEmployees
         .filter((employee) => {
-          const history = latestSalaryHistoryMap.get(
-            employee.EmpCode.trim()
-          );
+          const empCode = employee.EmpCode.trim();
+
+          if (excludedFromSalaryAdjustment.has(empCode)) {
+            return false;
+          }
+
+          const history = latestSalaryHistoryMap.get(empCode);
 
           if (!history) {
             return false;
@@ -927,9 +931,14 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
       decrease: salaryAdjustmentEmployees
         .filter((employee) => {
-          const history = latestSalaryHistoryMap.get(
-            employee.EmpCode.trim()
-          );
+          const empCode = employee.EmpCode.trim();
+
+          if (excludedFromSalaryAdjustment.has(empCode)) {
+            return false;
+          }
+
+          const history =
+            latestSalaryHistoryMap.get(empCode);
 
           if (!history) {
             return false;
