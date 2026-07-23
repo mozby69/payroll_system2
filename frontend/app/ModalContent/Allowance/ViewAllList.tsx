@@ -1,9 +1,7 @@
-import { useFetchViewAll } from "@/app/hooks/useAllowance";
-import { LoanItem, ViewAllItem } from "@/app/types/allowanceType";
-import { formatCurrency } from "@/app/utils/currencyConverter";
+import { useExportAllowance, useFetchViewAll } from "@/app/hooks/useAllowance";
+import { ViewAllItem } from "@/app/types/allowanceType";
+import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
-
-
 
 
 
@@ -19,11 +17,20 @@ interface Props {
 export default function ViewAllList({ selectedMonth }: Props) {
 
     const { data } = useFetchViewAll(selectedMonth);
+    const { mutate: exportAllowance } = useExportAllowance();
 
     const boardMembers = data?.BOARD_MEMBER ?? [];
     const mancom = data?.MANCOM ?? [];
-    const branches = data?.BRANCHES ?? {};
-    const loans = data?.LOANS ?? [];
+    const mh = data?.MH ?? [];
+    const mh_totals = data?.mh_totals;
+    const board_mancom_totals = data?.board_mancom_totals;
+    const total_mh_boardmancom = data?.total_mh_boardmancom;
+    const mh_mancom_loans = data?.mh_mancom_loans ?? [];
+    const total_disburse = data?.total_disburse;
+
+
+    //const branches = data?.BRANCHES ?? {};
+    //const loans = data?.LOANS ?? [];
     const variance = data?.VARIANCE;
     const total_per_company = Object.entries(data?.TOTAL_PER_COMPANY ?? {});
 
@@ -37,7 +44,6 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 acc.cash_allowance += Number(emp.cash_allowance ?? 0);
                 acc.computed_ecola += Number(emp.computed_ecola ?? 0);
                 acc.deduct += Number(emp.deduct ?? 0);
-                acc.fch_rfc_deducted += Number(emp.fch_rfc_deducted ?? 0);
                 acc.totalDeduction += Number(emp.totalDeduction ?? 0);
                 acc.total += Number(emp.total ?? 0);
                 acc.emergency_allowance_amount += Number(emp.emergency_allowance_amount ?? 0);
@@ -47,47 +53,25 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 cash_allowance: 0,
                 computed_ecola: 0,
                 deduct: 0,
-                fch_rfc_deducted: 0,
                 totalDeduction: 0,
                 total: 0,
-                emergency_allowance_amount:0,
+                emergency_allowance_amount: 0,
             }
         );
     }
 
-    function computeLoanTotal(list: LoanItem[]) {
-        return list.reduce(
-            (sum, loan) => sum + Number(loan.per_payroll_deduct ?? 0),
-            0
-        );
-    }
+    // function computeLoanTotal(list: loanlistProps[]) {
+    //     return list.reduce(
+    //         (sum, loan) => sum + Number(loan.per_payroll_deduct ?? 0),
+    //         0
+    //     );
+    // }
 
     const boardTotals = computeTotals(boardMembers);
     const mancomTotals = computeTotals(mancom);
-    const loanTotals = computeLoanTotal(loans);
+    const mhTotals = computeTotals(mh);
+    //const loanTotals = computeLoanTotal(loans);
 
-    //   const embBranches = branches["EMB"] ?? {};
-    //   const embEmployees = Object.values(embBranches).flat();
-
-    //   const embTotals = computeTotals(embEmployees);
-
-    // const computeCompanyTotals = (company: string) => {
-    //     const companyBranches = branches[company] ?? {};
-    //     const employees = Object.values(companyBranches).flat();
-    //     return computeTotals(employees);
-    // };
-    // const companies = Object.keys(branches);
-
-    // const grandTotals = companies.reduce(
-    //     (acc, company) => {
-    //         const totals = computeCompanyTotals(company);
-    //         acc.cash += totals.cash_allowance;
-    //         acc.ecola += totals.computed_ecola;
-
-    //         return acc;
-    //     },
-    //     { cash: 0, ecola: 0 }
-    // );
 
 
 
@@ -102,36 +86,16 @@ export default function ViewAllList({ selectedMonth }: Props) {
         (item) => item.variance?.action?.type === "LESS"
     );
 
-    // const addTotals = addList.reduce(
-    //     (acc, e) => {
-    //         acc.cash += e.variance.cash_assistance;
-    //         acc.ecola += e.variance.ecola;
-    //         acc.total += e.variance.total;
-    //         return acc;
-    //     },
-    //     {
-    //         cash: 0,
-    //         ecola: 0,
-    //         total: 0,
-    //     }
-    // );
-
-    // const lessTotals = lessList.reduce(
-    //     (acc, e) => {
-    //         acc.cash += e.variance.cash_assistance;
-    //         acc.ecola += e.variance.ecola;
-    //         acc.total += e.variance.total;
-    //         return acc;
-    //     },
-    //     {
-    //         cash: 0,
-    //         ecola: 0,
-    //         total: 0,
-    //     }
-    // );
 
 
     const showEmergency = boardMembers.some(emp => emp.is_emergency);
+
+
+    const handleExport = () => {
+            exportAllowance({
+                selectedMonth,
+            });
+            };
 
 
 
@@ -139,24 +103,31 @@ export default function ViewAllList({ selectedMonth }: Props) {
         <>
             <div className="p-2">
 
+                <div className="flex justify-between">
                 <div className="font-semibold space-y-1 uppercase">
                     <h2>JAMERO GROUP OF COMPANIES</h2>
                     <h2>CASH ASSITANCE & ECOLA</h2>
                     <h2>FOR THE MONTH OF {formatMonthYear(selectedMonth)}</h2>
                 </div>
+                
+                <div>
+                    <button onClick={handleExport}
+                    className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-600">Export Excel</button>
+                </div>
+                </div>
 
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
-                            <tr className="bg-gray-300">
-                                <th></th>
+                            <tr className="bg-gray-200 border-b">
+                                <th>#</th>
                                 <th className="py-2">BOARD</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
                                 <th>ABSENCES</th>
-                                <th>LOANS</th>
-                                <th>TOTAL DEDUCTIONS</th>
-                                { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
+
+                                {/* <th>TOTAL DEDUCTIONS</th> */}
+                                {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
                                 <th>NET TOTAL</th>
                             </tr>
                         </thead>
@@ -164,15 +135,13 @@ export default function ViewAllList({ selectedMonth }: Props) {
                         <tbody>
                             {boardMembers.map((emp, index) => (
                                 <tr key={emp.EmpCode}>
-                                    <td className="px-2">{index + 1}</td>
-                                    <td className="py-1">{emp.name}</td>
-                                    <td className="py-1">{emp.cash_allowance.toFixed(2)}</td>
-                                    <td className="py-1">{emp.computed_ecola.toFixed(2)}</td>
-                                    <td className="py-1">{emp.deduct.toFixed(2)}</td>
-                                    <td className="py-1">{emp.fch_rfc_deducted.toFixed(2)}</td>
-                                    <td className="py-1">{emp.totalDeduction.toFixed(2)}</td>
-                                    { showEmergency && <td className="py-1">{emp.emergency_allowance_amount}</td> }
-                                    <td className="py-1">{emp.total}</td>
+                                    <td className="px-2 border border-gray-300">{index + 1}</td>
+                                    <td className="py-1 border border-gray-300">{emp.name}</td>
+                                    <td className="py-1 border border-gray-300">{emp.cash_allowance.toFixed(2)}</td>
+                                    <td className="py-1 border border-gray-300">{emp.computed_ecola.toFixed(2)}</td>
+                                    <td className="py-1 border border-gray-300">{emp.deduct.toFixed(2)}</td>
+                                    {showEmergency && <td className="py-1 border border-gray-300">{emp.emergency_allowance_amount}</td>}
+                                    <td className="py-1 border border-gray-300">{emp.total}</td>
                                 </tr>
                             ))}
                             <tr className="border-t font-semibold bg-gray-100">
@@ -180,9 +149,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td>{formatCurrency(boardTotals.cash_allowance)}</td>
                                 <td>{formatCurrency(boardTotals.computed_ecola)}</td>
                                 <td>{formatCurrency(boardTotals.deduct)}</td>
-                                <td>{formatCurrency(boardTotals.fch_rfc_deducted)}</td>
-                                <td>{formatCurrency(boardTotals.totalDeduction)}</td>
-                                { showEmergency && <td>{formatCurrency(boardTotals.emergency_allowance_amount)}</td> } 
+                                {showEmergency && <td>{formatCurrency(boardTotals.emergency_allowance_amount)}</td>}
                                 <td>{formatCurrency(boardTotals.total)}</td>
                             </tr>
                         </tbody>
@@ -193,15 +160,13 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
-                            <tr className="bg-gray-300">
-                                <th></th>
+                            <tr className="bg-gray-200">
+                                <th>#</th>
                                 <th className="py-2">MANCOM</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
                                 <th>ABSENCES</th>
-                                <th>LOANS</th>
-                                <th>TOTAL DEDUCTIONS</th>
-                                { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
+                                {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
                                 <th>NET TOTAL</th>
                             </tr>
                         </thead>
@@ -209,15 +174,13 @@ export default function ViewAllList({ selectedMonth }: Props) {
                         <tbody>
                             {mancom.map((emp, index) => (
                                 <tr key={emp.EmpCode}>
-                                    <td className="px-2">{index + 1}</td>
-                                    <td className="py-1">{emp.name}</td>
-                                    <td className="py-1">{emp.cash_allowance}</td>
-                                    <td className="py-1">{emp.computed_ecola}</td>
-                                    <td className="py-1">{emp.deduct}</td>
-                                    <td className="py-1">{emp.fch_rfc_deducted.toFixed(2)}</td>
-                                    <td className="py-1">{emp.totalDeduction.toFixed(2)}</td>
-                                    { showEmergency && <td className="py-1">{emp.emergency_allowance_amount}</td> }
-                                    <td className="py-1">{emp.total}</td>
+                                    <td className="px-2 border border-gray-300">{index + 1}</td>
+                                    <td className="py-1 border border-gray-300">{emp.name}</td>
+                                    <td className="py-1 border border-gray-300">{emp.cash_allowance}</td>
+                                    <td className="py-1 border border-gray-300">{emp.computed_ecola}</td>
+                                    <td className="py-1 border border-gray-300">{emp.deduct}</td>
+                                    {showEmergency && <td className="py-1 border border-gray-300">{emp.emergency_allowance_amount}</td>}
+                                    <td className="py-1 border border-gray-300">{emp.total}</td>
                                 </tr>
                             ))}
                             <tr className="border-t font-semibold bg-gray-100">
@@ -225,9 +188,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td>{formatCurrency(mancomTotals.cash_allowance)}</td>
                                 <td>{formatCurrency(mancomTotals.computed_ecola)}</td>
                                 <td>{formatCurrency(mancomTotals.deduct)}</td>
-                                <td>{formatCurrency(mancomTotals.fch_rfc_deducted)}</td>
-                                <td>{formatCurrency(mancomTotals.totalDeduction)}</td>
-                                { showEmergency && <td>{formatCurrency(mancomTotals.emergency_allowance_amount)}</td> } 
+                                {showEmergency && <td>{formatCurrency(mancomTotals.emergency_allowance_amount)}</td>}
                                 <td>{formatCurrency(mancomTotals.total)}</td>
                             </tr>
                         </tbody>
@@ -236,337 +197,443 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
 
 
+                {/* MH */}
                 <div className="pt-4">
-                    {Object.entries(branches).map(([company, branchGroup]) => (
-
-                        <div key={company} className="mb-8">
-
-
-                            <h2 className="font-bold text-lg uppercase mb-2">{company}</h2>
-
-                            {Object.entries(branchGroup).map(([branch, employees], index, arr) => {
-                                const branchTotals = computeTotals(employees);
-                                const isLastBranch = index === arr.length - 1;
-
-                                const companyEmployees = Object.values(branchGroup).flat();
-                                const companyTotals = computeTotals(companyEmployees);
-
-                                return (
-                                    <div key={branch} className="mb-6">
-
-                                        <table className="border-collapse w-full border border-gray-300 text-center">
-                                            <thead>
-                                                <tr className="bg-gray-300">
-                                                    <th></th>
-                                                    <th className="py-2">{branch}</th>
-                                                    <th>CASH ASSISTANCE</th>
-                                                    <th>ECOLA</th>
-                                                    <th>ABSENCES</th>
-                                                    <th>LOANS</th>
-                                                    <th>TOTAL DEDUCTIONS</th>
-                                                    { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
-                                                    <th>NET TOTAL</th>
-                                                </tr>
-                                            </thead>
-
-                                            <tbody>
-                                                {/* EMPLOYEES */}
-                                                {employees.map((emp, index) => (
-                                                    <tr key={emp.EmpCode} className="border-t">
-                                                        <td className="px-2">{index + 1}</td>
-                                                        <td className="py-1">{emp.name}</td>
-                                                        <td>{emp.cash_allowance.toFixed(2)}</td>
-                                                        <td>{emp.computed_ecola.toFixed(2)}</td>
-                                                        <td>{emp.deduct.toFixed(2)}</td>
-                                                        <td>{emp.fch_rfc_deducted.toFixed(2)}</td>
-                                                        <td>{emp.totalDeduction.toFixed(2)}</td>
-                                                        { showEmergency && <td>{emp.emergency_allowance_amount}</td> }
-                                                        <td className="font-semibold">{emp.total.toFixed(2)}</td>
-                                                    </tr>
-                                                ))}
-
-                                                {/* BRANCH TOTAL */}
-                                                <tr className="border-t font-semibold bg-gray-100">
-                                                    <td className="py-2" colSpan={2}>GRAND TOTAL</td>
-                                                    <td>{formatCurrency(branchTotals.cash_allowance)}</td>
-                                                    <td>{formatCurrency(branchTotals.computed_ecola)}</td>
-                                                    <td>{formatCurrency(branchTotals.deduct)}</td>
-                                                    <td>{formatCurrency(branchTotals.fch_rfc_deducted)}</td>
-                                                    <td>{formatCurrency(branchTotals.totalDeduction)}</td>
-                                                    { showEmergency && <td>{formatCurrency(branchTotals.emergency_allowance_amount)}</td> } 
-                                                    <td>{formatCurrency(branchTotals.total)}</td>
-                                                </tr>
-
-                               
-
-{/*                                
-                                                {branch === "EMB-MAIN" && (
-                                                    <>
-                                                        <tr>
-                                                            <td className="invisible p-2">d</td>
-                                                        </tr>
-
-                                                        <tr className="border-t font-semibold">
-                                                            <td className="py-1">TOTAL MH</td>
-                                                            <td>{formatCurrency(branchTotals.cash_allowance - branchTotals.totalDeduction)}</td>
-                                                            <td>{formatCurrency(branchTotals.computed_ecola)}</td>
-                                                            <td>
-                                                                {formatCurrency(branchTotals.cash_allowance + branchTotals.computed_ecola - branchTotals.totalDeduction)}
-                                                            </td>
-                                                            <td colSpan={3}></td>
-                                                        </tr>
-
-                                                        <tr className="border-t font-semibold">
-                                                            <td className="py-1">TOTAL BOARD & MANCOM</td>
-                                                            <td>
-                                                                {formatCurrency(
-                                                                    mancomTotals.cash_allowance + boardTotals.cash_allowance - mancomTotals.totalDeduction
-                                                                )}
-                                                            </td>
-                                                            <td>
-                                                                {formatCurrency(
-                                                                    mancomTotals.computed_ecola + boardTotals.computed_ecola
-                                                                )}
-                                                            </td>
-                                                            <td>
-                                                                {formatCurrency(
-                                                                    mancomTotals.cash_allowance +
-                                                                    boardTotals.cash_allowance +
-                                                                    mancomTotals.computed_ecola +
-                                                                    boardTotals.computed_ecola
-                                                                    - mancomTotals.totalDeduction
-                                                                )}
-                                                            </td>
-                                                            <td colSpan={3}></td>
-                                                        </tr>
-
-                                                        <tr className="font-semibold bg-gray-200">
-                                                            <td className="py-1">TOTAL</td>
-                                                            <td>
-                                                                {formatCurrency(boardTotals.cash_allowance + (mancomTotals.cash_allowance - mancomTotals.totalDeduction) + (branchTotals.cash_allowance - branchTotals.totalDeduction))}
-                                                            </td>
-                                                            <td>
-                                                                {formatCurrency(
-                                                                    branchTotals.computed_ecola +
-                                                                    mancomTotals.computed_ecola +
-                                                                    boardTotals.computed_ecola
-                                                                )}
-                                                            </td>
-                                                            <td>
-                                                                {formatCurrency(
-
-                                                                    (branchTotals.cash_allowance - branchTotals.totalDeduction) +
-                                                                    branchTotals.computed_ecola +
-                                                                    (mancomTotals.cash_allowance - mancomTotals.totalDeduction) +
-                                                                    mancomTotals.computed_ecola +
-                                                                    boardTotals.cash_allowance +
-                                                                    boardTotals.computed_ecola
-
-                                                                )}
-                                                            </td>
-                                                            <td colSpan={4}></td>
-                                                        </tr>
-                                                    </>
-                                                )} */}
-
-
-                                                {company === "EMB" && isLastBranch && (
-                                                    <>
-                                                        <tr>
-                                                            <td className="invisible">s</td>
-                                                        </tr>
-
-                                                        <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2" colSpan={2}>TOTAL EMB</td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.cash_allowance)}
-                                                            </td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.computed_ecola)}
-                                                            </td>
-
-                                                                       
-                                                           <td colSpan={3}></td>
-
-                                                           { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
-
-                                                
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(
-                                                                    companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola +
-                                                                    companyTotals.emergency_allowance_amount
-                                                                )}
-                                                            </td>
-
-                                                       
-                                                        </tr>
-                                                    </>
-                                                )}
-
-                                                {company === "FCH" && isLastBranch && (
-                                                    <>
-                                                        <tr>
-                                                            <td className="invisible">s</td>
-                                                        </tr>
-
-                                                        <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2" colSpan={2}>TOTAL FCH</td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.cash_allowance)}
-                                                            </td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.computed_ecola)}
-                                                            </td>
-
-                                                            <td colSpan={3}></td>
-
-                                                             { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(
-                                                                    companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola +
-                                                                    companyTotals.emergency_allowance_amount
-                                                                )}
-                                                            </td>
-
-                                                       
-                                                        </tr>
-                                                    </>
-                                                )}
-                                                
-
-
-
-                                                  {company === "RFC" && isLastBranch && (
-                                                    <>
-                                                        <tr>
-                                                            <td className="invisible">s</td>
-                                                        </tr>
-
-                                                        <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2" colSpan={2}>TOTAL RFC</td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.cash_allowance)}
-                                                            </td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.computed_ecola)}
-                                                            </td>
-
-                                                            <td colSpan={3}></td>
-
-                                                              { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(
-                                                                    companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola +
-                                                                    companyTotals.emergency_allowance_amount
-                                                                )}
-                                                            </td>
-
-                                                   
-                                                        </tr>
-                                                    </>
-                                                )}
-
-
-                                                {company === "ELC" && isLastBranch && (
-                                                    <>
-                                                        <tr>
-                                                            <td className="invisible">s</td>
-                                                        </tr>
-
-                                                        <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2" colSpan={2}>TOTAL ELC</td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.cash_allowance)}
-                                                            </td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.computed_ecola)}
-                                                            </td>
-
-                                                            <td colSpan={3}></td>
-
-                                                              { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(
-                                                                    companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola +
-                                                                    companyTotals.emergency_allowance_amount
-                                                                )}
-                                                            </td>
-
-                                                   
-                                                        </tr>
-                                                    </>
-                                                )}
-
-                                                {company === "PSPMI" && isLastBranch && (
-                                                    <>
-                                                        <tr>
-                                                            <td className="invisible">s</td>
-                                                        </tr>
-
-                                                        <tr className="bg-yellow-200 font-bold border-t-2">
-                                                            <td className="py-2" colSpan={2}>TOTAL PSPMI</td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.cash_allowance)}
-                                                            </td>
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(companyTotals.computed_ecola)}
-                                                            </td>
-
-                                                            <td colSpan={3}></td>
-
-                                                            { showEmergency && <td>{formatCurrency(companyTotals.emergency_allowance_amount)}</td> }
-
-
-                                                            <td className="text-center">
-                                                                {formatCurrency(
-                                                                    companyTotals.cash_allowance +
-                                                                    companyTotals.computed_ecola +
-                                                                    companyTotals.emergency_allowance_amount
-                                                                )}
-                                                            </td>
-
-                                                  
-                                                        </tr>
-                                                    </>
-                                                )}
-
-
-
-
-
-
-                                            </tbody>
-                                        </table>
-
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
+                    <table className="border-collapse w-12/12 border border-gray-300 text-center">
+                        <thead>
+                            <tr className="bg-gray-200">
+                                <th>#</th>
+                                <th className="py-2">Branch:MH</th>
+                                <th>CASH ASSISTANCE</th>
+                                <th>ECOLA</th>
+                                <th>ABSENCES</th>
+                                {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
+                                <th>NET TOTAL</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {mh.map((emp, index) => (
+                                <tr key={emp.EmpCode}>
+                                    <td className="px-2 border border-gray-300">{index + 1}</td>
+                                    <td className="py-1 border border-gray-300">{emp.name}</td>
+                                    <td className="py-1 border border-gray-300">{formatAmount(emp.cash_allowance)}</td>
+                                    <td className="py-1 border border-gray-300">{formatAmount(emp.computed_ecola)}</td>
+                                    <td className="py-1 border border-gray-300">{formatAmount(emp.deduct)}</td>
+                                    {showEmergency && <td className="py-1 border border-gray-300">{emp.emergency_allowance_amount}</td>}
+                                    <td className="py-1 border border-gray-300">{emp.total}</td>
+                                </tr>
+                            ))}
+                            <tr className="border-t font-semibold bg-gray-100">
+                                <td className="py-1" colSpan={2}>GRAND TOTAL</td>
+                                <td>{formatCurrency(mhTotals.cash_allowance)}</td>
+                                <td>{formatCurrency(mhTotals.computed_ecola)}</td>
+                                <td>{formatCurrency(mhTotals.deduct)}</td>
+                                {showEmergency && <td>{formatCurrency(mhTotals.emergency_allowance_amount)}</td>}
+                                <td>{formatCurrency(mhTotals.total)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
 
 
-         {/* TOTAL PER COMPANY */}
-          <div className="pt-4">
+                {/* total mh ,board and mancom */}
+
+                <div className="pt-4">
+                    <table className="border-collapse w-12/12 border border-gray-300 text-center">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>CASH ALLOWANCE</th>
+                                <th>ECOLA</th>
+                                <th className="py-1">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {mh_totals && (
+                                <tr className="border border-gray-300">
+                                    <td className="py-1 font-bold">TOTAL MH</td>
+                                    <td>{formatCurrency(mh_totals.cash_allowance)}</td>
+                                    <td>{formatCurrency(mh_totals.computed_ecola)}</td>
+                                    <td>{formatCurrency(mh_totals.total)}</td>
+                                </tr>
+                            )}
+                            {board_mancom_totals && (
+                                <tr className="border border-gray-300">
+                                    <td className="py-1 font-bold">TOTAL BOARD & MANCOM</td>
+                                    <td>{formatCurrency(board_mancom_totals.cash_allowance)}</td>
+                                    <td>{formatCurrency(board_mancom_totals.computed_ecola)}</td>
+                                    <td>{formatCurrency(board_mancom_totals.total)}</td>
+                                </tr>
+                            )}
+                            {total_mh_boardmancom && (
+                                <tr className="border border-gray-300">
+                                    <td className="py-1 font-bold">TOTAL</td>
+                                    <td>{formatCurrency(total_mh_boardmancom.cash_allowance)}</td>
+                                    <td>{formatCurrency(total_mh_boardmancom.computed_ecola)}</td>
+                                    <td>{formatCurrency(total_mh_boardmancom.total)}</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+
+                </div>
+
+
+                {/* LOAN LIST */}
+
+                <div className="pt-4">
+                    <table className="border-collapse w-12/12 border border-gray-300 text-center">
+                        <thead>
+                            <tr className="border border-gray-300">
+                                <th>EMPLOYEE</th>
+                                <th>AMOUNT</th>
+                                <th className="py-1">DESCRIPTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {mh_mancom_loans.map((emp, index) => (
+                                <tr key={index} className="border border-gray-300">
+                                    <td className="py-1">Less: A/RE- {emp.Lastname},{emp.Firstname}</td>
+                                    <td>{formatAmount(emp.per_payroll_deduct)}</td>
+                                    <td>{emp.loan_type}, {emp.others_types}</td>
+                                </tr>
+                            ))}
+                            <tr>
+                                <td className="py-1 font-bold">TOTAL</td>
+                                <td className="font-bold">{formatCurrency(data?.totalmhAndMancomLoans)}</td>
+                                <td></td>
+                            </tr>
+
+
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                {/* total disburse */}
+                <div className="pt-4">
+                    <table className="border-collapse w-12/12 border border-gray-300 text-center">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>CASH ALLOWANCE</th>
+                                <th>ECOLA</th>
+                                <th className="py-1">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            {total_disburse && (
+                                <tr className="border border-gray-300">
+                                    <td className="py-1 font-bold">TOTAL DISBURSE</td>
+                                    <td>{formatAmount(total_disburse?.cash_allowance)}</td>
+                                    <td>{formatAmount(total_disburse?.computed_ecola)}</td>
+                                    <td>{formatAmount(total_disburse?.total)}</td>
+                                </tr>
+                            )}
+
+
+                        </tbody>
+                    </table>
+
+                </div>
+
+
+
+
+
+                {/* BRANCHES LIST */}
+                {Object.entries(data?.BRANCHES ?? {}).map(
+                    ([companyName, company]) => (
+                        <div key={companyName} className="mb-8">
+                            <h2 className="mb-2 text-lg font-bold">
+                                {companyName}
+                            </h2>
+
+                            {Object.entries(company.branches).map(
+                                ([branchName, branch]) => (
+                                    <table
+                                        key={branchName}
+                                        className="mb-6 w-full border-collapse text-sm"
+                                    >
+                                        <thead>
+                                            <tr className="bg-gray-200 font-bold">
+                                                <th className="border p-2 w-12">#</th>
+                                                <th className="border p-2 text-left">
+                                                    BRANCH: {branchName}
+                                                </th>
+                                                <th className="border p-2">
+                                                    CASH ASSISTANCE
+                                                </th>
+                                                <th className="border p-2">
+                                                    ECOLA
+                                                </th>
+                                                <th className="border p-2">
+                                                    ABSENT
+                                                </th>
+                                                <th className="border p-2">
+                                                    TOTAL
+                                                </th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {branch.employees.map(
+                                                (employee, index) => (
+                                                    <tr key={employee.EmpCode}>
+                                                        <td className="border p-2 text-center">
+                                                            {index + 1}
+                                                        </td>
+
+                                                        <td className="border p-2">
+                                                            {employee.name}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(
+                                                                employee.cash_allowance
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(
+                                                                employee.computed_ecola
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(
+                                                                employee.deduct
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(employee.total)}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            )}
+
+
+
+
+
+                                            <tr className="bg-gray-100 font-bold">
+                                                <td
+                                                    colSpan={2}
+                                                    className="border p-2 text-right"
+                                                >
+                                                    BRANCH TOTAL
+                                                </td>
+
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.cash_allowance
+                                                    )}
+                                                </td>
+
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.computed_ecola
+                                                    )}
+                                                </td>
+
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.deduct
+                                                    )}
+                                                </td>
+
+                                                <td className="border p-2 text-right">
+                                                    {formatAmount(
+                                                        branch.totals.total
+                                                    )}
+                                                </td>
+                                            </tr>
+
+
+
+
+
+
+
+
+                                            {branch.loans.length > 0 && (
+                                                <>
+                                                    <tr className="bg-slate-100 font-semibold">
+                                                        <td colSpan={6}
+                                                            className="border border-slate-300 px-3 py-2 text-left">
+                                                            LOAN DEDUCTIONS
+                                                        </td>
+                                                    </tr>
+
+                                                    {branch.loans.map((loan, index) => (
+                                                        <tr
+                                                            key={`${loan.EmpCode}-${loan.loan_type}-${index}`}
+                                                        >
+                                                            <td className="border border-slate-300 px-3 py-2 text-center">
+                                                                {index + 1}
+                                                            </td>
+
+                                                            <td className="border border-slate-300 px-3 py-2">
+                                                                {loan.Lastname}, {loan.Firstname}
+                                                            </td>
+
+                                                            <td
+                                                                colSpan={1}
+                                                                className="border border-slate-300 px-3 py-2 text-right"
+                                                            >
+                                                                {formatAmount(
+                                                                    loan.per_payroll_deduct
+                                                                )}
+                                                            </td>
+
+                                                            <td colSpan={3}
+                                                                className="border border-slate-300 px-3 py-2">
+                                                                {loan.loan_type}, {loan.others_types}
+                                                            </td>
+
+
+                                                        </tr>
+                                                    ))}
+
+                                                    <tr className="font-semibold">
+                                                        <td
+                                                            colSpan={2}
+                                                            className="border border-slate-300 px-3 py-2 text-right">
+                                                            TOTAL LOAN DEDUCTION
+                                                        </td>
+
+                                                        <td className="border border-slate-300 px-3 py-2 text-right">
+                                                            {formatAmount(branch.total_loans)}
+                                                        </td>
+                                                        <td colSpan={3} className="border border-slate-300"></td>
+                                                    </tr>
+
+                                                    <tr className="bg-slate-100 font-bold">
+                                                        <td
+                                                            colSpan={2}
+                                                            className="border border-slate-400 px-3 py-2 text-right"
+                                                        >
+                                                            TOTAL DISBURSEMENT
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.cash_allowance
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.computed_ecola
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.deduct
+                                                            )}
+                                                        </td>
+
+                                                        <td className="border border-slate-400 px-3 py-2 text-right">
+                                                            {formatAmount(
+                                                                branch.disbursement.total
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                </>
+                                            )}
+
+                                        </tbody>
+                                    </table>
+                                )
+                            )}
+
+                            <table className="w-full border-collapse text-sm">
+                                <tbody>
+                                    <tr className="bg-gray-300 font-bold">
+                                        <td
+                                            colSpan={2}
+                                            className="border p-2 text-right"
+                                        >
+                                            {companyName} GRAND TOTAL
+                                        </td>
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.cash_allowance
+                                            )}
+                                        </td>
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.computed_ecola
+                                            )}
+                                        </td>
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.deduct
+                                            )}
+                                        </td>
+
+
+                                        <td className="border p-2 text-right">
+                                            {formatAmount(
+                                                company.grand_total.total
+                                            )}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )
+                )}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                {/* TOTAL PER COMPANY */}
+                <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
                             <tr className="bg-gray-300">
@@ -574,99 +641,68 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <th className="py-2">COMPANY</th>
                                 <th>CASH ASSISTANCE</th>
                                 <th>ECOLA</th>
-                                 { showEmergency && <th>EMERGENCY ALLOWANCE</th> } 
+                                {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
                                 <th>NET TOTAL</th>
                             </tr>
                         </thead>
 
-                       <tbody>
+                        <tbody>
                             {total_per_company.map(([companyCode, company], index) => (
                                 <tr key={companyCode}>
-                                <td className="p-2 border border-gray-200">{index + 1}</td>
-                                <td className="p-2 border border-gray-200">{companyCode}</td>
-                                <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance)}</td>
-                                <td className="p-2 border border-gray-200">{formatCurrency(company.ecola)}</td>
-                                { showEmergency && <td className="p-2 border border-gray-200">{formatCurrency(company.emergency_allowance_amount)}</td> }
-                                <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance + company.ecola + company.emergency_allowance_amount)}</td>
+                                    <td className="p-2 border border-gray-200">{index + 1}</td>
+                                    <td className="p-2 border border-gray-200">{companyCode}</td>
+                                    <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance)}</td>
+                                    <td className="p-2 border border-gray-200">{formatCurrency(company.ecola)}</td>
+                                    {showEmergency && <td className="p-2 border border-gray-200">{formatCurrency(company.emergency_allowance_amount)}</td>}
+                                    <td className="p-2 border border-gray-200">{formatCurrency(company.total_cash_allowance + company.ecola + company.emergency_allowance_amount)}</td>
                                 </tr>
                             ))}
 
-                           <tr className="border-t font-semibold bg-gray-100">
+                            <tr className="border-t font-semibold bg-gray-100">
                                 <td colSpan={2} className="p-2">GRAND TOTAL</td>
                                 <td>
                                     {formatCurrency(
-                                    total_per_company.reduce(
-                                        (sum, [, c]) => sum + c.total_cash_allowance,
-                                        0
-                                    )
+                                        total_per_company.reduce(
+                                            (sum, [, c]) => sum + c.total_cash_allowance,
+                                            0
+                                        )
                                     )}
                                 </td>
 
                                 <td>
                                     {formatCurrency(
-                                    total_per_company.reduce(
-                                        (sum, [, c]) => sum + c.ecola,
-                                        0
-                                    )
+                                        total_per_company.reduce(
+                                            (sum, [, c]) => sum + c.ecola,
+                                            0
+                                        )
                                     )}
                                 </td>
-                                { showEmergency && 
-                                <td>
-                                    {formatCurrency(
-                                    total_per_company.reduce(
-                                        (sum, [, c]) => sum + c.emergency_allowance_amount,
-                                        0
-                                    )
-                                    )}
-                                </td>
+                                {showEmergency &&
+                                    <td>
+                                        {formatCurrency(
+                                            total_per_company.reduce(
+                                                (sum, [, c]) => sum + c.emergency_allowance_amount,
+                                                0
+                                            )
+                                        )}
+                                    </td>
                                 }
 
                                 <td>
                                     {formatCurrency(
-                                    total_per_company.reduce(
-                                        (sum, [, c]) => sum + c.total_cash_allowance + c.ecola + c.emergency_allowance_amount,
-                                        0
-                                    )
+                                        total_per_company.reduce(
+                                            (sum, [, c]) => sum + c.total_cash_allowance + c.ecola + c.emergency_allowance_amount,
+                                            0
+                                        )
                                     )}
                                 </td>
-                                </tr>
-                            </tbody>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
 
 
-                <div className="mt-4">
-                    <h2 className="font-semibold text-lg">LOANS</h2>
-                    <div className="pt-2">
-                        <table className="border-collapse w-12/12 border border-gray-300 text-left">
-                            <thead>
-                                <tr className="bg-gray-300 uppercase">
-                                    <th className="p-2">NAME</th>
-                                    <th className="p-2">Branch</th>
-                                    <th className="p-2">Deduction</th>
 
-
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {loans.map((emp) => (
-                                    <tr key={emp.EmpCode}>
-                                        <td className="py-1 px-2 border border-gray-300">{emp.Lastname}, {emp.Firstname}</td>
-                                        <td className="px-2 border border-gray-300">{emp.BranchCodeId}</td>
-                                        <td className="py-1 px-2 border border-gray-300">{emp.per_payroll_deduct}</td>
-
-                                    </tr>
-                                ))}
-                                <tr className="bg-gray-200 font-bold">
-                                    <td className="py-1 px-2 border border-gray-300" colSpan={2}>GRAND TOTAL</td>
-                                    <td className="py-1 px-2 border border-gray-300">{formatCurrency(loanTotals)}</td>
-
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
 
 
 

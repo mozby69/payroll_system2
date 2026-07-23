@@ -425,7 +425,6 @@ export default function FinancialPage(){
 )}
 
 
-
             <div className="hidden print:block">
                 <PayrollSpreadsheetPrint payCode={payCode} ref={printRef} data={rows} companyCode={company} />
             </div>

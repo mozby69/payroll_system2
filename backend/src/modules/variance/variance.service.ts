@@ -549,6 +549,8 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       (employee) => {
         const isProbationary =
           employee.EmploymentStatus === "Probationary";
+        const isResigned = employee.EmployeeStatus === "Resigned";
+
 
         const hasLatestOrSecondLatestPayroll =
           !employee.isArchiveBasic ||
@@ -556,29 +558,25 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
         return (
           isProbationary &&
-          hasLatestOrSecondLatestPayroll
+          hasLatestOrSecondLatestPayroll && !isResigned
         );
       }
     );
 
 
     //wtax
-    const wtaxAdjustment = allEmployeesWithVariance.filter(
-      (employee) => {
-        const isTaxable = employee.Taxable === true;
 
-        const hasWtaxVariance = toCentavos(employee.wtax_variance) !== 0;
 
-        return isTaxable && hasWtaxVariance;
-      }
-    );
+
+
+
 
     //resigned
     const resignedEmployees = allEmployeesWithVariance.filter((employee) => {
       const isResigned = employee.EmployeeStatus === "Resigned";
 
       const hasLatestOrSecondLatestPayroll =
-        employee.isArchiveBasic &&
+        employee.isArchiveBasic ||
         employee.isArchiveContribution;
 
       return (
@@ -763,9 +761,47 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
     //exclude 
 
-       const excludedFromSalaryAdjustment = new Set<string>([
 
-       ...probationaryEmployees.map(
+    const ExcludeInTax = new Set<string>([
+
+
+      ...backToWorkWithoutSpecialeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...backToWorkWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...missingIntheCurrentWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+      ...resignedEmployees.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+
+      ...missingIntheCurrentWithoutSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+    ]);
+
+    const wtaxAdjustment = allEmployeesWithVariance.filter(
+      (employee) => {
+        const empCode = employee.EmpCode.trim();
+        const isTaxable = employee.Taxable === true;
+
+        const hasWtaxVariance = toCentavos(employee.wtax_variance) !== 0;
+
+
+        const isExcluded = ExcludeInTax.has(empCode);
+
+        return isTaxable && hasWtaxVariance && !isExcluded;
+      }
+    );
+
+    const excludedFromSalaryAdjustment = new Set<string>([
+
+      ...probationaryEmployees.map(
         (employee) => employee.EmpCode.trim()
       ),
 
@@ -783,13 +819,17 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       ...resignedEmployees.map(
         (employee) => employee.EmpCode.trim()
       ),
-         ...wtaxAdjustment.map(
-            (employee) => employee.EmpCode.trim()
+      ...wtaxAdjustment.map(
+        (employee) => employee.EmpCode.trim()
       ),
-          ...missingIntheCurrentWithoutSpecialLeave.map(
+      ...missingIntheCurrentWithoutSpecialLeave.map(
         (employee) => employee.EmpCode.trim()
       ),
     ]);
+
+
+
+
 
     // salary adjustment: 
 
@@ -820,8 +860,27 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       }
     }
 
+    /*
+     * Only employees with a basic salary variance
+     * can appear in salary adjustment.
+     */
+    const salaryAdjustmentEmployees =
+      allEmployeesWithVariance.filter((employee) => {
+        const empCode = employee.EmpCode.trim();
+
+        if (excludedFromSalaryAdjustment.has(empCode)) {
+          return false;
+        }
+
+        if (employee.basic_variance === 0) {
+          return false;
+        }
+
+        return latestSalaryHistoryMap.has(empCode);
+      });
+
     const salaryAdjustment = {
-      increase: allEmployeesWithVariance
+      increase: salaryAdjustmentEmployees
         .filter((employee) => {
           const empCode = employee.EmpCode.trim();
 
@@ -835,26 +894,42 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
             return false;
           }
 
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
 
-          return (
-            Number(history.new_salary) >
-            Number(history.old_salary)
-          );
+          return newSalary > oldSalary;
         })
         .map((employee) => {
           const history = latestSalaryHistoryMap.get(
             employee.EmpCode.trim()
           );
 
+          if (!history) {
+            return null;
+          }
+
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
           return {
             ...employee,
-            old_salary: Number(history?.old_salary ?? 0),
-            new_salary: Number(history?.new_salary ?? 0),
-            remarks: history?.remarks ?? null,
+            old_salary: oldSalary,
+            new_salary: newSalary,
+            salary_variance: calculateMoneyVariance(
+              newSalary,
+              oldSalary
+            ),
+            remarks: history.remarks ?? null,
           };
-        }),
+        })
+        .filter(
+          (
+            employee
+          ): employee is NonNullable<typeof employee> =>
+            employee !== null
+        ),
 
-      decrease: allEmployeesWithVariance
+      decrease: salaryAdjustmentEmployees
         .filter((employee) => {
           const empCode = employee.EmpCode.trim();
 
@@ -869,27 +944,83 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
             return false;
           }
 
-          return (
-            Number(history.new_salary) <
-            Number(history.old_salary)
-          );
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
+          return newSalary < oldSalary;
         })
         .map((employee) => {
           const history = latestSalaryHistoryMap.get(
             employee.EmpCode.trim()
           );
 
+          if (!history) {
+            return null;
+          }
+
+          const oldSalary = Number(history.old_salary);
+          const newSalary = Number(history.new_salary);
+
           return {
             ...employee,
-            old_salary: Number(history?.old_salary ?? 0),
-            new_salary: Number(history?.new_salary ?? 0),
-            remarks: history?.remarks ?? null,
+            old_salary: oldSalary,
+            new_salary: newSalary,
+            salary_variance: calculateMoneyVariance(
+              newSalary,
+              oldSalary
+            ),
+            remarks: history.remarks ?? null,
           };
-        }),
+        })
+        .filter(
+          (
+            employee
+          ): employee is NonNullable<typeof employee> =>
+            employee !== null
+        ),
     };
 
 
 
+    //get variance 
+    const employeeGroups = [
+      probationaryEmployees,
+      backToWorkWithSpecialLeave,
+      backToWorkWithoutSpecialeave,
+      missingIntheCurrentWithSpecialLeave,
+      missingIntheCurrentWithoutSpecialLeave,
+      resignedEmployees,
+      salaryAdjustment.increase,
+      salaryAdjustment.decrease,
+      wtaxAdjustment,
+    ];
+
+
+
+    const totalsVariance = employeeGroups.flat().reduce(
+      (acc, employee) => {
+        acc.basic_variance += Number(employee.basic_variance ?? 0);
+        acc.pagibig_employee_variance += Number(employee.pagibig_employee_variance ?? 0);
+        acc.pagibig_employer_variance += Number(employee.pagibig_employer_variance ?? 0);
+        acc.sss_employee_variance += Number(employee.sss_employee_variance ?? 0);
+        acc.sss_employer_variance += Number(employee.sss_employer_variance ?? 0);
+        acc.phil_employee_variance += Number(employee.phil_employee_variance ?? 0);
+        acc.phil_employer_variance += Number(employee.phil_employer_variance ?? 0);
+        acc.wtax_variance += Number(employee.wtax_variance ?? 0);
+
+        return acc;
+      },
+      {
+        basic_variance: 0,
+        pagibig_employee_variance: 0,
+        pagibig_employer_variance: 0,
+        sss_employee_variance: 0,
+        sss_employer_variance: 0,
+        phil_employee_variance: 0,
+        phil_employer_variance: 0,
+        wtax_variance: 0,
+      }
+    );
     return {
       Probationary: {
         employees: probationaryEmployees,
@@ -916,6 +1047,7 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       wtax_adjustment: {
         employees: wtaxAdjustment,
       },
+      totalsVariance,
       // variance_check: {
       //   paycycles: [
       //     latestPayroll.PayCycle,
@@ -929,6 +1061,92 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
   } catch (error) {
     console.error(`error occurred in service ${error}`);
+    throw error;
+  }
+}
+
+
+
+
+export async function CompleteVariance(company_id: string, cycle: "10-25-Cycle" | "15-30-Cycle", userAcc: string) {
+  try {
+
+    let pre_computed: any[] = [];
+
+    if (userAcc === "PAYROLL_CHECKER") {
+      pre_computed = (await displayCompletePayroll(["PENDING"])) ?? [];
+    }
+
+    if (userAcc === "FINANCIAL_CHECKER") {
+      pre_computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
+    }
+
+    if (userAcc === "FINANCE_APPROVER") {
+      pre_computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+    }
+
+    const computed = (pre_computed ?? []).filter((e) => {
+      const isRegularCompany =
+        e.company_id === company_id && e.EmpCode?.isAlien === false;
+
+      const isAlienSecondaryCompany =
+        e.EmpCode?.isAlien === true &&
+        e.EmpCode?.secondaryBranch?.company_id === company_id;
+
+      return isRegularCompany || isAlienSecondaryCompany;
+    });
+
+    const PayCode = computed[0].PayCode;
+
+
+    const variance = await fetchVariance(
+      company_id,
+      cycle,
+      userAcc
+    );
+
+    const employeeVariance = await FetchEmployeeVariance(
+      company_id,
+      cycle,
+      userAcc
+    );
+
+    const final_basic_variance = MathRound(variance.variance.basic_pay_variance) - MathRound(employeeVariance?.totalsVariance?.basic_variance);
+    const final_pagibig_employee_var = MathRound(variance.variance.pagibig_employee) - MathRound(employeeVariance?.totalsVariance?.pagibig_employee_variance);
+    const final_pagibig_employer_var = MathRound(variance.variance.pagibig_employer) - MathRound(employeeVariance?.totalsVariance?.pagibig_employer_variance);
+    const final_wtax_var = MathRound(variance.variance.wtax) - MathRound(employeeVariance?.totalsVariance?.wtax_variance);
+    const final_SSS_EE_var = MathRound(variance.variance.sss_employee) - MathRound(employeeVariance?.totalsVariance?.sss_employee_variance);
+    const final_SSS_ER_var = MathRound(variance.variance.sss_employer_variance) - MathRound(employeeVariance?.totalsVariance?.sss_employer_variance);
+    const final_Phil_EE_var = MathRound(variance.variance.phil_employee_variance) - MathRound(employeeVariance?.totalsVariance?.phil_employee_variance);
+    const final_Phil_ER_var = MathRound(variance.variance.phil_employer_variance) - MathRound(employeeVariance?.totalsVariance?.phil_employer_variance);
+
+
+
+    if (isSecondCutoff(PayCode)) {
+      return {
+        final_basic_variance,
+        final_pagibig_employee_var,
+        final_pagibig_employer_var,
+        final_wtax_var,
+        final_SSS_EE_var,
+        final_SSS_ER_var,
+        final_Phil_EE_var,
+        final_Phil_ER_var
+      };
+
+    }
+    else {
+      return {
+        final_basic_variance,
+        final_SSS_EE_var,
+        final_SSS_ER_var,
+        final_Phil_EE_var,
+        final_Phil_ER_var
+      };
+    }
+
+  } catch (error) {
+    console.error(`error occurred ${error}`);
     throw error;
   }
 }

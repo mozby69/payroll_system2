@@ -1,5 +1,5 @@
 import { useFetchArchiveAllowanceModal } from "@/app/hooks/useAllowance";
-import { AllowanceSummary, ArchiveAllowance, CompanyItem, LoanItem, VarianceAllowanceComplete, VarianceAllowanceEmployee } from "@/app/types/allowanceType";
+import { AllowanceSummary, ArchiveAllowance, CompanyItem,loanlistProps, VarianceAllowanceComplete, VarianceAllowanceEmployee } from "@/app/types/allowanceType";
 import { prepareCompanyData } from "@/app/utils/allowanceHelper";
 import { formatCurrency } from "@/app/utils/currencyConverter";
 import { useRef } from "react";
@@ -28,7 +28,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
     const isEmergency = list.some( (item) => item.is_emergency === true);
 
 
-    const loanTotal = Object.values(loanList as Record<string, LoanItem>)
+    const loanTotal = Object.values(loanList as Record<string, loanlistProps>)
     .reduce((acc, item) => acc + (item.per_payroll_deduct ?? 0), 0);
 
 

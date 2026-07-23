@@ -177,7 +177,7 @@ export default function EmployeeVariance({
             title: "Resigned",
             employees: variance?.resigned?.employees ?? [],
         },
-           {
+        {
             title: "WTax Adjustment",
             employees: variance?.wtax_adjustment?.employees ?? [],
         },
@@ -205,43 +205,51 @@ export default function EmployeeVariance({
         (section) => section.employees
     );
 
-    const showPagibig = !paycode.includes("-1-15-");
+    // const showPagibig = !paycode.includes("-1-15-");
 
-    const varianceTotals = {
-        basic: allEmployees.reduce(
-            (sum, employee) => sum + employee.basic_variance,
-            0
-        ),
-        sssEmployee: allEmployees.reduce(
-            (sum, employee) => sum + employee.sss_employee_variance,
-            0
-        ),
-        sssEmployer: allEmployees.reduce(
-            (sum, employee) => sum + employee.sss_employer_variance,
-            0
-        ),
-        philhealthEmployee: allEmployees.reduce(
-            (sum, employee) => sum + employee.phil_employee_variance,
-            0
-        ),
-        philhealthEmployer: allEmployees.reduce(
-            (sum, employee) => sum + employee.phil_employer_variance,
-            0
-        ),
-        pagibigEmployee: allEmployees.reduce(
-            (sum, employee) => sum + employee.pagibig_employee_variance,
-            0
-        ),
-        pagibigEmployer: allEmployees.reduce(
-            (sum, employee) => sum + employee.pagibig_employer_variance,
-            0
-        ),
-        wtax_fin: allEmployees.reduce(
-            (sum, employee) => sum + employee.wtax_variance,
-            0
-        ),
-    };
+    // const varianceTotals = {
+    //     basic: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.basic_variance,
+    //         0
+    //     ),
+    //     sssEmployee: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.sss_employee_variance,
+    //         0
+    //     ),
+    //     sssEmployer: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.sss_employer_variance,
+    //         0
+    //     ),
+    //     philhealthEmployee: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.phil_employee_variance,
+    //         0
+    //     ),
+    //     philhealthEmployer: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.phil_employer_variance,
+    //         0
+    //     ),
+    //     pagibigEmployee: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.pagibig_employee_variance,
+    //         0
+    //     ),
+    //     pagibigEmployer: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.pagibig_employer_variance,
+    //         0
+    //     ),
+    //     wtax_fin: allEmployees.reduce(
+    //         (sum, employee) => sum + employee.wtax_variance,
+    //         0
+    //     ),
+    // };
 
+    const duplicateEmpCodes = allEmployees.filter(
+        (employee, index, array) =>
+            array.findIndex(
+                (item) => item.EmpCode === employee.EmpCode
+            ) !== index
+    );
+
+    console.log(duplicateEmpCodes);
 
     return (
         <div className="space-y-4 px-4">
@@ -261,7 +269,7 @@ export default function EmployeeVariance({
                 </div>
             ))}
 
-            {allEmployees.length > 0 && (
+            {/* {allEmployees.length > 0 && (
                 <div className="mt-5 overflow-x-auto">
                     <h2 className="mb-2 font-bold text-xs">
                         Variance Breakdown
@@ -288,8 +296,10 @@ export default function EmployeeVariance({
                         </thead>
 
                         <tbody>
-                            {allEmployees.map((employee) => (
-                                <tr key={`breakdown-${employee.EmpCode}`}>
+                            {allEmployees.map((employee,index) => (
+                                <tr
+                                    key={`breakdown-${employee.EmpCode}-${index}`}
+                                >
                                     <td className="border border-slate-400  p-2 text-right">
                                         {formatAmount(employee.basic_variance)}
                                     </td>
@@ -370,7 +380,7 @@ export default function EmployeeVariance({
                         </tbody>
                     </table>
                 </div>
-            )}
+            )} */}
         </div>
     );
 }

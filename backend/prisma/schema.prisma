@@ -395,6 +395,7 @@ model EmployeePayrollArchive {
   PayrollBranchId  String? 
   officers_allowance Decimal? @db.Decimal(10,2) 
   disburse_amount Decimal? @db.Decimal(10,2)
+  absent_count Decimal? @db.Decimal(10,2)
 
   totalPayrollId Int @map("total_payroll_id")
   totalPayroll totalPayroll @relation(fields: [totalPayrollId], references: [id], onDelete: Cascade)
@@ -1124,6 +1125,7 @@ model EmployeeAbsentOverride {
   selectedMonth String @db.VarChar(100) @map("selected_month")
   absent_hours Decimal? @db.Decimal(10,2) @map("absent_hours")
   createdAt DateTime @default(now()) @map("created_at")
+  exclude Boolean @default(false)
 
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")

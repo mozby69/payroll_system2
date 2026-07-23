@@ -11,6 +11,8 @@ sendBulkAllowanceServiceController,
 updateEmergencyAllowanceController,
 displayEmergencyAllowanceController,
 updateAbsentOverrideController,
+getVarianceEmployeesController,
+exportAllowanceExcelController,
 } from "./allowance.controller";
 
 const router = Router();
@@ -29,7 +31,8 @@ router.post("/send-allowance-email",sendBulkAllowanceServiceController);
 router.put("/emergency-allowance-edit/:allowance_id",updateEmergencyAllowanceController);
 router.get("/display-emergency-allowance",displayEmergencyAllowanceController);
 router.post("/update-absent",updateAbsentOverrideController);
-
 router.get("/test",getTotalPerCompanyController);
+router.get("/get-employee-variance",getVarianceEmployeesController);
+router.get("/export-allowance",exportAllowanceExcelController);
 
 export default router;

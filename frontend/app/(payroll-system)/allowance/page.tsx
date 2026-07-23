@@ -70,14 +70,14 @@ export default function AllowancePage() {
       header: "Ecola",
       render: (row) => `${row.ecola}`,
     },
-    {
-      header: "DEDUCTIONS",
-      accessor: (row) => row.deduct ?? "0",
-    },
-    {
-      header: "Loan",
-      render: (row) => `${row.loan ?? "0"}`,
-    },
+    // {
+    //   header: "DEDUCTIONS",
+    //   accessor: (row) => row.deduct ?? "0",
+    // },
+    // {
+    //   header: "Loan",
+    //   render: (row) => `${row.loan ?? "0"}`,
+    // },
     // {
     //   header:"TOTAL DEDUCTION",
     //   render: (row) => `${row.totalDeduction}`,
