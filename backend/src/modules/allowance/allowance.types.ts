@@ -142,3 +142,21 @@ export type AllowanceLoan = {
 //   total_loans: number;
 //   totals: AllowanceTotals;
 // };
+
+
+
+export type ExcelEmployee = {
+  EmpCode: string;
+  name?: string | null;
+  cash_allowance?: number | null;
+  computed_ecola?: number | null;
+  deduct?: number | null;
+  total?: number | null;
+};
+
+export type ExcelTotals = {
+  cash_allowance: number;
+  computed_ecola: number;
+  deduct?: number;
+  total: number;
+};

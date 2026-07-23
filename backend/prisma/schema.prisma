@@ -1125,6 +1125,7 @@ model EmployeeAbsentOverride {
   selectedMonth String @db.VarChar(100) @map("selected_month")
   absent_hours Decimal? @db.Decimal(10,2) @map("absent_hours")
   createdAt DateTime @default(now()) @map("created_at")
+  exclude Boolean @default(false)
 
 
   EmpCodeId String  @db.VarChar(20) @map("EmpCode_id")

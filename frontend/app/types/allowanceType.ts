@@ -13,6 +13,8 @@ export interface AllowanceProps {
     BranchCode:{
       branchCode:string;
     };
+    exclude:boolean;
+    absent_count:number;
 }
   
 

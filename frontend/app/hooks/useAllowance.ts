@@ -284,6 +284,7 @@ export function useUpdateAbsentOverride() {
       EmpCode: string;
       selectedMonth: string;
       absent_hours: number;
+      exclude:boolean;
     }) => {
       await api.post("/allowance/update-absent", payload);
     },
@@ -291,6 +292,48 @@ export function useUpdateAbsentOverride() {
       SweetAlert.successAlert("Absent override updated");
       queryClient.invalidateQueries({ queryKey: ["allowance-list"] });
       queryClient.invalidateQueries({ queryKey: ["fetch-view-all"] });
+    },
+  });
+}
+
+
+
+
+
+type ExportAllowanceParams = {
+  selectedMonth: string;
+};
+
+export function useExportAllowance() {
+  return useMutation({
+    mutationFn: async ({
+      selectedMonth,
+    }: ExportAllowanceParams): Promise<Blob> => {
+      const response = await api.get<Blob>(
+        "/allowance/export-allowance",
+        {
+          params: {
+            selectedMonth,
+          },
+          responseType: "blob",
+        }
+      );
+
+      return response.data;
+    },
+
+    onSuccess: (file, variables) => {
+      const url = window.URL.createObjectURL(file);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `cash-assistance-${variables.selectedMonth}.xlsx`;
+
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      window.URL.revokeObjectURL(url);
     },
   });
 }

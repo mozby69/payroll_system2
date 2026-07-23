@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 
 
@@ -222,12 +222,13 @@ export async function updateAllowanceBranchController(req:Request, res:Response)
 
 
 export async function updateAbsentOverrideController(req: Request, res: Response) {
-  const { EmpCode, selectedMonth, absent_hours } = req.body;
+  const { EmpCode, selectedMonth, absent_hours, exclude } = req.body;
 
   await updateAbsentOverride({
     EmpCode,
     selectedMonth,
     absent_hours: Number(absent_hours),
+    exclude
   });
 
   res.json({ success: true });
@@ -320,5 +321,46 @@ export const getVarianceEmployeesController = async (req:Request, res:Response) 
 
   catch(error){
     return res.status(500).json({ message: `SERVER ERROR ${error}`})
+  }
+}
+
+
+
+
+
+export async function exportAllowanceExcelController(req: Request,res: Response) {
+  try {
+    const selectedMonth = String(req.query.selectedMonth ?? "");
+
+    if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+      return res.status(400).json({
+        message:
+          "selectedMonth must use YYYY-MM format",
+      });
+    }
+
+    const fileBuffer = await exportAllowanceExcel(selectedMonth);
+
+    const filename = `cash-assistance-${selectedMonth}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+
+    res.setHeader(
+      "Content-Length",
+      fileBuffer.length.toString()
+    );
+
+    return res.status(200).send(fileBuffer);
+  } catch (error) {
+    console.error(`error occued ${error}`)
+    throw error;
   }
 }

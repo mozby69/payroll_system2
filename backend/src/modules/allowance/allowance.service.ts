@@ -1,13 +1,13 @@
 import { Prisma, SalaryType } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
-import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, SummaryAllowanceProps } from "./allowance.types";
+import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, ExcelEmployee, ExcelTotals, SummaryAllowanceProps } from "./allowance.types";
 import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, round2, to2 } from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 import { generateAllowancePDF } from "../print/print.service";
 import nodemailer from "nodemailer";
 import { getAllowanceEmergency } from "../general/general.services";
 import { MathRound } from "../../utils/toFixed";
-
+import ExcelJS from "exceljs"
 
 
 
@@ -37,6 +37,14 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
             },
           },
         ],
+      },
+      {
+        EmployeeAbsentOverride: {
+          none: {
+            selectedMonth,
+            exclude: true,
+          }
+        }
       },
 
       ...(search
@@ -83,6 +91,15 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
         select: {
           TotalAbsentHours: true,
         },
+      },
+      EmployeeAbsentOverride: {
+        where: {
+          selectedMonth,
+        },
+        select: {
+          exclude: true,
+          absent_hours: true,
+        }
       },
     },
     orderBy: {
@@ -153,6 +170,8 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
     // const absentDeduction = (cashDailyRate * totalAbsentHours) + (ecolaDailyRate * totalAbsentHours);
 
     // const total = cashAssistance + ecola - absentDeduction;
+    const exclude_complete = emp.EmployeeAbsentOverride[0]?.exclude;
+    const absent_count_complete = emp.EmployeeAbsentOverride[0]?.absent_hours;
 
     return {
       EmpCode: emp.EmpCode,
@@ -168,6 +187,8 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
       BranchCode: {
         branchCode: overrideMap.get(emp.EmpCode) ?? emp.BranchCode?.branchCode,
       },
+      exclude: exclude_complete,
+      absent_count: absent_count_complete,
     };
   });
 
@@ -309,6 +330,14 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             },
           ],
         },
+        {
+          EmployeeAbsentOverride: {
+            none: {
+              selectedMonth,
+              exclude: true,
+            }
+          }
+        },
 
         {
           OR: [
@@ -390,6 +419,15 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
         select: {
           absent_count: true,
         },
+      },
+      EmployeeAbsentOverride: {
+        where: {
+          selectedMonth,
+        },
+        select: {
+          exclude: true,
+          absent_hours: true,
+        }
       },
     },
     orderBy: {
@@ -782,10 +820,11 @@ export async function updateAllowanceBranch({ EmpCode, selectedMonth, branchCode
 
 
 
-export async function updateAbsentOverride({ EmpCode, selectedMonth, absent_hours }: {
+export async function updateAbsentOverride({ EmpCode, selectedMonth, absent_hours, exclude }: {
   EmpCode: string;
   selectedMonth: string;
   absent_hours: number;
+  exclude: boolean;
 }) {
   await prisma.employeeAbsentOverride.upsert({
     where: {
@@ -796,11 +835,13 @@ export async function updateAbsentOverride({ EmpCode, selectedMonth, absent_hour
     },
     update: {
       absent_hours,
+      exclude
     },
     create: {
       EmpCodeId: EmpCode,
       selectedMonth,
       absent_hours,
+      exclude,
     },
   });
 }
@@ -1575,7 +1616,7 @@ export async function getVarianceEmployees(selectedMonth: string) {
         },
       });
 
-    const latestAllowanceHistoryMap = new Map<string,(typeof salaryHistory)[number]>();
+    const latestAllowanceHistoryMap = new Map<string, (typeof salaryHistory)[number]>();
 
     for (const history of salaryHistory) {
       const empCode = history.EmpCodeId.trim();
@@ -1619,9 +1660,9 @@ export async function getVarianceEmployees(selectedMonth: string) {
       current_cash_assistance: number;
       cash_assistance_variance: number;
       reasons: string[];
-      ecola_variance:number;
-      current_ecola:number;
-      base_ecola?:number;
+      ecola_variance: number;
+      current_ecola: number;
+      base_ecola?: number;
     };
 
     type LessEmployee = {
@@ -1632,7 +1673,7 @@ export async function getVarianceEmployees(selectedMonth: string) {
         | "ABSENT_IN_CURRENT_MONTH"
         | "NOT_IN_CURRENT"
       >;
-      cash_allowance_variance:number;
+      cash_allowance_variance: number;
       ecola_variance: number;
 
     };
@@ -1781,8 +1822,8 @@ export async function getVarianceEmployees(selectedMonth: string) {
         EmpCode: empCode,
         currentEmployee,
         previousEmployee,
-        previous_cash_assistance:previousCashAssistance,
-        current_cash_assistance:currentCashAssistance,
+        previous_cash_assistance: previousCashAssistance,
+        current_cash_assistance: currentCashAssistance,
         cash_assistance_variance: currentCashAssistance - previousCashAssistance,
         reasons: [increaseReason],
         ecola_variance: 0,
@@ -1791,7 +1832,7 @@ export async function getVarianceEmployees(selectedMonth: string) {
     }
 
 
-    
+
     /*
      * LESS:
      * Current-month absences.
@@ -1824,7 +1865,7 @@ export async function getVarianceEmployees(selectedMonth: string) {
         currentEmployee,
         previousEmployee: previousEmployeeMap.get(empCode) ?? null,
         reasons: ["ABSENT_IN_CURRENT_MONTH"],
-        cash_allowance_variance:cashAllowanceVariance,
+        cash_allowance_variance: cashAllowanceVariance,
         ecola_variance: ecolaVariance
       });
     }
@@ -1851,8 +1892,8 @@ export async function getVarianceEmployees(selectedMonth: string) {
         currentEmployee: null,
         previousEmployee,
         reasons: ["NOT_IN_CURRENT"],
-        cash_allowance_variance:previousCashAssistance,
-        ecola_variance:previousEcola,
+        cash_allowance_variance: previousCashAssistance,
+        ecola_variance: previousEcola,
       });
     }
 
@@ -2208,4 +2249,716 @@ export async function updateEmergencyAllowance(allowance_id: number, is_emergenc
       emergency_allowance_amount: new Prisma.Decimal(emergency_allowance_amount)
     },
   });
+}
+
+
+
+//EXPORT EXCEL 
+
+
+const moneyFormat = '₱#,##0.00;[Red](₱#,##0.00);-';
+
+export async function exportAllowanceExcel(selectedMonth: string): Promise<Buffer> {
+  const result = await ViewAllList(selectedMonth);
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = "Jamero Group of Companies";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet(
+    "Cash Assistance",
+    {
+      views: [
+        {
+          state: "frozen",
+          ySplit: 4,
+          showGridLines: false,
+        },
+      ],
+      pageSetup: {
+        orientation: "landscape",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        margins: {
+          left: 0.25,
+          right: 0.25,
+          top: 0.5,
+          bottom: 0.5,
+          header: 0.2,
+          footer: 0.2,
+        },
+      },
+    }
+  );
+
+  worksheet.columns = [
+    { key: "number", width: 8 },
+    { key: "employee", width: 35 },
+    { key: "cashAssistance", width: 20 },
+    { key: "ecola", width: 16 },
+    { key: "absences", width: 16 },
+    { key: "netTotal", width: 20 },
+  ];
+
+  const monthLabel = new Date(
+    `${selectedMonth}-01T00:00:00`
+  ).toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  worksheet.mergeCells("A1:F1");
+  worksheet.getCell("A1").value =
+    "JAMERO GROUP OF COMPANIES";
+
+  worksheet.mergeCells("A2:F2");
+  worksheet.getCell("A2").value =
+    "CASH ASSISTANCE & ECOLA";
+
+  worksheet.mergeCells("A3:F3");
+  worksheet.getCell("A3").value =
+    `FOR THE MONTH OF ${monthLabel.toUpperCase()}`;
+
+  for (const cellAddress of ["A1", "A2", "A3"]) {
+    const cell = worksheet.getCell(cellAddress);
+
+    cell.font = {
+      bold: true,
+      size: cellAddress === "A1" ? 14 : 11,
+    };
+
+    cell.alignment = {
+      horizontal: "left",
+      vertical: "middle",
+    };
+  }
+
+  worksheet.addRow([]);
+
+  const addSection = (
+    title: string,
+    employees: ExcelEmployee[],
+    totals?: ExcelTotals
+  ) => {
+    const headerRow = worksheet.addRow([
+      "#",
+      title,
+      "CASH ASSISTANCE",
+      "ECOLA",
+      "ABSENCES",
+      "NET TOTAL",
+    ]);
+
+    headerRow.height = 22;
+
+    headerRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FFE2E5E9",
+        },
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+      };
+
+      cell.border = {
+        bottom: {
+          style: "thin",
+          color: {
+            argb: "FFB7BCC5",
+          },
+        },
+      };
+    });
+
+    employees.forEach((employee, index) => {
+      const row = worksheet.addRow([
+        index + 1,
+        employee.name ?? employee.EmpCode,
+        Number(employee.cash_allowance ?? 0),
+        Number(employee.computed_ecola ?? 0),
+        Number(employee.deduct ?? 0),
+        Number(employee.total ?? 0),
+      ]);
+
+      row.getCell(1).alignment = {
+        horizontal: "center",
+      };
+
+      row.getCell(2).alignment = {
+        horizontal: "left",
+      };
+
+      for (let column = 3; column <= 6; column += 1) {
+        row.getCell(column).numFmt = moneyFormat;
+        row.getCell(column).alignment = {
+          horizontal: "right",
+        };
+      }
+    });
+
+    if (totals) {
+      const totalRow = worksheet.addRow([
+        "",
+        "GRAND TOTAL",
+        totals.cash_allowance,
+        totals.computed_ecola,
+        totals.deduct ?? 0,
+        totals.total,
+      ]);
+
+      totalRow.eachCell((cell) => {
+        cell.font = {
+          bold: true,
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFF2F3F5",
+          },
+        };
+
+        cell.border = {
+          top: {
+            style: "thin",
+            color: {
+              argb: "FFB7BCC5",
+            },
+          },
+        };
+      });
+
+      totalRow.getCell(2).alignment = {
+        horizontal: "center",
+      };
+
+      for (let column = 3; column <= 6; column += 1) {
+        totalRow.getCell(column).numFmt = moneyFormat;
+        totalRow.getCell(column).alignment = {
+          horizontal: "right",
+        };
+      }
+    }
+
+    worksheet.addRow([]);
+  };
+
+  const getTotals = (
+    employees: ExcelEmployee[]
+  ): ExcelTotals => {
+    return employees.reduce<ExcelTotals>(
+      (totals, employee) => {
+        totals.cash_allowance += Number(
+          employee.cash_allowance ?? 0
+        );
+
+        totals.computed_ecola += Number(
+          employee.computed_ecola ?? 0
+        );
+
+        totals.deduct =
+          Number(totals.deduct ?? 0) +
+          Number(employee.deduct ?? 0);
+
+        totals.total += Number(employee.total ?? 0);
+
+        return totals;
+      },
+      {
+        cash_allowance: 0,
+        computed_ecola: 0,
+        deduct: 0,
+        total: 0,
+      }
+    );
+  };
+
+  addSection(
+    "BOARD",
+    result.BOARD_MEMBER,
+    getTotals(result.BOARD_MEMBER)
+  );
+
+  addSection(
+    "MANCOM",
+    result.MANCOM,
+    getTotals(result.MANCOM)
+  );
+
+  addSection(
+    "Branch:MH",
+    result.MH,
+    {
+      cash_allowance: result.mh_totals.cash_allowance,
+      computed_ecola: result.mh_totals.computed_ecola,
+      deduct: result.MH.reduce(
+        (total, employee) =>
+          total + Number(employee.deduct ?? 0),
+        0
+      ),
+      total: result.mh_totals.total,
+    }
+  );
+
+const summaryHeaderRow = worksheet.addRow([
+  "",
+  "",
+  "CASH ALLOWANCE",
+  "ECOLA",
+  "",
+  "TOTAL",
+]);
+
+summaryHeaderRow.eachCell((cell) => {
+  cell.font = { bold: true };
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: "FFE2E5E9",
+    },
+  };
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+});
+
+const mhSummaryRow = worksheet.addRow([
+  "",
+  "TOTAL MH",
+  result.mh_totals.cash_allowance,
+  result.mh_totals.computed_ecola,
+  "",
+  result.mh_totals.total,
+]);
+
+const boardMancomSummaryRow = worksheet.addRow([
+  "",
+  "TOTAL BOARD & MANCOM",
+  result.board_mancom_totals.cash_allowance,
+  result.board_mancom_totals.computed_ecola,
+  "",
+  result.board_mancom_totals.total,
+]);
+
+const totalSummaryRow = worksheet.addRow([
+  "",
+  "TOTAL",
+  result.total_mh_boardmancom.cash_allowance,
+  result.total_mh_boardmancom.computed_ecola,
+  "",
+  result.total_mh_boardmancom.total,
+]);
+
+for (const row of [
+  mhSummaryRow,
+  boardMancomSummaryRow,
+  totalSummaryRow,
+]) {
+  row.getCell(2).font = {
+    bold: true,
+  };
+
+  for (let column = 3; column <= 6; column += 1) {
+    row.getCell(column).numFmt = moneyFormat;
+    row.getCell(column).alignment = {
+      horizontal: "right",
+    };
+  }
+}
+
+totalSummaryRow.eachCell((cell) => {
+  cell.font = {
+    bold: true,
+  };
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: "FFF2F3F5",
+    },
+  };
+});
+
+worksheet.addRow([]);
+
+/*
+ * MH AND MANCOM LOANS
+ */
+if (result.mh_mancom_loans.length > 0) {
+  const loanHeaderRow = worksheet.addRow([
+    "",
+    "EMPLOYEE",
+    "AMOUNT",
+    "",
+    "DESCRIPTION",
+    "",
+  ]);
+
+  loanHeaderRow.eachCell((cell) => {
+    cell.font = {
+      bold: true,
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FFE2E5E9",
+      },
+    };
+
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+  });
+
+  for (const loan of result.mh_mancom_loans) {
+    const loanRow = worksheet.addRow([
+      "",
+      `Less: ${loan.EmpCode}`,
+      Number(loan.per_payroll_deduct ?? 0),
+      "",
+      loan.loan_type ?? loan.others_types ?? "",
+      "",
+    ]);
+
+    loanRow.getCell(3).numFmt = moneyFormat;
+  }
+
+  const loanTotalRow = worksheet.addRow([
+    "",
+    "TOTAL",
+    result.totalmhAndMancomLoans,
+    "",
+    "",
+    "",
+  ]);
+
+  loanTotalRow.getCell(2).font = {
+    bold: true,
+  };
+
+  loanTotalRow.getCell(3).font = {
+    bold: true,
+  };
+
+  loanTotalRow.getCell(3).numFmt =
+    moneyFormat;
+
+  worksheet.addRow([]);
+}
+
+/*
+ * TOTAL DISBURSEMENT
+ */
+const disbursementHeaderRow = worksheet.addRow([
+  "",
+  "",
+  "CASH ALLOWANCE",
+  "ECOLA",
+  "",
+  "TOTAL",
+]);
+
+disbursementHeaderRow.eachCell((cell) => {
+  cell.font = {
+    bold: true,
+  };
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: {
+      argb: "FFE2E5E9",
+    },
+  };
+
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+});
+
+const disbursementRow = worksheet.addRow([
+  "",
+  "TOTAL DISBURSE",
+  result.total_disburse.cash_allowance,
+  result.total_disburse.computed_ecola,
+  "",
+  result.total_disburse.total,
+]);
+
+disbursementRow.getCell(2).font = {
+  bold: true,
+};
+
+for (let column = 3; column <= 6; column += 1) {
+  disbursementRow.getCell(column).numFmt =
+    moneyFormat;
+}
+
+worksheet.addRow([]);
+
+
+
+
+
+
+
+  for (const [company, companyData] of Object.entries(
+    result.BRANCHES
+  )) {
+    const companyStartRow = worksheet.rowCount + 1;
+
+    worksheet.mergeCells(
+      `A${companyStartRow}:F${companyStartRow}`
+    );
+
+    const companyCell = worksheet.getCell(
+      `A${companyStartRow}`
+    );
+
+    companyCell.value = company;
+    companyCell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFFFF",
+      },
+    };
+
+    companyCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FF334155",
+      },
+    };
+
+    companyCell.alignment = {
+      horizontal: "left",
+      vertical: "middle",
+    };
+
+   for (const [branchName, branchData] of Object.entries(
+  companyData.branches
+)) {
+  addSection(
+    `Branch:${branchName}`,
+    branchData.employees,
+    branchData.totals
+  );
+
+  if (branchData.loans.length > 0) {
+    const loanHeaderRow = worksheet.addRow([
+      "",
+      "LOAN DEDUCTIONS",
+      "",
+      "",
+      "",
+      "",
+    ]);
+
+    worksheet.mergeCells(
+      `B${loanHeaderRow.number}:F${loanHeaderRow.number}`
+    );
+
+    loanHeaderRow.getCell(2).font = {
+      bold: true,
+    };
+
+    loanHeaderRow.getCell(2).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FFF1F5F9",
+      },
+    };
+
+    loanHeaderRow.getCell(2).alignment = {
+      horizontal: "left",
+      vertical: "middle",
+    };
+
+    branchData.loans.forEach((loan, index) => {
+      const employee = branchData.employees.find(
+        (item) =>
+          item.EmpCode.trim() === loan.EmpCode.trim()
+      );
+
+      const employeeName =
+        employee?.name ?? loan.EmpCode;
+
+      //const description = loan.others_types ?? loan.loan_type ??"";
+      const description = `${loan.loan_type}, ${loan.others_types}`
+
+   const loanRow = worksheet.addRow([
+  index + 1,
+  employeeName,
+  Number(loan.per_payroll_deduct ?? 0),
+  description,
+  "",
+  "",
+]);
+
+worksheet.mergeCells(
+  `D${loanRow.number}:F${loanRow.number}`
+);
+
+loanRow.getCell(4).alignment = {
+  horizontal: "left",
+  vertical: "middle",
+  wrapText: true,
+};
+
+      loanRow.getCell(1).alignment = {
+        horizontal: "center",
+      };
+
+      loanRow.getCell(3).numFmt = moneyFormat;
+
+      loanRow.getCell(3).alignment = {
+        horizontal: "right",
+      };
+    });
+
+    const loanTotalRow = worksheet.addRow([
+      "",
+      "TOTAL LOAN DEDUCTION",
+      branchData.total_loans,
+      "",
+      "",
+      "",
+    ]);
+
+    loanTotalRow.getCell(2).font = {
+      bold: true,
+    };
+
+    loanTotalRow.getCell(3).font = {
+      bold: true,
+    };
+
+    loanTotalRow.getCell(3).numFmt =
+      moneyFormat;
+
+    loanTotalRow.getCell(3).alignment = {
+      horizontal: "right",
+    };
+
+    const disbursementRow = worksheet.addRow([
+      "",
+      "TOTAL DISBURSEMENT",
+      branchData.disbursement.cash_allowance,
+      branchData.disbursement.computed_ecola,
+      branchData.disbursement.deduct,
+      branchData.disbursement.total,
+    ]);
+
+    disbursementRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FFE2E8F0",
+        },
+      };
+    });
+
+    for (
+      let column = 3;
+      column <= 6;
+      column += 1
+    ) {
+      disbursementRow.getCell(column).numFmt =
+        moneyFormat;
+
+      disbursementRow.getCell(column).alignment = {
+        horizontal: "right",
+      };
+    }
+
+    worksheet.addRow([]);
+  }
+}
+
+    const companyTotalRow = worksheet.addRow([
+      "",
+      `${company} GRAND TOTAL`,
+      companyData.grand_total.cash_allowance,
+      companyData.grand_total.computed_ecola,
+      companyData.grand_total.deduct,
+      companyData.grand_total.total,
+    ]);
+
+    companyTotalRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+        color: {
+          argb: "FFFFFFFF",
+        },
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF475569",
+        },
+      };
+    });
+
+    for (let column = 3; column <= 6; column += 1) {
+      companyTotalRow.getCell(column).numFmt =
+        moneyFormat;
+
+      companyTotalRow.getCell(column).alignment = {
+        horizontal: "right",
+      };
+    }
+
+    worksheet.addRow([]);
+  }
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber > 4) {
+      row.height = 20;
+    }
+
+    row.eachCell((cell) => {
+      cell.alignment = {
+        ...cell.alignment,
+        vertical: "middle",
+      };
+    });
+  });
+
+  worksheet.autoFilter = undefined;
+
+  worksheet.headerFooter.oddFooter =
+    "Page &P of &N";
+
+  const excelBuffer =
+    await workbook.xlsx.writeBuffer();
+
+  return Buffer.from(excelBuffer);
 }

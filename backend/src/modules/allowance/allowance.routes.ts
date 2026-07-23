@@ -12,6 +12,7 @@ updateEmergencyAllowanceController,
 displayEmergencyAllowanceController,
 updateAbsentOverrideController,
 getVarianceEmployeesController,
+exportAllowanceExcelController,
 } from "./allowance.controller";
 
 const router = Router();
@@ -32,5 +33,6 @@ router.get("/display-emergency-allowance",displayEmergencyAllowanceController);
 router.post("/update-absent",updateAbsentOverrideController);
 router.get("/test",getTotalPerCompanyController);
 router.get("/get-employee-variance",getVarianceEmployeesController);
+router.get("/export-allowance",exportAllowanceExcelController);
 
 export default router;

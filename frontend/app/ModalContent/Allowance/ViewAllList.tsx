@@ -1,4 +1,4 @@
-import { useFetchViewAll } from "@/app/hooks/useAllowance";
+import { useExportAllowance, useFetchViewAll } from "@/app/hooks/useAllowance";
 import { ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
@@ -17,6 +17,7 @@ interface Props {
 export default function ViewAllList({ selectedMonth }: Props) {
 
     const { data } = useFetchViewAll(selectedMonth);
+    const { mutate: exportAllowance } = useExportAllowance();
 
     const boardMembers = data?.BOARD_MEMBER ?? [];
     const mancom = data?.MANCOM ?? [];
@@ -90,15 +91,29 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const showEmergency = boardMembers.some(emp => emp.is_emergency);
 
 
+    const handleExport = () => {
+            exportAllowance({
+                selectedMonth,
+            });
+            };
+
+
 
     return (
         <>
             <div className="p-2">
 
+                <div className="flex justify-between">
                 <div className="font-semibold space-y-1 uppercase">
                     <h2>JAMERO GROUP OF COMPANIES</h2>
                     <h2>CASH ASSITANCE & ECOLA</h2>
                     <h2>FOR THE MONTH OF {formatMonthYear(selectedMonth)}</h2>
+                </div>
+                
+                <div>
+                    <button onClick={handleExport}
+                    className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-600">Export Excel</button>
+                </div>
                 </div>
 
                 <div className="pt-4">
