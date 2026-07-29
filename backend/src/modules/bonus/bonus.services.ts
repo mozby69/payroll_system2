@@ -273,7 +273,10 @@ export async function generateBonusForAllEmployees({
                   EmployementDate: {
                     lte: generateDate
                   },
-                  isAlien: false
+                  isAlien: false,
+                  EmployeeStatus: {
+                      in: ["Active", "Inactive"],
+                  },
               },
                 {
                   BranchCode: {
