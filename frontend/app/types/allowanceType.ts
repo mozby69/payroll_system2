@@ -65,6 +65,8 @@ export interface ArchiveAllowance {
   company_id: string | null;
   emergency_allowance_amount: number | null;
   is_emergency: boolean | null;
+  absent_cash_assistance: number | null;
+  absent_ecola: number | null;
 }
 export interface ArchiveAllowanceDetails {
   company_list: Record<string, unknown>;
@@ -73,14 +75,16 @@ export interface ArchiveAllowanceDetails {
   variance_employee: unknown;
 }
 
-export interface ArchiveAllowanceResponse {
-  data: {
-    list: ArchiveAllowance[];
-    details: ArchiveAllowanceDetails | null;
-  };
+// export interface ArchiveAllowanceResponse {
+//   data: {
+//     list: ArchiveAllowance[];
+//     details: ArchiveAllowanceDetails | null;
+//   };
+// }
+
+export interface ArchiveAllowanceResponse{
+  data: ViewAllResponse;
 }
-
-
 
 
 
@@ -114,33 +118,12 @@ export interface PrintAllowanceRow {
 export interface VarianceEmpItem {
   EmpCode: string;
   name: string;
+  branch_code?: string | null;
 
-  previous: {
-    cash_assistance: number;
-    ecola: number;
-    total: number;
-  };
+  cash_assistance_variance: number;
+  ecola_variance: number;
 
-  current: {
-    cash_assistance: number;
-    ecola: number;
-    total: number;
-  };
-
-  variance: {
-    cash_assistance: number;
-    ecola: number;
-    total: number;
-    remarks: string | null;
-    created_at: string | null;
-    action: {
-      type: "ADD" | "LESS";
-      data: {
-        remarks:string;
-        create_at:string;
-      };
-    };
-  };
+  reasons: string[];
 }
 
 export interface ViewAllItem {
@@ -160,6 +143,8 @@ export interface ViewAllItem {
   ecola_deduct:number;
   is_emergency:boolean;
   emergency_allowance_amount:number;
+  absent_cash_assistance:number;
+  absent_ecola:number;
 }
 // export interface LoanItem{
 //   EmpCode:string;
@@ -209,6 +194,7 @@ export interface AllowanceLoan {
 }
 
 export interface BranchSummary {
+  position:number;
   employees: ViewAllItem[];
   loans: AllowanceLoan[];
   total_loans: number;
@@ -216,6 +202,7 @@ export interface BranchSummary {
   disbursement:AllowanceTotals;
 }
 export interface CompanyBranchSummary {
+  position:number;
   branches: Record<string, BranchSummary>;
   grand_total: AllowanceTotals;
 }
@@ -225,6 +212,16 @@ export type BranchesResponse = Record<
   CompanyBranchSummary
 >;
 
+export interface VarianceEmpResponse {
+  ADD: VarianceEmpItem[];
+  LESS: VarianceEmpItem[];
+}
+
+export interface FinalVariance {
+  final_ca_variance:number;
+  final_ecola_variance:number;
+  final_total_variance:number;
+}
 
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
@@ -240,9 +237,10 @@ export interface ViewAllResponse {
 
   LOANS: loanlistProps[];
   VARIANCE:VarianceAllowance;
-  VARIANCE_EMP: VarianceEmpItem[];
+  VARIANCE_EMP: VarianceEmpResponse;
   TOTAL_PER_COMPANY: TotalPerCompany;
   totalmhAndMancomLoans:number;
+  FINAL_VARIANCE:FinalVariance;
 }
 
 

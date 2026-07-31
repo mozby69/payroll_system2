@@ -6,125 +6,188 @@ import { useUpdateDeduction } from "@/app/hooks/usePreparePayroll";
 import SweetAlert from "@/app/components/Swal";
 import AuthenticationModal from "@/app/components/editableLoanModal/AuthenticationModal"
 import { useVerifyPassword } from "@/app/hooks/useEditableLoan";
+import { SummaryOverrideChanges, UpdateDeductionPayload } from "@/app/types/preparePayroll";
 
 
 type Props = {
   employee: ComputedProps;
   onClose?: () => void;
 };
+type EditableField = keyof SummaryOverrideChanges;
 
 export default function EditDeduction({ employee, onClose }: Props) {
   const { mutate, isPending } = useUpdateDeduction();
+
+
   const [openModal, setOpenModal] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isBasicSalaryEdited, setIsBasicSalaryEdited] = useState(false);
   console.log(isDetailModalOpen);
 
+  const [editedFields, setEditedFields] = useState<Set<EditableField>>(() => new Set());
+
+  const markFieldAsEdited = (field: EditableField) => {
+    setEditedFields((currentFields) => {
+      const nextFields = new Set(currentFields);
+      nextFields.add(field);
+
+      return nextFields;
+    });
+  };
 
 
   const [late, setLate] = useState<string>(
-    employee.LateCount && employee.LateCount > 0 ? String(employee.LateCount) : ""
+    employee.LateCount !== null &&
+      employee.LateCount !== undefined
+      ? String(employee.LateCount)
+      : ""
   );
 
   const [absent, setAbsent] = useState<string>(
-    employee.TotalAbsentHours && Number(employee.TotalAbsentHours) > 0
-      ? String(employee.TotalAbsentHours) : ""
+    employee.TotalAbsentHours !== null &&
+      employee.TotalAbsentHours !== undefined
+      ? String(employee.TotalAbsentHours)
+      : ""
   );
 
   const [undertime, setUndertime] = useState<string>(
-    employee.TotalUndertime && employee.TotalUndertime > 0
+    employee.TotalUndertime !== null &&
+      employee.TotalUndertime !== undefined
       ? String(employee.TotalUndertime)
       : ""
   );
 
   const [overtime, setOvertime] = useState<string>(
-    employee.TotalOvertime && Number(employee.TotalOvertime) > 0
+    employee.TotalOvertime !== null &&
+      employee.TotalOvertime !== undefined
       ? String(employee.TotalOvertime)
       : ""
   );
 
-  //   const [grossPay, setGrossPay] = useState<string>(
-  //   employee.gross_pay_edit && employee.gross_pay_edit > 0 ? String(employee.gross_pay_edit) : ""
-  // );
+  const [basicSalary, setBasicSalary] =
+    useState<string>(
+      employee.basic_salary !== null &&
+        employee.basic_salary !== undefined
+        ? String(employee.basic_salary)
+        : ""
+    );
 
-  const [basicSalary,setBasicSalary] = useState<string>(
-     employee.basic_salary && Number(employee.basic_salary) > 0
-      ? String(employee.basic_salary)
-      : ""
-  )
+  const [philhealthEmployee, setPhilhealthEmployee] =
+    useState<string>(
+      employee.philhealth_employee !== null &&
+        employee.philhealth_employee !== undefined
+        ? String(employee.philhealth_employee)
+        : ""
+    );
 
-  const [philhealthEmployee,setPhilhealthEmployee] = useState<string>(
-     employee.philhealth_employee && Number(employee.philhealth_employee) > 0
-      ? String(employee.philhealth_employee)
-      : ""
-  )
+  const [philhealthEmployer, setPhilhealthEmployer] =
+    useState<string>(
+      employee.philhealth_employer !== null &&
+        employee.philhealth_employer !== undefined
+        ? String(employee.philhealth_employer)
+        : ""
+    );
 
-    const [philhealthEmployer,setPhilhealthEmployer] = useState<string>(
-     employee.philhealth_employer && Number(employee.philhealth_employer) > 0
-      ? String(employee.philhealth_employer)
-      : ""
-  )
-
-
-    const [wtax,setWtax] = useState<string>(
-     employee.final_wtax && Number(employee.final_wtax) > 0
+  const [wtax, setWtax] = useState<string>(
+    employee.final_wtax !== null &&
+      employee.final_wtax !== undefined
       ? String(employee.final_wtax)
       : ""
-  )
+  );
+
+
+
+
 
   const verifyPasswordMutation = useVerifyPassword();
+  const toNumber = (value: string): number => {
+    if (value.trim() === "") {
+      return 0;
+    }
 
-const handleSubmit = () => {
-  const payload: {
-    PayCode: string;
-    EmpCodeId: string;
-    PayrollPeriod: string;
-    LateCount: number;
-    TotalAbsentHours: number;
-    TotalUndertime: number;
-    TotalOvertime: number;
-    gross_pay_edit?: number;
-    basic_salary_edited?: boolean;
-    philhealth_employee?:number;
-    philhealth_employer?:number;
-    final_wtax?:number;
-    basic_salary?:number;
-  } = {
-    PayCode: employee.PayCode,
-    EmpCodeId: employee.EmpCodeId,
-    PayrollPeriod: employee.PayrollPeriod,
-    LateCount: late === "" ? 0 : Number(late),
-    TotalAbsentHours: absent === "" ? 0 : Number(absent),
-    TotalUndertime: undertime === "" ? 0 : Number(undertime),
-    TotalOvertime: overtime === "" ? 0 : Number(overtime),
-    philhealth_employee: philhealthEmployee === "" ? 0 : Number(philhealthEmployee),
-    philhealth_employer: philhealthEmployer === "" ? 0 : Number(philhealthEmployer),
-    final_wtax: wtax === "" ? 0 : Number(wtax),
-    // basic_salary: basicSalary === "" ? 0 : Number(basicSalary),
+    const parsedValue = Number(value);
+
+    return Number.isFinite(parsedValue)
+      ? parsedValue
+      : 0;
   };
 
-  // 👇 ONLY include gross if user edited it
-  if (isBasicSalaryEdited) {
-    payload.basic_salary = basicSalary === "" ? 0 : Number(basicSalary);
-    payload.basic_salary_edited = true;
-  }
+  const handleSubmit = () => {
+    const changes: SummaryOverrideChanges = {};
 
-  mutate(payload, {
-    onSuccess: () => {
-      onClose?.();
-      SweetAlert.successAlert("Saved successfully");
-    },
-  });
-};
+    if (editedFields.has("LateCount")) {
+      changes.LateCount = toNumber(late);
+    }
+
+    if (editedFields.has("TotalAbsentHours")) {
+      changes.TotalAbsentHours = toNumber(absent);
+    }
+
+    if (editedFields.has("TotalUndertime")) {
+      changes.TotalUndertime = toNumber(undertime);
+    }
+
+    if (editedFields.has("TotalOvertime")) {
+      changes.TotalOvertime = toNumber(overtime);
+    }
+
+    if (editedFields.has("philhealth_employee")) {
+      changes.philhealth_employee =
+        toNumber(philhealthEmployee);
+    }
+
+    if (editedFields.has("philhealth_employer")) {
+      changes.philhealth_employer =
+        toNumber(philhealthEmployer);
+    }
+
+    if (editedFields.has("final_wtax")) {
+      changes.final_wtax = toNumber(wtax);
+    }
+
+    if (editedFields.has("basic_salary")) {
+      changes.basic_salary =
+        toNumber(basicSalary);
+    }
+
+    if (Object.keys(changes).length === 0) {
+      SweetAlert.errorAlert(
+        "No fields were changed"
+      );
+      return;
+    }
+
+    const payload: UpdateDeductionPayload = {
+      PayCode: employee.PayCode,
+      EmpCodeId: employee.EmpCodeId,
+      PayrollPeriod: employee.PayrollPeriod,
+      changes,
+    };
+
+    mutate(payload, {
+      onSuccess: () => {
+        SweetAlert.successAlert(
+          "Saved successfully"
+        );
+
+        onClose?.();
+      },
+
+      onError: () => {
+        SweetAlert.errorAlert(
+          "Failed to save changes"
+        );
+      },
+    });
+  };
 
   // const handleOpenModal = () =>{
   //   setOpenModal(true);
   // }
   const handleCloseModal = () => {
     setOpenModal(false);
-    setIsChecked(false); 
+    setIsChecked(false);
   }
 
 
@@ -149,8 +212,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={late}
-            placeholder="Input late count.."
-            onChange={(e) => setLate((e.target.value))}
+            placeholder="Input late count..."
+            onChange={(event) => {
+              setLate(event.target.value);
+              markFieldAsEdited("LateCount");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -160,8 +226,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={absent}
-            placeholder="Input absent count.."
-            onChange={(e) => setAbsent((e.target.value))}
+            placeholder="Input absent count..."
+            onChange={(event) => {
+              setAbsent(event.target.value);
+              markFieldAsEdited("TotalAbsentHours");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -171,8 +240,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={undertime}
-            placeholder="Input undertime count.."
-            onChange={(e) => setUndertime((e.target.value))}
+            placeholder="Input undertime count..."
+            onChange={(event) => {
+              setUndertime(event.target.value);
+              markFieldAsEdited("TotalUndertime");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -182,8 +254,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={overtime}
-            placeholder="Input overtime amount.."
-            onChange={(e) => setOvertime((e.target.value))}
+            placeholder="Input overtime amount..."
+            onChange={(event) => {
+              setOvertime(event.target.value);
+              markFieldAsEdited("TotalOvertime");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -194,8 +269,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={philhealthEmployee}
-            placeholder="Input amount.."
-            onChange={(e) => setPhilhealthEmployee((e.target.value))}
+            placeholder="Input amount..."
+            onChange={(event) => {
+              setPhilhealthEmployee(event.target.value);
+              markFieldAsEdited("philhealth_employee");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -207,8 +285,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={philhealthEmployer}
-            placeholder="Input amount.."
-            onChange={(e) => setPhilhealthEmployer((e.target.value))}
+            placeholder="Input amount..."
+            onChange={(event) => {
+              setPhilhealthEmployer(event.target.value);
+              markFieldAsEdited("philhealth_employer");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -220,8 +301,11 @@ const handleSubmit = () => {
           <input
             type="number"
             value={wtax}
-            placeholder="Input amount.."
-            onChange={(e) => setWtax((e.target.value))}
+            placeholder="Input amount..."
+            onChange={(event) => {
+              setWtax(event.target.value);
+              markFieldAsEdited("final_wtax");
+            }}
             className="border border-gray-400 p-2 rounded w-full"
           />
         </div>
@@ -235,9 +319,9 @@ const handleSubmit = () => {
             type="number"
             value={basicSalary}
             placeholder="Input basic salary amount..."
-            onChange={(e) => {
-              setBasicSalary(e.target.value);
-              setIsBasicSalaryEdited(true);
+            onChange={(event) => {
+              setBasicSalary(event.target.value);
+              markFieldAsEdited("basic_salary");
             }}
             className="border border-gray-400 p-2 rounded w-full"
           />
@@ -278,15 +362,15 @@ const handleSubmit = () => {
 
 
 
-        <AuthenticationModal
-            isOpen={openModal}
-            onClose={handleCloseModal}
-            onConfirm={handlePasswordConfirm}
-        />
+      <AuthenticationModal
+        isOpen={openModal}
+        onClose={handleCloseModal}
+        onConfirm={handlePasswordConfirm}
+      />
 
 
 
-           {/* {openModal && (
+      {/* {openModal && (
             <RequestModal size="sm" title={`Edit Gross`} onClose={handleCloseModal}>
               <EditGrossPay
       
@@ -294,7 +378,7 @@ const handleSubmit = () => {
               />
             </RequestModal>
           )} */}
-      
+
 
     </div>
   );

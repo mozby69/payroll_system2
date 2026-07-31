@@ -17,39 +17,51 @@ export default function EmployeeGmail({ employee }: ViewEmployeeListProps) {
     const [showProcessing, setShowProcessing] = useState(false);
 
 
-  const handleSendPayslip = async () => {
-  try {
-    setShowProcessing(true);
+const handleSendPayslip =
+  async (): Promise<void> => {
+    try {
+      setShowProcessing(true);
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-email-payslip`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ employee }),
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-email-payslip`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            archiveId: employee.id,
+          }),
+        }
+      );
+
+      const result: {
+        message?: string;
+      } = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ??
+            "Failed to send payslip"
+        );
       }
-    );
 
-    const data = await res.json();
+      SweetAlert.successAlert(
+        "Payslip sent successfully"
+      );
+    } catch (error: unknown) {
+      console.error(error);
 
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to send payslip");
+      SweetAlert.errorAlert(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong"
+      );
+    } finally {
+      setShowProcessing(false);
     }
-
-    SweetAlert.successAlert("Payslip sent successfully");
-
-  } catch (error) {
-    console.error(error);
-
-    SweetAlert.errorAlert(
-      error instanceof Error ? error.message : "Something went wrong"
-    );
-  } finally {
-    setShowProcessing(false); 
-  }
-};
+  };
 
   const fullName = `${employee.EmpCode.Firstname} ${employee.EmpCode?.Lastname ?? ""}`.trim();
   const email = employee.EmpCode?.employeepayroll?.gmail_account ?? "—";

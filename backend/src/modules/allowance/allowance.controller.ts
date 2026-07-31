@@ -1,6 +1,7 @@
 import { getBranch } from "../general/general.services";
 import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
+import { SendBulkAllowanceBody } from "./allowance.types";
 
 
 export const fetchAllowanceController = async (req: Request, res: Response) => {
@@ -105,18 +106,45 @@ export const fetchAllowanceSummaryController = async (req: Request, res: Respons
 
 
 
-export async function fetchArchiveAllowanceByMonthController(req: Request, res: Response) {
-  const { selectedMonth } = req.params;
+export async function fetchArchiveAllowanceByMonthController(req: Request,res: Response) {
+  try {
+    const selectedMonth =
+      typeof req.params.selectedMonth === "string"
+        ? req.params.selectedMonth.trim()
+        : "";
 
-  if (!selectedMonth) {
-    return res.status(400).json({ message: 'selectedMonth is required' });
+    if (!selectedMonth) {
+      return res.status(400).json({
+        message: "selectedMonth is required",
+      });
+    }
+
+    const data =
+      await getArchiveAllowanceByMonth(
+        selectedMonth
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        message: "Archived allowance not found",
+      });
+    }
+
+    return res.status(200).json({
+      data,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to fetch archived allowance:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Failed to fetch archived allowance",
+    });
   }
-
-  const data = await getArchiveAllowanceByMonth(selectedMonth);
-
-  return res.json({ data });
 }
-
 
 
 
@@ -167,28 +195,47 @@ export const fetchAllowancePrintDataController = async (req: Request,res: Respon
   try {
     const { month, company, branch, empId } = req.query;
 
-    if (!month || !company || !branch) {
-      return res.status(400).json({ message: "Missing parameters" });
+    if (
+      typeof month !== "string" ||
+      typeof company !== "string"
+    ) {
+      return res.status(400).json({
+        message:
+          "Month and company are required",
+      });
     }
 
+    const selectedBranch =
+      typeof branch === "string" &&
+      branch.trim()
+        ? branch.trim()
+        : undefined;
+
+    const selectedEmployee =
+      typeof empId === "string" &&
+      empId.trim()
+        ? empId.trim()
+        : undefined;
+
     const result = await getArchiveAllowanceByCompanyBranch({
-      selectedMonth: month as string,
-      company: company as string,
-      branch: branch as string,
-      empId: empId as string | undefined,
-    });
+        selectedMonth: month,
+        company,
+        branch: selectedBranch,
+        empId: selectedEmployee,
+      });
 
     return res.status(200).json({
       success: true,
       data: result,
     });
-
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error);
-    return res.status(500).json({ message: "Failed to fetch print data" });
+
+    return res.status(500).json({
+      message: "Failed to fetch print data",
+    });
   }
 };
-
 
 
 
@@ -256,21 +303,56 @@ export async function getTotalPerCompanyController(req: Request, res: Response) 
 
 
 
-export async function sendBulkAllowanceServiceController(req: Request, res: Response) {
+export async function sendBulkAllowanceServiceController(req: Request<Record<string, never>, unknown, SendBulkAllowanceBody>,res: Response) {
   try {
-     const { month,company,branch} = req.body;
+    const { month, company, branch } = req.body;
 
+    if (
+      typeof month !== "string" ||
+      !month.trim()
+    ) {
+      return res.status(400).json({
+        message: "Month is required",
+      });
+    }
 
+    if (
+      typeof company !== "string" ||
+      !company.trim()
+    ) {
+      return res.status(400).json({
+        message: "Company is required",
+      });
+    }
 
-    const data = await sendBulkAllowanceService({month,company,branch});
+    const selectedBranch =
+      typeof branch === "string" &&
+      branch.trim()
+        ? branch.trim()
+        : undefined;
+
+    const data =
+      await sendBulkAllowanceService({
+        month: month.trim(),
+        company: company.trim(),
+        branch: selectedBranch,
+      });
 
     return res.status(200).json(data);
-  } catch (error) {
-    console.error(`error ocurred in controller ${error}`);
-    return res.status(500).json({ message: "error occured" });
+  } catch (error: unknown) {
+    console.error(
+      "Error occurred while sending allowance emails:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to send allowance emails",
+    });
   }
 }
-
 
 
 

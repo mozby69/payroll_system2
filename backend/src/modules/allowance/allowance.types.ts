@@ -85,6 +85,8 @@ export type ArchiveAllowanceDTO = {
   company_id: string | null;
   emergency_allowance_amount: number | null;
   is_emergency: boolean | null;
+  absent_cash_assistance:number | null;
+  absent_ecola: number | null;
 };
 
 export type BranchMeta = {
@@ -114,6 +116,7 @@ export type AllowanceTotals = {
 };
 
 export type BranchAllowanceSummary = {
+  position:number;
   employees: AllowanceRow[];
   loans: AllowanceLoan[];
   total_loans: number;
@@ -122,6 +125,7 @@ export type BranchAllowanceSummary = {
 };
 
 export type CompanyAllowanceSummary = {
+  position:number;
   branches: Record<string, BranchAllowanceSummary>;
   grand_total: AllowanceTotals;
 };
@@ -159,4 +163,13 @@ export type ExcelTotals = {
   computed_ecola: number;
   deduct?: number;
   total: number;
+};
+
+
+
+
+export type SendBulkAllowanceBody = {
+  month?: unknown;
+  company?: unknown;
+  branch?: unknown;
 };

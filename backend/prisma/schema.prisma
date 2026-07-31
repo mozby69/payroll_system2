@@ -775,6 +775,8 @@ model archive_allowance {
   position String? @db.VarChar(100) 
   emergency_allowance_amount Decimal? @db.Decimal(10,2)
   is_emergency Boolean @default(false)
+  absent_cash_assistance Decimal? @db.Decimal(10,2)
+  absent_ecola Decimal? @db.Decimal(10,2)
 
   selectedMonth String @db.VarChar(100) @map("selected_month")
   branchCode  String
@@ -1048,35 +1050,37 @@ model SummaryTableOverride {
   EmpCodeId       String   @db.VarChar(20)
   PayrollPeriod   String   @db.VarChar(20)
 
-  LateCount Int?
-  TotalAbsentHours Decimal? @db.Decimal(10,2)
-  TotalUndertime Int? 
-  TotalOvertime Decimal? @db.Decimal(10,2)
-  basic_salary Decimal? @db.Decimal(10,2)
-  basic_salary_edited Boolean @default(false)
-  // gross_pay_edit Decimal? @db.Decimal(10,2)
-  // gross_edited Boolean @default(false)
-  philhealth_employee Decimal? @db.Decimal(10,2)
-  philhealth_employer Decimal? @db.Decimal(10,2)
-  final_wtax Decimal? @db.Decimal(10,2)
+  changes Json?
+
   created_at      DateTime @default(now())
+  updated_at DateTime? @updatedAt
 
   employeeSummary EmployeeSummary @relation(fields: [PayCode, EmpCodeId,PayrollPeriod],references: [PayCode, EmpCodeId, PayrollPeriod])
 
   @@index([PayCode, EmpCodeId,PayrollPeriod])
   @@unique([PayCode, EmpCodeId, PayrollPeriod])
-
   @@map("summary_table_override")
 }
 
 
 model allowanceArchiveDetails{
   id Int @id @default(autoincrement())
-  company_list Json?
-  loans Json?
-  variance_allowance Json?
-  variance_employee Json?
+  board_member Json?
+  mancom Json?
+  mh Json?
+  mh_totals Json? 
+  board_mancom_totals Json?
+  total_mh_boardmancom Json?
+  mh_mancom_loans Json?
+  totalmhAndMancomLoans Json?
+  total_disburse Json?
+  branches Json?
+  variance Json?
+  variance_emp Json?
+  total_per_company Json?
+  final_variance Json?
 
+  created_at DateTime @default(now())
   selectedMonth String @db.VarChar(100) @map("selected_month")
   summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
   @@map("allowance_archive_details")

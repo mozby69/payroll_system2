@@ -4,9 +4,9 @@ import { useDebounce } from "@/app/utils/useDebounce";
 import { useState } from "react";
 import Datatable from "../Datatable";
 import { Column } from "@/app/types/preparePayroll";
-import { FilePenLine, FileText, Printer } from "lucide-react";
+import { FilePenLine, Printer } from "lucide-react";
 import RequestModal from "../Modal";
-import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
+//import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
 import { Pagination } from "../Pagination";
 
 import CompanyBranchSelector from "@/app/ModalContent/Allowance/ViewPrint";
@@ -19,7 +19,7 @@ export default function AllowanceArchiveTab(){
             const PAGE_SIZE = 5;
             const [page, setPage] = useState(1);
             const [search, setSearch] = useState("");
-            const [isModalOpen, setIsModalOpen] = useState(false);
+          //  const [isModalOpen, setIsModalOpen] = useState(false);
             const [isModalOpenPrint, setIsModalOpenPrint] = useState(false);
             const [isModalOpenReport, setIsModalOpenReport] = useState(false);
             const debouncedSearch = useDebounce(search, 400);
@@ -67,11 +67,12 @@ export default function AllowanceArchiveTab(){
                                  onClick={() => openModalReport(row)}>
                                   <FilePenLine/>
                                 </button>
-                                <button
+
+                                {/* <button
                                 onClick={ () => openModal(row)}
                                 className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 hover:cursor-pointer text-white rounded">
                                 <FileText/>
-                                </button>
+                                </button> */}
 
                                 <button
                                   onClick={() => {openModalPrint(row) }}
@@ -84,15 +85,15 @@ export default function AllowanceArchiveTab(){
                           
                        ];
                        
-                  const openModal = (row: AllowanceSummary) => {
-                    setSelectedRow(row);
-                    setIsModalOpen(true);
-                  };
+                  // const openModal = (row: AllowanceSummary) => {
+                  //   setSelectedRow(row);
+                  //   setIsModalOpen(true);
+                  // };
 
-                  const closeModal = () => {
-                    setIsModalOpen(false);
-                    setSelectedRow(null);
-                  };
+                  // const closeModal = () => {
+                  //   setIsModalOpen(false);
+                  //   setSelectedRow(null);
+                  // };
 
                   const openModalPrint = (row:AllowanceSummary) => {
                     setSelectedRow(row);
@@ -147,18 +148,18 @@ export default function AllowanceArchiveTab(){
 
 
 
-            {isModalOpen && selectedRow && (
+            {/* {isModalOpen && selectedRow && (
                 <RequestModal size="xxxl" title={`Employee Allowance List`} onClose={closeModal}>
                   <ViewEmployeeListAllowance
                     allowanceSummary={selectedRow}
                     onClose={closeModal}
                   />
                 </RequestModal>
-              )}
+              )} */}
 
 
           {isModalOpenPrint && (
-              <RequestModal size="md" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
+              <RequestModal size="md" title={`PRINT ALLOWANCE -${selectedRow?.selectedMonth}`} onClose={closeModalPrint}>
                   <CompanyBranchSelector selectedMonth={selectedRow?.selectedMonth ?? ""}/>
               </RequestModal>
             )}

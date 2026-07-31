@@ -159,19 +159,18 @@ export function getCurrentPayrollLabel(): string {
 
 
 
-export type UpdateDeductionPayload = {
-  PayCode: string;
-  EmpCodeId: string;
-  PayrollPeriod: string;
-  LateCount: number;
-  TotalAbsentHours: number;
-  TotalUndertime: number;
-  TotalOvertime:number;
-  // gross_pay_edit:number;
-  // gross_edited:boolean;
-  philhealth_employee:number;
-  philhealth_employer:number;
-  final_wtax:number;
-  basic_salary:number;
-  basic_salary_edited:boolean;
-};
+// export type UpdateDeductionPayload = {
+//   PayCode: string;
+//   EmpCodeId: string;
+//   PayrollPeriod: string;
+//   LateCount: number;
+//   TotalAbsentHours: number;
+//   TotalUndertime: number;
+//   TotalOvertime:number;
+
+//   philhealth_employee:number;
+//   philhealth_employer:number;
+//   final_wtax:number;
+//   basic_salary:number;
+//   basic_salary_edited:boolean;
+// };

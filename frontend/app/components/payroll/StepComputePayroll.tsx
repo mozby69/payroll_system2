@@ -205,7 +205,7 @@ interface Props {
 
 
                  {isModalOpen && selectedRow && (
-                    <RequestModal size="xxl" title={`EDIT DEDUCTION`} onClose={closeModal}>
+                    <RequestModal size="xxl" title={`EDIT DEDUCTION -${selectedRow.EmpCode.Lastname}`} onClose={closeModal}>
                       <EditDeduction employee={selectedRow} onClose={closeModal}/>
                     </RequestModal>
                   )}

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../../middleware/authMiddleware";
-import { getComputedPayrollController, getEmployeesByCycle, InitializeComputePayrollController, InitializeEmployeesbyCycleController, saveEmployeePayrollController, searchEmployeeController, updateDeductionController, ViewDeductionController } from "./prepare_payroll.controller";
+import {  getComputedPayrollController, getEmployeesByCycle, InitializeComputePayrollController, InitializeEmployeesbyCycleController, saveEmployeePayrollController, searchEmployeeController, updateDeductionController, ViewDeductionController } from "./prepare_payroll.controller";
 import { requirePermission } from "../../middleware/permission.middleware";
 
 const router = Router();

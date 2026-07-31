@@ -1,85 +1,85 @@
 
 
 export type Column<T> = {
-    header: string;
-    accessor?: (row: T) => string | number;
-    render?: (row: T) => React.ReactNode;
-    footer?: React.ReactNode | (() => React.ReactNode);
-  };
- 
-
-  export type PayrollSummary = {
-    PayCode: string;
-    EmpCodeId:string;
-    TotalHoursWorked: string | null;
-    LateCount: string | null;
-    TotalAbsentHours: string | null;
-    semi_monthly_rate:string | null;
-    absence:string | null | number;
-    late_count:string | null | number;
-    overtime:string | null | number;
-    gross_pay:number | string | null;
-    philhealth_rate:number | null;
-    emp_pagibig_contrib: number | null;
-    sss_contribution:number | null;
-  };
+  header: string;
+  accessor?: (row: T) => string | number;
+  render?: (row: T) => React.ReactNode;
+  footer?: React.ReactNode | (() => React.ReactNode);
+};
 
 
-  export interface EmployeeRow {
-    EmpCode: string;
-    Firstname: string | null;
-    Lastname: string | null;
-    Department?: string | null;
-    Position?: string | null;
-    EmploymentStatus?: string | null;
-    basic_salary: number;
-    sss_contrib:number | string;
-    phil_rate:number;
-    pagibig_share:number | string;
-    pagibig_employee_share: number;
-    pagibig_employer_share: number;
-    cash_assistance?:number;
-    WithAtm:boolean;
-    Disbursing:boolean;
-    Taxable:boolean;
-    include_payroll:boolean | null;
-    // Loan Code ↓
-    fch_loan: number;
-    sss_loan: number;
-    pagibig_loan: number;
-    rfc_loan:number;
-    are_loan:number;
-    // Loan Code ↑
-    
-    pagibig_id:string; 
-    next_payroll:string; 
-    month_pay:string,
-    BranchCode?: {
-      branchCode: string;
-      Location: string | null;
-      CompanyCode: {
-        CompanyName: string | null;
-        CompanyCycle: string | null;
-      } | null;
+export type PayrollSummary = {
+  PayCode: string;
+  EmpCodeId: string;
+  TotalHoursWorked: string | null;
+  LateCount: string | null;
+  TotalAbsentHours: string | null;
+  semi_monthly_rate: string | null;
+  absence: string | null | number;
+  late_count: string | null | number;
+  overtime: string | null | number;
+  gross_pay: number | string | null;
+  philhealth_rate: number | null;
+  emp_pagibig_contrib: number | null;
+  sss_contribution: number | null;
+};
+
+
+export interface EmployeeRow {
+  EmpCode: string;
+  Firstname: string | null;
+  Lastname: string | null;
+  Department?: string | null;
+  Position?: string | null;
+  EmploymentStatus?: string | null;
+  basic_salary: number;
+  sss_contrib: number | string;
+  phil_rate: number;
+  pagibig_share: number | string;
+  pagibig_employee_share: number;
+  pagibig_employer_share: number;
+  cash_assistance?: number;
+  WithAtm: boolean;
+  Disbursing: boolean;
+  Taxable: boolean;
+  include_payroll: boolean | null;
+  // Loan Code ↓
+  fch_loan: number;
+  sss_loan: number;
+  pagibig_loan: number;
+  rfc_loan: number;
+  are_loan: number;
+  // Loan Code ↑
+
+  pagibig_id: string;
+  next_payroll: string;
+  month_pay: string,
+  BranchCode?: {
+    branchCode: string;
+    Location: string | null;
+    CompanyCode: {
+      CompanyName: string | null;
+      CompanyCycle: string | null;
     } | null;
-  }
-  
+  } | null;
+}
 
-  export type PaginatedResponse<T> = {
-    data: T[];
-    meta: {
-      cycle?:string;
-      company_id:string;
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-      zeroSalaryCount:number;
-    };
+
+export type PaginatedResponse<T> = {
+  data: T[];
+  meta: {
+    cycle?: string;
+    company_id: string;
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    zeroSalaryCount: number;
   };
+};
 
 
-  
+
 export type PaySlipTypes = {
   employeeCode: string
   name: string
@@ -127,7 +127,7 @@ export interface EmployeeSummaryTypes {
   sssEmpShare: number;
   philEmpShare: number;
   pagEmpShare: number;
-  
+
 }
 
 
@@ -160,44 +160,44 @@ export interface PayrollEmployee {
   EmpCode: {
     Firstname: string;
     Lastname: string;
-    BranchCode:{
-      company_id:string;
+    BranchCode: {
+      company_id: string;
     }
   };
-  semi_monthly:number;
-  overtime:number;
-  late_count:number;
-  undertime:number;
-  absence:number;
-  gross_pay:number;
-  sss_contrib_employee:number;
-  sss_contrib_employer:number;
-  pagibig_contrib_employee:number;
-  pagibig_contrib_employer:number,
-  philhealth_contrib_employee:number;
-  philhealth_contrib_employer:number;
-  net_pay:number;
-  wtax:number;
-  computedWtax:number;
-  officers_allowance:number;
+  semi_monthly: number;
+  overtime: number;
+  late_count: number;
+  undertime: number;
+  absence: number;
+  gross_pay: number;
+  sss_contrib_employee: number;
+  sss_contrib_employer: number;
+  pagibig_contrib_employee: number;
+  pagibig_contrib_employer: number,
+  philhealth_contrib_employee: number;
+  philhealth_contrib_employer: number;
+  net_pay: number;
+  wtax: number;
+  computedWtax: number;
+  officers_allowance: number;
 
   // Loan Code ↓
-  rfc_loan:number;
-  fch_loan:number;
-  pagibig_loan:number;
-  sss_loan:number;
-  are_loan:number;
-  calamity_loan:number;
+  rfc_loan: number;
+  fch_loan: number;
+  pagibig_loan: number;
+  sss_loan: number;
+  are_loan: number;
+  calamity_loan: number;
   // Loan Code ↑
 }
 
 
 
-export interface DeductionsOnlyProps{
-  EmpCodeId:string;
-  EmpCode:{
-    Firstname:string;
-    Lastname:string;
+export interface DeductionsOnlyProps {
+  EmpCodeId: string;
+  EmpCode: {
+    Firstname: string;
+    Lastname: string;
   }
   sss_contrib_employee: number,
   philhealth_contrib_employee: number;
@@ -208,7 +208,7 @@ export interface DeductionsOnlyProps{
   pagibig_loan: number;
   rfc_loan: number;
   are_loan: number;
-  total_deductions:number;
+  total_deductions: number;
 }
 
 
@@ -216,14 +216,53 @@ export interface DeductionsOnlyProps{
 
 
 
+// export type UpdateDeductionPayload = {
+//   PayCode: string;
+//   EmpCodeId: string;
+//   PayrollPeriod: string;
+//   LateCount: number;
+//   TotalAbsentHours: number;
+//   TotalUndertime: number;
+//   TotalOvertime: number;
+//   gross_pay_edit?: number;
+//   final_wtax?: number;
+// };
+export type SummaryOverrideChanges = {
+  LateCount?: number;
+  TotalAbsentHours?: number;
+  TotalUndertime?: number;
+  TotalOvertime?: number;
+  philhealth_employee?: number;
+  philhealth_employer?: number;
+  final_wtax?: number;
+  basic_salary?: number;
+};
+
 export type UpdateDeductionPayload = {
   PayCode: string;
   EmpCodeId: string;
   PayrollPeriod: string;
+  changes: SummaryOverrideChanges;
+};
+
+
+
+
+
+
+
+
+
+export interface DisplaySummaryOverride {
+  PayCode: string;
+  EmpCodeId: string;
   LateCount: number;
   TotalAbsentHours: number;
   TotalUndertime: number;
-  TotalOvertime:number;
-  gross_pay_edit?:number;
-  final_wtax?:number;
-};
+  TotalOvertime: number;
+  basic_salary: number;
+  philhealth_employee: number;
+  philhealth_employer: number;
+  final_wtax: number;
+}
+

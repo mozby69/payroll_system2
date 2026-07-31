@@ -2,11 +2,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
-import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP, PayrollDeductions, UpdateDeductionPayload } from "./prepare_payroll.types";
+import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP, PayrollDeductions } from "./prepare_payroll.types";
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
 import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
 import { Decimal } from "@prisma/client/runtime/library";
+import { parseSummaryOverrideChanges } from "./prepare_payroll.helper";
 
 export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
   { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
@@ -691,9 +692,13 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
         NightShiftAtt: true,
         TotalUndertime:true,
         NightShiftOtAtt: true,
-        SummaryTableOverride: true,
+      
+        SummaryTableOverride:{
+          select:{
+            changes:true,
+          }
+        },
         EmpCode: {
-          
           select: {
             Firstname: true,
             Lastname: true,
@@ -714,7 +719,8 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
   
 
   const normalized = data.map((emp) => {
-    const override = emp.SummaryTableOverride?.[0]; 
+    const overrideRecord = emp.SummaryTableOverride?.[0];
+    const override = parseSummaryOverrideChanges(overrideRecord?.changes);
 
     const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;
     const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
@@ -754,10 +760,11 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
         : 0;
 
 
+   const FinalbasicSalary = override.basic_salary ?? semi_monthly;
 
     const computedGrossPay = computeGrossPay(
       finalOvertime,
-      semi_monthly,
+      FinalbasicSalary,
       lateCount,
       undertimeCount,
       absent
@@ -767,11 +774,14 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
     //     ? Number(override.gross_pay_edit)
     //     : computedGrossPay;
     
-    const FinalbasicSalary = override?.basic_salary_edited && override?.basic_salary && override?.basic_salary !== null
-    ? Number(override.basic_salary)
-    : semi_monthly;
+    // const FinalbasicSalary = override?.basic_salary_edited && override?.basic_salary && override?.basic_salary !== null
+    // ? Number(override.basic_salary)
+    // : semi_monthly;
+
+   
         
     //const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
+
 
 
   
@@ -1292,48 +1302,135 @@ export async function ViewDeduction(company_id:string){
 
 
 
-export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,LateCount,TotalAbsentHours,TotalUndertime,TotalOvertime,philhealth_employee,philhealth_employer,final_wtax,basic_salary,basic_salary_edited}: UpdateDeductionPayload) {
-  try{
-    return await prisma.summaryTableOverride.upsert({
-        where: {
-          PayCode_EmpCodeId_PayrollPeriod: {
-            PayCode,
-            EmpCodeId,
-            PayrollPeriod,
-          },
-        },
-        update: {
-          LateCount,
-          TotalAbsentHours,
-          TotalUndertime,
-          TotalOvertime,
-          philhealth_employee,
-          philhealth_employer,
-          final_wtax,
-          ...( basic_salary != undefined && {
-            basic_salary,
-            basic_salary_edited:true,
-          }),
-        },
-        create: {
-          PayCode,
-          EmpCodeId,
-          PayrollPeriod,
-          LateCount,
-          TotalAbsentHours,
-          TotalUndertime,
-          TotalOvertime,
-          philhealth_employee,
-          philhealth_employer,
-          ...( basic_salary != undefined && {
-            basic_salary,
-            basic_salary_edited:true,
-          }),
+export type SummaryOverrideChanges = {
+  LateCount?: number;
+  TotalAbsentHours?: number;
+  TotalUndertime?: number;
+  TotalOvertime?: number;
+  philhealth_employee?: number;
+  philhealth_employer?: number;
+  final_wtax?: number;
+  basic_salary?: number;
+};
+
+export type UpdateDeductionPayload = {
+  PayCode: string;
+  EmpCodeId: string;
+  PayrollPeriod: string;
+  changes: SummaryOverrideChanges;
+};
+
+function parseOverrideChanges(value: Prisma.JsonValue | null | undefined): SummaryOverrideChanges {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return {};
+  }
+
+  const record = value as Record<
+    string,
+    Prisma.JsonValue
+  >;
+
+  const changes: SummaryOverrideChanges = {};
+
+  if (typeof record.LateCount === "number") {
+    changes.LateCount = record.LateCount;
+  }
+
+  if (
+    typeof record.TotalAbsentHours === "number"
+  ) {
+    changes.TotalAbsentHours =
+      record.TotalAbsentHours;
+  }
+
+  if (
+    typeof record.TotalUndertime === "number"
+  ) {
+    changes.TotalUndertime =
+      record.TotalUndertime;
+  }
+
+  if (
+    typeof record.TotalOvertime === "number"
+  ) {
+    changes.TotalOvertime =
+      record.TotalOvertime;
+  }
+
+  if (
+    typeof record.philhealth_employee === "number"
+  ) {
+    changes.philhealth_employee =
+      record.philhealth_employee;
+  }
+
+  if (
+    typeof record.philhealth_employer === "number"
+  ) {
+    changes.philhealth_employer =
+      record.philhealth_employer;
+  }
+
+  if (typeof record.final_wtax === "number") {
+    changes.final_wtax = record.final_wtax;
+  }
+
+  if (typeof record.basic_salary === "number") {
+    changes.basic_salary = record.basic_salary;
+  }
+
+  return changes;
+}
+
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,changes}: UpdateDeductionPayload) {
+  try {
+    const uniqueWhere = {
+      PayCode_EmpCodeId_PayrollPeriod: {
+        PayCode,
+        EmpCodeId,
+        PayrollPeriod,
+      },
+    };
+
+    const existingOverride = await prisma.summaryTableOverride.findUnique({
+        where: uniqueWhere,
+        select: {
+          changes: true,
         },
       });
+
+    const currentChanges = parseOverrideChanges(
+      existingOverride?.changes
+    );
+
+    const mergedChanges: SummaryOverrideChanges = {
+      ...currentChanges,
+      ...changes,
+    };
+
+    return await prisma.summaryTableOverride.upsert({
+      where: uniqueWhere,
+      update: {
+        changes:
+          mergedChanges as Prisma.InputJsonObject,
+      },
+
+      create: {
+        PayCode,
+        EmpCodeId,
+        PayrollPeriod,
+        changes:
+          mergedChanges as Prisma.InputJsonObject,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating summary override:",error);
+    throw error;
   }
-  catch(error){
-    console.error(`Server error occured ${error}`);
-  }
- 
 }
+

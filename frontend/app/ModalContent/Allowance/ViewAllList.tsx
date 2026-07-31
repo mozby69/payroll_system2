@@ -1,11 +1,7 @@
-import { useExportAllowance, useFetchViewAll } from "@/app/hooks/useAllowance";
-import { ViewAllItem } from "@/app/types/allowanceType";
+import {  useFetchViewAll } from "@/app/hooks/useAllowance";
+import { VarianceEmpItem, ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
-
-
-
-
 
 
 
@@ -17,7 +13,7 @@ interface Props {
 export default function ViewAllList({ selectedMonth }: Props) {
 
     const { data } = useFetchViewAll(selectedMonth);
-    const { mutate: exportAllowance } = useExportAllowance();
+   // const { mutate: exportAllowance } = useExportAllowance();
 
     const boardMembers = data?.BOARD_MEMBER ?? [];
     const mancom = data?.MANCOM ?? [];
@@ -76,57 +72,94 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
 
 
-    const varianceEmp = data?.VARIANCE_EMP ?? [];
+    //const varianceEmp = data?.VARIANCE_EMP ?? [];
 
-    const addList = varianceEmp.filter(
-        (item) => item.variance.action?.type === "ADD"
-    );
+    const addList: VarianceEmpItem[] =
+        data?.VARIANCE_EMP?.ADD ?? [];
 
-    const lessList = varianceEmp.filter(
-        (item) => item.variance?.action?.type === "LESS"
-    );
-
+    const lessList: VarianceEmpItem[] =
+        data?.VARIANCE_EMP?.LESS ?? [];
 
 
     const showEmergency = boardMembers.some(emp => emp.is_emergency);
 
 
-    const handleExport = () => {
-            exportAllowance({
-                selectedMonth,
-            });
-            };
+    // const handleExport = () => {
+    //     exportAllowance({
+    //         selectedMonth,
+    //     });
+    // };
 
 
+    //FINAL VARIANCE
+
+    // const addCash = addList.reduce((sum, employee) => sum +
+    // employee.cash_assistance_variance,0)
+
+    // const lessCash = lessList.reduce((sum, employee) => sum +
+    // employee.cash_assistance_variance,0)
+
+    // const addEcola = addList.reduce((sum, employee) => sum +
+    // employee.ecola_variance,0)
+
+    // const lessEcola = lessList.reduce((sum, employee) => sum +
+    // employee.ecola_variance,0)
+
+
+    // const TotaladdCash = addList.reduce((sum, employee) =>
+    //                                 sum +
+    //                                 employee.cash_assistance_variance +
+    //                                 employee.ecola_variance,
+    //                             0
+    //                         )
+
+    // const TotallessCash = lessList.reduce((sum, employee) =>
+    //                                         sum +
+    //                                         employee.cash_assistance_variance +
+    //                                         employee.ecola_variance,
+    //                                     0
+    //                                 )
+                                        
+                                         
+    // const employee_cash_variance =  (addCash - lessCash);
+    // const finalVarianceCA = formatAmount((diff?.cash_assistance ?? 0) - (2900));
+
+    // const employee_ecola_variance = (addEcola - lessEcola)
+    // const finalVarianceEcola = formatAmount((diff?.ecola ?? 0) - employee_ecola_variance);
+
+    // const employee_total_variance = (TotaladdCash - TotallessCash);
+    // const finalTotalVariance =  formatAmount((diff?.grand_total ?? 0) - employee_total_variance);
+
+    const final_ca_variance = data?.FINAL_VARIANCE?.final_ca_variance;
+    const final_ecola_variance = data?.FINAL_VARIANCE?.final_ecola_variance;
+    const final_total_variance = data?.FINAL_VARIANCE?.final_total_variance;
 
     return (
         <>
             <div className="p-2">
 
                 <div className="flex justify-between">
-                <div className="font-semibold space-y-1 uppercase">
-                    <h2>JAMERO GROUP OF COMPANIES</h2>
-                    <h2>CASH ASSITANCE & ECOLA</h2>
-                    <h2>FOR THE MONTH OF {formatMonthYear(selectedMonth)}</h2>
-                </div>
-                
-                <div>
-                    <button onClick={handleExport}
-                    className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-600">Export Excel</button>
-                </div>
+                    <div className="font-semibold space-y-1 uppercase">
+                        <h2>JAMERO GROUP OF COMPANIES</h2>
+                        <h2>CASH ASSITANCE & ECOLA</h2>
+                        <h2>FOR THE MONTH OF {formatMonthYear(selectedMonth)}</h2>
+                    </div>
+
+                    {/* <div>
+                        <button onClick={handleExport}
+                            className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-600">Export Excel</button>
+                    </div> */}
                 </div>
 
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
                             <tr className="bg-gray-200 border-b">
-                                <th>#</th>
-                                <th className="py-2">BOARD</th>
-                                <th>CASH ASSISTANCE</th>
-                                <th>ECOLA</th>
-                                <th>ABSENCES</th>
-
-                                {/* <th>TOTAL DEDUCTIONS</th> */}
+                                <th className="border border-gray-300">#</th>
+                                <th className="py-2 border border-gray-300">BOARD</th>
+                                <th className="border border-gray-300">CASH ASSISTANCE</th>
+                                <th className="border border-gray-300">ECOLA</th>
+                                <th colSpan={3} className="border border-gray-300">ABSENCES</th>
                                 {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
                                 <th>NET TOTAL</th>
                             </tr>
@@ -139,7 +172,10 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                     <td className="py-1 border border-gray-300">{emp.name}</td>
                                     <td className="py-1 border border-gray-300">{emp.cash_allowance.toFixed(2)}</td>
                                     <td className="py-1 border border-gray-300">{emp.computed_ecola.toFixed(2)}</td>
+                                    <td className="py-1 border border-gray-300">{emp.absent_cash_assistance}</td>
+                                    <td className="py-1 border border-gray-300">{emp.absent_ecola}</td>
                                     <td className="py-1 border border-gray-300">{emp.deduct.toFixed(2)}</td>
+                                    {/* <td className="py-1 border border-gray-300">{emp.deduct.toFixed(2)}</td> */}
                                     {showEmergency && <td className="py-1 border border-gray-300">{emp.emergency_allowance_amount}</td>}
                                     <td className="py-1 border border-gray-300">{emp.total}</td>
                                 </tr>
@@ -148,6 +184,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td className="py-1" colSpan={2}>GRAND TOTAL</td>
                                 <td>{formatCurrency(boardTotals.cash_allowance)}</td>
                                 <td>{formatCurrency(boardTotals.computed_ecola)}</td>
+                                <td></td>
+                                <td></td>
                                 <td>{formatCurrency(boardTotals.deduct)}</td>
                                 {showEmergency && <td>{formatCurrency(boardTotals.emergency_allowance_amount)}</td>}
                                 <td>{formatCurrency(boardTotals.total)}</td>
@@ -157,15 +195,17 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 </div>
 
 
+
+                {/* MANCOM  */}
                 <div className="pt-4">
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
                             <tr className="bg-gray-200">
-                                <th>#</th>
-                                <th className="py-2">MANCOM</th>
-                                <th>CASH ASSISTANCE</th>
-                                <th>ECOLA</th>
-                                <th>ABSENCES</th>
+                                <th className="p-2 border border-gray-300">#</th>
+                                <th className="p-2 border border-gray-300">MANCOM</th>
+                                <th className="p-2 border border-gray-300">CASH ASSISTANCE</th>
+                                <th className="p-2 border border-gray-300">ECOLA</th>
+                                <th colSpan={3} className="border border-gray-300">ABSENCES</th>
                                 {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
                                 <th>NET TOTAL</th>
                             </tr>
@@ -178,6 +218,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                     <td className="py-1 border border-gray-300">{emp.name}</td>
                                     <td className="py-1 border border-gray-300">{emp.cash_allowance}</td>
                                     <td className="py-1 border border-gray-300">{emp.computed_ecola}</td>
+                                    <td className="py-1 border border-gray-300">{emp.absent_cash_assistance}</td>
+                                    <td className="py-1 border border-gray-300">{emp.absent_ecola}</td>
                                     <td className="py-1 border border-gray-300">{emp.deduct}</td>
                                     {showEmergency && <td className="py-1 border border-gray-300">{emp.emergency_allowance_amount}</td>}
                                     <td className="py-1 border border-gray-300">{emp.total}</td>
@@ -187,6 +229,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td className="py-1" colSpan={2}>GRAND TOTAL</td>
                                 <td>{formatCurrency(mancomTotals.cash_allowance)}</td>
                                 <td>{formatCurrency(mancomTotals.computed_ecola)}</td>
+                                <td></td>
+                                <td></td>
                                 <td>{formatCurrency(mancomTotals.deduct)}</td>
                                 {showEmergency && <td>{formatCurrency(mancomTotals.emergency_allowance_amount)}</td>}
                                 <td>{formatCurrency(mancomTotals.total)}</td>
@@ -202,11 +246,11 @@ export default function ViewAllList({ selectedMonth }: Props) {
                     <table className="border-collapse w-12/12 border border-gray-300 text-center">
                         <thead>
                             <tr className="bg-gray-200">
-                                <th>#</th>
-                                <th className="py-2">Branch:MH</th>
-                                <th>CASH ASSISTANCE</th>
-                                <th>ECOLA</th>
-                                <th>ABSENCES</th>
+                                <th className="p-2 border border-gray-300">#</th>
+                                <th className="p-2 border border-gray-300">Branch:MH</th>
+                                <th className="p-2 border border-gray-300">CASH ASSISTANCE</th>
+                                <th className="p-2 border border-gray-300">ECOLA</th>
+                                <th className="p-2 border border-gray-300" colSpan={3}>ABSENCES</th>
                                 {showEmergency && <th>EMERGENCY ALLOWANCE</th>}
                                 <th>NET TOTAL</th>
                             </tr>
@@ -219,6 +263,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                     <td className="py-1 border border-gray-300">{emp.name}</td>
                                     <td className="py-1 border border-gray-300">{formatAmount(emp.cash_allowance)}</td>
                                     <td className="py-1 border border-gray-300">{formatAmount(emp.computed_ecola)}</td>
+                                    <td className="py-1 border border-gray-300">{formatAmount(emp.absent_cash_assistance)}</td>
+                                    <td className="py-1 border border-gray-300">{formatAmount(emp.absent_ecola)}</td>
                                     <td className="py-1 border border-gray-300">{formatAmount(emp.deduct)}</td>
                                     {showEmergency && <td className="py-1 border border-gray-300">{emp.emergency_allowance_amount}</td>}
                                     <td className="py-1 border border-gray-300">{emp.total}</td>
@@ -228,6 +274,8 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <td className="py-1" colSpan={2}>GRAND TOTAL</td>
                                 <td>{formatCurrency(mhTotals.cash_allowance)}</td>
                                 <td>{formatCurrency(mhTotals.computed_ecola)}</td>
+                                <td></td>
+                                <td></td>
                                 <td>{formatCurrency(mhTotals.deduct)}</td>
                                 {showEmergency && <td>{formatCurrency(mhTotals.emergency_allowance_amount)}</td>}
                                 <td>{formatCurrency(mhTotals.total)}</td>
@@ -373,7 +421,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                 <th className="border p-2">
                                                     ECOLA
                                                 </th>
-                                                <th className="border p-2">
+                                                <th className="border p-2" colSpan={3}>
                                                     ABSENT
                                                 </th>
                                                 <th className="border p-2">
@@ -404,6 +452,14 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                             {formatAmount(
                                                                 employee.computed_ecola
                                                             )}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(employee.absent_cash_assistance)}
+                                                        </td>
+
+                                                        <td className="border p-2 text-right">
+                                                            {formatAmount(employee.absent_ecola)}
                                                         </td>
 
                                                         <td className="border p-2 text-right">
@@ -442,6 +498,9 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                                         branch.totals.computed_ecola
                                                     )}
                                                 </td>
+
+                                                <td className="border p-2 text-right"></td>
+                                                <td className="border p-2 text-right"></td>
 
                                                 <td className="border p-2 text-right">
                                                     {formatAmount(
@@ -763,78 +822,270 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 {/* variance per employee  */}
                 <div className="pt-8">
                     <div>
-                        <h2 className="bg-blue-500 text-white font-semibold p-2">ADD</h2>
-                        <table className="w-full">
+                        <h2 className="bg-blue-500 p-2 font-semibold text-white">
+                            ADD
+                        </h2>
+
+                        <table className="w-full table-fixed border-collapse">
+                            <colgroup>
+                                <col className="w-[24%]" />
+                                <col className="w-[18%]" />
+                                <col className="w-[10%]" />
+                                <col className="w-[12%]" />
+                                <col className="w-[36%]" />
+                            </colgroup>
+
                             <thead>
                                 <tr>
-                                    <th className="py-2 px-1 border border-gray-300">EMPLOYEE</th>
-                                    <th className="py-2 px-1 border border-gray-300">CASH ASSITANCE</th>
-                                    <th className="py-2 px-1 border border-gray-300">ECOLA</th>
-                                    <th className="py-2 px-1 border border-gray-300">TOTAL</th>
-                                    <th className="py-2 px-1 border border-gray-300"></th>
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        EMPLOYEE
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        CASH ASSISTANCE
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        ECOLA
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        TOTAL
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        REMARKS
+                                    </th>
                                 </tr>
                             </thead>
 
-                            <tbody className="border border-gray-300">
+                            <tbody>
                                 {addList.map((emp) => (
-                                    <tr key={emp.EmpCode}>
-                                        <td className="p-1 text-center">{emp.name}</td>
-                                        <td className="p-1 text-center">{formatCurrency(emp.variance.cash_assistance)}</td>
-                                        <td className="p-1 text-center">{formatCurrency(emp.variance.ecola)}</td>
-                                        <td className="p-1 text-center font-semibold">{formatCurrency(emp.variance.total)}</td>
-                                        <td className="p-1 text-center">{emp.variance?.action?.data?.remarks}</td>
+                                    <tr
+                                        key={emp.EmpCode}
+                                        className="border border-gray-300"
+                                    >
+                                        <td className="p-1 text-center">
+                                            {emp.name}
+                                        </td>
+
+                                        <td className="p-1 text-center">
+                                            {formatCurrency(
+                                                emp.cash_assistance_variance
+                                            )}
+                                        </td>
+
+                                        <td className="p-1 text-center">
+                                            {formatCurrency(emp.ecola_variance)}
+                                        </td>
+
+                                        <td className="p-1 text-center font-semibold">
+                                            {formatCurrency(
+                                                emp.cash_assistance_variance +
+                                                emp.ecola_variance
+                                            )}
+                                        </td>
+
+                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold lowercase">
+                                            {emp.reasons.join(", ")}
+                                        </td>
                                     </tr>
                                 ))}
 
+                                <tr className="border-t border-gray-300 font-bold">
+                                    <td className="p-2 text-center">
+                                        TOTAL
+                                    </td>
 
-                                <tr className="font-bold border-t border-gray-300">
-                                    <td className="text-center">TOTAL</td>
-                                    <td className="text-center p-2">{formatCurrency(addList.reduce((sum, e) => sum + e.variance.cash_assistance, 0))}</td>
-                                    <td className="text-center p-2">{formatCurrency(addList.reduce((sum, e) => sum + e.variance.ecola, 0))}</td>
-                                    <td className="text-center p-2">{formatCurrency(addList.reduce((sum, e) => sum + e.variance.total, 0))}</td>
+                                    <td className="p-2 text-center">
+                                        {formatCurrency(
+                                            addList.reduce(
+                                                (sum, employee) =>
+                                                    sum +
+                                                    employee.cash_assistance_variance,
+                                                0
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td className="p-2 text-center">
+                                        {formatCurrency(
+                                            addList.reduce(
+                                                (sum, employee) =>
+                                                    sum + employee.ecola_variance,
+                                                0
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td className="p-2 text-center">
+                                        {formatCurrency(
+                                            addList.reduce(
+                                                (sum, employee) =>
+                                                    sum +
+                                                    employee.cash_assistance_variance +
+                                                    employee.ecola_variance,
+                                                0
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td className="p-2" />
                                 </tr>
                             </tbody>
-
                         </table>
                     </div>
 
                     <div className="mt-2">
-                        <h2 className="bg-yellow-700 text-white font-semibold p-2">LESS</h2>
-                        <table className="w-full border-collapse">
+                        <h2 className="bg-yellow-700 p-2 font-semibold text-white">
+                            LESS
+                        </h2>
+
+                        <table className="w-full table-fixed border-collapse">
+                            <colgroup>
+                                <col className="w-[24%]" />
+                                <col className="w-[18%]" />
+                                <col className="w-[10%]" />
+                                <col className="w-[12%]" />
+                                <col className="w-[36%]" />
+                            </colgroup>
+
                             <thead>
                                 <tr>
-                                    <th className="py-2 px-1 border border-gray-300">EMPLOYEE</th>
-                                    <th className="py-2 px-1 border border-gray-300">CASH ASSITANCE</th>
-                                    <th className="py-2 px-1 border border-gray-300">ECOLA</th>
-                                    <th className="py-2 px-1 border border-gray-300">TOTAL</th>
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        EMPLOYEE
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        CASH ASSISTANCE
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        ECOLA
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        TOTAL
+                                    </th>
+
+                                    <th className="border border-gray-300 px-1 py-2">
+                                        REMARKS
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="border border-gray-300">
+
+                            <tbody>
                                 {lessList.map((emp) => (
-                                    <tr key={emp.EmpCode} className="border border-gray-300">
-                                        <td className="p-1 text-center">{emp.name}</td>
-                                        <td className="p-1 text-center">{formatCurrency(emp.variance.cash_assistance)}</td>
+                                    <tr
+                                        key={emp.EmpCode}
+                                        className="border border-gray-300"
+                                    >
                                         <td className="p-1 text-center">
-                                            {formatCurrency(emp.variance.ecola)}
+                                            {emp.name}
                                         </td>
+
+                                        <td className="p-1 text-center">
+                                            {formatCurrency(
+                                                emp.cash_assistance_variance
+                                            )}
+                                        </td>
+
+                                        <td className="p-1 text-center">
+                                            {formatCurrency(emp.ecola_variance)}
+                                        </td>
+
                                         <td className="p-1 text-center font-semibold text-red-600">
-                                            {formatCurrency(emp.variance.total)}
+                                            {formatCurrency(
+                                                emp.cash_assistance_variance +
+                                                emp.ecola_variance
+                                            )}
+                                        </td>
+
+                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold lowercase">
+                                            {emp.reasons.join(", ")}
                                         </td>
                                     </tr>
                                 ))}
 
+                                <tr className="border-t border-gray-300 font-bold">
+                                    <td className="p-2 text-center">
+                                        TOTAL
+                                    </td>
 
-                                <tr className="font-bold border-t">
-                                    <td className="text-center">TOTAL</td>
-                                    <td className="text-center p-2">{formatCurrency(lessList.reduce((sum, e) => sum + e.variance.cash_assistance, 0))}</td>
-                                    <td className="text-center p-2">{formatCurrency(lessList.reduce((sum, e) => sum + e.variance.ecola, 0))}</td>
-                                    <td className="text-center p-2">{formatCurrency(lessList.reduce((sum, e) => sum + e.variance.total, 0))}</td>
+                                    <td className="p-2 text-center">
+                                        {formatCurrency(
+                                            lessList.reduce(
+                                                (sum, employee) =>
+                                                    sum +
+                                                    employee.cash_assistance_variance,
+                                                0
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td className="p-2 text-center">
+                                        {formatCurrency(
+                                            lessList.reduce(
+                                                (sum, employee) =>
+                                                    sum + employee.ecola_variance,
+                                                0
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td className="p-2 text-center">
+                                        {formatCurrency(
+                                            lessList.reduce(
+                                                (sum, employee) =>
+                                                    sum +
+                                                    employee.cash_assistance_variance +
+                                                    employee.ecola_variance,
+                                                0
+                                            )
+                                        )}
+                                    </td>
+
+                                    <td className="p-2" />
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* FINAL VARIANCE */}
+                <div className="pt-4 px-2">
+                    <div>
+                        <h2 className="font-bold mb-2">VARIANCE</h2>
+                    </div>
+
+                    <div>
+                        <table className="w-full table-fixed border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="border border-gray-300 px-1 py-2 invisible">s</th>
+                                    <th className="border border-gray-300 px-1 py-2">CASH ASSITANCE VARIANCE</th>
+                                    <th className="border border-gray-300 px-1 py-2">ECOLA VARIANCE</th>
+                                    <th className="border border-gray-300 px-1 py-2">TOTAL VARIANCE</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="border border-gray-300 px-1 py-2 text-center"></td>
+                                    <td className="border border-gray-300 px-1 py-2 text-center">
+                                       {formatCurrency(final_ca_variance)}
+                                    </td>
+                                    <td className="border border-gray-300 px-1 py-2 text-center">
+                                        {formatCurrency(final_ecola_variance)}
+                                    </td>
+                                    <td className="border border-gray-300 px-1 py-2 text-center">
+                                        {formatCurrency(final_total_variance)}
+                                    </td>
                                 </tr>
                             </tbody>
 
                         </table>
                     </div>
-
                 </div>
 
 

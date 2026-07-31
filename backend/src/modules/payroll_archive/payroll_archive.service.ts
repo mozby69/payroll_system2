@@ -3,17 +3,18 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePa
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
-import { groupByCompany, isEmploymentWithinPaycode, isPayrollDateRange } from "./payroll_archive.helper";
-import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow } from "./payroll_archive.types";
+import { groupByCompany, isEmploymentWithinPaycode, isPayrollDateRange, toMoney } from "./payroll_archive.helper";
+import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow, SendPayslipType } from "./payroll_archive.types";
 import { Console } from "console";
 import { getBodPhilhealth, getOfficerAllowance, getSSSContributions, getTaxTable } from "../general/general.services";
 import { logs_action_type } from "@prisma/client";
 import nodemailer from "nodemailer";
-import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
+// import { EmployeeArchivedType, generatePayslipPDF, SendPayslipType } from "../print/print.service";
 import { Decimal } from "@prisma/client/runtime/library";
 import { sendSmsToGateway } from "../api/api.services";
 import { WtaxFetchData } from "../statutory_deductions/statutory.service";
-
+import { parseSummaryOverrideChanges } from "../prepare_payroll/prepare_payroll.helper";
+import { generatePayslipPDF, type PayslipPdfData } from "../print/print.service";
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -527,7 +528,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       );
 
       const normalized = employeeList.map((emp) => {
-        const override = emp.SummaryTableOverride?.[0]; 
+        const overrideRecord = emp.SummaryTableOverride?.[0];
+        const override = parseSummaryOverrideChanges(overrideRecord?.changes);
 
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
         //const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
@@ -669,11 +671,12 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
         //const basic_salary = override?.basic_salary && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
-          const basic_salary = override?.basic_salary_edited && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
+         const FinalbasicSalary = override.basic_salary ?? semiMonthly;
+         //const basic_salary = override?.basic_salary_edited && override?.basic_salary !== null ? Number(override.basic_salary): semiMonthly;
 
         const computedGrossPay = computeGrossPay(
           finalOvertime,
-          basic_salary,
+          FinalbasicSalary,
           lateCount,
           undertimeCount,
           absent
@@ -700,7 +703,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
       
         return {
           ...emp,
-          semi_monthly:basic_salary.toFixed(2),
+          semi_monthly:FinalbasicSalary.toFixed(2),
           overtime:finalOvertime,
           late_count:lateCount,
           undertime:undertimeCount,
@@ -2654,34 +2657,166 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 // services/email.service.ts
 
 
+function buildEmployeeName(
+  employee: SendPayslipType
+): string {
+  const firstAndMiddle = [
+    employee.EmpCode.Firstname,
+    employee.EmpCode.Middlename,
+  ]
+    .filter(
+      (value): value is string =>
+        typeof value === "string" &&
+        value.trim().length > 0
+    )
+    .join(" ");
+
+  const lastName =
+    employee.EmpCode.Lastname?.trim() ?? "";
+
+  return lastName
+    ? `${lastName}, ${firstAndMiddle}`.trim()
+    : firstAndMiddle;
+}
+
+export function buildPayslipData(
+  employee: SendPayslipType
+): PayslipPdfData {
+  const employeeName =
+    buildEmployeeName(employee);
+
+  const companyName =
+    employee.EmpCode.BranchCode?.Company?.trim() ||
+    "EMB CAPITAL LENDING CORPORATION";
+
+  return {
+    EmpCodeId: employee.EmpCodeId,
+    employeeName,
+    companyName,
+
+    payCode: employee.PayCode ?? "",
+
+    payrollPeriod:
+      employee.payroll_period ??
+      employee.PayCode ??
+      "",
+
+    selectedPayrollDate:
+      employee.selected_payroll_date ??
+      employee.payroll_period ??
+      employee.PayCode ??
+      "",
+
+    basicSalary: toMoney(
+      employee.Basic_salary
+    ),
+
+    overtime: toMoney(employee.Overtime),
+    late: toMoney(employee.Late),
+    undertime: toMoney(employee.undertime),
+    absence: toMoney(employee.Absent),
+    grossPay: toMoney(employee.Grosspay),
+
+    sssEmployee: toMoney(
+      employee.SSS_employee_share
+    ),
+
+    withholdingTax: toMoney(
+      employee.w_tax
+    ),
+
+    pagibigEmployee: toMoney(
+      employee.Pagibig_employee_share
+    ),
+
+    philhealthEmployee: toMoney(
+      employee.philhealth_employee_share
+    ),
+
+    arE: toMoney(employee.ar_e),
+    fchLoan: toMoney(employee.fch_loan),
+    rfcLoan: toMoney(employee.rfc_loan),
+
+    pagibigLoan: toMoney(
+      employee.pagibig_loan
+    ),
+
+    sssLoan: toMoney(employee.sss_loan),
+
+    calamityLoan: toMoney(
+      employee.sss_calamity_loan
+    ),
+
+    totalDeductions: toMoney(
+      employee.total_deductions
+    ),
+
+    netPay: toMoney(employee.Netpay),
+  };
+}
 
 
 
-export async function sendPayslipEmailService(employee: SendPayslipType) {
+export async function sendPayslipEmailService(
+  archiveId: number
+): Promise<void> {
+  const employee =
+    await getArchivedPayslip(archiveId);
 
-  const email = employee.EmpCode?.employeepayroll?.gmail_account;
+  const email =
+    employee.EmpCode.employeepayroll
+      ?.gmail_account?.trim() ?? "";
 
   if (!email) {
-    throw new Error("No email found");
+    throw new Error(
+      `No email found for ${employee.EmpCodeId}`
+    );
   }
 
-  
-  const pdfBuffer = await generatePayslipPDF([employee]);
+  const payslipData =
+    buildPayslipData(employee);
 
+  const pdfBuffer =
+    await generatePayslipPDF(
+      payslipData
+    );
 
   await transporter.sendMail({
-    from: `"Payroll System" <${process.env.EMAIL_USER}>`,
+    from:
+      `"Payroll System" <${process.env.EMAIL_USER}>`,
+
     to: email,
-    subject: "Your Payslip",
+
+    subject:
+      `Payslip - ${payslipData.payrollPeriod}`,
+
     html: `
-      <p>Dear ${employee.EmpCode.Firstname},</p>
-      <p>Please find your payslip attached.</p>
-      <p>Regards,<br/>Payroll Department</p>
+      <p>
+        Dear ${
+          employee.EmpCode.Firstname ??
+          payslipData.employeeName
+        },
+      </p>
+
+      <p>
+        Please find your payslip for
+        <strong>${payslipData.payrollPeriod}</strong>
+        attached.
+      </p>
+
+      <p>
+        Regards,<br />
+        Payroll Department
+      </p>
     `,
+
     attachments: [
       {
-        filename: `Payslip-${employee.EmpCodeId}.pdf`,
+        filename:
+          `Payslip-${employee.EmpCodeId}-${payslipData.payrollPeriod}.pdf`,
+
         content: pdfBuffer,
+        contentType: "application/pdf",
       },
     ],
   });
@@ -2689,8 +2824,32 @@ export async function sendPayslipEmailService(employee: SendPayslipType) {
 
 
 
+export async function getArchivedPayslip(
+  archiveId: number
+): Promise<SendPayslipType> {
+  const employee =
+    await prisma.employeePayrollArchive.findUnique({
+      where: {
+        id: archiveId,
+      },
+      include: {
+        EmpCode: {
+          include: {
+            employeepayroll: true,
+            BranchCode: true,
+          },
+        },
+      },
+    });
 
+  if (!employee) {
+    throw new Error(
+      "Payslip archive record not found"
+    );
+  }
 
+  return employee;
+}
 
 //send email per branch
 
@@ -2734,7 +2893,7 @@ export async function sendBulkPayslipService({totalPayrollId,selectedCompany,sel
 
     try {
     
-      await sendPayslipEmailService(emp as unknown as SendPayslipType);
+     // await sendPayslipEmailService(emp as unknown as SendPayslipType);
 
     } catch (err) {
       console.error(`Failed for ${emp.EmpCodeId}`, err);

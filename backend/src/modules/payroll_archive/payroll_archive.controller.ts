@@ -1,8 +1,9 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendBulkPayslipService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import {  buildPayslipData, displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendBulkPayslipService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request,Response } from "express";
-import { BankFileRow } from "./payroll_archive.types";
+import { BankFileRow, SendPayslipType } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
+import { generatePayslipPDF } from "../print/print.service";
 
 
 
@@ -427,24 +428,68 @@ export async function getPayrollArchiveReportController(
 
 
 
+type SendPayslipEmailBody = {
+  archiveId?: unknown;
+};
 
-
-export const sendPayslipController = async (req: Request, res: Response) => {
+export async function sendPayslipEmailController(
+  req: Request<
+    Record<string, never>,
+    unknown,
+    SendPayslipEmailBody
+  >,
+  res: Response
+) {
   try {
-    const { employee } = req.body;
+    const { archiveId } = req.body;
 
-    await sendPayslipEmailService(employee);
+    if (
+      typeof archiveId !== "number" ||
+      !Number.isInteger(archiveId) ||
+      archiveId <= 0
+    ) {
+      return res.status(400).json({
+        message: "Valid archive ID is required",
+      });
+    }
 
-    return res.json({ success: true, message: "Payslip sent" });
-  } catch (error) {
-    console.error("FULL ERROR:", error);
+    await sendPayslipEmailService(
+      archiveId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Payslip sent successfully",
+    });
+  } catch (error: unknown) {
+    console.error(
+      "Payslip email error:",
+      error
+    );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to send payslip";
+
+    if (
+      message ===
+      "Payslip archive record not found"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message,
+      });
+    }
 
     return res.status(500).json({
-      message: "Failed to send payslip",
-      error: error instanceof Error ? error.message : error,
+      success: false,
+      message,
     });
   }
-};
+}
+
+
 
 export const sendBulkPayslipController = async (req: Request, res: Response) => {
   try {
@@ -464,3 +509,67 @@ export const sendBulkPayslipController = async (req: Request, res: Response) => 
     return res.status(500).json({ message: "Failed to send bulk payslips" });
   }
 };
+
+
+
+
+export async function previewPayslipController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const archiveId = Number(req.query.archiveId);
+
+    if (!Number.isInteger(archiveId)) {
+      return res.status(400).json({
+        message: "Invalid archive ID",
+      });
+    }
+
+    const employee =  await prisma.employeePayrollArchive.findUnique({
+        where: {
+          id: archiveId,
+        },
+        include: {
+          EmpCode: {
+            include: {
+              employeepayroll: true,
+              BranchCode: true,
+            },
+          },
+        },
+      });
+
+    if (!employee) {
+      return res.status(404).json({
+        message: "Payslip not found",
+      });
+    }
+
+const payslipData =
+  buildPayslipData(employee);
+
+
+    const pdf = await generatePayslipPDF(
+      payslipData
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/pdf"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="Payslip-${employee.EmpCodeId}.pdf"`
+    );
+
+    return res.send(pdf);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Failed to preview payslip",
+    });
+  }
+}

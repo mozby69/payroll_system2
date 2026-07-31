@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, updateDeductionService, updateEmployeePayrollFields, updateEmployeeSalary, ViewDeduction } from "./prepare_payroll.service";
+import { ComputePayroll, fetchEmployeesByPayrollCycle, InitializeComputePayroll, InitializeEmployeesbyCycle, searchEmployees, SummaryOverrideChanges, updateDeductionService, updateEmployeePayrollFields, updateEmployeeSalary, ViewDeduction } from "./prepare_payroll.service";
 
 
 
@@ -204,45 +204,106 @@ export const ViewDeductionController = async (req:Request, res:Response) => {
 
 
 
-export async function updateDeductionController(req: Request, res: Response) {
+type UpdateDeductionRequestBody = {
+  PayCode?: string;
+  EmpCodeId?: string;
+  PayrollPeriod?: string;
+  changes?: SummaryOverrideChanges;
+};
+
+export async function updateDeductionController(req: Request<Record<string, never>,unknown,UpdateDeductionRequestBody>,res: Response) {
   try {
     const {
       PayCode,
       EmpCodeId,
       PayrollPeriod,
-      LateCount,
-      TotalAbsentHours,
-      TotalUndertime,
-      TotalOvertime,
-      philhealth_employee,
-      philhealth_employer,
-      final_wtax,
-      basic_salary,
-      basic_salary_edited,
+      changes,
     } = req.body;
 
-    if (!PayCode || !EmpCodeId || !PayrollPeriod) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (
+      !PayCode?.trim() ||
+      !EmpCodeId?.trim() ||
+      !PayrollPeriod?.trim()
+    ) {
+      return res.status(400).json({
+        message:
+          "PayCode, EmpCodeId, and PayrollPeriod are required",
+      });
+    }
+
+    if (
+      !changes ||
+      typeof changes !== "object" ||
+      Array.isArray(changes)
+    ) {
+      return res.status(400).json({
+        message: "Changes object is required",
+      });
+    }
+
+    if (Object.keys(changes).length === 0) {
+      return res.status(400).json({
+        message: "At least one field must be changed",
+      });
+    }
+
+    const allowedFields: Array<
+      keyof SummaryOverrideChanges
+    > = [
+      "LateCount",
+      "TotalAbsentHours",
+      "TotalUndertime",
+      "TotalOvertime",
+      "philhealth_employee",
+      "philhealth_employer",
+      "final_wtax",
+      "basic_salary",
+    ];
+
+    const hasInvalidField = Object.keys(changes).some(
+      (field) =>
+        !allowedFields.includes(
+          field as keyof SummaryOverrideChanges
+        )
+    );
+
+    if (hasInvalidField) {
+      return res.status(400).json({
+        message: "Changes contain an invalid field",
+      });
+    }
+
+    const hasInvalidValue = Object.entries(changes).some(
+      ([, value]) =>
+        typeof value !== "number" ||
+        !Number.isFinite(value)
+    );
+
+    if (hasInvalidValue) {
+      return res.status(400).json({
+        message:
+          "All override values must be valid numbers",
+      });
     }
 
     const result = await updateDeductionService({
-      PayCode,
-      EmpCodeId,
-      PayrollPeriod,
-      LateCount,
-      TotalAbsentHours,
-      TotalUndertime,
-      TotalOvertime,
-      philhealth_employee,
-      philhealth_employer,
-      final_wtax,
-      basic_salary,
-      basic_salary_edited
+      PayCode: PayCode.trim(),
+      EmpCodeId: EmpCodeId.trim(),
+      PayrollPeriod: PayrollPeriod.trim(),
+      changes,
     });
 
-    return res.json(result);
+    return res.status(200).json(result);
   } catch (error) {
-    console.error(`error ocurred ${error}`)
-    return res.status(500).json({ message: "Failed to update deduction" });
+    console.error(
+      "Error updating deduction override:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Failed to update deduction",
+    });
   }
 }
+
+

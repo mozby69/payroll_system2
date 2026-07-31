@@ -141,20 +141,33 @@ export function useFetchAllowanceSummary(params: {page: number; limit: number; s
 
 
 
-export function useFetchArchiveAllowanceModal(selectedMonth: string | null) {
+export function useFetchArchiveAllowanceModal(
+  selectedMonth: string | null
+) {
   return useQuery<ArchiveAllowanceResponse>({
-    queryKey: ['archive-allowance', selectedMonth],
+    queryKey: [
+      "archive-allowance",
+      selectedMonth,
+    ],
+
     queryFn: async () => {
       if (!selectedMonth) {
-        throw new Error('selectedMonth is required');
+        throw new Error(
+          "selectedMonth is required"
+        );
       }
-      const response = await api.get<ArchiveAllowanceResponse>(`/allowance/archive-allowance/${selectedMonth}`);
+
+      const response =
+        await api.get<ArchiveAllowanceResponse>(
+          `/allowance/archive-allowance/${selectedMonth}`
+        );
+
       return response.data;
     },
+
     enabled: Boolean(selectedMonth),
   });
 }
-
 
 
 export function useFetchCompanies() {
@@ -183,22 +196,47 @@ export function useFetchBranchesByCompany(companyCode: string) {
 }
 
 
-export function usePrintBranch(month: string | null,company: string | null,branch: string | null) {
-  return useQuery<{
-    success: boolean;
-    data: PrintAllowanceRow[];
-  }>({
-    queryKey: ["print-branch", month, company, branch],
+type PrintAllowanceResponse = {
+  success: boolean;
+  data: PrintAllowanceRow[];
+};
+
+export function usePrintBranch(
+  month: string | null,
+  company: string | null,
+  branch?: string | null
+) {
+  return useQuery<PrintAllowanceResponse>({
+    queryKey: [
+      "print-branch",
+      month,
+      company,
+      branch ?? "all",
+    ],
+
     queryFn: async () => {
-      const res = await api.get("/allowance/print-data", {
-        params: { month, company, branch },
-      });
-      return res.data;
+      const response =
+        await api.get<PrintAllowanceResponse>(
+          "/allowance/print-data",
+          {
+            params: {
+              month,
+              company,
+              ...(branch
+                ? {
+                    branch,
+                  }
+                : {}),
+            },
+          }
+        );
+
+      return response.data;
     },
-    enabled: !!month && !!company && !!branch,
+
+    enabled: Boolean(month && company),
   });
 }
-
 
 
 

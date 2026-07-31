@@ -1,9 +1,9 @@
 import { Prisma, SalaryType } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, ExcelEmployee, ExcelTotals, SummaryAllowanceProps } from "./allowance.types";
-import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, round2, to2 } from "./allowance.helper";
+import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, normalizeEmail, round2, to2, toNumber, toPrismaJson } from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
-import { generateAllowancePDF } from "../print/print.service";
+import { AllowancePdfData, generateAllowancePDF } from "../print/print.service";
 import nodemailer from "nodemailer";
 import { getAllowanceEmergency } from "../general/general.services";
 import { MathRound } from "../../utils/toFixed";
@@ -384,6 +384,8 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       isAlien: true,
       secondaryBranch: true,
       secondaryBranchId: true,
+      EmployeeStatus: true,
+      EmploymentStatus: true,
       BranchCode: {
         select: {
           branchCode: true,
@@ -498,6 +500,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
     const totalDeduction = cashDailyRate * totalAbsentHours + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
 
+    const absentCashAssistance = cashDailyRate * totalAbsentHours;
+    const absenteEcola = hasEcola ? ecolaDailyRate * totalAbsentHours : 0;
+
     // loan code ↓
 
     // loan code ↑
@@ -523,7 +528,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       absent: totalAbsentHours,
       total: MathRound(total),
       selectedMonth,
-      deduct: totalDeduction,
+      deduct: MathRound(totalDeduction),
       totalDeduction,
       branch_code: branchCode ?? "NO_BRANCH",
       company_id: companyId,
@@ -539,6 +544,10 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
       positionEmp,
       is_emergency: isEmergency,
       emergency_allowance_amount: emergencyAmount,
+      employee_status: emp.EmployeeStatus,
+      employment_status: emp.EmploymentStatus,
+      absent_cash_assistance: MathRound(absentCashAssistance),
+      absent_ecola: MathRound(absenteEcola),
       // loan code ↑
     };
   });
@@ -738,20 +747,32 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         position: emp.positionEmp,
         emergency_allowance_amount: emp.emergency_allowance_amount,
         is_emergency: emp.is_emergency,
+        absent_cash_assistance: emp.absent_cash_assistance,
+        absent_ecola: emp.absent_ecola,
 
         createdAt: nowPH(),
       })),
     });
 
-    // await tx.allowanceArchiveDetails.create({
-    //   data: {
-    //     selectedMonth,
-    //     company_list: data_archived.TOTAL_PER_COMPANY as Prisma.InputJsonValue,
-    //     loans: data_archived.LOANS as Prisma.InputJsonValue,
-    //     variance_allowance: data_archived.VARIANCE as Prisma.InputJsonValue,
-    //     variance_employee: data_archived.VARIANCE_EMP as Prisma.InputJsonValue,
-    //   },
-    // });
+    await tx.allowanceArchiveDetails.create({
+      data: {
+        selectedMonth,
+        board_member: data_archived.BOARD_MEMBER,
+        mancom: data_archived.MANCOM,
+        mh: data_archived.MH,
+        mh_totals: data_archived.mh_totals,
+        board_mancom_totals: data_archived.board_mancom_totals,
+        total_mh_boardmancom: data_archived.total_mh_boardmancom,
+        mh_mancom_loans: data_archived.mh_mancom_loans,
+        totalmhAndMancomLoans: data_archived.totalmhAndMancomLoans,
+        total_disburse: data_archived.total_disburse as Prisma.InputJsonValue,
+        branches: toPrismaJson(data_archived.BRANCHES),
+        total_per_company: data_archived.TOTAL_PER_COMPANY as Prisma.InputJsonValue,
+        variance: data_archived.VARIANCE as Prisma.InputJsonValue,
+        variance_emp: data_archived.VARIANCE_EMP as Prisma.InputJsonValue,
+        final_variance: data_archived.FINAL_VARIANCE as Prisma.InputJsonValue,
+      },
+    });
 
     for (const emp of rows) {
       if (!emp.fch_rfc_deducted || emp.fch_rfc_deducted <= 0) continue;
@@ -896,102 +917,68 @@ export async function displayAllowanceList({ page, limit, search }: SummaryAllow
 
 
 
-
-export async function getArchiveAllowanceByMonth(selectedMonth: string): Promise<ArchiveAllowanceFullResponse> {
-
-  const [branches, list, details] = await Promise.all([
-    prisma.branch.findMany({
-      select: {
-        branchCode: true,
-        position: true,
-        company_id: true,
-      },
-    }),
-
-    prisma.archive_allowance.findMany({
+export async function getArchiveAllowanceByMonth(
+  selectedMonth: string
+) {
+  const archive =
+    await prisma.allowanceArchiveDetails.findFirst({
       where: {
         selectedMonth,
       },
       select: {
-        EmpCodeId: true,
-        name: true,
-        cash_allowance: true,
-        ecola: true,
-        absent_count: true,
-        total: true,
-        totalDeduction: true,
-        deduct: true,
-        loan: true,
-        position: true,
-        createdAt: true,
-        branchCode: true,
-        emergency_allowance_amount: true,
-        is_emergency: true,
+        board_member: true,
+        mancom: true,
+        mh: true,
+        mh_totals: true,
+        board_mancom_totals: true,
+        total_mh_boardmancom: true,
+        mh_mancom_loans: true,
+        totalmhAndMancomLoans: true,
+        total_disburse: true,
+        branches: true,
+        variance: true,
+        variance_emp: true,
+        total_per_company: true,
+        final_variance: true,
+
       },
-      orderBy: {
-        EmpCode: {
-          Lastname: "asc",
-        },
-      },
-    }),
+    });
 
-    prisma.allowanceArchiveDetails.findFirst({
-      where: {
-        selectedMonth
-      },
-    })
-  ]);
-
-
-  const branchMap = new Map<string, BranchMeta>(
-    branches.map((b) => [
-      b.branchCode,
-      {
-        branchCode: b.branchCode,
-        position: b.position,
-        company_id: b.company_id ?? null,
-      },
-    ])
-  );
-
-
-  const enriched: ArchiveAllowanceDTO[] = list.map((row) => {
-    const meta = branchMap.get(row.branchCode);
-
-    return {
-      EmpCodeId: row.EmpCodeId,
-      name: row.name,
-      cash_allowance: row.cash_allowance ? Number(row.cash_allowance) : null,
-      ecola: row.ecola ? Number(row.ecola) : null,
-      absent_count: row.absent_count ? Number(row.absent_count) : null,
-      total: row.total ? Number(row.total) : null,
-      totalDeduction: row.totalDeduction ? Number(row.totalDeduction) : null,
-      deduct: row.deduct ? Number(row.deduct) : null,
-      loan: row.loan ? Number(row.loan) : null,
-      position: row.position,
-      createdAt: row.createdAt,
-      branchCode: row.branchCode,
-      branchPosition: meta?.position ?? 999,
-      company_id: meta?.company_id ?? null,
-      emergency_allowance_amount: row.emergency_allowance_amount ? Number(row.emergency_allowance_amount) : null,
-      is_emergency: row.is_emergency,
-    };
-  });
-  const parsedDetails = details
-    ? {
-      company_list: details.company_list,
-      loans: details.loans,
-      variance_allowance: details.variance_allowance,
-      variance_employee: details.variance_employee,
-    }
-    : null;
+  if (!archive) {
+    return null;
+  }
 
   return {
-    list: enriched,
-    details: parsedDetails,
+    BOARD_MEMBER: archive.board_member,
+    MANCOM: archive.mancom,
+    MH: archive.mh,
+
+    mh_totals: archive.mh_totals,
+    board_mancom_totals:
+      archive.board_mancom_totals,
+    total_mh_boardmancom:
+      archive.total_mh_boardmancom,
+
+    mh_mancom_loans:
+      archive.mh_mancom_loans,
+    totalmhAndMancomLoans:
+      archive.totalmhAndMancomLoans,
+
+    total_disburse:
+      archive.total_disburse,
+
+    BRANCHES: archive.branches,
+
+    VARIANCE: archive.variance,
+    VARIANCE_EMP: archive.variance_emp,
+
+    TOTAL_PER_COMPANY:
+      archive.total_per_company,
+
+    FINAL_VARIANCE:
+      archive.final_variance,
   };
 }
-
 
 
 
@@ -1030,23 +1017,37 @@ export async function getBranchesByCompany(companyCode: string) {
 
 
 
-export async function getArchiveAllowanceByCompanyBranch({ selectedMonth, company, branch, empId }: {
+type GetArchiveAllowanceParams = {
   selectedMonth: string;
   company: string;
-  branch: string;
+  branch?: string;
   empId?: string;
-}) {
-  return await prisma.archive_allowance.findMany({
+};
+
+export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,branch,empId}: GetArchiveAllowanceParams) {
+  const employees = await prisma.archive_allowance.findMany({
     where: {
       selectedMonth,
-      ...(empId && { EmpCodeId: empId }),
+
+      ...(empId
+        ? {
+            EmpCodeId: empId,
+          }
+        : {}),
+
       EmpCode: {
         BranchCode: {
-          branchCode: branch,
           company_id: company,
+
+          ...(branch
+            ? {
+                branchCode: branch,
+              }
+            : {}),
         },
       },
     },
+
     select: {
       EmpCodeId: true,
       name: true,
@@ -1056,32 +1057,95 @@ export async function getArchiveAllowanceByCompanyBranch({ selectedMonth, compan
       deduct: true,
       loan: true,
       total: true,
+
       EmpCode: {
         select: {
           Firstname: true,
           Lastname: true,
+
           BranchCode: {
             select: {
+              branchCode: true,
               Location: true,
               company_id: true,
             },
           },
+
           employeepayroll: {
             select: {
               gmail_account: true,
-            }
-          }
+            },
+          },
         },
       },
     },
-    orderBy: {
-      EmpCode: {
-        Lastname: "asc",
+
+    orderBy: [
+      {
+        EmpCode: {
+          BranchCode: {
+            branchCode: "asc",
+          },
+        },
       },
-    },
+      {
+        EmpCode: {
+          Lastname: "asc",
+        },
+      },
+    ],
+  });
+
+  return employees.map((employee) => {
+    const cashAllowance = Number(
+      employee.cash_allowance ?? 0
+    );
+
+    const ecola = Number(employee.ecola ?? 0);
+    const loan = Number(employee.loan ?? 0);
+
+    const finalCashAllowance =
+      loan > 0
+        ? cashAllowance - loan
+        : cashAllowance;
+
+    const finalTotal =
+      finalCashAllowance + ecola;
+
+    return {
+      EmpCodeId: employee.EmpCodeId,
+      name: employee.name,
+
+      cash_allowance: cashAllowance,
+      ecola,
+      totalDeduction: Number(
+        employee.totalDeduction ?? 0
+      ),
+      deduct: -Number(employee.deduct ?? 0),
+      loan: -loan,
+      total: finalTotal,
+
+      Firstname: employee.EmpCode.Firstname,
+      Lastname: employee.EmpCode.Lastname,
+
+      branchCode:
+        employee.EmpCode.BranchCode
+          ?.branchCode ?? null,
+
+      Location:
+        employee.EmpCode.BranchCode
+          ?.Location ?? null,
+
+      company_id:
+        employee.EmpCode.BranchCode
+          ?.company_id ?? null,
+
+      gmail_account:
+        employee.EmpCode.employeepayroll
+          ?.gmail_account ?? null,
+    };
   });
 }
-
 
 
 
@@ -1193,7 +1257,7 @@ export async function ViewAllList(selectedMonth: string) {
     const { rows } = await computeAllowanceForMonth(selectedMonth);
     const loan_list = await getLoanFor();
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
-    // const variance_employee = await getVarianceEmployees(selectedMonth);
+    const variance_employee = await getVarianceEmployees(selectedMonth);
     const getTotalPerCompanyList = await getTotalPerCompany(selectedMonth);
 
     const branches = await prisma.branch.findMany({
@@ -1409,6 +1473,7 @@ export async function ViewAllList(selectedMonth: string) {
         };
 
         summarizedCompanyBranches[branchName] = {
+          position: branchName === "BACOLOD_BRANCH" ? 1 : branchPositionMap.get(branchName) ?? 999,
           employees,
           loans: branchLoans,
           total_loans: MathRound(totalBranchLoans),
@@ -1438,8 +1503,16 @@ export async function ViewAllList(selectedMonth: string) {
         companyGrandTotal.total +=
           branchTotals.total;
       }
+      const companyPositionMap = new Map(
+        COMPANY_ORDER.map((company, index) => [
+          company,
+          index,
+        ])
+      );
 
       summarizedBranches[company] = {
+        position: companyPositionMap.get(company) ?? 999,
+
         branches: summarizedCompanyBranches,
         grand_total: {
           cash_allowance: MathRound(
@@ -1533,6 +1606,46 @@ export async function ViewAllList(selectedMonth: string) {
       total: (mhTotals.total + boardAndMancomTotals.total) - totalmhAndMancomLoans,
     }
 
+
+
+
+
+
+    //FINAL VARIANCE
+    const allCompanyCashAssistance = MathRound(variance_allowance?.variance?.cash_assistance);
+    const allCompanyEcola = MathRound(variance_allowance?.variance?.ecola);
+    const allCompanyTotal = MathRound(variance_allowance?.variance?.grand_total)
+
+    const empCashAssistanceVarianceAdd = variance_employee?.ADD.reduce((sum, employee) =>
+      sum + employee.cash_assistance_variance, 0) ?? 0;
+
+    const empCashAssitanceVarianceLess = variance_employee?.LESS.reduce((sum, employee) =>
+      sum + employee.cash_assistance_variance, 0) ?? 0;
+
+    const empEcolaVarianceAdd = variance_employee?.ADD.reduce((sum, employee) =>
+      sum + employee.ecola_variance, 0) ?? 0;
+
+    const empEcolaVarianceLess = variance_employee?.LESS.reduce((sum, employee) =>
+      sum + employee.ecola_variance, 0) ?? 0;
+
+
+    const emp_ca_variance = MathRound(empCashAssistanceVarianceAdd - empCashAssitanceVarianceLess);
+    const emp_ecola_variance = MathRound(empEcolaVarianceAdd - empEcolaVarianceLess);
+
+    const final_ca_variance = allCompanyCashAssistance - emp_ca_variance;
+    const final_ecola_variance = allCompanyEcola - emp_ecola_variance;
+
+    const empTotalVariance = empCashAssistanceVarianceAdd + empEcolaVarianceAdd - (empCashAssitanceVarianceLess + empEcolaVarianceLess)
+    const final_total_variance = allCompanyTotal - MathRound(empTotalVariance);
+
+    const finVariance = {
+      final_ca_variance,
+      final_ecola_variance,
+      final_total_variance
+    }
+
+
+
     return {
       BOARD_MEMBER: boardMembers,
       MANCOM: mancom,
@@ -1545,8 +1658,9 @@ export async function ViewAllList(selectedMonth: string) {
       total_disburse: totalDisburse,
       BRANCHES: summarizedBranches,
       VARIANCE: variance_allowance ?? null,
-      // VARIANCE_EMP: variance_employee ?? null,
+      VARIANCE_EMP: variance_employee ?? null,
       TOTAL_PER_COMPANY: getTotalPerCompanyList ?? null,
+      FINAL_VARIANCE: finVariance
     };
 
   } catch (error) {
@@ -1570,25 +1684,23 @@ export async function getVarianceEmployees(selectedMonth: string) {
   try {
     const prevMonth = getPreviousMonth2(selectedMonth);
 
-    const { rows: currentRows } =
-      await computeAllowanceForMonth(selectedMonth);
+    const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
 
-    const previousRows =
-      await prisma.archive_allowance.findMany({
-        where: {
-          selectedMonth: prevMonth,
-        },
-        select: {
-          EmpCode: true,
-          cash_allowance: true,
-          ecola: true,
-          base_cash_assistance: true,
-          base_ecola: true,
-          selectedMonth: true,
-          absent_count: true,
-          loan: true,
-        },
-      });
+    const previousRows = await prisma.archive_allowance.findMany({
+      where: {
+        selectedMonth: prevMonth,
+      },
+      select: {
+        EmpCode: true,
+        cash_allowance: true,
+        ecola: true,
+        base_cash_assistance: true,
+        base_ecola: true,
+        selectedMonth: true,
+        absent_count: true,
+        loan: true,
+      },
+    });
 
     const currentEmpCodes = currentRows.map((employee) =>
       employee.EmpCode.trim()
@@ -1598,23 +1710,22 @@ export async function getVarianceEmployees(selectedMonth: string) {
      * Order newest first. The first record encountered
      * for each EmpCodeId will be the latest history.
      */
-    const salaryHistory =
-      await prisma.employeeSalaryHistory.findMany({
-        where: {
-          salary_type: SalaryType.Allowance,
-          EmpCodeId: {
-            in: currentEmpCodes,
-          },
+    const salaryHistory = await prisma.employeeSalaryHistory.findMany({
+      where: {
+        salary_type: SalaryType.Allowance,
+        EmpCodeId: {
+          in: currentEmpCodes,
         },
-        select: {
-          EmpCodeId: true,
-          createdAt: true,
-          remarks: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      },
+      select: {
+        EmpCodeId: true,
+        createdAt: true,
+        remarks: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     const latestAllowanceHistoryMap = new Map<string, (typeof salaryHistory)[number]>();
 
@@ -1656,96 +1767,178 @@ export async function getVarianceEmployees(selectedMonth: string) {
       EmpCode: string;
       currentEmployee: CurrentEmployee | null;
       previousEmployee: PreviousEmployee | null;
-      previous_cash_assistance: number;
-      current_cash_assistance: number;
-      cash_assistance_variance: number;
       reasons: string[];
+      cash_assistance_variance: number;
       ecola_variance: number;
-      current_ecola: number;
-      base_ecola?: number;
     };
 
     type LessEmployee = {
       EmpCode: string;
       currentEmployee: CurrentEmployee | null;
       previousEmployee: PreviousEmployee | null;
-      reasons: Array<
-        | "ABSENT_IN_CURRENT_MONTH"
-        | "NOT_IN_CURRENT"
-      >;
-      cash_allowance_variance: number;
+      reasons: string[];
+      cash_assistance_variance: number;
       ecola_variance: number;
-
     };
 
-    const addEmployeeMap = new Map<
-      string,
-      AddEmployee
-    >();
+    const addEmployeeMap =
+      new Map<string, AddEmployee>();
 
-    const lessEmployeeMap = new Map<
-      string,
-      LessEmployee
-    >();
+    const lessEmployeeMap =
+      new Map<string, LessEmployee>();
 
-    /*
-     * ADD:
-     * Previous-month absences are added back.
-     */
-    for (const previousEmployee of previousRows) {
-      const empCode = previousEmployee.EmpCode.EmpCode.trim();
+    const addReason = (
+      reasons: string[],
+      reason: string
+    ) => {
+      const normalizedReason = reason.trim();
 
-      const previousAbsentCount = Number(
-        previousEmployee.absent_count ?? 0
+      if (
+        normalizedReason &&
+        !reasons.includes(normalizedReason)
+      ) {
+        reasons.push(normalizedReason);
+      }
+    };
+
+    const addToAddEmployee = ({
+      empCode,
+      currentEmployee,
+      previousEmployee,
+      cashVariance,
+      ecolaVariance,
+      reason,
+    }: {
+      empCode: string;
+      currentEmployee: CurrentEmployee | null;
+      previousEmployee: PreviousEmployee | null;
+      cashVariance: number;
+      ecolaVariance: number;
+      reason: string;
+    }) => {
+      const cashAmount = Math.max(
+        0,
+        Number(cashVariance)
       );
 
-      if (previousAbsentCount <= 0) {
-        continue;
+      const ecolaAmount = Math.max(
+        0,
+        Number(ecolaVariance)
+      );
+
+      if (
+        cashAmount === 0 &&
+        ecolaAmount === 0
+      ) {
+        return;
       }
 
-      const currentEmployee = currentEmployeeMap.get(empCode) ?? null;
+      const existingEmployee =
+        addEmployeeMap.get(empCode);
 
-      const previousCashAssistance = Number(
-        previousEmployee.cash_allowance ?? 0
-      );
+      if (existingEmployee) {
+        existingEmployee.cash_assistance_variance +=
+          cashAmount;
 
-      const currentCashAssistance = Number(
-        currentEmployee?.cash_allowance ?? 0
-      );
+        existingEmployee.ecola_variance +=
+          ecolaAmount;
 
-      const previousBaseCashAssitance = Number(
-        previousEmployee.base_cash_assistance ?? 0
-      );
+        existingEmployee.currentEmployee =
+          currentEmployee ??
+          existingEmployee.currentEmployee;
 
-      const previousEcola = Number(
-        previousEmployee.ecola ?? 0
-      );
+        existingEmployee.previousEmployee =
+          previousEmployee ??
+          existingEmployee.previousEmployee;
 
-      const previousBaseEcola = Number(
-        previousEmployee.base_ecola ?? 0
-      );
+        addReason(
+          existingEmployee.reasons,
+          reason
+        );
 
-      const currentEcola = Number(
-        currentEmployee?.computed_ecola ?? 0
-      );
+        return;
+      }
 
       addEmployeeMap.set(empCode, {
         EmpCode: empCode,
         currentEmployee,
         previousEmployee,
-        previous_cash_assistance: previousCashAssistance,
-        current_cash_assistance: currentCashAssistance,
-        cash_assistance_variance: previousBaseCashAssitance - previousCashAssistance,
-        reasons: ["PREVIOUS_MONTH_ABSENCE"],
-        ecola_variance: previousBaseEcola - previousEcola,
-        current_ecola: currentEcola,
+        reasons: reason.trim() ? [reason.trim()] : [],
+        cash_assistance_variance: cashAmount,
+        ecola_variance: ecolaAmount,
       });
-    }
+    };
+
+    const addToLessEmployee = ({
+      empCode,
+      currentEmployee,
+      previousEmployee,
+      cashVariance,
+      ecolaVariance,
+      reason,
+    }: {
+      empCode: string;
+      currentEmployee: CurrentEmployee | null;
+      previousEmployee: PreviousEmployee | null;
+      cashVariance: number;
+      ecolaVariance: number;
+      reason: string;
+    }) => {
+      const cashAmount = Math.max(
+        0,
+        Number(cashVariance)
+      );
+
+      const ecolaAmount = Math.max(
+        0,
+        Number(ecolaVariance)
+      );
+
+      if (
+        cashAmount === 0 &&
+        ecolaAmount === 0
+      ) {
+        return;
+      }
+
+      const existingEmployee =
+        lessEmployeeMap.get(empCode);
+
+      if (existingEmployee) {
+        existingEmployee.cash_assistance_variance +=
+          cashAmount;
+
+        existingEmployee.ecola_variance +=
+          ecolaAmount;
+
+        existingEmployee.currentEmployee =
+          currentEmployee ??
+          existingEmployee.currentEmployee;
+
+        existingEmployee.previousEmployee =
+          previousEmployee ??
+          existingEmployee.previousEmployee;
+
+        addReason(
+          existingEmployee.reasons,
+          reason
+        );
+
+        return;
+      }
+
+      lessEmployeeMap.set(empCode, {
+        EmpCode: empCode,
+        currentEmployee,
+        previousEmployee,
+        reasons: reason.trim() ? [reason.trim()] : [],
+        cash_assistance_variance: cashAmount,
+        ecola_variance: ecolaAmount,
+      });
+    };
 
     /*
-     * ADD:
-     * Current cash assistance increased compared
-     * with the previous month.
+     * Process all employees in the current month.
      */
     for (const currentEmployee of currentRows) {
       const empCode =
@@ -1754,223 +1947,406 @@ export async function getVarianceEmployees(selectedMonth: string) {
       const previousEmployee =
         previousEmployeeMap.get(empCode);
 
-      if (!previousEmployee) {
-        continue;
-      }
-
-      const previousCashAssistance = Number(
-        previousEmployee.cash_allowance ?? 0
-      );
-
-      const currentCashAssistance = Number(
+      const currentCash = Number(
         currentEmployee.cash_allowance ?? 0
       );
 
       const currentEcola = Number(
         currentEmployee.computed_ecola ?? 0
       );
-      const currentBaseEcola = Number(
-        currentEmployee.base_ecola ?? 0
-      );
-
-      if (
-        currentCashAssistance <=
-        previousCashAssistance
-      ) {
-        continue;
-      }
-
-      const latestHistory = latestAllowanceHistoryMap.get(empCode);
-      const increaseReason = latestHistory?.remarks?.trim() || "CASH_ASSISTANCE_INCREASE";
-      const existingEmployee = addEmployeeMap.get(empCode);
-
-      if (existingEmployee) {
-        if (
-          !existingEmployee.reasons.includes(
-            increaseReason
-          )
-        ) {
-          existingEmployee.reasons.push(
-            increaseReason
-          );
-        }
-
-        existingEmployee.currentEmployee =
-          currentEmployee;
-
-        existingEmployee.previousEmployee =
-          previousEmployee;
-
-        existingEmployee.previous_cash_assistance =
-          previousCashAssistance;
-
-        existingEmployee.current_cash_assistance =
-          currentCashAssistance;
-
-        existingEmployee.cash_assistance_variance =
-          currentCashAssistance -
-          previousCashAssistance;
-
-        existingEmployee.current_ecola = currentEcola;
-        existingEmployee.base_ecola = currentBaseEcola;
-
-
-        continue;
-      }
-
-      addEmployeeMap.set(empCode, {
-        EmpCode: empCode,
-        currentEmployee,
-        previousEmployee,
-        previous_cash_assistance: previousCashAssistance,
-        current_cash_assistance: currentCashAssistance,
-        cash_assistance_variance: currentCashAssistance - previousCashAssistance,
-        reasons: [increaseReason],
-        ecola_variance: 0,
-        current_ecola: currentEcola,
-      });
-    }
-
-
-
-    /*
-     * LESS:
-     * Current-month absences.
-     */
-    for (const currentEmployee of currentRows) {
-      const empCode = currentEmployee.EmpCode.trim();
-      const baseCashAllowance = currentEmployee.base_cash_assistance;
-      const currentAllowance = currentEmployee.cash_allowance;
-      const baseEcola = currentEmployee.base_ecola;
-      const currentEcola = currentEmployee.computed_ecola;
-
-      const cashAllowanceVariance = baseCashAllowance - currentAllowance;
-      const ecolaVariance = baseEcola - currentEcola;
-
-
 
       /*
-       * currentRows uses "absent", not "absent_count".
+       * Employee has no previous-month archive.
+       *
+       * Probationary employees are categorized as
+       * PROBATIONARY. Other employees are categorized
+       * as NEW_EMPLOYEE.
        */
+      if (!previousEmployee) {
+        const reason =
+          currentEmployee.employment_status ===
+            "Probationary"
+            ? "PROBATIONARY"
+            : "BACK TO WORK";
+
+        addToAddEmployee({
+          empCode,
+          currentEmployee,
+          previousEmployee: null,
+          cashVariance: currentCash,
+          ecolaVariance: currentEcola,
+          reason,
+        });
+
+        continue;
+      }
+
+      const previousCash = Number(
+        previousEmployee.cash_allowance ?? 0
+      );
+
+      const previousEcola = Number(
+        previousEmployee.ecola ?? 0
+      );
+
+      /*
+       * Use base values to separate absence deductions
+       * from genuine allowance changes.
+       */
+      const previousBaseCash = Number(
+        previousEmployee.base_cash_assistance ??
+        previousCash
+      );
+
+      const previousBaseEcola = Number(
+        previousEmployee.base_ecola ??
+        previousEcola
+      );
+
+      const currentBaseCash = Number(
+        currentEmployee.base_cash_assistance ??
+        currentCash
+      );
+
+      const currentBaseEcola = Number(
+        currentEmployee.base_ecola ??
+        currentEcola
+      );
+
+      const previousAbsentCount = Number(
+        previousEmployee.absent_count ?? 0
+      );
+
       const currentAbsentCount = Number(
         currentEmployee.absent ?? 0
       );
 
-      if (currentAbsentCount <= 0) {
-        continue;
+      /*
+       * ADD: Restore deductions caused by an absence
+       * during the previous month.
+       */
+      if (previousAbsentCount > 0) {
+        const previousCashDeduction =
+          previousBaseCash - previousCash;
+
+        const previousEcolaDeduction =
+          previousBaseEcola - previousEcola;
+
+        addToAddEmployee({
+          empCode,
+          currentEmployee,
+          previousEmployee,
+          cashVariance:
+            previousCashDeduction,
+          ecolaVariance:
+            previousEcolaDeduction,
+          reason: "PREVIOUS_MONTH_ABSENT",
+        });
       }
 
-      lessEmployeeMap.set(empCode, {
-        EmpCode: empCode,
-        currentEmployee,
-        previousEmployee: previousEmployeeMap.get(empCode) ?? null,
-        reasons: ["ABSENT_IN_CURRENT_MONTH"],
-        cash_allowance_variance: cashAllowanceVariance,
-        ecola_variance: ecolaVariance
-      });
+      /*
+       * ADD or LESS: Difference between the previous
+       * base allowance and current base allowance.
+       *
+       * This identifies salary or allowance adjustments
+       * without counting absence deductions twice.
+       */
+      const baseCashDifference =
+        currentBaseCash - previousBaseCash;
+
+      const baseEcolaDifference =
+        currentBaseEcola - previousBaseEcola;
+
+      const latestHistory =
+        latestAllowanceHistoryMap.get(empCode);
+
+      const historyReason =
+        latestHistory?.remarks?.trim();
+
+      if (
+        baseCashDifference > 0 ||
+        baseEcolaDifference > 0
+      ) {
+        addToAddEmployee({
+          empCode,
+          currentEmployee,
+          previousEmployee,
+          cashVariance: Math.max(
+            0,
+            baseCashDifference
+          ),
+          ecolaVariance: Math.max(
+            0,
+            baseEcolaDifference
+          ),
+          reason:
+            historyReason ||
+            "ALLOWANCE_INCREASE",
+        });
+      }
+
+      if (
+        baseCashDifference < 0 ||
+        baseEcolaDifference < 0
+      ) {
+        addToLessEmployee({
+          empCode,
+          currentEmployee,
+          previousEmployee,
+          cashVariance: Math.abs(
+            Math.min(0, baseCashDifference)
+          ),
+          ecolaVariance: Math.abs(
+            Math.min(0, baseEcolaDifference)
+          ),
+          reason:
+            historyReason ||
+            "ALLOWANCE_DECREASE",
+        });
+      }
+
+      /*
+       * LESS: Current-month absence deductions.
+       */
+      if (currentAbsentCount > 0) {
+        const currentCashDeduction =
+          currentBaseCash - currentCash;
+
+        const currentEcolaDeduction =
+          currentBaseEcola - currentEcola;
+
+        addToLessEmployee({
+          empCode,
+          currentEmployee,
+          previousEmployee,
+          cashVariance:
+            currentCashDeduction,
+          ecolaVariance:
+            currentEcolaDeduction,
+          reason: "ABSENT_IN_CURRENT_MONTH",
+        });
+      }
     }
 
-
-
     /*
-     * LESS:
-     * Employee existed previously but no longer
-     * exists in currentRows.
+     * Process employees that existed previously but
+     * are not included in currentRows.
      */
-
     for (const previousEmployee of previousRows) {
-      const empCode = previousEmployee.EmpCode.EmpCode.trim();
-      const previousCashAssistance = Number(previousEmployee.cash_allowance ?? 0);
-      const previousEcola = Number(previousEmployee.ecola ?? 0);
+      const empCode =
+        previousEmployee.EmpCode.EmpCode.trim();
 
       if (currentEmployeeMap.has(empCode)) {
         continue;
       }
 
-      lessEmployeeMap.set(empCode, {
-        EmpCode: empCode,
+      const previousCash = Number(
+        previousEmployee.cash_allowance ?? 0
+      );
+
+      const previousEcola = Number(
+        previousEmployee.ecola ?? 0
+      );
+
+      const employeeStatus =
+        previousEmployee.EmpCode.EmployeeStatus;
+
+      const reason =
+        employeeStatus === "Resigned"
+          ? "RESIGNED"
+          : "NOT_IN_CURRENT";
+
+      addToLessEmployee({
+        empCode,
         currentEmployee: null,
         previousEmployee,
-        reasons: ["NOT_IN_CURRENT"],
-        cash_allowance_variance: previousCashAssistance,
-        ecola_variance: previousEcola,
+        cashVariance: previousCash,
+        ecolaVariance: previousEcola,
+        reason,
       });
     }
 
+    /*
+     * Reconciliation check.
+     *
+     * The resulting difference should be zero or very
+     * close to zero because of decimal rounding.
+     */
+    const allEmployeeCodes = new Set<string>([
+      ...previousEmployeeMap.keys(),
+      ...currentEmployeeMap.keys(),
+    ]);
 
+    const reconciliation = Array.from(
+      allEmployeeCodes
+    ).map((empCode) => {
+      const currentEmployee =
+        currentEmployeeMap.get(empCode);
 
+      const previousEmployee =
+        previousEmployeeMap.get(empCode);
 
+      const addEmployee =
+        addEmployeeMap.get(empCode);
 
+      const lessEmployee =
+        lessEmployeeMap.get(empCode);
 
+      const previousCash = Number(
+        previousEmployee?.cash_allowance ?? 0
+      );
 
+      const currentCash = Number(
+        currentEmployee?.cash_allowance ?? 0
+      );
 
-    const formattedAdd = Array.from(addEmployeeMap.values()).map((employee) => ({
-      EmpCode: employee.EmpCode,
-      name: employee.currentEmployee?.name ??
-        [
-          employee.previousEmployee?.EmpCode.Lastname,
-          employee.previousEmployee?.EmpCode.Firstname,
-          employee.previousEmployee?.EmpCode.Middlename,
-        ]
-          .filter(Boolean)
-          .join(" "),
+      const previousEcola = Number(
+        previousEmployee?.ecola ?? 0
+      );
 
-      previous_cash_assistance: employee.previous_cash_assistance,
+      const currentEcola = Number(
+        currentEmployee?.computed_ecola ?? 0
+      );
 
-      current_cash_assistance: employee.current_cash_assistance,
+      const actualCashVariance =
+        currentCash - previousCash;
 
-      cash_assistance_variance: MathRound(employee.cash_assistance_variance),
+      const actualEcolaVariance =
+        currentEcola - previousEcola;
 
-      ecola_variance: MathRound(employee.ecola_variance),
+      const recordedCashVariance =
+        Number(
+          addEmployee
+            ?.cash_assistance_variance ?? 0
+        ) -
+        Number(
+          lessEmployee
+            ?.cash_assistance_variance ?? 0
+        );
 
-      reasons: employee.reasons,
-    }));
+      const recordedEcolaVariance =
+        Number(
+          addEmployee?.ecola_variance ?? 0
+        ) -
+        Number(
+          lessEmployee?.ecola_variance ?? 0
+        );
 
+      return {
+        EmpCode: empCode,
 
+        name:
+          currentEmployee?.name ??
+          [
+            previousEmployee?.EmpCode.Lastname,
+            previousEmployee?.EmpCode.Firstname,
+            previousEmployee?.EmpCode.Middlename,
+          ]
+            .filter(Boolean)
+            .join(" "),
 
+        actual_cash_variance:
+          MathRound(actualCashVariance),
 
-    const formattedLess = Array.from(lessEmployeeMap.values()).map((employee) => ({
+        recorded_cash_variance:
+          MathRound(recordedCashVariance),
+
+        cash_difference: MathRound(
+          actualCashVariance -
+          recordedCashVariance
+        ),
+
+        actual_ecola_variance:
+          MathRound(actualEcolaVariance),
+
+        recorded_ecola_variance:
+          MathRound(recordedEcolaVariance),
+
+        ecola_difference: MathRound(
+          actualEcolaVariance -
+          recordedEcolaVariance
+        ),
+
+        add_reasons:
+          addEmployee?.reasons.join(", ") ?? "",
+
+        less_reasons:
+          lessEmployee?.reasons.join(", ") ?? "",
+      };
+    });
+
+    const unmatchedEmployees =
+      reconciliation.filter(
+        (employee) =>
+          Math.abs(employee.cash_difference) >=
+          0.01 ||
+          Math.abs(employee.ecola_difference) >=
+          0.01
+      );
+
+    //console.log("VARIANCE RECONCILIATION");
+    //console.table(unmatchedEmployees);
+
+    const formattedAdd = Array.from(
+      addEmployeeMap.values()
+    ).map((employee) => ({
       EmpCode: employee.EmpCode,
 
       name:
         employee.currentEmployee?.name ??
         [
-          employee.previousEmployee?.EmpCode.Lastname,
-          employee.previousEmployee?.EmpCode.Firstname,
-          employee.previousEmployee?.EmpCode.Middlename,
+          employee.previousEmployee?.EmpCode
+            .Lastname,
+          employee.previousEmployee?.EmpCode
+            .Firstname,
+          employee.previousEmployee?.EmpCode
+            .Middlename,
+        ]
+          .filter(Boolean)
+          .join(" "),
+
+      cash_assistance_variance: MathRound(
+        employee.cash_assistance_variance
+      ),
+
+      ecola_variance: MathRound(
+        employee.ecola_variance
+      ),
+
+      reasons: employee.reasons,
+    }));
+
+    const formattedLess = Array.from(
+      lessEmployeeMap.values()
+    ).map((employee) => ({
+      EmpCode: employee.EmpCode,
+
+      name:
+        employee.currentEmployee?.name ??
+        [
+          employee.previousEmployee?.EmpCode
+            .Lastname,
+          employee.previousEmployee?.EmpCode
+            .Firstname,
+          employee.previousEmployee?.EmpCode
+            .Middlename,
         ]
           .filter(Boolean)
           .join(" "),
 
       branch_code:
         employee.currentEmployee?.branch_code ??
-        employee.previousEmployee?.EmpCode.BranchCodeId ??
         null,
 
-      position:
-        employee.currentEmployee?.position ??
-        employee.previousEmployee?.EmpCode.Position ??
-        null,
+      cash_assistance_variance: MathRound(
+        employee.cash_assistance_variance
+      ),
 
-      absent_count:
-        employee.currentEmployee?.absent ??
-        Number(employee.previousEmployee?.absent_count ?? 0),
-
-      current_cash_assistance:
-        Number(
-          employee.currentEmployee?.cash_allowance ?? 0
-        ),
-
-      previous_cash_assistance:
-        Number(
-          employee.previousEmployee?.cash_allowance ?? 0
-        ),
+      ecola_variance: MathRound(
+        employee.ecola_variance
+      ),
 
       reasons: employee.reasons,
-
-      cash_allowance_variance: MathRound(employee.cash_allowance_variance),
-      ecola_variance: MathRound(employee.ecola_variance),
-
     }));
 
     return {
@@ -2106,117 +2482,258 @@ export async function getArchiveReport(selectedMonth: string) {
 
 
 
-type AllowanceEmailType = {
+type AllowanceEmailEmployee = {
   EmpCodeId: string;
   name: string;
-  cash_allowance: number | null;
-  ecola: number | null;
-  deduct: number | null;
-  loan: number | null;
-  total: number | null;
   email: string;
+
+  month: string;
+  company: string;
+  branch: string | null;
+  location: string | null;
+
+  cash_allowance: number;
+  ecola: number;
+  deduct: number;
+  loan: number;
+  totalDeduction: number;
+  total: number;
 };
 
+type SendBulkAllowanceParams = {
+  month: string;
+  company: string;
+  branch?: string;
+};
+
+type AllowanceEmailFailure = {
+  EmpCodeId: string;
+  email: string;
+  message: string;
+};
+
+type SendBulkAllowanceResult = {
+  success: boolean;
+  total: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  failures: AllowanceEmailFailure[];
+};
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
+  pool: true,
+  maxConnections: 3,
+  maxMessages: 50,
+
   auth: {
-    user: process.env.EMAIL_USER!,
-    pass: process.env.EMAIL_PASS!,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
+
+
+
 export async function sendAllowanceEmailService(
-  employee: AllowanceEmailType,
-  context: {
-    month: string;
-    company: string;
-    branch: string;
-  }
-) {
+  employee: AllowanceEmailEmployee
+): Promise<void> {
+  const email = normalizeEmail(employee.email);
 
-  if (!employee.email) {
-    throw new Error("No email found");
+  if (!email) {
+    throw new Error(
+      `Invalid email address for ${employee.EmpCodeId}`
+    );
   }
 
-  const pdfBuffer = await generateAllowancePDF({
+  const pdfData: AllowancePdfData = {
     EmpCodeId: employee.EmpCodeId,
-    month: context.month,
-    company: context.company,
-    branch: context.branch,
-  });
+    name: employee.name,
+    month: employee.month,
+    company: employee.company,
+    branch: employee.branch,
+    location: employee.location,
+
+    cash_allowance: employee.cash_allowance,
+    ecola: employee.ecola,
+    deduct: employee.deduct,
+    loan: employee.loan,
+    totalDeduction: employee.totalDeduction,
+    total: employee.total,
+  };
+
+  const pdfBuffer = await generateAllowancePDF(pdfData);
 
   await transporter.sendMail({
-    from: `"Payroll System" <${process.env.EMAIL_USER}>`,
-    to: employee.email,
-    subject: "Your Allowance",
+    from:
+      `"Payroll System" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject:
+      `Allowance Payslip - ${employee.month}`,
     html: `
       <p>Dear ${employee.name},</p>
-      <p>Please find your allowance attached.</p>
-      <p>Regards,<br/>Payroll Department</p>
+
+      <p>
+        Please find your allowance payslip for
+        <strong>${employee.month}</strong> attached.
+      </p>
+
+      <p>
+        Regards,<br />
+        Payroll Department
+      </p>
     `,
     attachments: [
       {
-        filename: `Allowance-${employee.EmpCodeId}.pdf`,
+        filename:
+          `Allowance-${employee.EmpCodeId}-${employee.month}.pdf`,
         content: pdfBuffer,
+        contentType: "application/pdf",
       },
     ],
   });
+}
+
+
+
+async function processInBatches<T>(
+  items: T[],
+  batchSize: number,
+  handler: (item: T) => Promise<void>
+): Promise<void> {
+  for (
+    let index = 0;
+    index < items.length;
+    index += batchSize
+  ) {
+    const batch = items.slice(
+      index,
+      index + batchSize
+    );
+
+    await Promise.all(
+      batch.map((item) => handler(item))
+    );
+  }
 }
 
 export async function sendBulkAllowanceService({
   month,
   company,
   branch,
-}: {
-  month: string;
-  company: string;
-  branch: string;
-}) {
-
-  const employees = await getArchiveAllowanceByCompanyBranch({
-    selectedMonth: month,
-    company,
-    branch,
-  });
+}: SendBulkAllowanceParams): Promise<SendBulkAllowanceResult> {
+  const employees =
+    await getArchiveAllowanceByCompanyBranch({
+      selectedMonth: month,
+      company,
+      branch,
+    });
 
   let successCount = 0;
   let failedCount = 0;
+  let skippedCount = 0;
 
-  for (const emp of employees) {
-    const email = emp.EmpCode?.employeepayroll?.gmail_account;
+  const failures: AllowanceEmailFailure[] = [];
 
-    if (!email) continue;
+  const employeesWithEmail =
+    employees.flatMap((employee) => {
+      const email = normalizeEmail(
+        employee.gmail_account
+      );
 
-    try {
-      await sendAllowanceEmailService(
+      if (!email) {
+        skippedCount += 1;
+
+        console.log(
+          `Skipped ${employee.EmpCodeId}: no valid email address`
+        );
+
+        return [];
+      }
+
+      const employeeBranch =
+        employee.branchCode ??
+        employee.Location ??
+        branch ??
+        null;
+
+      const emailEmployee: AllowanceEmailEmployee =
         {
-          ...emp,
+          EmpCodeId: employee.EmpCodeId,
+          name: employee.name,
           email,
-          cash_allowance: emp.cash_allowance ? Number(emp.cash_allowance) : null,
-          ecola: emp.ecola ? Number(emp.ecola) : null,
-          deduct: emp.deduct ? Number(emp.deduct) : null,
-          loan: emp.loan ? Number(emp.loan) : null,
-          total: emp.total ? Number(emp.total) : null,
-        },
-        {
+
           month,
           company,
-          branch,
-        }
-      );
-    } catch (err) {
-      console.error(`Failed for ${emp.EmpCodeId}`, err);
+          branch: employeeBranch,
+          location: employee.Location ?? null,
+
+          cash_allowance: toNumber(
+            employee.cash_allowance
+          ),
+
+          ecola: toNumber(employee.ecola),
+
+          deduct: toNumber(employee.deduct),
+
+          loan: toNumber(employee.loan),
+
+          totalDeduction: toNumber(
+            employee.totalDeduction
+          ),
+
+          total: toNumber(employee.total),
+        };
+
+      return [emailEmployee];
+    });
+
+  await processInBatches(
+    employeesWithEmail,
+    5,
+    async (employee) => {
+      try {
+        await sendAllowanceEmailService(
+          employee
+        );
+
+        successCount += 1;
+
+        console.log(
+          `Allowance email sent: ${employee.EmpCodeId} -> ${employee.email}`
+        );
+      } catch (error: unknown) {
+        failedCount += 1;
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unknown email sending error";
+
+        failures.push({
+          EmpCodeId: employee.EmpCodeId,
+          email: employee.email,
+          message,
+        });
+
+        console.error(
+          `Failed sending allowance email for ${employee.EmpCodeId}:`,
+          error
+        );
+      }
     }
-  }
+  );
 
   return {
-    success: true,
+    success: failedCount === 0,
+    total: employees.length,
     sent: successCount,
     failed: failedCount,
+    skipped: skippedCount,
+    failures,
   };
 }
-
 
 
 
@@ -2512,104 +3029,171 @@ export async function exportAllowanceExcel(selectedMonth: string): Promise<Buffe
     }
   );
 
-const summaryHeaderRow = worksheet.addRow([
-  "",
-  "",
-  "CASH ALLOWANCE",
-  "ECOLA",
-  "",
-  "TOTAL",
-]);
-
-summaryHeaderRow.eachCell((cell) => {
-  cell.font = { bold: true };
-  cell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: {
-      argb: "FFE2E5E9",
-    },
-  };
-  cell.alignment = {
-    horizontal: "center",
-    vertical: "middle",
-  };
-});
-
-const mhSummaryRow = worksheet.addRow([
-  "",
-  "TOTAL MH",
-  result.mh_totals.cash_allowance,
-  result.mh_totals.computed_ecola,
-  "",
-  result.mh_totals.total,
-]);
-
-const boardMancomSummaryRow = worksheet.addRow([
-  "",
-  "TOTAL BOARD & MANCOM",
-  result.board_mancom_totals.cash_allowance,
-  result.board_mancom_totals.computed_ecola,
-  "",
-  result.board_mancom_totals.total,
-]);
-
-const totalSummaryRow = worksheet.addRow([
-  "",
-  "TOTAL",
-  result.total_mh_boardmancom.cash_allowance,
-  result.total_mh_boardmancom.computed_ecola,
-  "",
-  result.total_mh_boardmancom.total,
-]);
-
-for (const row of [
-  mhSummaryRow,
-  boardMancomSummaryRow,
-  totalSummaryRow,
-]) {
-  row.getCell(2).font = {
-    bold: true,
-  };
-
-  for (let column = 3; column <= 6; column += 1) {
-    row.getCell(column).numFmt = moneyFormat;
-    row.getCell(column).alignment = {
-      horizontal: "right",
-    };
-  }
-}
-
-totalSummaryRow.eachCell((cell) => {
-  cell.font = {
-    bold: true,
-  };
-
-  cell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: {
-      argb: "FFF2F3F5",
-    },
-  };
-});
-
-worksheet.addRow([]);
-
-/*
- * MH AND MANCOM LOANS
- */
-if (result.mh_mancom_loans.length > 0) {
-  const loanHeaderRow = worksheet.addRow([
+  const summaryHeaderRow = worksheet.addRow([
     "",
-    "EMPLOYEE",
-    "AMOUNT",
     "",
-    "DESCRIPTION",
+    "CASH ALLOWANCE",
+    "ECOLA",
     "",
+    "TOTAL",
   ]);
 
-  loanHeaderRow.eachCell((cell) => {
+  summaryHeaderRow.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FFE2E5E9",
+      },
+    };
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+  });
+
+  const mhSummaryRow = worksheet.addRow([
+    "",
+    "TOTAL MH",
+    result.mh_totals.cash_allowance,
+    result.mh_totals.computed_ecola,
+    "",
+    result.mh_totals.total,
+  ]);
+
+  const boardMancomSummaryRow = worksheet.addRow([
+    "",
+    "TOTAL BOARD & MANCOM",
+    result.board_mancom_totals.cash_allowance,
+    result.board_mancom_totals.computed_ecola,
+    "",
+    result.board_mancom_totals.total,
+  ]);
+
+  const totalSummaryRow = worksheet.addRow([
+    "",
+    "TOTAL",
+    result.total_mh_boardmancom.cash_allowance,
+    result.total_mh_boardmancom.computed_ecola,
+    "",
+    result.total_mh_boardmancom.total,
+  ]);
+
+  for (const row of [
+    mhSummaryRow,
+    boardMancomSummaryRow,
+    totalSummaryRow,
+  ]) {
+    row.getCell(2).font = {
+      bold: true,
+    };
+
+    for (let column = 3; column <= 6; column += 1) {
+      row.getCell(column).numFmt = moneyFormat;
+      row.getCell(column).alignment = {
+        horizontal: "right",
+      };
+    }
+  }
+
+  totalSummaryRow.eachCell((cell) => {
+    cell.font = {
+      bold: true,
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "FFF2F3F5",
+      },
+    };
+  });
+
+  worksheet.addRow([]);
+
+  /*
+   * MH AND MANCOM LOANS
+   */
+  if (result.mh_mancom_loans.length > 0) {
+    const loanHeaderRow = worksheet.addRow([
+      "",
+      "EMPLOYEE",
+      "AMOUNT",
+      "",
+      "DESCRIPTION",
+      "",
+    ]);
+
+    loanHeaderRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+      };
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FFE2E5E9",
+        },
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+      };
+    });
+
+    for (const loan of result.mh_mancom_loans) {
+      const loanRow = worksheet.addRow([
+        "",
+        `Less: ${loan.EmpCode}`,
+        Number(loan.per_payroll_deduct ?? 0),
+        "",
+        loan.loan_type ?? loan.others_types ?? "",
+        "",
+      ]);
+
+      loanRow.getCell(3).numFmt = moneyFormat;
+    }
+
+    const loanTotalRow = worksheet.addRow([
+      "",
+      "TOTAL",
+      result.totalmhAndMancomLoans,
+      "",
+      "",
+      "",
+    ]);
+
+    loanTotalRow.getCell(2).font = {
+      bold: true,
+    };
+
+    loanTotalRow.getCell(3).font = {
+      bold: true,
+    };
+
+    loanTotalRow.getCell(3).numFmt =
+      moneyFormat;
+
+    worksheet.addRow([]);
+  }
+
+  /*
+   * TOTAL DISBURSEMENT
+   */
+  const disbursementHeaderRow = worksheet.addRow([
+    "",
+    "",
+    "CASH ALLOWANCE",
+    "ECOLA",
+    "",
+    "TOTAL",
+  ]);
+
+  disbursementHeaderRow.eachCell((cell) => {
     cell.font = {
       bold: true,
     };
@@ -2628,92 +3212,25 @@ if (result.mh_mancom_loans.length > 0) {
     };
   });
 
-  for (const loan of result.mh_mancom_loans) {
-    const loanRow = worksheet.addRow([
-      "",
-      `Less: ${loan.EmpCode}`,
-      Number(loan.per_payroll_deduct ?? 0),
-      "",
-      loan.loan_type ?? loan.others_types ?? "",
-      "",
-    ]);
-
-    loanRow.getCell(3).numFmt = moneyFormat;
-  }
-
-  const loanTotalRow = worksheet.addRow([
+  const disbursementRow = worksheet.addRow([
     "",
-    "TOTAL",
-    result.totalmhAndMancomLoans,
+    "TOTAL DISBURSE",
+    result.total_disburse.cash_allowance,
+    result.total_disburse.computed_ecola,
     "",
-    "",
-    "",
+    result.total_disburse.total,
   ]);
 
-  loanTotalRow.getCell(2).font = {
+  disbursementRow.getCell(2).font = {
     bold: true,
   };
 
-  loanTotalRow.getCell(3).font = {
-    bold: true,
-  };
-
-  loanTotalRow.getCell(3).numFmt =
-    moneyFormat;
+  for (let column = 3; column <= 6; column += 1) {
+    disbursementRow.getCell(column).numFmt =
+      moneyFormat;
+  }
 
   worksheet.addRow([]);
-}
-
-/*
- * TOTAL DISBURSEMENT
- */
-const disbursementHeaderRow = worksheet.addRow([
-  "",
-  "",
-  "CASH ALLOWANCE",
-  "ECOLA",
-  "",
-  "TOTAL",
-]);
-
-disbursementHeaderRow.eachCell((cell) => {
-  cell.font = {
-    bold: true,
-  };
-
-  cell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: {
-      argb: "FFE2E5E9",
-    },
-  };
-
-  cell.alignment = {
-    horizontal: "center",
-    vertical: "middle",
-  };
-});
-
-const disbursementRow = worksheet.addRow([
-  "",
-  "TOTAL DISBURSE",
-  result.total_disburse.cash_allowance,
-  result.total_disburse.computed_ecola,
-  "",
-  result.total_disburse.total,
-]);
-
-disbursementRow.getCell(2).font = {
-  bold: true,
-};
-
-for (let column = 3; column <= 6; column += 1) {
-  disbursementRow.getCell(column).numFmt =
-    moneyFormat;
-}
-
-worksheet.addRow([]);
 
 
 
@@ -2755,151 +3272,151 @@ worksheet.addRow([]);
       vertical: "middle",
     };
 
-   for (const [branchName, branchData] of Object.entries(
-  companyData.branches
-)) {
-  addSection(
-    `Branch:${branchName}`,
-    branchData.employees,
-    branchData.totals
-  );
-
-  if (branchData.loans.length > 0) {
-    const loanHeaderRow = worksheet.addRow([
-      "",
-      "LOAN DEDUCTIONS",
-      "",
-      "",
-      "",
-      "",
-    ]);
-
-    worksheet.mergeCells(
-      `B${loanHeaderRow.number}:F${loanHeaderRow.number}`
-    );
-
-    loanHeaderRow.getCell(2).font = {
-      bold: true,
-    };
-
-    loanHeaderRow.getCell(2).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: {
-        argb: "FFF1F5F9",
-      },
-    };
-
-    loanHeaderRow.getCell(2).alignment = {
-      horizontal: "left",
-      vertical: "middle",
-    };
-
-    branchData.loans.forEach((loan, index) => {
-      const employee = branchData.employees.find(
-        (item) =>
-          item.EmpCode.trim() === loan.EmpCode.trim()
+    for (const [branchName, branchData] of Object.entries(
+      companyData.branches
+    )) {
+      addSection(
+        `Branch:${branchName}`,
+        branchData.employees,
+        branchData.totals
       );
 
-      const employeeName =
-        employee?.name ?? loan.EmpCode;
+      if (branchData.loans.length > 0) {
+        const loanHeaderRow = worksheet.addRow([
+          "",
+          "LOAN DEDUCTIONS",
+          "",
+          "",
+          "",
+          "",
+        ]);
 
-      //const description = loan.others_types ?? loan.loan_type ??"";
-      const description = `${loan.loan_type}, ${loan.others_types}`
+        worksheet.mergeCells(
+          `B${loanHeaderRow.number}:F${loanHeaderRow.number}`
+        );
 
-   const loanRow = worksheet.addRow([
-  index + 1,
-  employeeName,
-  Number(loan.per_payroll_deduct ?? 0),
-  description,
-  "",
-  "",
-]);
+        loanHeaderRow.getCell(2).font = {
+          bold: true,
+        };
 
-worksheet.mergeCells(
-  `D${loanRow.number}:F${loanRow.number}`
-);
+        loanHeaderRow.getCell(2).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFF1F5F9",
+          },
+        };
 
-loanRow.getCell(4).alignment = {
-  horizontal: "left",
-  vertical: "middle",
-  wrapText: true,
-};
+        loanHeaderRow.getCell(2).alignment = {
+          horizontal: "left",
+          vertical: "middle",
+        };
 
-      loanRow.getCell(1).alignment = {
-        horizontal: "center",
-      };
+        branchData.loans.forEach((loan, index) => {
+          const employee = branchData.employees.find(
+            (item) =>
+              item.EmpCode.trim() === loan.EmpCode.trim()
+          );
 
-      loanRow.getCell(3).numFmt = moneyFormat;
+          const employeeName =
+            employee?.name ?? loan.EmpCode;
 
-      loanRow.getCell(3).alignment = {
-        horizontal: "right",
-      };
-    });
+          //const description = loan.others_types ?? loan.loan_type ??"";
+          const description = `${loan.loan_type}, ${loan.others_types}`
 
-    const loanTotalRow = worksheet.addRow([
-      "",
-      "TOTAL LOAN DEDUCTION",
-      branchData.total_loans,
-      "",
-      "",
-      "",
-    ]);
+          const loanRow = worksheet.addRow([
+            index + 1,
+            employeeName,
+            Number(loan.per_payroll_deduct ?? 0),
+            description,
+            "",
+            "",
+          ]);
 
-    loanTotalRow.getCell(2).font = {
-      bold: true,
-    };
+          worksheet.mergeCells(
+            `D${loanRow.number}:F${loanRow.number}`
+          );
 
-    loanTotalRow.getCell(3).font = {
-      bold: true,
-    };
+          loanRow.getCell(4).alignment = {
+            horizontal: "left",
+            vertical: "middle",
+            wrapText: true,
+          };
 
-    loanTotalRow.getCell(3).numFmt =
-      moneyFormat;
+          loanRow.getCell(1).alignment = {
+            horizontal: "center",
+          };
 
-    loanTotalRow.getCell(3).alignment = {
-      horizontal: "right",
-    };
+          loanRow.getCell(3).numFmt = moneyFormat;
 
-    const disbursementRow = worksheet.addRow([
-      "",
-      "TOTAL DISBURSEMENT",
-      branchData.disbursement.cash_allowance,
-      branchData.disbursement.computed_ecola,
-      branchData.disbursement.deduct,
-      branchData.disbursement.total,
-    ]);
+          loanRow.getCell(3).alignment = {
+            horizontal: "right",
+          };
+        });
 
-    disbursementRow.eachCell((cell) => {
-      cell.font = {
-        bold: true,
-      };
+        const loanTotalRow = worksheet.addRow([
+          "",
+          "TOTAL LOAN DEDUCTION",
+          branchData.total_loans,
+          "",
+          "",
+          "",
+        ]);
 
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: {
-          argb: "FFE2E8F0",
-        },
-      };
-    });
+        loanTotalRow.getCell(2).font = {
+          bold: true,
+        };
 
-    for (
-      let column = 3;
-      column <= 6;
-      column += 1
-    ) {
-      disbursementRow.getCell(column).numFmt =
-        moneyFormat;
+        loanTotalRow.getCell(3).font = {
+          bold: true,
+        };
 
-      disbursementRow.getCell(column).alignment = {
-        horizontal: "right",
-      };
+        loanTotalRow.getCell(3).numFmt =
+          moneyFormat;
+
+        loanTotalRow.getCell(3).alignment = {
+          horizontal: "right",
+        };
+
+        const disbursementRow = worksheet.addRow([
+          "",
+          "TOTAL DISBURSEMENT",
+          branchData.disbursement.cash_allowance,
+          branchData.disbursement.computed_ecola,
+          branchData.disbursement.deduct,
+          branchData.disbursement.total,
+        ]);
+
+        disbursementRow.eachCell((cell) => {
+          cell.font = {
+            bold: true,
+          };
+
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: "FFE2E8F0",
+            },
+          };
+        });
+
+        for (
+          let column = 3;
+          column <= 6;
+          column += 1
+        ) {
+          disbursementRow.getCell(column).numFmt =
+            moneyFormat;
+
+          disbursementRow.getCell(column).alignment = {
+            horizontal: "right",
+          };
+        }
+
+        worksheet.addRow([]);
+      }
     }
-
-    worksheet.addRow([]);
-  }
-}
 
     const companyTotalRow = worksheet.addRow([
       "",

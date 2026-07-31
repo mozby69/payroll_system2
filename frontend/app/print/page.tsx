@@ -34,11 +34,6 @@ export default async function AllowancePrintPage({ searchParams }: Props) {
   }
 
 
-  // const res = await fetch(
-  //   `${process.env.NEXT_PUBLIC_API_URL}/allowance/print-data?month=${month}&company=${company}&branch=${branch}`,
-  //   { cache: "no-store" }
-  // );
-
 
   const res = await fetch(
   `${process.env.NEXT_PUBLIC_API_URL}/allowance/print-data?month=${month}&company=${company}&branch=${branch}${empId ? `&empId=${empId}` : ""}`,
@@ -87,8 +82,8 @@ export default async function AllowancePrintPage({ searchParams }: Props) {
                 </p>
                 <p className="mt-2">{row.cash_allowance}</p>
                 <p className="mt-2">{row.ecola}</p>
-                <p className="mt-2">-{row.deduct}</p>
-                <p className="mt-2">-{row.loan}</p>
+                <p className="mt-2">{row.deduct}</p>
+                <p className="mt-2">{row.loan}</p>
                 <p className="mt-2 font-semibold">{row.total}</p>
                 <p className="mt-2 border-b w-40">&nbsp;</p>
                 <p className="mt-2 border-b w-40">&nbsp;</p>

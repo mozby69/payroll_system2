@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ComputedProps, fetchComputedPayroll, fetchEmployeesByCycle, fetchInitializeComputedPayroll, fetchInitializePayroll, importAttendanceCount, importBranches, searchEmployees, updateDeduction, updateEmployeePayroll, UpdateEmployeePayrollPayload } from "../services/preparePayroll";
-import { DeductionsOnlyProps, EmployeeRow, PaginatedResponse, UpdateDeductionPayload } from "../types/preparePayroll";
+import { DeductionsOnlyProps, EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
 import { DateRange } from "../types/utilsTypes";
 import api from "../services/axios";
 
@@ -222,19 +222,44 @@ export function useUpdateDeduction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: UpdateDeductionPayload) =>
-      updateDeduction(payload),
+    mutationFn: updateDeduction,
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["computed-payroll"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["employees-computed"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["variance-display"],
-      });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["computed-payroll"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["employees-computed"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["variance-display"],
+        }),
+      ]);
     },
   });
 }
+
+
+
+// export function useDisplaySummaryOverride(paycode?: string) {
+//   return useQuery<DisplaySummaryOverride[]>({
+//     queryKey: ["display-summary-override", paycode],
+//     enabled: Boolean(paycode),
+
+//     queryFn: async () => {
+//       const response = await api.get<DisplaySummaryOverride[]>(
+//         "/prepare-payroll/display-table-override",
+//         {
+//           params: {
+//             paycode,
+//           },
+//         }
+//       );
+
+//       return response.data;
+//     },
+
+//     initialData: [],
+//   });
+// }
