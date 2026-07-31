@@ -126,6 +126,7 @@ export type EmployeeProfile = {
   employeepayroll: EmpPayrollInfo | null;
   officersAllowance: EmpOAInfo | null;
   loan_details: EmployeeLoan[];
+  isDisabled:boolean;
 };
 export type UpdateEmployeePayrollPayload = {
   empCode: string;
@@ -143,6 +144,7 @@ export type UpdateEmployeePayrollPayload = {
   gmail_account?:string;
   OaBasicSalary?:string;
   bankAccount?: string;
+  isDisabled:boolean;
 };
 
 export type PayrollFormState = {
@@ -159,6 +161,7 @@ export type PayrollFormState = {
   gmail_account?:string;
   OaBasicSalary?: string;
   bankAccount?: string;
+  isDisabled:boolean;
 };
 
 

@@ -13,4 +13,5 @@ export type UpdateTypesByEmpCode ={
     gmail_account:string,
     OaBasicSalary: number,
     bankAccount?:string;
+    isDisabled:boolean;
 }

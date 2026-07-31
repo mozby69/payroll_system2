@@ -265,6 +265,7 @@ export async function generateBonusForAllEmployees({
               EmployeeStatus: {
                 in: ["Active", "Inactive"],
               },
+              isDisabled: false,
             },
 
             {
@@ -277,6 +278,7 @@ export async function generateBonusForAllEmployees({
                   EmployeeStatus: {
                       in: ["Active", "Inactive"],
                   },
+                  isDisabled: false,
               },
                 {
                   BranchCode: {

@@ -54,6 +54,7 @@ export const updateEmployeePayroll = async (
     gmail_account,
     OaBasicSalary,
     bankAccount,
+    isDisabled
   } = payload;
 
   const { data } = await api.put(
@@ -72,6 +73,7 @@ export const updateEmployeePayroll = async (
       gmail_account,
       OaBasicSalary,
       bankAccount,
+      isDisabled,
       ...(remarks ? { remarks } : {}),
     }
   );
