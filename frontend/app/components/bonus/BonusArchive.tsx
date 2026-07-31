@@ -16,6 +16,7 @@ export default function BonusArchivePage() {
   const { data: bonusSummary, isLoading, error } = useGetBonusSummary();
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | undefined>();
+  const [selectedCompany, setSelectedCompany] = useState<string | undefined>();
 
   const {hasPermission} =useAuth();
 
@@ -23,9 +24,10 @@ export default function BonusArchivePage() {
   const reject = useRejectBonus();
   const release = useReleaseBonus();
 
-  const handleViewArchive = (id: number) =>{
+  const handleViewArchive = (id: number, company: string) =>{
       setIsViewModalOpen(true)
       setSelectedId(id);
+      setSelectedCompany(company);
   }
 
   const handleApproveBonus = (summary: BonusSummaryType) => {
@@ -189,7 +191,7 @@ export default function BonusArchivePage() {
                                   text-blue-700 bg-blue-50 hover:bg-blue-100 
                                   border border-blue-200 rounded-md 
                                   transition-colors duration-200"
-                        onClick={()=>handleViewArchive(summary.id)}
+                        onClick={()=>handleViewArchive(summary.id, summary.companyCode)}
                       >
                         <Eye size={15} />
                         View
@@ -252,7 +254,7 @@ export default function BonusArchivePage() {
                 title="Archived Bonus Summary" 
                 size="xxxl"
                 onClose={()=>setIsViewModalOpen(false)}>
-                <ViewArchiveModal id={selectedId}/>
+                <ViewArchiveModal id={selectedId} company={selectedCompany}/>
             </RequestModal>
           )}
 

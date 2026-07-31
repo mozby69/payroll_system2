@@ -177,9 +177,9 @@ export function useGetEmployeeGeneratedBonus(
     console.log("selectedGroup:", selectedGroup)
     return useQuery<EmployeeGenerateBonusResponse>({
         
-      queryKey: ["generated-bonus", companyCode, id, selectedGroup],
+      queryKey: ["generated-bonus", companyCode, selectedGroup, id],
       queryFn: () =>
-        getEmployeeGeneratedBonusService(companyCode, id, selectedGroup),
+        getEmployeeGeneratedBonusService(companyCode, selectedGroup, id),
       enabled: !!companyCode && selectedGroup !== undefined,
       staleTime: 1000 * 60 * 5,
     });

@@ -116,6 +116,7 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       isOfficerAllowance:true,
       isSixDaysWork:true,
       Taxable:true,
+      isDisabled:true,
       employeepr: {
         select: {
           EmpTin: true,
@@ -265,7 +266,7 @@ export const updateEmployeePayroll = async (
 ) => {
   try {
     return await prisma.$transaction(async (tx) => {
-
+      console.log("ser ", payLoad.isDisabled)
     
       const existing = await tx.employee_payroll.findUnique({
         where: { EmpCodeId: empCode },
@@ -329,6 +330,7 @@ export const updateEmployeePayroll = async (
           Taxable: payLoad.Taxable,
           isOfficerAllowance: payLoad.isOfficerAllowance,
           isSixDaysWork: payLoad.isSixDaysWork,
+          isDisabled: payLoad.isDisabled,
           employeepayroll: {
             upsert: {
               update: {

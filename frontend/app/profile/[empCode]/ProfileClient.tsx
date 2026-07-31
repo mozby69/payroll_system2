@@ -55,6 +55,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       gmail_account:String(payInfo?.gmail_account ?? false),
       OaBasicSalary: String(oaInfo?.OaBasicSalary ?? ""),
       bankAccount: String(payInfo?.bankAccount ?? ""),
+      isDisabled:Boolean(data?.isDisabled ?? false),
     };
   }, [payInfo, data, oaInfo]);
 
@@ -237,6 +238,7 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
       gmail_account:formValues.gmail_account,
       OaBasicSalary:formValues.OaBasicSalary,
       bankAccount: String(formValues.bankAccount),
+      isDisabled:formValues.isDisabled,
     };
 
     try {
@@ -581,6 +583,24 @@ export default function ProfileClient({ empCode }: ProfileClientProps) {
                       6 Days Work
                     </span>
                   </div>
+
+                <div className="flex items-center gap-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formValues.isDisabled}
+                      onChange={(e) =>
+                        setFormValues(prev => ({
+                          ...prev,
+                          isDisabled: e.target.checked
+                        }))
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">
+                      Disabled Payroll
+                    </span>
+                  </div>
+
 
                 </div>
 

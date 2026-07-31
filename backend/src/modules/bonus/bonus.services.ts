@@ -1,4 +1,4 @@
-import { AuditAction, AuditModule, BonusType, Prisma } from "@prisma/client"
+import { AuditAction, AuditModule, BonusType, LeaveName, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
 import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getTenureInMonths, getTenureInYears } from "./bonus.utils"
@@ -265,6 +265,7 @@ export async function generateBonusForAllEmployees({
               EmployeeStatus: {
                 in: ["Active", "Inactive"],
               },
+              isDisabled: false,
             },
 
             {
@@ -273,7 +274,11 @@ export async function generateBonusForAllEmployees({
                   EmployementDate: {
                     lte: generateDate
                   },
-                  isAlien: false
+                  isAlien: false,
+                  EmployeeStatus: {
+                      in: ["Active", "Inactive"],
+                  },
+                  isDisabled: false,
               },
                 {
                   BranchCode: {
@@ -417,21 +422,30 @@ export async function generateBonusForAllEmployees({
       where: {
         specialLeaves: {
           some: {
-            OR: [
-              // Normal leave (Active, etc.)
+            AND: [
               {
-                status: { not: "Expected" },
-                start: { not: null, lte: bonusEnd },
-                end:   { not: null, gte: bonusStart }
+                OR: [
+                    // Normal leave (Active, etc.)
+                    {
+                      status: { not: "Expected" },
+                      start: { not: null, lte: bonusEnd },
+                      end:   { not: null, gte: bonusStart }
+                    },
+          
+                    // Expected leave
+                    {
+                      status: "Expected",
+                      expectedStart: { not: null, lte: bonusEnd },
+                      expectedEnd:   { not: null, gte: bonusStart }
+                    }
+                  ]
               },
-    
-              // Expected leave
-              {
-                status: "Expected",
-                expectedStart: { not: null, lte: bonusEnd },
-                expectedEnd:   { not: null, gte: bonusStart }
-              }
-            ]
+                {
+                    leaveName: {
+                      not: "Paternity"
+                    }
+                }
+            ],
           }
         }
       },
@@ -479,10 +493,10 @@ export async function generateBonusForAllEmployees({
     
       const employeeLeaves = leaveMap.get(emp.EmpCode)
 
-       // Skip entire employee if ANY leave is SpecialChild
-        if (employeeLeaves?.some(leave => leave.leaveName === "SpecialChild" && leave.status === "Active")) {
-          continue
-        }
+      // Skip entire employee if ANY leave is SpecialChild
+      if (employeeLeaves?.some(leave => leave.leaveName === "SpecialChild" && leave.status === "Active")) {
+        continue
+      }
 
       const isEligible =
       emp.EmployementDate &&
@@ -1040,6 +1054,7 @@ export async function getEmployeesByBonusSummaryService(
   id?: number
 ) {
   return await prisma.$transaction(async (tx) => {
+
 
     //  1. Get Summary (STRICT)
     const summary = await tx.bonusSummary.findFirst({
