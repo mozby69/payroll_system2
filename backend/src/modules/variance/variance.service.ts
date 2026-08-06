@@ -1167,7 +1167,6 @@ export async function CompleteVariance(company_id: string, cycle: "10-25-Cycle" 
     const final_pagibig_employee_var = MathRound(variance.variance.pagibig_employee) - MathRound(employeeVariance?.totalsVariance?.pagibig_employee_variance);
     const final_pagibig_employer_var = MathRound(variance.variance.pagibig_employer) - MathRound(employeeVariance?.totalsVariance?.pagibig_employer_variance);
     const final_wtax_var = MathRound(variance.variance.wtax) - MathRound(employeeVariance?.totalsVariance?.wtax_variance);
-
     const final_SSS_EE_var = MathRound(variance.variance.sss_employee_variance) - MathRound(employeeVariance?.totalsVariance?.sss_employee_variance);
     const final_SSS_ER_var = MathRound(variance.variance.sss_employer_variance) - MathRound(employeeVariance?.totalsVariance?.sss_employer_variance);
     const final_Phil_EE_var = MathRound(variance.variance.phil_employee_variance) - MathRound(employeeVariance?.totalsVariance?.phil_employee_variance);
