@@ -3,8 +3,8 @@ import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePa
 import { nowPH } from "../../utils/timezone";
 import { io } from "../../server";
 import { PayrollDateRange } from "../api/api.types";
-import { groupByCompany, isEmploymentWithinPaycode, isPayrollDateRange, toMoney } from "./payroll_archive.helper";
-import { convertPayrollLabelToPeriod, EmployeeBankAccountsParams, PayrollRow, SendPayslipType } from "./payroll_archive.types";
+import { delay, groupByCompany, isEmploymentWithinPaycode, isPayrollDateRange, isTemporaryGmailError, processWithConcurrency, toMoney } from "./payroll_archive.helper";
+import { BulkPayslipProgressCallback, BulkPayslipResult, convertPayrollLabelToPeriod, EmployeeBankAccountsParams, FailedPayslipEmail, PayrollRow, SendBulkPayslipParams, SendPayslipType } from "./payroll_archive.types";
 import { Console } from "console";
 import { getBodPhilhealth, getOfficerAllowance, getSSSContributions, getTaxTable } from "../general/general.services";
 import { logs_action_type } from "@prisma/client";
@@ -16,8 +16,25 @@ import { WtaxFetchData } from "../statutory_deductions/statutory.service";
 import { parseSummaryOverrideChanges } from "../prepare_payroll/prepare_payroll.helper";
 import { generatePayslipPDF, type PayslipPdfData } from "../print/print.service";
 
-  const transporter = nodemailer.createTransport({
+  // const transporter = nodemailer.createTransport({
+  //   service: "gmail",
+  //   auth: {
+  //     user: process.env.EMAIL_USER,
+  //     pass: process.env.EMAIL_PASS,
+  //   },
+  // });
+
+  export const transporter =
+  nodemailer.createTransport({
     service: "gmail",
+    pool: true,
+
+    maxConnections: 1,
+    maxMessages: Infinity,
+
+    rateDelta: 1000,
+    rateLimit: 1,
+
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -2657,9 +2674,7 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 // services/email.service.ts
 
 
-function buildEmployeeName(
-  employee: SendPayslipType
-): string {
+function buildEmployeeName(employee: SendPayslipType): string {
   const firstAndMiddle = [
     employee.EmpCode.Firstname,
     employee.EmpCode.Middlename,
@@ -2679,11 +2694,8 @@ function buildEmployeeName(
     : firstAndMiddle;
 }
 
-export function buildPayslipData(
-  employee: SendPayslipType
-): PayslipPdfData {
-  const employeeName =
-    buildEmployeeName(employee);
+export function buildPayslipData(employee: SendPayslipType): PayslipPdfData {
+  const employeeName = buildEmployeeName(employee);
 
   const companyName =
     employee.EmpCode.BranchCode?.Company?.trim() ||
@@ -2757,11 +2769,8 @@ export function buildPayslipData(
 
 
 
-export async function sendPayslipEmailService(
-  archiveId: number
-): Promise<void> {
-  const employee =
-    await getArchivedPayslip(archiveId);
+export async function sendPayslipEmailService(archiveId: number): Promise<void> {
+  const employee = await getArchivedPayslip(archiveId);
 
   const email =
     employee.EmpCode.employeepayroll
@@ -2851,52 +2860,335 @@ export async function getArchivedPayslip(
   return employee;
 }
 
+
+
+
+
+
+
+
+
+
+
 //send email per branch
 
-export async function sendBulkPayslipService({totalPayrollId,selectedCompany,selectedBranch,search}: {
-  totalPayrollId: number;
-  selectedCompany?: string;
-  selectedBranch?: string;
-  search?: string;
-  }) {
+export async function sendPayslipToEmployee(employee: SendPayslipType): Promise<void> {
+  const email = employee.EmpCode.employeepayroll?.gmail_account?.trim() ?? "";
 
-  const employees = await prisma.employeePayrollArchive.findMany({
-    where: {
-      totalPayrollId,
-      ...(selectedBranch && {
-        EmpCode: {
-          BranchCodeId: selectedBranch,
+  if (!email) {
+    throw new Error(
+      `No email found for ${employee.EmpCodeId}`
+    );
+  }
+
+  const payslipData = buildPayslipData(employee);
+
+  const pdfBuffer = await generatePayslipPDF(payslipData);
+
+  const safePayrollPeriod =
+    payslipData.payrollPeriod.replace(
+      /[\\/:*?"<>|]/g,
+      "-"
+    );
+
+  await transporter.sendMail({
+    from:
+      `"Payroll System" <${process.env.EMAIL_USER}>`,
+
+    to: email,
+
+    subject:
+      `Payslip - ${payslipData.payrollPeriod}`,
+
+    html: `
+      <p>
+        Dear ${
+          employee.EmpCode.Firstname?.trim() ||
+          payslipData.employeeName
         },
-      }),
-      ...(search && {
-        OR: [
-          { EmpCodeId: { contains: search } },
-          { EmpCode: { Firstname: { contains: search } } },
-          { EmpCode: { Lastname: { contains: search } } },
-        ],
-      }),
-    },
-    include: {
-      EmpCode: {
-        include: {
-          employeepayroll: true,
-        },
+      </p>
+
+      <p>
+        Please find your payslip for
+        <strong>${payslipData.payrollPeriod}</strong>
+        attached.
+      </p>
+
+      <p>
+        Regards,<br />
+        Payroll Department
+      </p>
+    `,
+
+    attachments: [
+      {
+        filename:
+          `Payslip-${employee.EmpCodeId}-${safePayrollPeriod}.pdf`,
+
+        content: pdfBuffer,
+        contentType: "application/pdf",
       },
-    },
+    ],
   });
+}
 
-  for (const emp of employees) {
+export async function sendPayslipEmailServiceFinal(archiveId: number): Promise<void> {
+  const employee = await getArchivedPayslip(archiveId);
+  await sendPayslipToEmployee(employee);
+}
 
-    const email = emp.EmpCode?.employeepayroll?.gmail_account;
 
-    if (!email) continue;
 
+
+
+
+async function sendWithRetry(employee: SendPayslipType,maxAttempts = 4): Promise<void> {
+  let lastError: Error | null = null;
+
+  for (
+    let attempt = 1;
+    attempt <= maxAttempts;
+    attempt += 1
+  ) {
     try {
-    
-     // await sendPayslipEmailService(emp as unknown as SendPayslipType);
+      await sendPayslipToEmployee(employee);
 
-    } catch (err) {
-      console.error(`Failed for ${emp.EmpCodeId}`, err);
+      return;
+    } catch (error: unknown) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error(
+              "Unknown email sending error"
+            );
+
+      if (!isTemporaryGmailError(error)) {
+        throw lastError;
+      }
+
+      if (attempt >= maxAttempts) {
+        break;
+      }
+
+      // 60 sec, 120 sec, then 180 sec
+      const cooldownMilliseconds =
+        attempt * 60_000;
+
+      console.warn(
+        `Gmail temporarily blocked SMTP for ${employee.EmpCodeId}. ` +
+          `Retrying attempt ${attempt + 1}/${maxAttempts} ` +
+          `after ${cooldownMilliseconds / 1000} seconds.`
+      );
+
+      await delay(cooldownMilliseconds);
     }
   }
+
+  throw (
+    lastError ??
+    new Error(
+      `Failed to send payslip for ${employee.EmpCodeId}`
+    )
+  );
+}
+
+export async function sendBulkPayslipService(
+  {
+    totalPayrollId,
+    selectedCompany,
+    selectedBranch,
+    search,
+  }: SendBulkPayslipParams,
+  onProgress?: BulkPayslipProgressCallback
+): Promise<BulkPayslipResult> {
+  const normalizedCompany =
+    selectedCompany?.trim() ?? "";
+
+  const normalizedBranch =
+    selectedBranch?.trim() ?? "";
+
+  const normalizedSearch =
+    search?.trim() ?? "";
+
+  const employees =
+    await prisma.employeePayrollArchive.findMany({
+      where: {
+        totalPayrollId,
+
+        ...(normalizedCompany && {
+          EmpCode: {
+            BranchCode: {
+              company_id: normalizedCompany,
+            },
+          },
+        }),
+
+        ...(normalizedBranch && {
+          EmpCode: {
+            BranchCodeId: normalizedBranch,
+          },
+        }),
+
+        ...(normalizedSearch && {
+          OR: [
+            {
+              EmpCodeId: {
+                contains: normalizedSearch,
+                mode: "insensitive",
+              },
+            },
+            {
+              EmpCode: {
+                Firstname: {
+                  contains: normalizedSearch,
+                  mode: "insensitive",
+                },
+              },
+            },
+            {
+              EmpCode: {
+                Lastname: {
+                  contains: normalizedSearch,
+                  mode: "insensitive",
+                },
+              },
+            },
+          ],
+        }),
+      },
+
+      include: {
+        EmpCode: {
+          include: {
+            employeepayroll: true,
+            BranchCode: true,
+          },
+        },
+      },
+
+      orderBy: {
+        EmpCodeId: "asc",
+      },
+    });
+
+  let completedCount = 0;
+  let sentCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+
+  const failures: FailedPayslipEmail[] = [];
+
+  const reportProgress = (
+    currentEmployeeCode?: string
+  ): void => {
+    const total = employees.length;
+
+    const percentage =
+      total > 0
+        ? Math.round(
+            (completedCount / total) * 100
+          )
+        : 100;
+
+    onProgress?.({
+      total,
+      completed: completedCount,
+      sent: sentCount,
+      skipped: skippedCount,
+      failed: failedCount,
+      percentage,
+      currentEmployeeCode,
+    });
+  };
+
+  reportProgress();
+
+ await processWithConcurrency(
+  employees,
+  1,
+  async (employee) => {
+    const email =
+      employee.EmpCode.employeepayroll
+        ?.gmail_account?.trim() ?? "";
+
+    const invalidEmailValues = new Set([
+      "",
+      "false",
+      "null",
+      "undefined",
+    ]);
+
+    if (
+      invalidEmailValues.has(
+        email.toLowerCase()
+      )
+    ) {
+      skippedCount += 1;
+      completedCount += 1;
+
+      failures.push({
+        archiveId: employee.id,
+        employeeCode: employee.EmpCodeId,
+        message:
+          "No valid email address found",
+      });
+
+      reportProgress(employee.EmpCodeId);
+
+      return;
+    }
+
+    try {
+      await sendWithRetry(employee);
+
+      sentCount += 1;
+    } catch (error: unknown) {
+      failedCount += 1;
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unknown email sending error";
+
+      failures.push({
+        archiveId: employee.id,
+        employeeCode: employee.EmpCodeId,
+        message,
+      });
+
+      console.error(
+        `Failed to send payslip for ${employee.EmpCodeId}:`,
+        error
+      );
+    } finally {
+      completedCount += 1;
+
+      reportProgress(employee.EmpCodeId);
+    }
+
+    const hasMoreEmployees =
+      completedCount < employees.length;
+
+    if (
+      sentCount > 0 &&
+      sentCount % 50 === 0 &&
+      hasMoreEmployees
+    ) {
+      console.log(
+        `${sentCount} payslips sent. ` +
+          "Cooling down for 60 seconds."
+      );
+
+      await delay(60_000);
+    }
+  }
+);
+
+  return {
+    totalEmployees: employees.length,
+    sentCount,
+    skippedCount,
+    failedCount,
+    failures,
+  };
 }

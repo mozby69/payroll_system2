@@ -4,6 +4,7 @@ import { Request,Response } from "express";
 import { BankFileRow, SendPayslipType } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
 import { generatePayslipPDF } from "../print/print.service";
+import { io } from "../../server";
 
 
 
@@ -490,25 +491,132 @@ export async function sendPayslipEmailController(
 }
 
 
+// bulk send emial 
+type SendBulkPayslipBody = {
+  totalPayrollId?: unknown;
+  selectedCompany?: unknown;
+  selectedBranch?: unknown;
+  search?: unknown;
+  socketId?: unknown;
+};
 
-export const sendBulkPayslipController = async (req: Request, res: Response) => {
+export async function sendBulkPayslipController(
+  req: Request<
+    Record<string, never>,
+    unknown,
+    SendBulkPayslipBody
+  >,
+  res: Response
+) {
   try {
-    const { totalPayrollId, selectedCompany, selectedBranch, search } = req.body;
-
-    await sendBulkPayslipService({
+    const {
       totalPayrollId,
       selectedCompany,
       selectedBranch,
       search,
+      socketId,
+    } = req.body;
+
+    if (
+      typeof totalPayrollId !== "number" ||
+      !Number.isInteger(totalPayrollId) ||
+      totalPayrollId <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Valid total payroll ID is required",
+      });
+    }
+
+    if (
+      typeof socketId !== "string" ||
+      socketId.trim().length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Socket ID is required",
+      });
+    }
+
+    const normalizedSocketId =
+      socketId.trim();
+
+    const result =
+      await sendBulkPayslipService(
+        {
+          totalPayrollId,
+
+          selectedCompany:
+            typeof selectedCompany === "string"
+              ? selectedCompany
+              : undefined,
+
+          selectedBranch:
+            typeof selectedBranch === "string"
+              ? selectedBranch
+              : undefined,
+
+          search:
+            typeof search === "string"
+              ? search
+              : undefined,
+        },
+
+        (progress) => {
+          io.to(normalizedSocketId).emit(
+            "bulk-payslip-progress",
+            progress
+          );
+        }
+      );
+
+    io.to(normalizedSocketId).emit(
+      "bulk-payslip-completed",
+      result
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        `${result.sentCount} payslips sent successfully`,
+      data: result,
     });
+  } catch (error: unknown) {
+    console.error(
+      "Bulk payslip email error:",
+      error
+    );
 
-    return res.json({ success: true });
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to send bulk payslips";
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Failed to send bulk payslips" });
+    const socketId =
+      typeof req.body.socketId === "string"
+        ? req.body.socketId.trim()
+        : "";
+
+    if (socketId) {
+      io.to(socketId).emit(
+        "bulk-payslip-error",
+        {
+          message,
+        }
+      );
+    }
+
+    return res.status(500).json({
+      success: false,
+      message,
+    });
   }
-};
+}
+
+
+
+
 
 
 

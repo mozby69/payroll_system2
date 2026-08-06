@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Column } from "@/app/types/preparePayroll"
 import { useGetEmployeeArchived } from "@/app/hooks/usePayrollArchive"
 import { useDebounce } from "@/app/utils/useDebounce"
@@ -10,18 +10,76 @@ import {  Eye, Mail, Printer } from "lucide-react"
 import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
-import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
+import { PayslipProgressOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { useFetchBranchesByCompany, useFetchCompanies } from "@/app/hooks/useAllowance"
 import { printEmployeeArchivedService } from "@/app/services/archive.services"
 import RequestModal from "../Modal"
 import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
 import EmployeeGmail from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewGmail"
 import SweetAlert from "../Swal"
+import { socket } from "@/app/lib/socket"
+import { getSocketId } from "./helperSendEmail"
+
+
+// type BulkPayslipResponse = {
+//   success: boolean;
+//   message: string;
+//   data: {
+//     totalEmployees: number;
+//     sentCount: number;
+//     skippedCount: number;
+//     failedCount: number;
+//     failures: {
+//       archiveId: number;
+//       employeeCode: string;
+//       message: string;
+//     }[];
+//   };
+// };
+
+
+export type BulkPayslipProgress = {
+  total: number;
+  completed: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  percentage: number;
+  currentEmployeeCode?: string;
+};
+
+type BulkPayslipFailure = {
+  archiveId: number;
+  employeeCode: string;
+  message: string;
+};
+
+type BulkPayslipResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    totalEmployees: number;
+    sentCount: number;
+    skippedCount: number;
+    failedCount: number;
+    failures: BulkPayslipFailure[];
+  };
+};
+
+const initialPayslipProgress: BulkPayslipProgress = {
+  total: 0,
+  completed: 0,
+  sent: 0,
+  skipped: 0,
+  failed: 0,
+  percentage: 0,
+};
 
 type PayslipProps = {
   totalPayrollId: number
 }
 export default function GeneratePayslipModal({totalPayrollId}: PayslipProps) {
+
 
   const PAGE_SIZE = 10
   const [page, setPage] = useState(1)
@@ -45,41 +103,106 @@ export default function GeneratePayslipModal({totalPayrollId}: PayslipProps) {
     selectedBranch
   })
 
+  const [payslipProgress, setPayslipProgress] =
+    useState<BulkPayslipProgress>(
+      initialPayslipProgress
+    );
 
 
-  const handleSendBulkEmail = async () => {
+
+    useEffect(() => {
+  const handlePayslipProgress = (
+    progress: BulkPayslipProgress
+  ): void => {
+    setPayslipProgress(progress);
+  };
+
+  socket.on(
+    "bulk-payslip-progress",
+    handlePayslipProgress
+  );
+
+  return () => {
+    socket.off(
+      "bulk-payslip-progress",
+      handlePayslipProgress
+    );
+  };
+}, []);
+
+
+const handleSendBulkEmail = async (): Promise<void> => {
   try {
     setLoading(true);
 
-    const res = await fetch(
+    setPayslipProgress(
+      initialPayslipProgress
+    );
+
+    const socketId =
+      await getSocketId();
+
+    const response = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-bulk-email-payslip`,
       {
         method: "POST",
+
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
         },
+
+        credentials: "include",
+
         body: JSON.stringify({
           totalPayrollId,
           selectedCompany,
           selectedBranch,
           search,
+          socketId,
         }),
       }
     );
 
-      const data = await res.json();
+    const data =
+      (await response.json()) as BulkPayslipResponse;
 
-      if (!res.ok) throw new Error(data.message);
-
-      SweetAlert.successAlert("Payslips sent successfully");
-
-    } catch (error) {
-      console.error(error);
-      SweetAlert.errorAlert("Failed to send payslips");
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to send payslips"
+      );
     }
-  };
+
+    setPayslipProgress({
+      total: data.data.totalEmployees,
+      completed:
+        data.data.totalEmployees,
+      sent: data.data.sentCount,
+      skipped:
+        data.data.skippedCount,
+      failed:
+        data.data.failedCount,
+      percentage: 100,
+    });
+
+    SweetAlert.successAlert(
+      `${data.data.sentCount} payslips sent. ` +
+        `${data.data.skippedCount} skipped. ` +
+        `${data.data.failedCount} failed.`
+    );
+  } catch (error: unknown) {
+    console.error(error);
+
+    SweetAlert.errorAlert(
+      error instanceof Error
+        ? error.message
+        : "Failed to send payslips"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const preselectedbranch = branches.length === 1 ? branches[0].branchCode : selectedBranch;
 
@@ -253,10 +376,9 @@ export default function GeneratePayslipModal({totalPayrollId}: PayslipProps) {
   return (
     <div className="space-y-6">
   
-      {loading && (
-        <ProcessingOverlay
-          title="Generating Payslips"
-          message="Please wait while we prepare the employee payslip document."
+     {loading && (
+        <PayslipProgressOverlay
+          progress={payslipProgress}
         />
       )}
   
@@ -323,7 +445,9 @@ export default function GeneratePayslipModal({totalPayrollId}: PayslipProps) {
                        focus:ring-blue-500 focus:border-blue-500 
                        disabled:bg-slate-100 transition"
           >
-            <option value="">Choose Branch</option>
+                <option value="">
+              All branches
+            </option>
             {branches.map((branch) => (
               <option
                 key={branch.branchCode}

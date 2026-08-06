@@ -981,6 +981,54 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
     };
 
 
+    //other variance
+
+    const categorizedEmployeeCodes = new Set<string>([
+  ...probationaryEmployees.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...backToWorkWithSpecialLeave.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...backToWorkWithoutSpecialeave.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...missingIntheCurrentWithSpecialLeave.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...missingIntheCurrentWithoutSpecialLeave.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...resignedEmployees.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...salaryAdjustment.increase.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...salaryAdjustment.decrease.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+
+  ...wtaxAdjustment.map(
+    (employee) => employee.EmpCode.trim()
+  ),
+]);
+
+const otherVarianceEmployees =
+  allEmployeesWithVariance.filter((employee) => {
+    const empCode = employee.EmpCode.trim();
+
+    return !categorizedEmployeeCodes.has(empCode);
+  });
+
+
 
     //get variance 
     const employeeGroups = [
@@ -993,6 +1041,7 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       salaryAdjustment.increase,
       salaryAdjustment.decrease,
       wtaxAdjustment,
+      otherVarianceEmployees,
     ];
 
 
@@ -1046,6 +1095,9 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
       },
       wtax_adjustment: {
         employees: wtaxAdjustment,
+      },
+      others: {
+        employees: otherVarianceEmployees,
       },
       totalsVariance,
       // variance_check: {
@@ -1115,7 +1167,8 @@ export async function CompleteVariance(company_id: string, cycle: "10-25-Cycle" 
     const final_pagibig_employee_var = MathRound(variance.variance.pagibig_employee) - MathRound(employeeVariance?.totalsVariance?.pagibig_employee_variance);
     const final_pagibig_employer_var = MathRound(variance.variance.pagibig_employer) - MathRound(employeeVariance?.totalsVariance?.pagibig_employer_variance);
     const final_wtax_var = MathRound(variance.variance.wtax) - MathRound(employeeVariance?.totalsVariance?.wtax_variance);
-    const final_SSS_EE_var = MathRound(variance.variance.sss_employee) - MathRound(employeeVariance?.totalsVariance?.sss_employee_variance);
+
+    const final_SSS_EE_var = MathRound(variance.variance.sss_employee_variance) - MathRound(employeeVariance?.totalsVariance?.sss_employee_variance);
     const final_SSS_ER_var = MathRound(variance.variance.sss_employer_variance) - MathRound(employeeVariance?.totalsVariance?.sss_employer_variance);
     const final_Phil_EE_var = MathRound(variance.variance.phil_employee_variance) - MathRound(employeeVariance?.totalsVariance?.phil_employee_variance);
     const final_Phil_ER_var = MathRound(variance.variance.phil_employer_variance) - MathRound(employeeVariance?.totalsVariance?.phil_employer_variance);

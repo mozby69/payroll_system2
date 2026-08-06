@@ -2536,9 +2536,7 @@ export const transporter = nodemailer.createTransport({
 
 
 
-export async function sendAllowanceEmailService(
-  employee: AllowanceEmailEmployee
-): Promise<void> {
+export async function sendAllowanceEmailService(employee: AllowanceEmailEmployee): Promise<void> {
   const email = normalizeEmail(employee.email);
 
   if (!email) {
@@ -2597,11 +2595,7 @@ export async function sendAllowanceEmailService(
 
 
 
-async function processInBatches<T>(
-  items: T[],
-  batchSize: number,
-  handler: (item: T) => Promise<void>
-): Promise<void> {
+async function processInBatches<T>(items: T[], batchSize: number,handler: (item: T) => Promise<void>): Promise<void> {
   for (
     let index = 0;
     index < items.length;
@@ -2770,9 +2764,20 @@ export async function updateEmergencyAllowance(allowance_id: number, is_emergenc
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 //EXPORT EXCEL 
-
-
 const moneyFormat = '₱#,##0.00;[Red](₱#,##0.00);-';
 
 export async function exportAllowanceExcel(selectedMonth: string): Promise<Buffer> {

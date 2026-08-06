@@ -215,6 +215,7 @@ export default function ArchivePayroll() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
+      
 
     {payslipModal && (
             <RequestModal 

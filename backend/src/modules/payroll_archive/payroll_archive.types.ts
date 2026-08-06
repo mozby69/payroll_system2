@@ -135,3 +135,47 @@ export type SendPayslipType = {
     } | null;
   };
 };
+
+
+
+
+
+
+
+//bulk
+export type SendBulkPayslipParams = {
+  totalPayrollId: number;
+  selectedCompany?: string;
+  selectedBranch?: string;
+  search?: string;
+};
+
+export type FailedPayslipEmail = {
+  archiveId: number;
+  employeeCode: string;
+  message: string;
+};
+
+export type BulkPayslipResult = {
+  totalEmployees: number;
+  sentCount: number;
+  skippedCount: number;
+  failedCount: number;
+  failures: FailedPayslipEmail[];
+};
+
+
+
+export type BulkPayslipProgress = {
+  total: number;
+  completed: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  percentage: number;
+  currentEmployeeCode?: string;
+};
+
+export type BulkPayslipProgressCallback = (
+  progress: BulkPayslipProgress
+) => void;

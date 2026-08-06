@@ -476,3 +476,82 @@ export function drawDottedLine(
     .undash()
     .restore();
 }
+
+
+
+
+//send email bulk 
+
+export async function processWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  handler: (
+    item: T,
+    index: number
+  ) => Promise<void>
+): Promise<void> {
+  let currentIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = currentIndex;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      currentIndex += 1;
+
+      await handler(items[index], index);
+    }
+  }
+
+  const workerCount = Math.min(
+    concurrency,
+    items.length
+  );
+
+  await Promise.all(
+    Array.from(
+      { length: workerCount },
+      () => worker()
+    )
+  );
+}
+
+
+
+
+//email helper batch send 
+
+type MailTransportError = Error & {
+  code?: string;
+  responseCode?: number;
+  response?: string;
+};
+
+export function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+export function isTemporaryGmailError(
+  error: unknown
+): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const mailError =
+    error as MailTransportError;
+
+  return (
+    mailError.responseCode === 454 ||
+    mailError.response?.includes("454-4.7.0") === true ||
+    mailError.message.includes("454-4.7.0") ||
+    mailError.message.includes(
+      "Too many login attempts"
+    )
+  );
+}
