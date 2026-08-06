@@ -194,6 +194,11 @@ export default function EmployeeVariance({
             employees:
                 variance?.salary_adjustment?.decrease ?? [],
         },
+        {
+            title:"Others",
+            employees:
+                variance?.others?.employees ?? [],
+        },
     ];
 
 

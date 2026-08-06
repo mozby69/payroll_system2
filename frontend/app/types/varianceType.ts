@@ -168,5 +168,8 @@ export type EmployeeVarianceResponse = {
       increase: VarianceEmployee2[];
       decrease: VarianceEmployee2[];
     };
+    others:{
+      employees:VarianceEmployee2[];
+    }
   };
 };
