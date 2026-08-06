@@ -3034,14 +3034,14 @@ export async function sendBulkPayslipService(
             {
               EmpCodeId: {
                 contains: normalizedSearch,
-                mode: "insensitive",
+             //   mode: "insensitive",
               },
             },
             {
               EmpCode: {
                 Firstname: {
                   contains: normalizedSearch,
-                  mode: "insensitive",
+                //  mode: "insensitive",
                 },
               },
             },
@@ -3049,7 +3049,7 @@ export async function sendBulkPayslipService(
               EmpCode: {
                 Lastname: {
                   contains: normalizedSearch,
-                  mode: "insensitive",
+                 // mode: "insensitive",
                 },
               },
             },
