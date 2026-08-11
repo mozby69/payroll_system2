@@ -171,5 +171,57 @@ export type EmployeeVarianceResponse = {
     others:{
       employees:VarianceEmployee2[];
     }
+      custom_categories: {
+      id: number;
+      key: string;
+      title: string;
+      employees: VarianceEmployee2[];
+    }[];
   };
 };
+
+
+//override
+export type UpdateVarianceCategoryPayload = {
+  EmpCode: string;
+  PayCode: string;
+  company_id: string;
+  cycle: CycleCategory;
+  category: string;
+};
+
+
+
+
+
+
+
+export type PayrollCycle =
+  | "10-25-Cycle"
+  | "15-30-Cycle";
+
+export interface SaveFinalVariancePayload {
+  company_id: string;
+  cycle: PayrollCycle;
+  paycode: string;
+}
+
+export interface SaveFinalVarianceResponse {
+  message: string;
+  data: {
+    mainArchive: {
+      id: string;
+      paycode: string;
+      cycle: string;
+    };
+    varianceArchive: {
+      id: string;
+      company_id: string;
+      main_archive_id: string;
+      company_variance: unknown;
+      employee_variance: unknown;
+      final_variance: unknown;
+      created_at: string;
+    };
+  };
+}

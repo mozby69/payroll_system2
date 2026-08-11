@@ -1,8 +1,9 @@
-import { useCompleteVariance, useDisplayVariance } from "@/app/hooks/useVariance";
+import { useCompleteVariance, useDisplayVariance, useSaveFinalVariance } from "@/app/hooks/useVariance";
 import { CompleteVarianceProp, CycleCategory } from "@/app/types/varianceType";
 import EmployeeVariance from "./EmployeeVariance";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
+import SweetAlert from "@/app/components/Swal";
 //import EmployeeVariance from "./EmployeeVariance";
 
 
@@ -89,13 +90,10 @@ const allColumns: ColumnDefinition[] = [
   },
 ];
 
-export default function FinancialVarianceModal({
-  paycode,
-  cycle,
-  company_id,
-}: Props) {
+export default function FinancialVarianceModal({ paycode, cycle, company_id }: Props) {
   const { data, isLoading } = useDisplayVariance(company_id, cycle);
-  const { data: all_variance  } = useCompleteVariance(company_id, cycle);
+  const { data: all_variance } = useCompleteVariance(company_id, cycle);
+  const { mutate: saveFinalVariance } = useSaveFinalVariance();
 
   const variance = data?.data;
 
@@ -178,13 +176,13 @@ export default function FinancialVarianceModal({
 
   const varianceLabels: Record<keyof CompleteVarianceProp, string> = {
     final_basic_variance: "Basic Pay Variance",
-    final_pagibig_employee_var:"Pag-IBIG Employee Variance",
-    final_pagibig_employer_var:"Pag-IBIG Employer Variance",
+    final_pagibig_employee_var: "Pag-IBIG Employee Variance",
+    final_pagibig_employer_var: "Pag-IBIG Employer Variance",
     final_wtax_var: "Withholding Tax Variance",
     final_SSS_EE_var: "SSS Employee Variance",
     final_SSS_ER_var: "SSS Employer Variance",
-    final_Phil_EE_var:"PhilHealth Employee Variance",
-    final_Phil_ER_var:"PhilHealth Employer Variance",
+    final_Phil_EE_var: "PhilHealth Employee Variance",
+    final_Phil_ER_var: "PhilHealth Employer Variance",
   };
 
   const finalVarianceRows = all_variance
@@ -210,14 +208,55 @@ export default function FinancialVarianceModal({
         value,
       }))
     : [];
+
+
+
+
+  const handleSaveVariance = () => {
+    if (!company_id || !cycle || !paycode) {
+      SweetAlert.errorAlert(
+        "Missing Information",
+        "Company, cycle, and paycode are required."
+      );
+      return;
+    }
+
+    SweetAlert.confirmationAlert("Save Variance?", "This will save variance for the current payroll date.",
+      () => {
+        saveFinalVariance(
+          {
+            company_id,
+            cycle,
+            paycode,
+          },
+          {
+            onSuccess: (response) => {
+              SweetAlert.successAlert("Success", response.message);
+            },
+
+            onError: (error) => {
+              console.error("Unable to save variance:", error);
+              SweetAlert.errorAlert("Save Failed", "Unable to save final variance.");
+            },
+          }
+        );
+      }
+    );
+  };
+
   return (
     <div className="p-1">
 
 
-      <div className="py-4 flex justify-end">
+      <div className="py-4 flex justify-end gap-x-2">
+        <button
+          onClick={handleSaveVariance}
+          className="bg-green-800 text-white px-8 py-2 rounded font-bold shadow hover:bg-green-700">
+          Save
+        </button>
         <button
           onClick={handlePrint}
-          className="bg-blue-700 py-2 px-8 rounded text-white font-bold hover:bg-blue-500">
+          className="bg-blue-700 py-2 px-8 rounded text-white shadow font-bold hover:bg-blue-500">
           Print
         </button>
 

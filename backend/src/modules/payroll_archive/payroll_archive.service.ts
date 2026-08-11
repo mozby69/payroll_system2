@@ -2671,6 +2671,11 @@ export async function getAvailableCompanyCyclesService(statuses:("PENDING" | "FO
 
 
 
+
+
+
+
+
 // services/email.service.ts
 
 
@@ -2697,9 +2702,13 @@ function buildEmployeeName(employee: SendPayslipType): string {
 export function buildPayslipData(employee: SendPayslipType): PayslipPdfData {
   const employeeName = buildEmployeeName(employee);
 
-  const companyName =
-    employee.EmpCode.BranchCode?.Company?.trim() ||
-    "EMB CAPITAL LENDING CORPORATION";
+    const branch = employee.payrollBranch;
+
+  // const companyName =
+  //   employee.EmpCode.BranchCode?.Company?.trim() ||
+  //   "EMB CAPITAL LENDING CORPORATION";
+  const companyName = employee.payrollBranch?.CompanyCode?.CompanyName?.trim() || "";
+
 
   return {
     EmpCodeId: employee.EmpCodeId,
@@ -2782,13 +2791,9 @@ export async function sendPayslipEmailService(archiveId: number): Promise<void> 
     );
   }
 
-  const payslipData =
-    buildPayslipData(employee);
+  const payslipData = buildPayslipData(employee);
 
-  const pdfBuffer =
-    await generatePayslipPDF(
-      payslipData
-    );
+  const pdfBuffer = await generatePayslipPDF( payslipData );
 
   await transporter.sendMail({
     from:
@@ -2833,11 +2838,8 @@ export async function sendPayslipEmailService(archiveId: number): Promise<void> 
 
 
 
-export async function getArchivedPayslip(
-  archiveId: number
-): Promise<SendPayslipType> {
-  const employee =
-    await prisma.employeePayrollArchive.findUnique({
+export async function getArchivedPayslip(archiveId: number): Promise<SendPayslipType> {
+  const employee = await prisma.employeePayrollArchive.findUnique({
       where: {
         id: archiveId,
       },
@@ -2845,9 +2847,16 @@ export async function getArchivedPayslip(
         EmpCode: {
           include: {
             employeepayroll: true,
-            BranchCode: true,
+            //BranchCode: true,
+            secondaryBranch:true,
           },
         },
+         payrollBranch: {
+          include: {
+            CompanyCode: true,
+          },
+        },
+  
       },
     });
 
@@ -3010,66 +3019,89 @@ export async function sendBulkPayslipService(
   const normalizedSearch =
     search?.trim() ?? "";
 
-  const employees =
-    await prisma.employeePayrollArchive.findMany({
-      where: {
-        totalPayrollId,
+const employees =
+  await prisma.employeePayrollArchive.findMany({
+    where: {
+      totalPayrollId,
 
-        ...(normalizedCompany && {
-          EmpCode: {
-            BranchCode: {
-              company_id: normalizedCompany,
-            },
-          },
-        }),
-
-        ...(normalizedBranch && {
-          EmpCode: {
-            BranchCodeId: normalizedBranch,
-          },
-        }),
-
-        ...(normalizedSearch && {
+      ...(normalizedCompany && {
+        EmpCode: {
           OR: [
             {
-              EmpCodeId: {
-                contains: normalizedSearch,
-             //   mode: "insensitive",
+              isAlien: false,
+              BranchCode: {
+                company_id: normalizedCompany,
               },
             },
             {
-              EmpCode: {
-                Firstname: {
-                  contains: normalizedSearch,
-                //  mode: "insensitive",
-                },
-              },
-            },
-            {
-              EmpCode: {
-                Lastname: {
-                  contains: normalizedSearch,
-                 // mode: "insensitive",
-                },
+              isAlien: true,
+              secondaryBranch: {
+                company_id: normalizedCompany,
               },
             },
           ],
-        }),
-      },
+        },
+      }),
 
-      include: {
+      ...(normalizedBranch && {
         EmpCode: {
-          include: {
-            employeepayroll: true,
-            BranchCode: true,
+          OR: [
+            {
+              isAlien: false,
+              BranchCodeId: normalizedBranch,
+            },
+            {
+              isAlien: true,
+              secondaryBranchId: normalizedBranch,
+            },
+          ],
+        },
+      }),
+
+      ...(normalizedSearch && {
+        OR: [
+          {
+            EmpCodeId: {
+              contains: normalizedSearch,
+            },
           },
+          {
+            EmpCode: {
+              Firstname: {
+                contains: normalizedSearch,
+              },
+            },
+          },
+          {
+            EmpCode: {
+              Lastname: {
+                contains: normalizedSearch,
+              },
+            },
+          },
+        ],
+      }),
+    },
+
+    include: {
+      EmpCode: {
+        include: {
+          employeepayroll: true,
+          BranchCode: true,
+          secondaryBranch: true,
         },
       },
+       payrollBranch: {
+    include: {
+      CompanyCode: true,
+    },
+  },
+    },
 
-      orderBy: {
-        EmpCodeId: "asc",
-      },
-    });
+    orderBy: {
+      EmpCodeId: "asc",
+    },
+  });
 
   let completedCount = 0;
   let sentCount = 0;

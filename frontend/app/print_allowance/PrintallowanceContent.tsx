@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { usePrintBranch } from "../hooks/useAllowance";
 import { formatMonthYear } from "../utils/DateFormatter";
+import { formatAmount } from "../utils/currencyConverter";
 
 export default function PrintAllowanceContent() {
   const searchParams = useSearchParams();
@@ -118,7 +119,7 @@ export default function PrintAllowanceContent() {
                   <p className="mt-2">{row.loan}</p>
 
                   <p className="mt-2 font-semibold">
-                    {row.total}
+                    {formatAmount(row.total)}
                   </p>
 
                   <p className="mt-2 w-40 border-b">

@@ -1137,3 +1137,55 @@ model TaxArchive {
   @@unique([PayCode, EmpCodeId])
   @@map("tax_archive")
 }
+
+
+
+
+model employeeVarianceOverride{
+  id Int @id @default(autoincrement())
+  EmpCode String
+  PayCode String
+  company_id String
+  cycle String
+  category String
+  created_at  DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([EmpCode,PayCode,company_id,cycle])
+  @@map("employee_variance_override")
+}
+
+model employeeVarianceCategory{
+  id Int @id @default(autoincrement())
+  title String
+  created_at DateTime @default(now())
+
+
+  @@map("employee_variance_category")
+}
+
+model varianceMainArchive {
+  id       String @id @default(uuid())
+  paycode  String
+  cycle    String
+
+  archives varianceArchive[]
+  @@unique([paycode, cycle])
+  @@map("variance_main_archive")
+}
+
+model varianceArchive {
+  id                String   @id @default(uuid())
+  company_id        String
+  company_variance  Json
+  employee_variance Json?
+  final_variance    Json?
+  created_at        DateTime @default(now())
+
+  main_archive_id String
+  main_archive    varianceMainArchive @relation(fields: [main_archive_id],references: [id],onDelete: Cascade)
+
+  @@index([main_archive_id])
+  @@unique([main_archive_id, company_id])
+  @@map("variance_archive")
+}

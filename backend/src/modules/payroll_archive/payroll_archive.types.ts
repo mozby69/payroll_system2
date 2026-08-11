@@ -86,6 +86,7 @@ export type SendPayslipType = {
   id: number;
   EmpCodeId: string;
 
+
   PayCode: string | null;
   Late: MoneyValue;
   Absent: MoneyValue;
@@ -118,17 +119,40 @@ export type SendPayslipType = {
 
   total_deductions: MoneyValue;
 
+  payrollBranch?: {
+  branchCode: string;
+  Company: string | null;
+  Location: string | null;
+  company_id: string | null;
+
+  CompanyCode: {
+    CompanyCode: string;
+    CompanyCycle: string | null;
+    CompanyName: string | null;
+    isDisburse: boolean;
+    } | null;
+  }  | null;
+
   EmpCode: {
     Firstname: string | null;
     Middlename: string | null;
     Lastname: string | null;
+    isAlien?:boolean;
+  
+    // BranchCode: {
+    //   branchCode: string;
+    //   Company: string | null;
+    //   Location: string | null;
+    //   company_id: string | null;
+    // } | null;
 
-    BranchCode: {
+      secondaryBranch: {
       branchCode: string;
       Company: string | null;
       Location: string | null;
       company_id: string | null;
     } | null;
+
 
     employeepayroll: {
       gmail_account: string | null;

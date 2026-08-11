@@ -9,6 +9,7 @@ import GenButton from "@/app/components/Buttons";
 import { useState } from "react";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
 import EmpIncrease from "@/app/components/empList/empIncrease";
+import Select from "@/app/components/Select";
 
 
 const FILTER_KEYS = ["department", "company", "status"] as const;
@@ -33,6 +34,8 @@ function EmployeeListContent() {
 
   const [open, setOpen] = useState(false);
   const [openSalary, setOpenSalary] = useState(false);
+  const [selectedAction, setSelectedAction] = useState("");
+
 
   const updateParams = (fn: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -58,6 +61,22 @@ function EmployeeListContent() {
     });
   };
 
+
+
+    const options = [
+  {
+    label: "View Variance",
+    value: "variance",
+  },
+  {
+    label: "Others",
+    value: "others",
+  }
+]
+const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const value = event.target.value;
+  setSelectedAction("");
+};
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center py-8 text-mainGray">
       <div className="w-[95%] flex flex-col gap-y-8">
@@ -87,6 +106,14 @@ function EmployeeListContent() {
                 <IndentIncreaseIcon size={16}/> Salary Increase
               </GenButton>
             </div>
+            <div className="w-full">
+         <Select
+          options={options}
+          placeholder="Select Action"
+          value={selectedAction}
+          onChange={handleSelectChange}
+        />
+        </div>
           </div>
         </div>
 

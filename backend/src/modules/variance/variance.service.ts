@@ -5,6 +5,7 @@ import { parsePayCycleToDate } from "./variance.helper";
 import { MathRound } from "../../utils/toFixed";
 import { isSecondCutoff } from "../prepare_payroll/prepare_payroll.computation";
 import { empty } from "@prisma/client/runtime/library";
+import { PayrollCycle, SaveVarianceOverrideParams, UserAccount, VarianceArchiveProps } from "./variance.types";
 
 export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "15-30-Cycle", userAcc: string) {
   try {
@@ -125,10 +126,10 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
         older_prev: {
           paycode: olderPrev?.PayCycle,
           basic_pay: 0,
-          sss_employee: Number(olderPrev?.Total_SSSContributionEmployee ?? 0),
-          sss_employer: Number(olderPrev?.Total_SSSContributionEmployer ?? 0),
-          phil_employee: Number(olderPrev?.Total_PhilhealthContributionEmployee ?? 0),
-          phil_employer: Number(olderPrev?.Total_PhilhealthContributionEmployer ?? 0),
+          sss_employee: 0,
+          sss_employer: 0,
+          phil_employee: 0,
+          phil_employer: 0,
           pagibig_employee: Number(olderPrev?.Total_PagibigContributionEmployee ?? 0),
           pagibig_employer: Number(olderPrev?.Total_PagibigContributionEmployer ?? 0),
           wtax: Number(olderPrev?.total_wtax ?? 0),
@@ -280,6 +281,11 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
     const computedEmpCodes = computed.map((employee) => employee.EmpCodeId?.trim())
       .filter((empCode): empCode is string => Boolean(empCode));
+
+
+    const getPaycode = computed[0]?.PayCode?.trim();
+
+
 
 
     const archiveEmployees1 = await prisma.employeePayrollArchive.findMany({
@@ -457,6 +463,8 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
         contributionArchive?.w_tax ?? 0
       );
 
+      const secondCutoff = isSecondCutoff(getPaycode);
+
       return {
         EmpCode: empCode,
         Lastname:
@@ -484,22 +492,28 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
         previous_basic: previousBasic,
         basic_variance: MathRound(currentBasic - previousBasic),
 
+
+
         current_sss_employee: currentSSSEmployee,
         previous_sss_employee: previousSSSEmployee,
-        sss_employee_variance: MathRound(currentSSSEmployee - previousSSSEmployee),
+        sss_employee_variance: secondCutoff ? 0 : MathRound(currentSSSEmployee - previousSSSEmployee),
+        //sss_employee_variance:  MathRound(currentSSSEmployee - previousSSSEmployee),
 
         current_sss_employer: currentSSSEmployer,
         previous_sss_employer: previousSSSEmployer,
-        sss_employer_variance: MathRound(currentSSSEmployer - previousSSSEmployer),
+        sss_employer_variance: secondCutoff ? 0 : MathRound(currentSSSEmployer - previousSSSEmployer),
+        //sss_employer_variance: MathRound(currentSSSEmployer - previousSSSEmployer),
 
         current_phil_employee: currentPhilEmployee,
         previous_phil_employee: previousPhilEmployee,
-        phil_employee_variance: MathRound(currentPhilEmployee - previousPhilEmployee),
+        phil_employee_variance: secondCutoff ? 0 : MathRound(currentPhilEmployee - previousPhilEmployee),
+        //phil_employee_variance: MathRound(currentPhilEmployee - previousPhilEmployee),
 
 
         current_phil_employer: currentPhilEmployer,
         previous_phil_employer: previousPhilEmployer,
-        phil_employer_variance: MathRound(currentPhilEmployer - previousPhilEmployer),
+        phil_employer_variance: secondCutoff ? 0 : MathRound(currentPhilEmployer - previousPhilEmployer),
+        //phil_employer_variance: MathRound(currentPhilEmployer - previousPhilEmployer),
 
         current_pagibig_employee: currentPagibigEmployee,
         previous_pagibig_employee: previousPagibigEmployee,
@@ -984,49 +998,47 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
     //other variance
 
     const categorizedEmployeeCodes = new Set<string>([
-  ...probationaryEmployees.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...probationaryEmployees.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...backToWorkWithSpecialLeave.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...backToWorkWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...backToWorkWithoutSpecialeave.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...backToWorkWithoutSpecialeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...missingIntheCurrentWithSpecialLeave.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...missingIntheCurrentWithSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...missingIntheCurrentWithoutSpecialLeave.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...missingIntheCurrentWithoutSpecialLeave.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...resignedEmployees.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...resignedEmployees.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...salaryAdjustment.increase.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...salaryAdjustment.increase.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...salaryAdjustment.decrease.map(
-    (employee) => employee.EmpCode.trim()
-  ),
+      ...salaryAdjustment.decrease.map(
+        (employee) => employee.EmpCode.trim()
+      ),
 
-  ...wtaxAdjustment.map(
-    (employee) => employee.EmpCode.trim()
-  ),
-]);
+      ...wtaxAdjustment.map(
+        (employee) => employee.EmpCode.trim()
+      ),
+    ]);
 
-const otherVarianceEmployees =
-  allEmployeesWithVariance.filter((employee) => {
-    const empCode = employee.EmpCode.trim();
-
-    return !categorizedEmployeeCodes.has(empCode);
-  });
+    const otherVarianceEmployees = allEmployeesWithVariance.filter((employee) => {
+      const empCode = employee.EmpCode.trim();
+      return !categorizedEmployeeCodes.has(empCode);
+    });
 
 
 
@@ -1043,6 +1055,148 @@ const otherVarianceEmployees =
       wtaxAdjustment,
       otherVarianceEmployees,
     ];
+
+
+
+    // ========================================
+    // CATEGORY OVERRIDE START
+    // ========================================
+
+    type VarianceEmployee =
+      (typeof allEmployeesWithVariance)[number];
+
+    type OverrideEmployee =
+      VarianceEmployee & {
+        old_salary?: number;
+        new_salary?: number;
+        salary_variance?: number;
+        remarks?: string | null;
+        leaveName?: string | null;
+      };
+
+    type VarianceCategoryKey =
+      | "Probationary"
+      | "back_to_work_with_specialleave"
+      | "back_to_work_without_specialleave"
+      | "missing_in_current_with_specialleave"
+      | "missing_in_current_without_specialleave"
+      | "resigned"
+      | "wtax_adjustment"
+      | "salary_adjustment_increase"
+      | "salary_adjustment_decrease"
+      | "others";
+
+
+    const varianceOverrides =
+      await prisma.employeeVarianceOverride.findMany({
+        where: {
+          company_id,
+          PayCode: getPaycode,
+          cycle,
+        },
+      });
+
+    const customCategories =
+      await prisma.employeeVarianceCategory.findMany({
+        orderBy: {
+          title: "asc",
+        },
+      });
+
+
+    const categories: Record<string, OverrideEmployee[]> = {
+      Probationary: [...probationaryEmployees],
+
+      back_to_work_with_specialleave: [
+        ...backToWorkWithSpecialLeave,
+      ],
+
+      back_to_work_without_specialleave: [
+        ...backToWorkWithoutSpecialeave,
+      ],
+
+      missing_in_current_with_specialleave: [
+        ...missingIntheCurrentWithSpecialLeave,
+      ],
+
+      missing_in_current_without_specialleave: [
+        ...missingIntheCurrentWithoutSpecialLeave,
+      ],
+
+      resigned: [...resignedEmployees],
+
+      wtax_adjustment: [...wtaxAdjustment],
+
+      salary_adjustment_increase: [
+        ...salaryAdjustment.increase,
+      ],
+
+      salary_adjustment_decrease: [
+        ...salaryAdjustment.decrease,
+      ],
+
+      others: [...otherVarianceEmployees],
+    };
+
+    for (const customCategory of customCategories) {
+      const categoryKey = `custom_${customCategory.id}`;
+
+      categories[categoryKey] = [];
+    }
+
+    for (const override of varianceOverrides) {
+      const empCode = override.EmpCode.trim();
+
+      let employee: OverrideEmployee | undefined;
+
+      /*
+       * Find employee from his/her current category.
+       */
+      for (const employees of Object.values(categories)) {
+        const index = employees.findIndex(
+          (item) =>
+            item.EmpCode.trim() === empCode
+        );
+
+        if (index === -1) {
+          continue;
+        }
+
+        employee = employees[index];
+
+        /*
+         * Remove employee from original category.
+         */
+        employees.splice(index, 1);
+
+        break;
+      }
+
+      if (!employee) {
+        continue;
+      }
+
+      /*
+       * Find destination category.
+       */
+      const targetCategory =
+        categories[override.category];
+
+      if (!targetCategory) {
+        continue;
+      }
+
+      /*
+       * Move the same employee object.
+       * Values are not modified.
+       */
+      targetCategory.push(employee);
+    }
+
+    // ========================================
+    // CATEGORY OVERRIDE END
+    // ==============
+
 
 
 
@@ -1070,44 +1224,65 @@ const otherVarianceEmployees =
         wtax_variance: 0,
       }
     );
+
     return {
       Probationary: {
-        employees: probationaryEmployees,
+        employees: categories.Probationary,
       },
+
       back_to_work_with_specialleave: {
-        employees: backToWorkWithSpecialLeave,
+        employees:
+          categories.back_to_work_with_specialleave,
       },
+
       back_to_work_without_specialleave: {
-        employees: backToWorkWithoutSpecialeave,
+        employees:
+          categories.back_to_work_without_specialleave,
       },
+
       missing_in_current_with_specialleave: {
-        employees: missingIntheCurrentWithSpecialLeave
+        employees:
+          categories.missing_in_current_with_specialleave,
       },
+
       missing_in_current_without_specialleave: {
-        employees: missingIntheCurrentWithoutSpecialLeave,
+        employees:
+          categories.missing_in_current_without_specialleave,
       },
+
       resigned: {
-        employees: resignedEmployees,
+        employees: categories.resigned,
       },
+
       salary_adjustment: {
-        increase: salaryAdjustment.increase,
-        decrease: salaryAdjustment.decrease,
+        increase:
+          categories.salary_adjustment_increase,
+
+        decrease:
+          categories.salary_adjustment_decrease,
       },
+
       wtax_adjustment: {
-        employees: wtaxAdjustment,
+        employees: categories.wtax_adjustment,
       },
+
       others: {
-        employees: otherVarianceEmployees,
+        employees: categories.others,
       },
+      custom_categories: customCategories.map(
+        (category) => {
+          const key = `custom_${category.id}`;
+
+          return {
+            id: category.id,
+            key,
+            title: category.title,
+            employees: categories[key] ?? [],
+          };
+        }
+      ),
+
       totalsVariance,
-      // variance_check: {
-      //   paycycles: [
-      //     latestPayroll.PayCycle,
-      //     secondLatestPayroll.PayCycle,
-      //   ],
-      //   basic_total: basicVarianceTotal,
-      //   employees: allEmployeesWithVariance,
-      // },
     };
 
 
@@ -1201,4 +1376,210 @@ export async function CompleteVariance(company_id: string, cycle: "10-25-Cycle" 
     console.error(`error occurred ${error}`);
     throw error;
   }
+}
+
+
+
+
+
+
+
+
+
+export async function saveVarianceOverride({ EmpCode, PayCode, company_id, cycle, category }: SaveVarianceOverrideParams) {
+  return prisma.employeeVarianceOverride.upsert({
+    where: {
+      EmpCode_PayCode_company_id_cycle: {
+        EmpCode,
+        PayCode,
+        company_id,
+        cycle,
+      },
+    },
+
+    update: {
+      category,
+    },
+
+    create: {
+      EmpCode,
+      PayCode,
+      company_id,
+      cycle,
+      category,
+    },
+  });
+}
+
+
+
+
+
+
+
+export async function saveFinalVariance(company_id: string, cycle: PayrollCycle, userAcc: UserAccount, paycode: string) {
+  try {
+    let pre_computed: Awaited<ReturnType<typeof displayCompletePayroll>> = [];
+
+    if (userAcc === "PAYROLL_CHECKER") {
+      pre_computed =
+        (await displayCompletePayroll(["PENDING"])) ?? [];
+    }
+
+    if (userAcc === "FINANCIAL_CHECKER") {
+      pre_computed =
+        (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
+    }
+
+    if (userAcc === "FINANCE_APPROVER") {
+      pre_computed =
+        (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+    }
+
+    const computed = pre_computed.filter((employee) => {
+      const isRegularCompany =
+        employee.company_id === company_id &&
+        employee.EmpCode?.isAlien === false;
+
+      const isAlienSecondaryCompany =
+        employee.EmpCode?.isAlien === true &&
+        employee.EmpCode?.secondaryBranch?.company_id ===
+        company_id;
+
+      return (
+        isRegularCompany ||
+        isAlienSecondaryCompany
+      );
+    });
+
+    const variance = await fetchVariance(
+      company_id,
+      cycle,
+      userAcc
+    );
+
+    const employeeVariance = await FetchEmployeeVariance(
+      company_id,
+      cycle,
+      userAcc
+    );
+
+    const finalVariance = await CompleteVariance(
+      company_id,
+      cycle,
+      userAcc
+    );
+
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const mainArchive =
+          await tx.varianceMainArchive.upsert({
+            where: {
+              paycode_cycle: {
+                paycode,
+                cycle,
+              },
+            },
+            update: {},
+            create: {
+              paycode,
+              cycle,
+            },
+          });
+
+        const varianceArchive =
+          await tx.varianceArchive.create({
+            data: {
+              company_id,
+              main_archive_id: mainArchive.id,
+              company_variance: variance,
+              employee_variance: employeeVariance,
+              final_variance: finalVariance,
+            },
+          });
+
+        return {
+          mainArchive,
+          varianceArchive,
+        };
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error("Error occured in service:", error);
+    throw error;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+// VARIANCE ARCHIVE
+export async function displayVarianceArchive({ page, limit, search }: VarianceArchiveProps) {
+
+  try {
+
+    const searchFilter = search
+      ? {
+        OR: [
+          { paycode: { contains: search } },
+          { cycle: { contains: search } },
+        ],
+      }
+      : {};
+
+    const finalWhere: Prisma.varianceMainArchiveWhereInput = {
+      AND: [
+        searchFilter,
+      ],
+    };
+
+
+
+    const varianceMain = await prisma.varianceMainArchive.findMany({
+      where: finalWhere,
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        paycode: true,
+        cycle: true,
+      }
+    })
+
+    const normalized = varianceMain.map((emp) => {
+      const paycode = emp.paycode ?? '';
+      const cycle = emp.cycle ?? '';
+
+
+      return {
+        paycode: paycode,
+        cycle: cycle,
+      };
+    });
+
+    const total = await prisma.varianceMainArchive.count({ where: finalWhere });
+
+    return {
+      data: normalized,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  catch (error) {
+    console.error("error occured", error);
+  }
+
 }

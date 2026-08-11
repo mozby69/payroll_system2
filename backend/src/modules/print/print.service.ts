@@ -481,6 +481,8 @@ export type PayslipPdfData = {
 
   totalDeductions: number;
   netPay: number;
+
+ 
 };
 
 function toMoney(
@@ -497,9 +499,7 @@ function toMoney(
     : amount;
 }
 
-function formatMoney(
-  value: MoneyValue
-): string {
+function formatMoney(value: MoneyValue): string {
   const amount = toMoney(value);
 
   return new Intl.NumberFormat(
@@ -592,10 +592,9 @@ function renderPayslipTemplate(
 
   const payslipHeight = 209;
 
+
   const companyName =
-    employee.companyName
-      .trim()
-      .toUpperCase();
+    employee.companyName.trim().toUpperCase();
 
   const employeeName =
     employee.employeeName.trim();

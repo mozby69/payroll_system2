@@ -13,6 +13,8 @@ import GeneratePayslipModal from "@/app/components/archive/GeneratePayslipModal"
 import ViewBank from "@/app/ModalContent/ArchivePayroll/BankRelease/ViewBank"
 import { BanknoteArrowDown, BookOpenCheck, PrinterCheckIcon } from "lucide-react"
 import ArchiveReportModal from "@/app/components/archive/ArchiveReportModal"
+import Select from "@/app/components/Select"
+import VarianceArchive from "@/app/ModalContent/ArchivePayroll/ViewVariance/VarianceArchive"
 
 
 export default function ArchivePayroll() {
@@ -24,12 +26,13 @@ export default function ArchivePayroll() {
   const [payslipModal, setPayslipModal] = useState(false)
   const [totalPayrollId, setTotalPayrollId] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen2, setIsModalOpen2] = useState(false);
   const [openReportModal, setOpenReportModal] = useState(false);
   const [selectedPayCode, setSelectedPayCode] = useState<string | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
   const [selectedArchive, setSelectedArchive] = useState<TotalPayroll>()
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
-
+  const [selectedAction, setSelectedAction] = useState("");
   
   const debouncedSearch = useDebounce(search, 400)
 
@@ -174,6 +177,33 @@ export default function ArchivePayroll() {
   ]
   
 
+
+  //select
+  const options = [
+  {
+    label: "View Variance",
+    value: "variance",
+  },
+  {
+    label: "Others",
+    value: "others",
+  }
+]
+
+
+const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const value = event.target.value;
+  if (value === "variance") {
+    setIsModalOpen2(true);
+  }
+  setSelectedAction("");
+};
+
+  const closeModal2 = () => {
+    setIsModalOpen2(false);
+  };
+
+
   return (
     <div className="py-10 px-8 bg-gray-50 min-h-screen">
 
@@ -199,6 +229,15 @@ export default function ArchivePayroll() {
               </option>
             ))}
           </select>
+        </div>
+        
+        <div className="relative inline-block">
+         <Select
+          options={options}
+          placeholder="Select Action"
+          value={selectedAction}
+          onChange={handleSelectChange}
+        />
         </div>
       </div>
 
@@ -255,6 +294,16 @@ export default function ArchivePayroll() {
                 />
             </RequestModal>
           )}
+
+
+          {isModalOpen2 && (
+            <RequestModal size="xxl" title={`View Variance`} onClose={closeModal2}>
+              <VarianceArchive></VarianceArchive>
+
+            </RequestModal>
+          )
+
+          }
 
 
     
