@@ -1,6 +1,6 @@
 
 import { Request, Response } from "express";
-import { CompleteVariance, displayVarianceArchive, FetchEmployeeVariance, fetchVariance, saveFinalVariance, saveVarianceOverride } from "./variance.service";
+import { CompleteVariance, displayVarianceArchive, FetchEmployeeVariance, fetchVariance, getVarianceArchivePerCompany, saveFinalVariance, saveVarianceOverride } from "./variance.service";
 import { PayrollCycle, SaveVarianceOverrideParams } from "./variance.types";
 
 
@@ -266,3 +266,36 @@ export async function saveFinalVarianceController(req: Request, res: Response) {
       res.status(500).json({message:`SERVER ERROR: ${error}`})
     }
   }
+
+
+
+  export async function getVarianceArchivePerCompanyController(req: Request,res: Response) {
+  try {
+    const mainArchiveId = req.params.mainArchiveId?.trim();
+
+    if (!mainArchiveId) {
+      return res.status(400).json({
+        message: "Main archive ID is required",
+      });
+    }
+
+    const data = await getVarianceArchivePerCompany(mainArchiveId);
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("getVarianceArchivePerCompanyController:", error);
+
+    if (
+      error instanceof Error &&
+      error.message === "Variance archive not found"
+    ) {
+      return res.status(404).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to retrieve variance archive",
+    });
+  }
+}

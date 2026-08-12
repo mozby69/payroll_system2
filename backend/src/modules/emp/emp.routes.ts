@@ -1,7 +1,7 @@
 import { Router } from "express";
 //import { authenticateToken } from "../../../src/middleware/authMiddleware";
 import { authenticateToken } from "../auth/auth.middleware";
-import { getEmployees,getEmployeeByEmpCode, updateEmployeePayrollByEmpCode, getEmployeesByCompany, bulkIncreaseEmployeeSalary } from "./emp.controller";
+import { getEmployees,getEmployeeByEmpCode, updateEmployeePayrollByEmpCode, getEmployeesByCompany, bulkIncreaseEmployeeSalary, DisplayGmailAccountListController } from "./emp.controller";
 
 const router = Router();
 
@@ -20,5 +20,6 @@ router.put(
   bulkIncreaseEmployeeSalary
 );
 
+router.get('/gmail-account-list',DisplayGmailAccountListController);
 
 export default router;

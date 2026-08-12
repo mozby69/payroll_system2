@@ -225,3 +225,139 @@ export interface SaveFinalVarianceResponse {
     };
   };
 }
+
+
+
+export interface MainArchiveVarianceProps{
+  id:string;
+  paycode:string;
+  cycle:string;
+}
+
+// export interface MainArchiveVarianceMeta {
+//   total: number;
+//   page: number;
+//   limit: number;
+//   totalPages: number;
+// }
+
+export type MainArchiveVarianceResponse = {
+  data: MainArchiveVarianceProps[];
+
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+
+export type CompanyVarianceRow = {
+  paycode?: string;
+
+  basic_pay?: number | null;
+  basic_pay_variance?: number | null;
+
+  pagibig_employee?: number | null;
+  pagibig_employer?: number | null;
+  wtax?: number | null;
+
+  sss_employee?: number | null;
+  sss_employer?: number | null;
+
+  phil_employee?: number | null;
+  phil_employer?: number | null;
+
+  pagibig_employee_variance?: number | null;
+  pagibig_employer_variance?: number | null;
+  wtax_variance?: number | null;
+
+  sss_employee_variance?: number | null;
+  sss_employer_variance?: number | null;
+
+  phil_employee_variance?: number | null;
+  phil_employer_variance?: number | null;
+};
+
+export type CompanyVariance = {
+  current: CompanyVarianceRow;
+  variance: CompanyVarianceRow;
+  older_prev: CompanyVarianceRow;
+  recent_prev: CompanyVarianceRow;
+};
+
+export type CompanyVarianceArchive = {
+  id: string;
+  company_id: string;
+  company_variance: CompanyVariance;
+  employee_variance: | EmployeeVarianceArchiveData | null;
+  final_variance:| FinalVarianceData | null;
+  created_at: string;
+};
+
+export type VarianceArchivePerCompanyResponse = {
+  id: string;
+  paycode: string;
+  cycle: string;
+  archives: CompanyVarianceArchive[];
+};
+
+
+
+
+export type EmployeeVarianceItem = {
+  EmpCode: string;
+  Lastname: string;
+  Firstname: string;
+
+  basic_variance?: number | null;
+
+  sss_employee_variance?: number | null;
+  sss_employer_variance?: number | null;
+
+  phil_employee_variance?: number | null;
+  phil_employer_variance?: number | null;
+
+  pagibig_employee_variance?: number | null;
+  pagibig_employer_variance?: number | null;
+
+  wtax_variance?: number | null;
+};
+
+export type EmployeeVarianceCategory = {
+  employees: EmployeeVarianceItem[];
+};
+
+export type CustomEmployeeVarianceCategory = {
+  id: number;
+  key: string;
+  title: string;
+  employees: EmployeeVarianceItem[];
+};
+
+export type EmployeeVarianceArchiveData = {
+  [key: string]: unknown;
+
+  custom_categories?: CustomEmployeeVarianceCategory[];
+
+  salary_adjustment?: {
+    increase: EmployeeVarianceItem[];
+    decrease: EmployeeVarianceItem[];
+  };
+};
+
+export type FinalVarianceData = {
+  basic_pay_variance?: number | null;
+
+  sss_employee_variance?: number | null;
+  sss_employer_variance?: number | null;
+
+  phil_employee_variance?: number | null;
+  phil_employer_variance?: number | null;
+
+  pagibig_employee_variance?: number | null;
+  pagibig_employer_variance?: number | null;
+
+  wtax_variance?: number | null;
+};

@@ -183,3 +183,13 @@ export type BulkIncreasePayload = {
   amount: number;
   reason: string;
 };
+
+
+
+export interface GmailAccountItem {
+  name: string;
+  gmail_account: string | null;
+  emp_code:string;
+}
+
+export type GmailAccountResponse = GmailAccountItem[];

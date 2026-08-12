@@ -202,3 +202,27 @@ export const bulkIncreaseEmployeeSalary = async (
     });
   }
 };
+
+
+
+export async function DisplayGmailAccountListController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const data =
+      await employeeService.DisplayGmailAccountList();
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error(
+      "Error occurred in DisplayGmailAccountListController:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Failed to retrieve employee Gmail accounts",
+    });
+  }
+}

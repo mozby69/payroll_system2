@@ -471,3 +471,71 @@ export const bulkIncreaseSalary = async (
     return { success: true };
   });
 };
+
+
+
+
+
+
+//xyryl
+
+export async function DisplayGmailAccountList() {
+  try {
+    const validEmployees = await prisma.employee.findMany({
+      select: {
+        EmpCode: true,
+      },
+    });
+
+    const validEmpCodes = validEmployees.map(
+      (employee) => employee.EmpCode
+    );
+
+    const data = await prisma.employee_payroll.findMany({
+      where: {
+        EmpCodeId: {
+          in: validEmpCodes,
+        },
+      },
+
+      select: {
+        EmpCodeId: true,
+        gmail_account: true,
+
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Lastname: true,
+          },
+        },
+      },
+
+      orderBy: {
+        EmpCode:{
+          Lastname: 'asc',
+        }
+      },
+    });
+
+    return data.map((employee) => {
+      const firstname = employee.EmpCode.Firstname?.trim() ?? "";
+
+      const lastname =
+        employee.EmpCode.Lastname?.trim() ?? "";
+
+      return {
+        emp_code: employee.EmpCodeId,
+        name: `${lastname}, ${firstname}`,
+        gmail_account:
+          employee.gmail_account?.trim() ?? null,
+      };
+    });
+  } catch (error) {
+    console.error(
+      "Error occurred in DisplayGmailAccountList:",
+      error
+    );
+
+    throw error;
+  }
+}

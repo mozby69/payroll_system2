@@ -2,7 +2,7 @@
 
 import { Filter, IndentIncreaseIcon, View } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEmployees } from "../../hooks/employees";
+import { useEmployees, useFetchGmailAccountList } from "../../hooks/employees";
 import FilterModal from "../../components/Filter";
 import ActiveFilters from "@/app/components/FilterObject";
 import GenButton from "@/app/components/Buttons";
@@ -10,6 +10,8 @@ import { useState } from "react";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
 import EmpIncrease from "@/app/components/empList/empIncrease";
 import Select from "@/app/components/Select";
+import RequestModal from "@/app/components/Modal";
+import GmailAccountList from "@/app/components/empList/gmailAccountList";
 
 
 const FILTER_KEYS = ["department", "company", "status"] as const;
@@ -31,10 +33,12 @@ function EmployeeListContent() {
     search,
     filters
   );
+  const { data: gmail_list } = useFetchGmailAccountList();
 
   const [open, setOpen] = useState(false);
   const [openSalary, setOpenSalary] = useState(false);
   const [selectedAction, setSelectedAction] = useState("");
+  const [openModal, setOpenModal] = useState(false);
 
 
   const updateParams = (fn: (params: URLSearchParams) => void) => {
@@ -63,20 +67,26 @@ function EmployeeListContent() {
 
 
 
-    const options = [
-  {
-    label: "View Variance",
-    value: "variance",
-  },
-  {
-    label: "Others",
-    value: "others",
+  const options = [
+      {
+        label: "View Gmail Accounts",
+        value: "gmail",
+      },
+    
+    ]
+
+  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = event.target.value;
+        if (value === "gmail") {
+        setOpenModal(true);
+      }
+        setSelectedAction("");
+    };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
   }
-]
-const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-  const value = event.target.value;
-  setSelectedAction("");
-};
+
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center py-8 text-mainGray">
       <div className="w-[95%] flex flex-col gap-y-8">
@@ -217,6 +227,14 @@ const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
       <FilterModal open={open} onClose={() => setOpen(false)} />
 
       <EmpIncrease open={openSalary} onClose={() => setOpenSalary(false)} />
+
+      {openModal && (
+            <RequestModal size="xxl" title={`View Gmail Account`} onClose={handleCloseModal}>
+            <GmailAccountList   data={gmail_list ?? []}></GmailAccountList>
+            </RequestModal>
+          )
+
+          }
     </div>
   );
 }

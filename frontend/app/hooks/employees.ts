@@ -1,7 +1,8 @@
 
 import { useQuery, keepPreviousData, useQueryClient, useMutation } from "@tanstack/react-query";
 import { fetchEmployees, fetchEmployeeProfile, updateEmployeePayroll, fetchEmployeesByCompany, bulkIncreaseSalary } from "../services/employee.service";
-import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload, EmployeeIncreaseItem, BulkIncreasePayload } from "../types/empTypes";
+import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload, EmployeeIncreaseItem, BulkIncreasePayload, GmailAccountResponse } from "../types/empTypes";
+import api from "../services/axios";
 
 
 export const useEmployees = (
@@ -80,3 +81,16 @@ export const useBulkIncreaseSalary = () => {
     },
   });
 };
+
+
+
+
+export function useFetchGmailAccountList() {
+    return useQuery<GmailAccountResponse>({
+      queryKey: ["gmail-account-list",],
+      queryFn: async () => {
+        const res = await api.get("/list/gmail-account-list");
+        return res.data;
+      },
+    });
+  }

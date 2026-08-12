@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { CompleteVarianceProp, CycleCategory, EmployeeVarianceResponse, SaveFinalVariancePayload, SaveFinalVarianceResponse, UpdateVarianceCategoryPayload, VarianceResponse } from "../types/varianceType";
+import { CompleteVarianceProp, CycleCategory, EmployeeVarianceResponse, MainArchiveVarianceResponse, SaveFinalVariancePayload, SaveFinalVarianceResponse, UpdateVarianceCategoryPayload, VarianceArchivePerCompanyResponse, VarianceResponse } from "../types/varianceType";
 
 
 
@@ -123,5 +123,52 @@ export function useSaveFinalVariance() {
 
       return res.data;
     },
+  });
+}
+
+
+
+
+  export function useMainVarianceArchiveList(params: {page: number; limit: number; search?: string}) {
+    return useQuery<MainArchiveVarianceResponse>({
+      queryKey: ["main-variance-archive-key",
+        params.page,
+        params.limit,
+        params.search ?? "",
+      ],
+      queryFn: async () => {
+        const res = await api.get<MainArchiveVarianceResponse>("/variance/get-main-archive-variance", {params});
+        return res.data;
+      },
+    });
+  }
+
+
+
+  export function useVarianceArchivePerCompany(
+  mainArchiveId: string | null
+) {
+  return useQuery<VarianceArchivePerCompanyResponse>({
+    queryKey: [
+      "variance-archive-per-company",
+      mainArchiveId,
+    ],
+
+    queryFn: async () => {
+      if (!mainArchiveId) {
+        throw new Error(
+          "Main archive ID is required"
+        );
+      }
+
+      const response =
+        await api.get<VarianceArchivePerCompanyResponse>(
+          `/variance/get-company-variance/${mainArchiveId}`
+        );
+
+      return response.data;
+    },
+
+    enabled: Boolean(mainArchiveId),
   });
 }

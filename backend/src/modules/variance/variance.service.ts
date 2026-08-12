@@ -95,8 +95,8 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
     }, 0);
 
 
-    const recentPrev = data[0];
-    const olderPrev = data[1];
+    const recentPrev = data[0] ?? null;
+    const olderPrev = data[1] ?? null;
 
 
     if (isSecondCutoff(PayCode)) {
@@ -113,7 +113,7 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
           wtax: currentWtax,
         },
         recent_prev: {
-          paycode: recentPrev?.PayCycle,
+          paycode: recentPrev?.PayCycle ?? null,
           basic_pay: Number(recentPrev?.total_basic_salary ?? 0),
           sss_employee: 0,
           sss_employer: 0,
@@ -124,7 +124,7 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
           wtax: Number(recentPrev?.total_wtax ?? 0),
         },
         older_prev: {
-          paycode: olderPrev?.PayCycle,
+          paycode: olderPrev?.PayCycle ?? null,
           basic_pay: 0,
           sss_employee: 0,
           sss_employer: 0,
@@ -158,7 +158,7 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
           phil_employer: MathRound(currentPhilEmployer),
         },
         recent_prev: {
-          paycode: recentPrev?.PayCycle,
+          paycode: recentPrev?.PayCycle ?? null,
           basic_pay: Number(recentPrev?.total_basic_salary ?? 0),
           sss_employee: 0,
           sss_employer: 0,
@@ -166,7 +166,7 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
           phil_employer: 0,
         },
         older_prev: {
-          paycode: olderPrev?.PayCycle,
+          paycode: olderPrev?.PayCycle ?? null,
           basic_pay: 0,
           sss_employee: Number(olderPrev?.Total_SSSContributionEmployee ?? 0),
           sss_employer: Number(olderPrev?.Total_SSSContributionEmployer ?? 0),
@@ -1523,52 +1523,59 @@ export async function saveFinalVariance(company_id: string, cycle: PayrollCycle,
 
 
 // VARIANCE ARCHIVE
-export async function displayVarianceArchive({ page, limit, search }: VarianceArchiveProps) {
-
+export async function displayVarianceArchive({
+  page,
+  limit,
+  search,
+}: VarianceArchiveProps) {
   try {
-
-    const searchFilter = search
-      ? {
-        OR: [
-          { paycode: { contains: search } },
-          { cycle: { contains: search } },
-        ],
-      }
-      : {};
+    const searchFilter: Prisma.varianceMainArchiveWhereInput =
+      search
+        ? {
+            OR: [
+              {
+                paycode: {
+                  contains: search,
+                },
+              },
+              {
+                cycle: {
+                  contains: search,
+                },
+              },
+            ],
+          }
+        : {};
 
     const finalWhere: Prisma.varianceMainArchiveWhereInput = {
-      AND: [
-        searchFilter,
-      ],
+      AND: [searchFilter],
     };
 
+    const [varianceMain, total] = await Promise.all([
+      prisma.varianceMainArchive.findMany({
+        where: finalWhere,
 
+        skip: (page - 1) * limit,
+        take: limit,
 
-    const varianceMain = await prisma.varianceMainArchive.findMany({
-      where: finalWhere,
-      skip: (page - 1) * limit,
-      take: limit,
-      select: {
-        paycode: true,
-        cycle: true,
-      }
-    })
+        orderBy: {
+          paycode: "desc",
+        },
 
-    const normalized = varianceMain.map((emp) => {
-      const paycode = emp.paycode ?? '';
-      const cycle = emp.cycle ?? '';
+        select: {
+          id: true,
+          paycode: true,
+          cycle: true,
+        },
+      }),
 
-
-      return {
-        paycode: paycode,
-        cycle: cycle,
-      };
-    });
-
-    const total = await prisma.varianceMainArchive.count({ where: finalWhere });
+      prisma.varianceMainArchive.count({
+        where: finalWhere,
+      }),
+    ]);
 
     return {
-      data: normalized,
+      data: varianceMain,
       meta: {
         total,
         page,
@@ -1576,10 +1583,46 @@ export async function displayVarianceArchive({ page, limit, search }: VarianceAr
         totalPages: Math.ceil(total / limit),
       },
     };
+  } catch (error) {
+    console.error("Error occurred:", error);
+    throw error;
+  }
+}
+
+
+
+
+export async function getVarianceArchivePerCompany(mainArchiveId: string) {
+  const mainArchive = await prisma.varianceMainArchive.findUnique({
+      where: {
+        id: mainArchiveId,
+      },
+
+      select: {
+        id: true,
+        paycode: true,
+        cycle: true,
+
+        archives: {
+          orderBy: {
+            created_at: "asc",
+          },
+
+          select: {
+            id: true,
+            company_id: true,
+            company_variance: true,
+            employee_variance:true,
+            final_variance:true,
+            created_at: true,
+          },
+        },
+      },
+    });
+
+  if (!mainArchive) {
+    throw new Error("Variance archive not found");
   }
 
-  catch (error) {
-    console.error("error occured", error);
-  }
-
+  return mainArchive;
 }

@@ -1,6 +1,7 @@
 import { Router } from "express";
-import {  CompleteVarianceController, displayVarianceArchiveController, FetchEmployeeVarianceController, fetchVarianceController, saveFinalVarianceController, saveVarianceOverrideController } from "./variance.controller";
+import {  CompleteVarianceController, displayVarianceArchiveController, FetchEmployeeVarianceController, fetchVarianceController, getVarianceArchivePerCompanyController, saveFinalVarianceController, saveVarianceOverrideController } from "./variance.controller";
 import { authenticateToken } from "../../middleware/authMiddleware";
+import { getVarianceArchivePerCompany } from "./variance.service";
 
 
 
@@ -12,5 +13,6 @@ router.get("/complete-variance",authenticateToken,CompleteVarianceController);
 router.post("/category-override",saveVarianceOverrideController);
 router.post("/save-final-variance",authenticateToken,saveFinalVarianceController);
 router.get("/get-main-archive-variance",displayVarianceArchiveController);
+router.get("/get-company-variance/:mainArchiveId",getVarianceArchivePerCompanyController);
 
 export default router;
