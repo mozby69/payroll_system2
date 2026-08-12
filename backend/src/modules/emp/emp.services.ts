@@ -482,6 +482,11 @@ export const bulkIncreaseSalary = async (
 export async function DisplayGmailAccountList() {
   try {
     const validEmployees = await prisma.employee.findMany({
+      where:{
+        EmployeeStatus:{
+          notIn:['Resigned']
+        },
+      },
       select: {
         EmpCode: true,
       },
