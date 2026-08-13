@@ -2,6 +2,8 @@ import {  useFetchViewAll } from "@/app/hooks/useAllowance";
 import { VarianceEmpItem, ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
+import { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
 
 
 
@@ -11,6 +13,52 @@ interface Props {
 
 
 export default function ViewAllList({ selectedMonth }: Props) {
+      const printRef = useRef<HTMLDivElement>(null);
+    
+      const handlePrint = useReactToPrint({
+        contentRef: printRef,
+    
+        documentTitle: "Gmail Account List",
+    
+        pageStyle: `
+          @page {
+            size: landscape;
+            margin: 15mm;
+          }
+    
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+    
+            .print-area {
+              width: 100% !important;
+              overflow: visible !important;
+            }
+    
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              font-size: 10px !important;
+            }
+    
+            th,
+            td {
+              padding: 6px !important;
+              white-space: nowrap !important;
+            }
+    
+            thead {
+              display: table-header-group;
+            }
+    
+            tr {
+              page-break-inside: avoid;
+            }
+          }
+        `,
+      });
 
     const { data } = useFetchViewAll(selectedMonth);
    // const { mutate: exportAllowance } = useExportAllowance();
@@ -136,7 +184,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
     return (
         <>
-            <div className="p-2">
+            <div className="p-2" ref={printRef}>
 
                 <div className="flex justify-between">
                     <div className="font-semibold space-y-1 uppercase">
@@ -145,10 +193,11 @@ export default function ViewAllList({ selectedMonth }: Props) {
                         <h2>FOR THE MONTH OF {formatMonthYear(selectedMonth)}</h2>
                     </div>
 
-                    {/* <div>
-                        <button onClick={handleExport}
-                            className="bg-green-800 text-white px-4 py-2 rounded-md hover:bg-green-600">Export Excel</button>
-                    </div> */}
+                     <div>
+                        <button 
+                        onClick={handlePrint}
+                        className="bg-green-800 text-white px-8 py-2 rounded-md hover:bg-green-600">Print</button>
+                    </div> 
                 </div>
 
                 <div className="pt-4">

@@ -229,8 +229,8 @@ export async function conversionReport({ company_id }: conversionReportProps) {
     };
 
     const as_of_date = await prisma.conversionAsOfDate.findFirst({
-      where:{
-        company_id:company_id,
+      where: {
+        company_id: company_id,
       },
       select: {
         as_of_date: true,
@@ -252,8 +252,8 @@ export async function conversionReport({ company_id }: conversionReportProps) {
             EmployementDate: true,
             Firstname: true,
             Lastname: true,
-            isSixDaysWork:true,
-            BranchCodeId:true,
+            isSixDaysWork: true,
+            BranchCodeId: true,
             BranchCode: {
               select: {
                 company_id: true,
@@ -283,16 +283,16 @@ export async function conversionReport({ company_id }: conversionReportProps) {
 
     const referenceDate = as_of_date?.as_of_date ? new Date(as_of_date.as_of_date) : new Date();
     //const referenceDate = new Date("2026-04-14");
-    const june30 = getCompanyCutOffDate(referenceDate,company_id);
+    const june30 = getCompanyCutOffDate(referenceDate, company_id);
 
     const normalized = data.map((emp) => {
       const fullName = `${emp.EmpCode.Lastname} ${emp.EmpCode.Firstname}`;
       const branchCode = emp.EmpCode.BranchCodeId;
       const basic = emp.EmpCode.employeepayroll?.basic_salary?.toNumber() ?? 0;
       const isSixDaysWork = emp.EmpCode.isSixDaysWork;
-      const dailyRate = computeDailyRate(basic,isSixDaysWork);
+      const dailyRate = computeDailyRate(basic, isSixDaysWork);
       const employmentDate = emp.EmpCode.EmployementDate;
-      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate,company_id) : 0;
+      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate, company_id) : 0;
       const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert?.toNumber() ?? 0;
       let sickLeave = emp.Sick?.toNumber?.() ?? Number(emp.Sick) ?? 0;
       let vacationLeave = emp.Vacation?.toNumber?.() ?? Number(emp.Vacation) ?? 0;
@@ -319,7 +319,7 @@ export async function conversionReport({ company_id }: conversionReportProps) {
           anniv >= ref &&
           anniv <= june &&
           baseTenure < 3
-        );   
+        );
       })();
 
       if (shouldAddLeave) {
@@ -416,15 +416,33 @@ export async function saveConversionArchive({ company_id }: conversionReportProp
       company_id: item.company_id,
       total_leave_for_conversion: item.total_leave_for_conversion,
       leave_amount_for_conversion: new Prisma.Decimal(item.leave_amount_for_conversion ?? 0),
-      as_of_date: item.as_of_date?.as_of_date ? new Date(item.as_of_date.as_of_date): new Date(),
+      as_of_date: item.as_of_date?.as_of_date ? new Date(item.as_of_date.as_of_date) : new Date(),
       EmpCodeId: item.EmpCode,
       totalConversionArchiveId: header.id,
     }));
 
 
+
     await tx.conversionArchive.createMany({
       data: archiveData,
       skipDuplicates: true,
+    });
+
+
+    await tx.attendanceCount.updateMany({
+      where: {
+        EmpCode: {
+          BranchCode: {
+            company_id:company_id,
+          },
+        },
+        leave_convert: {
+          not: 0,
+        },
+      },
+      data: {
+        leave_convert: 0,
+      },
     });
 
     return {
@@ -488,7 +506,7 @@ export async function DisplayConversionArchive({ page, limit, search, company_id
 
     const formatted = data.map((item) => ({
       id: item.id,
-      created_at: item.created_at ? new Date(item.created_at).getFullYear(): null,
+      created_at: item.created_at ? new Date(item.created_at).getFullYear() : null,
       total_amount: item.total_amount,
     }));
 
@@ -518,7 +536,7 @@ export async function getConversionArchive(id: number) {
     return prisma.conversionArchive.findMany({
       where: {
         totalConversionArchiveId: id,
-        
+
       },
       select: {
         EmpCodeId: true,
@@ -528,13 +546,13 @@ export async function getConversionArchive(id: number) {
         daily_rate: true,
         tenure: true,
         leave_amount_for_conversion: true,
-        EmployementDate:true,
-        leave_convert:true,
-        total_leave_for_conversion:true,
-        as_of_date:true,
-        totalConversionArchive:{
-          select:{
-            created_at:true,
+        EmployementDate: true,
+        leave_convert: true,
+        total_leave_for_conversion: true,
+        as_of_date: true,
+        totalConversionArchive: {
+          select: {
+            created_at: true,
           }
         },
         EmpCode: {
@@ -570,8 +588,8 @@ export async function getConversionArchiveForBank(id: number) {
     return prisma.conversionArchive.findMany({
       where: {
         totalConversionArchiveId: id,
-        
-        leave_amount_for_conversion:{
+
+        leave_amount_for_conversion: {
           not: 0,
         }
       },
@@ -583,27 +601,27 @@ export async function getConversionArchiveForBank(id: number) {
         daily_rate: true,
         tenure: true,
         leave_amount_for_conversion: true,
-        EmployementDate:true,
-        leave_convert:true,
-        total_leave_for_conversion:true,
-        as_of_date:true,
-        totalConversionArchive:{
-          select:{
-            created_at:true,
+        EmployementDate: true,
+        leave_convert: true,
+        total_leave_for_conversion: true,
+        as_of_date: true,
+        totalConversionArchive: {
+          select: {
+            created_at: true,
           }
         },
         EmpCode: {
           select: {
             Firstname: true,
             Lastname: true,
-            employeepayroll:{
-              select:{
-                bank_account:true,
+            employeepayroll: {
+              select: {
+                bank_account: true,
               }
             },
-            BranchCode:{
-              select:{
-                company_id:true,
+            BranchCode: {
+              select: {
+                company_id: true,
               }
             }
           }

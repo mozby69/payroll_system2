@@ -1036,15 +1036,35 @@ export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,
         : {}),
 
       EmpCode: {
-        BranchCode: {
-          company_id: company,
+        OR: [
+          // Normal employee
+          {
+            isAlien: false,
+            BranchCode: {
+              company_id: company,
 
-          ...(branch
-            ? {
-                branchCode: branch,
-              }
-            : {}),
-        },
+              ...(branch
+                ? {
+                    branchCode: branch,
+                  }
+                : {}),
+            },
+          },
+
+          // Alien employee
+          {
+            isAlien: true,
+            secondaryBranch: {
+              company_id: company,
+
+              ...(branch
+                ? {
+                    branchCode: branch,
+                  }
+                : {}),
+            },
+          },
+        ],
       },
     },
 

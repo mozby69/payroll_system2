@@ -1,6 +1,6 @@
 import { useFetchArchiveAllowanceModal } from "@/app/hooks/useAllowance";
-import { AllowanceSummary, ArchiveAllowance, CompanyItem, loanlistProps, VarianceAllowanceComplete, VarianceAllowanceEmployee, ViewAllItem } from "@/app/types/allowanceType";
-import { prepareCompanyData } from "@/app/utils/allowanceHelper";
+import { AllowanceSummary, ViewAllItem } from "@/app/types/allowanceType";
+
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
 import { useRef } from "react";
@@ -64,16 +64,11 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
     const mhMancomLoans =
         archive?.mh_mancom_loans ?? [];
 
-    const totalMhAndMancomLoans =
-        Number(
-            archive?.totalmhAndMancomLoans ?? 0
-        );
+    //const totalMhAndMancomLoans = Number(archive?.totalmhAndMancomLoans ?? 0 );
 
-    const totalDisburse =
-        archive?.total_disburse;
+    const totalDisburse = archive?.total_disburse;
 
-    const branches =
-        archive?.BRANCHES ?? {};
+    //const branches = archive?.BRANCHES ?? {};
 
     const variance = archive?.VARIANCE;
 

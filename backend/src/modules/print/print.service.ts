@@ -478,6 +478,7 @@ export type PayslipPdfData = {
   pagibigLoan: number;
   sssLoan: number;
   calamityLoan: number;
+  pagibig_calamity_loan:number;
 
   totalDeductions: number;
   netPay: number;
@@ -832,7 +833,7 @@ function renderPayslipTemplate(
     "SSS Cont :",
     leftX + 5,
     topY + 130,
-    65,
+    50,
     {
       fontSize: 7.5,
     }
@@ -841,15 +842,16 @@ function renderPayslipTemplate(
   drawText(
     doc,
     formatMoney(employee.sssEmployee),
-    leftX + 65,
+    leftX + 50,
     topY + 130,
-    deductionColumn - 70,
+    deductionColumn - 55,
     {
       align: "right",
       fontSize: 7.5,
+
     }
   );
-
+//tax
   drawLine(
     doc,
     leftX + deductionColumn,
@@ -863,7 +865,7 @@ function renderPayslipTemplate(
     "W/Tax :",
     leftX + deductionColumn + 5,
     topY + 130,
-    55,
+    50,
     {
       fontSize: 7.5,
     }
@@ -874,9 +876,9 @@ function renderPayslipTemplate(
     formatMoney(
       employee.withholdingTax
     ),
-    leftX + deductionColumn + 55,
+    leftX + deductionColumn + 50,
     topY + 130,
-    deductionColumn - 60,
+    deductionColumn - 55,
     {
       align: "right",
       fontSize: 7.5,
@@ -891,30 +893,29 @@ function renderPayslipTemplate(
     topY + 145
   );
 
-  drawText(
-    doc,
-    "PAG-IBIG :",
-    leftX + deductionColumn * 2 + 5,
-    topY + 130,
-    65,
-    {
-      fontSize: 7.5,
-    }
-  );
+  //pagibig
+drawText(
+  doc,
+  "PAG-IBIG :",
+  leftX + deductionColumn * 2 + 5,
+  topY + 130,
+  45,
+  {
+    fontSize: 7.5,
+  }
+);
 
-  drawText(
-    doc,
-    formatMoney(
-      employee.pagibigEmployee
-    ),
-    leftX + deductionColumn * 2 + 68,
-    topY + 130,
-    deductionColumn - 73,
-    {
-      align: "right",
-      fontSize: 7.5,
-    }
-  );
+drawText(
+  doc,
+  formatMoney(employee.pagibigEmployee),
+  leftX + deductionColumn * 2 + 48,
+  topY + 130,
+  deductionColumn - 53,
+  {
+    align: "right",
+    fontSize: 7.5,
+  }
+);
 
   drawLine(
     doc,
@@ -961,7 +962,7 @@ function renderPayslipTemplate(
     "FCH Ln:",
     leftX + 5,
     topY + 151,
-    55,
+    43,
     {
       fontSize: 7.5,
     }
@@ -972,7 +973,7 @@ function renderPayslipTemplate(
     formatMoney(employee.fchLoan),
     leftX + 55,
     topY + 151,
-    deductionColumn - 60,
+    deductionColumn - 58,
     {
       align: "right",
       fontSize: 7.5,
@@ -992,7 +993,7 @@ function renderPayslipTemplate(
     "Phil. Hlt :",
     leftX + deductionColumn + 5,
     topY + 151,
-    60,
+    45,
     {
       fontSize: 7.5,
     }
@@ -1003,9 +1004,9 @@ function renderPayslipTemplate(
     formatMoney(
       employee.philhealthEmployee
     ),
-    leftX + deductionColumn + 62,
+    leftX + deductionColumn + 48,
     topY + 151,
-    deductionColumn - 67,
+    deductionColumn - 53,
     {
       align: "right",
       fontSize: 7.5,
@@ -1020,12 +1021,14 @@ function renderPayslipTemplate(
     topY + 167
   );
 
+
+  //p sal n
   drawText(
     doc,
     "P. Sal. Ln :",
     leftX + deductionColumn * 2 + 5,
     topY + 151,
-    65,
+    45,
     {
       fontSize: 7.5,
     }
@@ -1033,10 +1036,10 @@ function renderPayslipTemplate(
 
   drawText(
     doc,
-    formatMoney(employee.rfcLoan),
-    leftX + deductionColumn * 2 + 68,
+    formatMoney(employee.pagibigLoan),
+    leftX + deductionColumn * 2 + 48,
     topY + 151,
-    deductionColumn - 73,
+    deductionColumn - 53,
     {
       align: "right",
       fontSize: 7.5,
@@ -1138,7 +1141,7 @@ drawText(
     "Salary :",
     leftX + 5,
     topY + 174,
-    50,
+    44,
     {
       fontSize: 7.5,
     }
@@ -1149,7 +1152,7 @@ drawText(
     formatMoney(employee.sssLoan),
     leftX + 55,
     topY + 174,
-    deductionColumn - 60,
+    deductionColumn - 57,
     {
       align: "right",
       fontSize: 7.5,
@@ -1161,31 +1164,6 @@ drawText(
     "Calamity :",
     leftX + deductionColumn + 5,
     topY + 174,
-    60,
-    {
-      fontSize: 7.5,
-    }
-  );
-
-  drawText(
-    doc,
-    formatMoney(
-      employee.calamityLoan
-    ),
-    leftX + deductionColumn + 65,
-    topY + 174,
-    deductionColumn - 70,
-    {
-      align: "right",
-      fontSize: 7.5,
-    }
-  );
-
-  drawText(
-    doc,
-    "Housing :",
-    leftX + deductionColumn * 2 + 5,
-    topY + 174,
     55,
     {
       fontSize: 7.5,
@@ -1194,17 +1172,38 @@ drawText(
 
   drawText(
     doc,
-    formatMoney(
-      employee.pagibigLoan
-    ),
-    leftX + deductionColumn * 2 + 60,
+    formatMoney( employee.calamityLoan + employee.pagibig_calamity_loan),
+    leftX + deductionColumn + 48,
     topY + 174,
-    deductionColumn - 65,
+    deductionColumn - 53,
     {
       align: "right",
       fontSize: 7.5,
     }
   );
+
+drawText(
+  doc,
+  "Housing :",
+  leftX + deductionColumn * 2 + 5,
+  topY + 174,
+  45,
+  {
+    fontSize: 7.5,
+  }
+);
+
+drawText(
+  doc,
+  formatMoney(employee.rfcLoan),
+  leftX + deductionColumn * 2 + 48,
+  topY + 174,
+  deductionColumn - 53,
+  {
+    align: "right",
+    fontSize: 7.5,
+  }
+);
 
 
   const totalsTopY = topY + 187;

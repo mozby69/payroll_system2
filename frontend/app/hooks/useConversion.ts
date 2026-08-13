@@ -92,16 +92,28 @@ export function useConversionReport(company_id?:string) {
 
 
 export function useSaveConversionArchive() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (company_id: string) => {
-      const res = await api.post("/conversion/save-conversion", null, {
-        params: { company_id },
-      });
+      const res = await api.post(
+        "/conversion/save-conversion",
+        null,
+        {
+          params: { company_id },
+        }
+      );
+
       return res.data;
+    },
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["conversion-list"],
+      });
     },
   });
 }
-
 
 
 

@@ -2767,6 +2767,10 @@ export function buildPayslipData(employee: SendPayslipType): PayslipPdfData {
     calamityLoan: toMoney(
       employee.sss_calamity_loan
     ),
+    pagibig_calamity_loan: toMoney(
+      employee.pagibig_calamity_loan
+    ),
+
 
     totalDeductions: toMoney(
       employee.total_deductions
@@ -2919,7 +2923,7 @@ export async function sendPayslipToEmployee(employee: SendPayslipType): Promise<
 
       <p>
         Please find your payslip for
-        <strong>${payslipData.payrollPeriod}</strong>
+        <strong>${payslipData.payCode}</strong>
         attached.
       </p>
 

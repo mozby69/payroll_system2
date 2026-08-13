@@ -12,6 +12,7 @@ interface Props {
   selectedMonth: string;
 }
 
+
 export default function CompanyBranchSelector({ selectedMonth }: Props) {
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [selectedBranch, setSelectedBranch] = useState<string>("");
@@ -19,7 +20,7 @@ export default function CompanyBranchSelector({ selectedMonth }: Props) {
   const { data: branches = [] } = useFetchBranchesByCompany(selectedCompany);
   const [loading, setLoading] = useState(false);
 
- 
+
   return (
     <div className="p-6 max-full bg-white rounded-lg shadow-xl">
       {loading ? (
@@ -115,58 +116,63 @@ export default function CompanyBranchSelector({ selectedMonth }: Props) {
 
         <button
           disabled={!selectedCompany || loading}
-          onClick={async () => {
-            setLoading(true);
+          onClick={() => {
+            SweetAlert.confirmationAlert(
+              "Send email?",
+              "This will send the allowance slip.",
+              async () => {
+                setLoading(true);
 
-            try {
-              const response = await fetch(
-                `${API_URL}/allowance/send-allowance-email`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    month: selectedMonth,
-                    company: selectedCompany,
-                    ...(selectedBranch
-                      ? {
-                        branch: selectedBranch,
-                      }
-                      : {}),
-                  }),
+                try {
+                  const response = await fetch(
+                    `${API_URL}/allowance/send-allowance-email`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        month: selectedMonth,
+                        company: selectedCompany,
+                        ...(selectedBranch
+                          ? {
+                            branch: selectedBranch,
+                          }
+                          : {}),
+                      }),
+                    }
+                  );
+
+                  const result: {
+                    message?: string;
+                    sent?: number;
+                    failed?: number;
+                    skipped?: number;
+                  } = await response.json();
+
+                  if (!response.ok) {
+                    throw new Error(
+                      result.message ?? "Failed to send allowance emails"
+                    );
+                  }
+
+                  SweetAlert.successAlert(
+                    `Emails sent: ${result.sent ?? 0}, failed: ${result.failed ?? 0
+                    }, skipped: ${result.skipped ?? 0}`
+                  );
+                } catch (error: unknown) {
+                  console.error(error);
+
+                  SweetAlert.errorAlert(
+                    error instanceof Error
+                      ? error.message
+                      : "Failed to send emails"
+                  );
+                } finally {
+                  setLoading(false);
                 }
-              );
-
-              const result: {
-                message?: string;
-                sent?: number;
-                failed?: number;
-                skipped?: number;
-              } = await response.json();
-
-              if (!response.ok) {
-                throw new Error(
-                  result.message ??
-                  "Failed to send allowance emails"
-                );
               }
-
-              SweetAlert.successAlert(
-                `Emails sent: ${result.sent ?? 0}, failed: ${result.failed ?? 0
-                }, skipped: ${result.skipped ?? 0}`
-              );
-            } catch (error: unknown) {
-              console.error(error);
-
-              SweetAlert.errorAlert(
-                error instanceof Error
-                  ? error.message
-                  : "Failed to send emails"
-              );
-            } finally {
-              setLoading(false);
-            }
+            );
           }}
           className="bg-orange-500 hover:bg-orange-400 text-white py-2.5 px-6 rounded disabled:bg-gray-400"
         >

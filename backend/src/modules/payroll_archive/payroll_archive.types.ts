@@ -116,6 +116,7 @@ export type SendPayslipType = {
   pagibig_loan: MoneyValue;
   sss_loan: MoneyValue;
   sss_calamity_loan: MoneyValue;
+  pagibig_calamity_loan: MoneyValue;
 
   total_deductions: MoneyValue;
 
