@@ -2806,7 +2806,7 @@ export async function sendPayslipEmailService(archiveId: number): Promise<void> 
     to: email,
 
     subject:
-      `Payslip - ${payslipData.payrollPeriod}`,
+      `Payslip - ${payslipData.payCode}`,
 
     html: `
       <p>
@@ -2818,7 +2818,7 @@ export async function sendPayslipEmailService(archiveId: number): Promise<void> 
 
       <p>
         Please find your payslip for
-        <strong>${payslipData.payrollPeriod}</strong>
+        <strong>${payslipData.payCode}</strong>
         attached.
       </p>
 
