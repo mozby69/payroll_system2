@@ -2502,6 +2502,11 @@ export async function getArchiveReport(selectedMonth: string) {
 
 
 
+
+
+
+
+//email 
 type AllowanceEmailEmployee = {
   EmpCodeId: string;
   name: string;
@@ -2541,18 +2546,119 @@ type SendBulkAllowanceResult = {
   failures: AllowanceEmailFailure[];
 };
 
-export const transporter = nodemailer.createTransport({
-  service: "gmail",
-  pool: true,
-  maxConnections: 3,
-  maxMessages: 50,
+const MAX_RETRIES = 5;
 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
 
+function isRetryableEmailError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const smtpError = error as Error & {
+    responseCode?: number;
+    code?: string;
+  };
+
+  const retryableResponseCodes = [
+    421,
+    450,
+    451,
+    452,
+    454,
+  ];
+
+  const retryableCodes = new Set([
+    "ETIMEDOUT",
+    "ECONNECTION",
+    "ECONNRESET",
+    "ESOCKET",
+  ]);
+
+  return (
+    retryableResponseCodes.includes(
+      smtpError.responseCode ?? 0
+    ) ||
+    retryableCodes.has(
+      smtpError.code ?? ""
+    )
+  );
+}
+
+async function sendAllowanceEmailWithRetry(
+  employee: AllowanceEmailEmployee
+): Promise<void> {
+  let lastError: Error | null = null;
+
+  for (
+    let attempt = 1;
+    attempt <= MAX_RETRIES;
+    attempt += 1
+  ) {
+    try {
+      await sendAllowanceEmailService(employee);
+
+      return;
+    } catch (error: unknown) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error(
+              "Unknown email sending error"
+            );
+
+      const shouldRetry =
+        isRetryableEmailError(error);
+
+      if (
+        !shouldRetry ||
+        attempt === MAX_RETRIES
+      ) {
+        throw lastError;
+      }
+
+      // 5s -> 10s -> 20s -> 40s
+      const delay =
+        5000 *
+        Math.pow(2, attempt - 1);
+
+      console.warn(
+        `Email retry ${attempt}/${MAX_RETRIES} for ${employee.EmpCodeId}. Retrying in ${delay / 1000}s`
+      );
+
+      await sleep(delay);
+    }
+  }
+
+  throw (
+    lastError ??
+    new Error("Email sending failed")
+  );
+}
+
+export const transporter =
+  nodemailer.createTransport({
+    service: "gmail",
+
+    pool: true,
+
+    maxConnections: 2,
+
+    maxMessages: 50,
+
+    rateDelta: 1000,
+
+    rateLimit: 2,
+
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
 
 
@@ -2703,41 +2809,43 @@ export async function sendBulkAllowanceService({
       return [emailEmployee];
     });
 
-  await processInBatches(
-    employeesWithEmail,
-    5,
-    async (employee) => {
-      try {
-        await sendAllowanceEmailService(
-          employee
-        );
 
-        successCount += 1;
+await processInBatches(
+  employeesWithEmail,
+  3,
+  async (employee) => {
+    try {
+      await sendAllowanceEmailWithRetry(
+        employee
+      );
 
-        console.log(
-          `Allowance email sent: ${employee.EmpCodeId} -> ${employee.email}`
-        );
-      } catch (error: unknown) {
-        failedCount += 1;
+      successCount += 1;
 
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Unknown email sending error";
+      console.log(
+        `Allowance email sent: ${employee.EmpCodeId} -> ${employee.email}`
+      );
+    } catch (error: unknown) {
+      failedCount += 1;
 
-        failures.push({
-          EmpCodeId: employee.EmpCodeId,
-          email: employee.email,
-          message,
-        });
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unknown email sending error";
 
-        console.error(
-          `Failed sending allowance email for ${employee.EmpCodeId}:`,
-          error
-        );
-      }
+      failures.push({
+        EmpCodeId: employee.EmpCodeId,
+        email: employee.email,
+        message,
+      });
+
+      console.error(
+        `Failed sending allowance email for ${employee.EmpCodeId}:`,
+        error
+      );
     }
-  );
+  }
+);
+  
 
   return {
     success: failedCount === 0,
@@ -2748,9 +2856,6 @@ export async function sendBulkAllowanceService({
     failures,
   };
 }
-
-
-
 
 
 
@@ -2781,6 +2886,26 @@ export async function updateEmergencyAllowance(allowance_id: number, is_emergenc
     },
   });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
