@@ -23,7 +23,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
     
         pageStyle: `
           @page {
-            size: landscape;
+            size: portrait;
             margin: 15mm;
           }
     
@@ -153,7 +153,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                      <div>
                         <button 
                         onClick={handlePrint}
-                        className="bg-green-800 text-white px-8 py-2 rounded-md hover:bg-green-600">Print</button>
+                        className="bg-green-800 text-white px-8 py-2 rounded-md hover:bg-green-600 print:hidden">Print</button>
                     </div> 
                 </div>
 
