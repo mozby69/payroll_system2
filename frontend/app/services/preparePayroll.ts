@@ -118,6 +118,8 @@ export interface ComputedProps{
   philhealth_employer?:number;
   final_wtax?:number;
   basic_salary:number;
+  pagibig_employee_share?:number;
+  pagibig_employer_share?:number;
   RegularAtt:AttendanceBreakdown;
   OvertimeAtt:AttendanceBreakdown;
   NightShiftAtt:AttendanceBreakdown;

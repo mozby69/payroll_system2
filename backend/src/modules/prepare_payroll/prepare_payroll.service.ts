@@ -801,6 +801,8 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
       //gross_pay_edit: override?.gross_pay_edit ?? grossPay,
       philhealth_employee : override?.philhealth_employee ?? 0,
       philhealth_employer : override?.philhealth_employer ?? 0,
+      pagibig_employee_share: override?.pagibig_employee_share ?? 0,
+      pagibig_employer_share: override?.pagibig_employer_share ?? 0,
       final_wtax: override?.final_wtax ?? 0,
       basic_salary:FinalbasicSalary,
     };
@@ -1311,7 +1313,10 @@ export type SummaryOverrideChanges = {
   philhealth_employer?: number;
   final_wtax?: number;
   basic_salary?: number;
+  pagibig_employee_share?:number;
+  pagibig_employer_share?:number;
 };
+
 
 export type UpdateDeductionPayload = {
   PayCode: string;
@@ -1378,6 +1383,10 @@ function parseOverrideChanges(value: Prisma.JsonValue | null | undefined): Summa
 
   if (typeof record.final_wtax === "number") {
     changes.final_wtax = record.final_wtax;
+  }
+
+   if (typeof record.pagibig_employee_share === "number") {
+    changes.pagibig_employee_share = record.pagibig_employee_share;
   }
 
   if (typeof record.basic_salary === "number") {

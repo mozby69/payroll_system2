@@ -9,6 +9,8 @@ export type SummaryOverrideChanges = {
   philhealth_employee?: number;
   philhealth_employer?: number;
   final_wtax?: number;
+  pagibig_employee_share?:number;
+  pagibig_employer_share?:number;
 };
 
 export function parseSummaryOverrideChanges(
@@ -66,6 +68,18 @@ export function parseSummaryOverrideChanges(
   if (typeof record.final_wtax === "number") {
     changes.final_wtax = record.final_wtax;
   }
+
+
+  if (typeof record.pagibig_employee_share === "number") {
+    changes.pagibig_employee_share = record.pagibig_employee_share;
+  }
+
+
+  if (typeof record.pagibig_employer_share === "number") {
+    changes.pagibig_employer_share = record.pagibig_employer_share;
+  }
+
+
 
   return changes;
 }

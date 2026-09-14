@@ -626,6 +626,18 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
             : Number(philhealthRateEmployer ?? 0);
 
 
+          const finalPagIbigEmployee = override?.pagibig_employee_share !== undefined && override?.pagibig_employee_share !== null
+        ? Number(override.pagibig_employee_share)
+        : pagibigEmployeeShare
+        ? Number(pagibigEmployeeShare)
+        : 0;
+
+        const finalPagIbigEmployer = override?.pagibig_employer_share !== undefined && override?.pagibig_employer_share !== null
+        ? Number(override.pagibig_employer_share)
+        : pagibigEmployerShare
+        ? Number(pagibigEmployerShare)
+        : 0;
+
     
         // Loan Code ↓
         const loans = loanByEmp[emp.EmpCodeId] ?? {};
@@ -703,7 +715,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
         const are_loan_temp = loanDeduct(loans.ARE_LOAN);
         const totalLoanDeduction = fch_loan + sss_loan + pagibig_loan + rfc_loan + are_loan_temp + calamity_loan;
-        const netPay = computedGrossPay - (sssContribEmployee + pagibigEmployeeShare + finalPhilhealthEmployee + totalLoanDeduction + finalWtax);
+        const netPay = computedGrossPay - (sssContribEmployee + finalPagIbigEmployee + finalPhilhealthEmployee + totalLoanDeduction + finalWtax);
 
         const are_loan = isDisbursing ? are_loan_temp + netPay : are_loan_temp;
 
@@ -714,7 +726,7 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
     
         const companyId = emp.EmpCode.BranchCode?.company_id;
 
-        const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + pagibigEmployeeShare + finalPhilhealthEmployee;
+        const totalDeductions = totalLoanDeduction + finalWtax + sssContribEmployee + finalPagIbigEmployee + finalPhilhealthEmployee;
 
    
       
@@ -742,8 +754,8 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
           sss_contrib_employer:sssContribEmployer,
           philhealth_contrib_employee:finalPhilhealthEmployee,
           philhealth_contrib_employer:finalPhilhealthEmployer,
-          pagibig_contrib_employee:pagibigEmployeeShare,
-          pagibig_contrib_employer:pagibigEmployerShare,
+          pagibig_contrib_employee:finalPagIbigEmployee,
+          pagibig_contrib_employer:finalPagIbigEmployer,
           net_pay:finalNetPay,
           wtax: finalWtax,          
           computedWtax: computedWtax,

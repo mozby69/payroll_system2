@@ -258,6 +258,8 @@ export async function updateDeductionController(req: Request<Record<string, neve
       "philhealth_employer",
       "final_wtax",
       "basic_salary",
+      "pagibig_employee_share",
+      "pagibig_employer_share",
     ];
 
     const hasInvalidField = Object.keys(changes).some(

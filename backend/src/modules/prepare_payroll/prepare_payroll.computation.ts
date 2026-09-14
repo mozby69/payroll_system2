@@ -136,7 +136,6 @@ export const computePagibig = (pagibigContrib:number | null, payCode?: string | 
   }
   return Number(pagibigContrib.toFixed(2));
   
-
 };
 
 

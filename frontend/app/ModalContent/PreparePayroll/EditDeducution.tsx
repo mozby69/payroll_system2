@@ -97,6 +97,21 @@ export default function EditDeduction({ employee, onClose }: Props) {
   );
 
 
+    const [pagIbigEmployee, setPagIbigEmployee] = useState<string>(
+    employee.pagibig_employee_share !== null &&
+      employee.pagibig_employee_share !== undefined
+      ? String(employee.pagibig_employee_share)
+      : ""
+  );
+
+    const [pagIbigEmployer, setPagIbigEmployer] = useState<string>(
+    employee.pagibig_employer_share !== null &&
+      employee.pagibig_employer_share !== undefined
+      ? String(employee.pagibig_employer_share)
+      : ""
+  );
+
+
 
 
 
@@ -150,6 +165,17 @@ export default function EditDeduction({ employee, onClose }: Props) {
       changes.basic_salary =
         toNumber(basicSalary);
     }
+
+    if (editedFields.has("pagibig_employee_share")) {
+      changes.pagibig_employee_share =
+        toNumber(pagIbigEmployee);
+    }
+
+      if (editedFields.has("pagibig_employer_share")) {
+      changes.pagibig_employer_share =
+        toNumber(pagIbigEmployer);
+    }
+
 
     if (Object.keys(changes).length === 0) {
       SweetAlert.errorAlert(
@@ -322,6 +348,36 @@ export default function EditDeduction({ employee, onClose }: Props) {
             onChange={(event) => {
               setBasicSalary(event.target.value);
               markFieldAsEdited("basic_salary");
+            }}
+            className="border border-gray-400 p-2 rounded w-full"
+          />
+        </div>
+
+
+
+        <div className="flex flex-col w-full">
+          <label className="pb-1">PAGIBIG EMPLOYEE</label>
+          <input
+            type="number"
+            value={pagIbigEmployee}
+            placeholder="Input amount..."
+            onChange={(event) => {
+              setPagIbigEmployee(event.target.value);
+              markFieldAsEdited("pagibig_employee_share");
+            }}
+            className="border border-gray-400 p-2 rounded w-full"
+          />
+        </div>
+
+              <div className="flex flex-col w-full">
+          <label className="pb-1">PAGIBIG EMPLOYER</label>
+          <input
+            type="number"
+            value={pagIbigEmployer}
+            placeholder="Input amount..."
+            onChange={(event) => {
+              setPagIbigEmployer(event.target.value);
+              markFieldAsEdited("pagibig_employer_share");
             }}
             className="border border-gray-400 p-2 rounded w-full"
           />

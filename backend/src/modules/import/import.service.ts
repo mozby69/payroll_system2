@@ -22,6 +22,8 @@ export const fetchFromDjango = async (): Promise<DjangoExportResponse> => {
 
     const baseUrl = localMode?.local_mode ? DJANGO_BASE_URL_LOCAL: DJANGO_BASE_URL;
 
+    console.log(baseUrl, "key: ", DJANGO_EXPORT_API_KEY)
+
     const { data } = await axios.get<DjangoExportResponse>(
       `${baseUrl}/api/export/emp/`,
       {
