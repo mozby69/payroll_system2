@@ -132,51 +132,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const showEmergency = boardMembers.some(emp => emp.is_emergency);
 
 
-    // const handleExport = () => {
-    //     exportAllowance({
-    //         selectedMonth,
-    //     });
-    // };
 
-
-    //FINAL VARIANCE
-
-    // const addCash = addList.reduce((sum, employee) => sum +
-    // employee.cash_assistance_variance,0)
-
-    // const lessCash = lessList.reduce((sum, employee) => sum +
-    // employee.cash_assistance_variance,0)
-
-    // const addEcola = addList.reduce((sum, employee) => sum +
-    // employee.ecola_variance,0)
-
-    // const lessEcola = lessList.reduce((sum, employee) => sum +
-    // employee.ecola_variance,0)
-
-
-    // const TotaladdCash = addList.reduce((sum, employee) =>
-    //                                 sum +
-    //                                 employee.cash_assistance_variance +
-    //                                 employee.ecola_variance,
-    //                             0
-    //                         )
-
-    // const TotallessCash = lessList.reduce((sum, employee) =>
-    //                                         sum +
-    //                                         employee.cash_assistance_variance +
-    //                                         employee.ecola_variance,
-    //                                     0
-    //                                 )
-                                        
-                                         
-    // const employee_cash_variance =  (addCash - lessCash);
-    // const finalVarianceCA = formatAmount((diff?.cash_assistance ?? 0) - (2900));
-
-    // const employee_ecola_variance = (addEcola - lessEcola)
-    // const finalVarianceEcola = formatAmount((diff?.ecola ?? 0) - employee_ecola_variance);
-
-    // const employee_total_variance = (TotaladdCash - TotallessCash);
-    // const finalTotalVariance =  formatAmount((diff?.grand_total ?? 0) - employee_total_variance);
 
     const final_ca_variance = data?.FINAL_VARIANCE?.final_ca_variance;
     const final_ecola_variance = data?.FINAL_VARIANCE?.final_ecola_variance;

@@ -348,9 +348,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
                 company_id: {
                   notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
                 },
-                branchCode: {
-                  notIn: ["SGI", "NAH"],
-                }
+                // branchCode: {
+                //   notIn: ["SGI", "NAH"],
+                // }
               },
             },
 
@@ -361,9 +361,9 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
                 company_id: {
                   notIn: ["SERV", "HPC", "LIK", "KOHI", "NORNS"],
                 },
-                branchCode: {
-                  notIn: ["SGI", "NAH"],
-                }
+                // branchCode: {
+                //   notIn: ["SGI", "NAH"],
+                // }
               },
             },
           ],
@@ -1284,6 +1284,7 @@ export async function ViewAllList(selectedMonth: string) {
       select: {
         branchCode: true,
         position: true,
+        company_id: true,
       },
     });
 
@@ -1291,7 +1292,14 @@ export async function ViewAllList(selectedMonth: string) {
       branches.map((b) => [b.branchCode, b.position])
     );
 
-    const excludedEmpCodes = ["EMB10356", "EMB10346", "EMB10634", "EMB10631"];
+    const branchCompanyMap = new Map(
+  branches.map((branch) => [
+    branch.branchCode,
+    branch.company_id,
+  ])
+);
+
+    const excludedEmpCodes = ["EMB10356", "EMB10346", "EMB10631"];
 
     const filteredRows = rows.filter((row) => !excludedEmpCodes.includes(row.EmpCode));
 
@@ -1321,19 +1329,26 @@ export async function ViewAllList(selectedMonth: string) {
 
 
 
-    for (const employee of regularEmployees) {
-      const branch = employee.branch_code ?? "NO_BRANCH";
-      const company = branch.split("-")[0] ?? "UNKNOWN";
 
-      if (!branchesByCompany[company]) {
-        branchesByCompany[company] = {};
-      }
+ for (const employee of regularEmployees) {
+  const branch =
+    employee.branch_code ?? "NO_BRANCH";
 
-      if (!branchesByCompany[company][branch]) {
-        branchesByCompany[company][branch] = [];
-      }
-      branchesByCompany[company][branch].push(employee);
-    }
+  const company =
+    branchCompanyMap.get(branch) ??
+    employee.company_id ??
+    "UNKNOWN";
+
+  if (!branchesByCompany[company]) {
+    branchesByCompany[company] = {};
+  }
+
+  if (!branchesByCompany[company][branch]) {
+    branchesByCompany[company][branch] = [];
+  }
+
+  branchesByCompany[company][branch].push(employee);
+}
 
     for (const company of Object.keys(branchesByCompany)) {
       for (const branch of Object.keys(branchesByCompany[company])) {
