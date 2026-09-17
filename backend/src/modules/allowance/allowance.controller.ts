@@ -283,23 +283,34 @@ export async function updateAbsentOverrideController(req: Request, res: Response
 
 
 
-export async function getTotalPerCompanyController(req: Request, res: Response) {
+export async function getTotalPerCompanyController(
+  req: Request,
+  res: Response
+) {
   try {
     const selectedMonth = req.query.month as string;
 
     if (!selectedMonth) {
-      return res.status(400).json({ message: "Month is required" });
+      return res.status(400).json({
+        message: "Month is required",
+      });
     }
 
-    const data = await getTotalPerCompany(selectedMonth);
+    const data = await ViewAllList(selectedMonth);
 
-    return res.status(200).json(data);
+    return res.status(200).json(
+      data.TOTAL_PER_COMPANY
+    );
   } catch (error) {
-    console.error(`error ocurred in controller ${error}`);
-    return res.status(500).json({ message: "error occured" });
+    console.error(
+      `error occurred in controller ${error}`
+    );
+
+    return res.status(500).json({
+      message: "error occurred",
+    });
   }
 }
-
 
 
 
