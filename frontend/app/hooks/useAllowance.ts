@@ -4,6 +4,7 @@ import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceRespon
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
+import { updateVarianceRemark } from "../services/allowance.service";
 
 
 
@@ -372,6 +373,22 @@ export function useExportAllowance() {
       anchor.remove();
 
       window.URL.revokeObjectURL(url);
+    },
+  });
+}
+
+
+
+export function useUpdateVarianceRemark() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateVarianceRemark,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["fetch-view-all"],
+      });
     },
   });
 }

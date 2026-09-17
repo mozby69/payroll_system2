@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 import { SendBulkAllowanceBody } from "./allowance.types";
 
@@ -444,5 +444,70 @@ export async function exportAllowanceExcelController(req: Request,res: Response)
   } catch (error) {
     console.error(`error occued ${error}`)
     throw error;
+  }
+}
+
+
+
+
+
+
+
+
+
+export async function updateVarianceEmployeeRemarkController(req: Request,res: Response) {
+  try {
+    const {
+      selectedMonth,
+      empCode,
+      varianceType,
+      remarks,
+    } = req.body as {
+      selectedMonth: string;
+      empCode: string;
+      varianceType: "ADD" | "LESS";
+      remarks: string;
+    };
+
+    if (
+      !selectedMonth ||
+      !empCode ||
+      !varianceType
+    ) {
+      return res.status(400).json({
+        message: "Missing required fields.",
+      });
+    }
+
+    if (
+      varianceType !== "ADD" &&
+      varianceType !== "LESS"
+    ) {
+      return res.status(400).json({
+        message: "Invalid variance type.",
+      });
+    }
+
+    const result =
+      await updateVarianceEmployeeRemark({
+        selectedMonth,
+        empCode,
+        varianceType,
+        remarks: remarks ?? "",
+      });
+
+    return res.status(200).json({
+      message: "Remark updated successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error(
+      "Update variance remark error:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Unable to update variance remark.",
+    });
   }
 }

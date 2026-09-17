@@ -999,7 +999,7 @@ model allowanceArchiveDetails{
   final_variance Json?
 
   created_at DateTime @default(now())
-  selectedMonth String @db.VarChar(100) @map("selected_month")
+  selectedMonth String @unique @db.VarChar(100) @map("selected_month")
   summary archive_allowance_summary @relation(fields: [selectedMonth], references: [selectedMonth])
   @@map("allowance_archive_details")
 }
@@ -1188,4 +1188,20 @@ model varianceArchive {
   @@index([main_archive_id])
   @@unique([main_archive_id, company_id])
   @@map("variance_archive")
+}
+
+
+
+
+model VarianceEmployeeRemark {
+  id            Int      @id @default(autoincrement())
+  selectedMonth String
+  empCode       String
+  varianceType  String
+  remarks       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([selectedMonth, empCode, varianceType])
+  @@map("allowance_override_remark_variance")
 }

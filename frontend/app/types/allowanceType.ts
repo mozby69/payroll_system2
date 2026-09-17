@@ -119,11 +119,10 @@ export interface VarianceEmpItem {
   EmpCode: string;
   name: string;
   branch_code?: string | null;
-
   cash_assistance_variance: number;
   ecola_variance: number;
-
   reasons: string[];
+  remarks: string;
 }
 
 export interface ViewAllItem {

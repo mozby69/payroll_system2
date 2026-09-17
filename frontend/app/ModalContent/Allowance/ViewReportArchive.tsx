@@ -980,8 +980,8 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                             )}
                                         </td>
 
-                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold lowercase">
-                                            {emp.reasons.join(", ")}
+                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold">
+                                            {emp.remarks}
                                         </td>
                                     </tr>
                                 ))}
@@ -1095,8 +1095,8 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                                             )}
                                         </td>
 
-                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold lowercase">
-                                            {emp.reasons.join(", ")}
+                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold">
+                                            {emp.remarks}
                                         </td>
                                     </tr>
                                 ))}

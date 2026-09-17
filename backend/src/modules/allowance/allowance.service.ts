@@ -1293,11 +1293,11 @@ export async function ViewAllList(selectedMonth: string) {
     );
 
     const branchCompanyMap = new Map(
-  branches.map((branch) => [
-    branch.branchCode,
-    branch.company_id,
-  ])
-);
+    branches.map((branch) => [
+      branch.branchCode,
+      branch.company_id,
+    ])
+  );
 
     const excludedEmpCodes = ["EMB10356", "EMB10346", "EMB10631"];
 
@@ -1720,6 +1720,28 @@ export async function getVarianceEmployees(selectedMonth: string) {
     const prevMonth = getPreviousMonth2(selectedMonth);
 
     const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
+
+    //override remarks
+    const varianceRemarks =
+    await prisma.varianceEmployeeRemark.findMany({
+      where: {
+        selectedMonth,
+      },
+      select: {
+        empCode: true,
+        varianceType: true,
+        remarks: true,
+      },
+    });
+
+    const varianceRemarkMap = new Map(
+      varianceRemarks.map((item) => [
+        `${item.empCode.trim()}-${item.varianceType}`,
+        item.remarks,
+      ])
+    );
+    // END override remarks
+
 
     const previousRows = await prisma.archive_allowance.findMany({
       where: {
@@ -2323,66 +2345,83 @@ export async function getVarianceEmployees(selectedMonth: string) {
     //console.table(unmatchedEmployees);
 
     const formattedAdd = Array.from(
-      addEmployeeMap.values()
-    ).map((employee) => ({
-      EmpCode: employee.EmpCode,
+  addEmployeeMap.values()
+).map((employee) => {
+  const customRemarks =
+    varianceRemarkMap.get(
+      `${employee.EmpCode.trim()}-ADD`
+    );
 
-      name:
-        employee.currentEmployee?.name ??
-        [
-          employee.previousEmployee?.EmpCode
-            .Lastname,
-          employee.previousEmployee?.EmpCode
-            .Firstname,
-          employee.previousEmployee?.EmpCode
-            .Middlename,
-        ]
-          .filter(Boolean)
-          .join(" "),
+  return {
+    EmpCode: employee.EmpCode,
 
-      cash_assistance_variance: MathRound(
-        employee.cash_assistance_variance
-      ),
+    name:
+      employee.currentEmployee?.name ??
+      [
+        employee.previousEmployee?.EmpCode.Lastname,
+        employee.previousEmployee?.EmpCode.Firstname,
+        employee.previousEmployee?.EmpCode.Middlename,
+      ]
+        .filter(Boolean)
+        .join(" "),
 
-      ecola_variance: MathRound(
-        employee.ecola_variance
-      ),
+    cash_assistance_variance: MathRound(
+      employee.cash_assistance_variance
+    ),
 
-      reasons: employee.reasons,
-    }));
+    ecola_variance: MathRound(
+      employee.ecola_variance
+    ),
 
-    const formattedLess = Array.from(
-      lessEmployeeMap.values()
-    ).map((employee) => ({
-      EmpCode: employee.EmpCode,
+    reasons: employee.reasons,
 
-      name:
-        employee.currentEmployee?.name ??
-        [
-          employee.previousEmployee?.EmpCode
-            .Lastname,
-          employee.previousEmployee?.EmpCode
-            .Firstname,
-          employee.previousEmployee?.EmpCode
-            .Middlename,
-        ]
-          .filter(Boolean)
-          .join(" "),
+    remarks:
+      customRemarks ??
+      employee.reasons.join(", "),
+  };
+});
 
-      branch_code:
-        employee.currentEmployee?.branch_code ??
-        null,
 
-      cash_assistance_variance: MathRound(
-        employee.cash_assistance_variance
-      ),
+const formattedLess = Array.from(
+  lessEmployeeMap.values()
+).map((employee) => {
+  const customRemarks =
+    varianceRemarkMap.get(
+      `${employee.EmpCode.trim()}-LESS`
+    );
 
-      ecola_variance: MathRound(
-        employee.ecola_variance
-      ),
+  return {
+    EmpCode: employee.EmpCode,
 
-      reasons: employee.reasons,
-    }));
+    name:
+      employee.currentEmployee?.name ??
+      [
+        employee.previousEmployee?.EmpCode.Lastname,
+        employee.previousEmployee?.EmpCode.Firstname,
+        employee.previousEmployee?.EmpCode.Middlename,
+      ]
+        .filter(Boolean)
+        .join(" "),
+
+    branch_code:
+      employee.currentEmployee?.branch_code ??
+      null,
+
+    cash_assistance_variance: MathRound(
+      employee.cash_assistance_variance
+    ),
+
+    ecola_variance: MathRound(
+      employee.ecola_variance
+    ),
+
+    reasons: employee.reasons,
+
+    remarks:
+      customRemarks ??
+      employee.reasons.join(", "),
+  };
+});
 
     return {
       ADD: formattedAdd,
@@ -3643,4 +3682,91 @@ export async function exportAllowanceExcel(selectedMonth: string): Promise<Buffe
     await workbook.xlsx.writeBuffer();
 
   return Buffer.from(excelBuffer);
+}
+
+
+
+
+
+
+
+
+
+//override remarks
+
+export interface UpdateVarianceRemarkInput {
+    selectedMonth: string;
+    empCode: string;
+    varianceType: "ADD" | "LESS";
+    remarks: string;
+}
+
+export async function updateVarianceEmployeeRemark(
+    data: UpdateVarianceRemarkInput
+) {
+    const empCode = data.empCode.trim();
+    const remarks = data.remarks.trim();
+
+    // 1. Save editable remark
+    const savedRemark =
+        await prisma.varianceEmployeeRemark.upsert({
+            where: {
+                selectedMonth_empCode_varianceType: {
+                    selectedMonth:
+                        data.selectedMonth,
+                    empCode,
+                    varianceType:
+                        data.varianceType,
+                },
+            },
+
+            update: {
+                remarks,
+            },
+
+            create: {
+                selectedMonth:
+                    data.selectedMonth,
+                empCode,
+                varianceType:
+                    data.varianceType,
+                remarks,
+            },
+        });
+
+    // 2. Check whether this allowance month
+    // has already been archived
+    const archived =
+        await prisma.allowanceArchiveDetails.findUnique({
+            where: {
+                selectedMonth:
+                    data.selectedMonth,
+            },
+            select: {
+                selectedMonth: true,
+            },
+        });
+
+    if (archived) {
+        // 3. Recalculate variance employee data.
+        // This will now include the newly saved remark.
+        const varianceEmployee =
+            await getVarianceEmployees(
+                data.selectedMonth
+            );
+
+        // 4. Refresh archived JSON
+        await prisma.allowanceArchiveDetails.update({
+            where: {
+                selectedMonth:
+                    data.selectedMonth,
+            },
+            data: {
+                variance_emp:
+                    varianceEmployee as Prisma.InputJsonValue,
+            },
+        });
+    }
+
+    return savedRemark;
 }

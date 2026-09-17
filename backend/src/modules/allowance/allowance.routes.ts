@@ -13,7 +13,9 @@ displayEmergencyAllowanceController,
 updateAbsentOverrideController,
 getVarianceEmployeesController,
 exportAllowanceExcelController,
+updateVarianceEmployeeRemarkController,
 } from "./allowance.controller";
+import { updateVarianceEmployeeRemark } from "./allowance.service";
 
 const router = Router();
 
@@ -34,5 +36,6 @@ router.post("/update-absent",updateAbsentOverrideController);
 router.get("/test",getTotalPerCompanyController);
 router.get("/get-employee-variance",getVarianceEmployeesController);
 router.get("/export-allowance",exportAllowanceExcelController);
+router.put("/variance-employee-remark-edit",updateVarianceEmployeeRemarkController);
 
 export default router;

@@ -1,3 +1,4 @@
+import { EditableVarianceRemark } from "@/app/components/allowance/allowanceRemarksOverride";
 import {  useFetchViewAll } from "@/app/hooks/useAllowance";
 import { VarianceEmpItem, ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
@@ -891,9 +892,14 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                             )}
                                         </td>
 
-                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold lowercase">
-                                            {emp.reasons.join(", ")}
-                                        </td>
+                                      <td className="p-2">
+                                            <EditableVarianceRemark
+                                                selectedMonth={selectedMonth}
+                                                empCode={emp.EmpCode}
+                                                varianceType="ADD"
+                                                initialValue={emp.remarks}
+                                            />
+                                            </td>
                                     </tr>
                                 ))}
 
@@ -1006,9 +1012,14 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                             )}
                                         </td>
 
-                                        <td className="wrap-break whitespace-normal p-2 text-center text-xs font-bold lowercase">
-                                            {emp.reasons.join(", ")}
-                                        </td>
+                                     <td className="p-2">
+                                    <EditableVarianceRemark
+                                        selectedMonth={selectedMonth}
+                                        empCode={emp.EmpCode}
+                                        varianceType="LESS"
+                                        initialValue={emp.remarks}
+                                    />
+                                    </td>
                                     </tr>
                                 ))}
 
