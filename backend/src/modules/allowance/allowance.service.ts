@@ -1426,144 +1426,180 @@ export async function ViewAllList(selectedMonth: string) {
       CompanyAllowanceSummary
     > = {};
 
-    for (const [company, companyBranches] of Object.entries(
-      orderedBranches
-    )) {
-      const summarizedCompanyBranches: Record<
-        string,
-        BranchAllowanceSummary
-      > = {};
+   for (const [company, companyBranches] of Object.entries(
+  orderedBranches
+)) {
+  const summarizedCompanyBranches: Record<
+    string,
+    BranchAllowanceSummary
+  > = {};
 
-      const companyGrandTotal: AllowanceTotals = {
+  const companyGrandTotal: AllowanceTotals = {
+    cash_allowance: 0,
+    computed_ecola: 0,
+    deduct: 0,
+    total: 0,
+  };
+
+  for (const [branchName, employees] of Object.entries(
+    companyBranches
+  )) {
+    const branchTotals = employees.reduce<AllowanceTotals>(
+      (totals, employee) => {
+        totals.cash_allowance += Number(
+          employee.cash_allowance ?? 0
+        );
+
+        totals.computed_ecola += Number(
+          employee.computed_ecola ?? 0
+        );
+
+        totals.deduct += Number(
+          employee.deduct ?? 0
+        );
+
+        totals.total += Number(
+          employee.total ?? 0
+        );
+
+        return totals;
+      },
+      {
         cash_allowance: 0,
         computed_ecola: 0,
         deduct: 0,
         total: 0,
-      };
-
-      for (const [branchName, employees] of Object.entries(
-        companyBranches
-      )) {
-        const branchTotals = employees.reduce<AllowanceTotals>(
-          (totals, employee) => {
-            totals.cash_allowance += Number(
-              employee.cash_allowance ?? 0
-            );
-
-            totals.computed_ecola += Number(
-              employee.computed_ecola ?? 0
-            );
-
-            totals.deduct += Number(
-              employee.deduct ?? 0
-            );
-
-            totals.total += Number(
-              employee.total ?? 0
-            );
-
-            return totals;
-          },
-          {
-            cash_allowance: 0,
-            computed_ecola: 0,
-            deduct: 0,
-            total: 0,
-          }
-        );
-
-        const branchLoans = employees.flatMap(
-          (employee) => {
-            return (
-              loansByEmployee.get(
-                employee.EmpCode.trim()
-              ) ?? []
-            );
-          }
-        );
-
-        const totalBranchLoans = branchLoans.reduce(
-          (total, loan) => {
-            return (
-              total +
-              Number(loan.per_payroll_deduct ?? 0)
-            );
-          },
-          0
-        );
-
-        const totalDisbursement = {
-          cash_allowance: MathRound(
-            branchTotals.cash_allowance - totalBranchLoans
-          ),
-          computed_ecola: MathRound(
-            branchTotals.computed_ecola
-          ),
-          deduct: MathRound(
-            branchTotals.deduct
-          ),
-          total: MathRound(
-            branchTotals.total - totalBranchLoans
-          ),
-        };
-
-        summarizedCompanyBranches[branchName] = {
-          position: branchName === "BACOLOD_BRANCH" ? 1 : branchPositionMap.get(branchName) ?? 999,
-          employees,
-          loans: branchLoans,
-          total_loans: MathRound(totalBranchLoans),
-          totals: {
-            cash_allowance: MathRound(
-              branchTotals.cash_allowance
-            ),
-            computed_ecola: MathRound(
-              branchTotals.computed_ecola
-            ),
-            deduct: MathRound(
-              branchTotals.deduct
-            ),
-            total: MathRound(branchTotals.total),
-          }, disbursement: totalDisbursement,
-        };
-
-        companyGrandTotal.cash_allowance +=
-          branchTotals.cash_allowance;
-
-        companyGrandTotal.computed_ecola +=
-          branchTotals.computed_ecola;
-
-        companyGrandTotal.deduct +=
-          branchTotals.deduct;
-
-        companyGrandTotal.total +=
-          branchTotals.total;
       }
-      const companyPositionMap = new Map(
-        COMPANY_ORDER.map((company, index) => [
-          company,
-          index,
-        ])
+    );
+
+    const branchLoans = employees.flatMap(
+      (employee) =>
+        loansByEmployee.get(employee.EmpCode.trim()) ?? []
+    );
+
+    const totalBranchLoans = branchLoans.reduce(
+      (total, loan) =>
+        total + Number(loan.per_payroll_deduct ?? 0),
+      0
+    );
+
+    const totalDisbursement = {
+      cash_allowance: MathRound(
+        branchTotals.cash_allowance - totalBranchLoans
+      ),
+      computed_ecola: MathRound(
+        branchTotals.computed_ecola
+      ),
+      deduct: MathRound(
+        branchTotals.deduct
+      ),
+      total: MathRound(
+        branchTotals.total - totalBranchLoans
+      ),
+    };
+
+    summarizedCompanyBranches[branchName] = {
+      position:
+        branchName === "BACOLOD_BRANCH"
+          ? 1
+          : branchPositionMap.get(branchName) ?? 999,
+
+      employees,
+      loans: branchLoans,
+      total_loans: MathRound(totalBranchLoans),
+
+      totals: {
+        cash_allowance: MathRound(
+          branchTotals.cash_allowance
+        ),
+        computed_ecola: MathRound(
+          branchTotals.computed_ecola
+        ),
+        deduct: MathRound(
+          branchTotals.deduct
+        ),
+        total: MathRound(branchTotals.total),
+      },
+
+      disbursement: totalDisbursement,
+    };
+
+    // Regular branch totals
+    companyGrandTotal.cash_allowance +=
+      branchTotals.cash_allowance;
+
+    companyGrandTotal.computed_ecola +=
+      branchTotals.computed_ecola;
+
+    companyGrandTotal.deduct +=
+      branchTotals.deduct;
+
+    companyGrandTotal.total +=
+      branchTotals.total;
+  }
+
+  // =====================================================
+  // EMB COMPANY TOTAL
+  // Add employees that are displayed outside BRANCHES:
+  // BOD + MANCOM + MH
+  //
+  // M2 is NOT added here because M2 is already included
+  // above through BACOLOD_BRANCH.
+  // =====================================================
+  if (company === "EMB") {
+    const embAdditionalEmployees = [
+      ...boardMembers,
+      ...mancom,
+      ...MHMembers,
+    ];
+
+    for (const employee of embAdditionalEmployees) {
+      companyGrandTotal.cash_allowance += Number(
+        employee.cash_allowance ?? 0
       );
 
-      summarizedBranches[company] = {
-        position: companyPositionMap.get(company) ?? 999,
+      companyGrandTotal.computed_ecola += Number(
+        employee.computed_ecola ?? 0
+      );
 
-        branches: summarizedCompanyBranches,
-        grand_total: {
-          cash_allowance: MathRound(
-            companyGrandTotal.cash_allowance
-          ),
-          computed_ecola: MathRound(
-            companyGrandTotal.computed_ecola
-          ),
-          deduct: MathRound(
-            companyGrandTotal.deduct
-          ),
-          total: MathRound(companyGrandTotal.total),
-        },
-      };
+      companyGrandTotal.deduct += Number(
+        employee.deduct ?? 0
+      );
+
+      companyGrandTotal.total += Number(
+        employee.total ?? 0
+      );
     }
+  }
 
+  const companyPositionMap = new Map(
+    COMPANY_ORDER.map((companyName, index) => [
+      companyName,
+      index,
+    ])
+  );
+
+  summarizedBranches[company] = {
+    position: companyPositionMap.get(company) ?? 999,
+
+    branches: summarizedCompanyBranches,
+
+    grand_total: {
+      cash_allowance: MathRound(
+        companyGrandTotal.cash_allowance
+      ),
+      computed_ecola: MathRound(
+        companyGrandTotal.computed_ecola
+      ),
+      deduct: MathRound(
+        companyGrandTotal.deduct
+      ),
+      total: MathRound(
+        companyGrandTotal.total
+      ),
+    },
+  };
+}
 
 
 

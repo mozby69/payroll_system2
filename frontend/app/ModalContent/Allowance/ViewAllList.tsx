@@ -105,12 +105,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
         );
     }
 
-    // function computeLoanTotal(list: loanlistProps[]) {
-    //     return list.reduce(
-    //         (sum, loan) => sum + Number(loan.per_payroll_deduct ?? 0),
-    //         0
-    //     );
-    // }
+
 
     const boardTotals = computeTotals(boardMembers);
     const mancomTotals = computeTotals(mancom);
@@ -413,8 +408,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 ([branchName, branch]) => (
                                     <table
                                         key={branchName}
-                                        className="mb-6 w-full border-collapse text-sm"
-                                    >
+                                        className="mb-6 w-full border-collapse text-sm">
                                         <thead>
                                             <tr className="bg-gray-200 font-bold">
                                                 <th className="border p-2 w-12">#</th>
@@ -627,7 +621,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                             colSpan={2}
                                             className="border p-2 text-right"
                                         >
-                                            {companyName} GRAND TOTAL
+                                            {companyName} GRAND TOTALss
                                         </td>
 
                                         <td className="border p-2 text-right">
