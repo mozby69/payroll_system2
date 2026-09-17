@@ -1278,7 +1278,7 @@ export async function ViewAllList(selectedMonth: string) {
     const loan_list = await getLoanFor();
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
     const variance_employee = await getVarianceEmployees(selectedMonth);
-    const getTotalPerCompanyList = await getTotalPerCompany(selectedMonth);
+   // const getTotalPerCompanyList = await getTotalPerCompany(selectedMonth);
 
     const branches = await prisma.branch.findMany({
       select: {
@@ -1715,7 +1715,10 @@ export async function ViewAllList(selectedMonth: string) {
       final_total_variance
     }
 
-
+const totalPerCompany =
+  getTotalPerCompany(
+    summarizedBranches
+  );
 
     return {
       BOARD_MEMBER: boardMembers,
@@ -1730,7 +1733,7 @@ export async function ViewAllList(selectedMonth: string) {
       BRANCHES: summarizedBranches,
       VARIANCE: variance_allowance ?? null,
       VARIANCE_EMP: variance_employee ?? null,
-      TOTAL_PER_COMPANY: getTotalPerCompanyList ?? null,
+      TOTAL_PER_COMPANY: totalPerCompany ?? null,
       FINAL_VARIANCE: finVariance
     };
 
@@ -2506,48 +2509,68 @@ type CompanyBranchSummary = Record<
   }
 >;
 
-export async function getTotalPerCompany(selectedMonth: string): Promise<CompanyBranchSummary> {
-  try {
-    const { rows: currentRows } = await computeAllowanceForMonth(selectedMonth);
+type CompanyGrandTotal = {
+  cash_allowance: number;
+  computed_ecola: number;
+  deduct: number;
+  total: number;
+  emergency_allowance_amount?: number;
+};
 
-    const result = currentRows.reduce<CompanyBranchSummary>((acc, curr) => {
-      const company = curr.company_id ?? "UNKNOWN";
-      const branch = curr.branch_code ?? "NO_BRANCH";
+type SummarizedCompany = {
+  grand_total: CompanyGrandTotal;
+};
 
-      if (!acc[company]) {
-        acc[company] = {
-          total_cash_allowance: 0,
-          ecola: 0,
-          total_num: 0,
-          emergency_allowance_amount: 0,
-          branches: {},
-        };
-      }
+type SummarizedBranches = Record<
+  string,
+  SummarizedCompany
+>;
 
-      acc[company].total_cash_allowance += curr.cash_allowance ?? 0;
-      acc[company].ecola += curr.computed_ecola ?? 0;
-      acc[company].total_num += 1;
-      acc[company].emergency_allowance_amount += curr.emergency_allowance_amount ?? 0;
-      // branch grouping
+export type CompanyTotalSummary = Record<
+  string,
+  {
+    total_cash_allowance: number;
+    ecola: number;
+    deduct: number;
+    total: number;
+    emergency_allowance_amount: number;
+  }
+>;
 
-      // if (!acc[company].branches[branch]) {
-      //   acc[company].branches[branch] = {
-      //     total_num: 0,
-      //     employees: [],
-      //   };
-      // }
+export function getTotalPerCompany(
+  summarizedBranches: SummarizedBranches
+): CompanyTotalSummary {
+  return Object.entries(
+    summarizedBranches
+  ).reduce<CompanyTotalSummary>(
+    (acc, [companyName, company]) => {
+      acc[companyName] = {
+        total_cash_allowance:
+          company.grand_total
+            .cash_allowance ?? 0,
 
-      // acc[company].branches[branch].total_num += 1;
-      // acc[company].branches[branch].employees.push(curr.name);
+        ecola:
+          company.grand_total
+            .computed_ecola ?? 0,
+
+        deduct:
+          company.grand_total
+            .deduct ?? 0,
+
+        total:
+          company.grand_total
+            .total ?? 0,
+
+        emergency_allowance_amount:
+          company.grand_total
+            .emergency_allowance_amount ??
+          0,
+      };
 
       return acc;
-    }, {});
-
-    return result;
-  } catch (error) {
-    console.error("error occured -", error);
-    throw error;
-  }
+    },
+    {}
+  );
 }
 
 

@@ -621,7 +621,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                             colSpan={2}
                                             className="border p-2 text-right"
                                         >
-                                            {companyName} GRAND TOTALss
+                                            {companyName} GRAND TOTAL
                                         </td>
 
                                         <td className="border p-2 text-right">
