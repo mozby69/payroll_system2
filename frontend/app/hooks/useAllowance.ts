@@ -392,3 +392,37 @@ export function useUpdateVarianceRemark() {
     },
   });
 }
+
+
+
+export function useUpdateAllowanceAmountOverride() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      EmpCode: string;
+      selectedMonth: string;
+      cash_assistance: number;
+      ecola: number;
+    }) => {
+      await api.post(
+        "/allowance/update-allowance-amount",
+        payload
+      );
+    },
+
+    onSuccess: () => {
+      SweetAlert.successAlert(
+        "Allowance override updated"
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: ["allowance-list"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["fetch-view-all"],
+      });
+    },
+  });
+}

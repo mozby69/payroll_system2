@@ -4,8 +4,8 @@ export interface AllowanceProps {
     Lastname: string | null;
     totalAbsentHours:string | null;
     total:string | null;
-    cash_assistance: string | null;
-    ecola: string | null;
+    cash_assistance: number | null;
+    ecola: number | null;
     totalDeduction:string | null;
     loan: string | null;
     deduct:string | null;
