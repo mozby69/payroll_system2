@@ -94,3 +94,43 @@ export async function processInBatches<T>(
     );
   }
 }
+
+
+
+
+
+type AllowanceOverrideChanges = {
+  cash_assistance?: number;
+  ecola?: number;
+};
+
+export function parseAllowanceOverrideChanges(
+  changes: Prisma.JsonValue | null | undefined
+): AllowanceOverrideChanges {
+  if (
+    !changes ||
+    typeof changes !== "object" ||
+    Array.isArray(changes)
+  ) {
+    return {};
+  }
+
+  const record = changes as Record<string, unknown>;
+
+  const result: AllowanceOverrideChanges = {};
+
+  if (
+    typeof record.cash_assistance === "number"
+  ) {
+    result.cash_assistance =
+      record.cash_assistance;
+  }
+
+  if (
+    typeof record.ecola === "number"
+  ) {
+    result.ecola = record.ecola;
+  }
+
+  return result;
+}

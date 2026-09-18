@@ -205,7 +205,7 @@ export default function AllowancePage() {
         )}
 
         {isModalOpen2 && (
-          <RequestModal size="sm" title={`EDIT BRANCH`} onClose={closeModal2}>
+          <RequestModal size="xl" title={`EDIT ALLOWANCE`} onClose={closeModal2}>
             <EditBranchAllowance
               onClose={closeModal2}
               data={selectedAllowance}

@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceBranch, updateEmergencyAllowance, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceAmountOverride, updateAllowanceBranch, updateEmergencyAllowance, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 import { SendBulkAllowanceBody } from "./allowance.types";
 
@@ -514,6 +514,56 @@ export async function updateVarianceEmployeeRemarkController(req: Request,res: R
 
     return res.status(500).json({
       message: "Unable to update variance remark.",
+    });
+  }
+}
+
+
+
+
+export async function updateAllowanceAmountOverrideController(req: Request,res: Response) {
+  try {
+    const {
+      EmpCode,
+      selectedMonth,
+      cash_assistance,
+      ecola,
+    } = req.body as {
+      EmpCode: string;
+      selectedMonth: string;
+      cash_assistance: number;
+      ecola: number;
+    };
+
+    if (!EmpCode || !selectedMonth) {
+      return res.status(400).json({
+        message:
+          "EmpCode and selectedMonth are required",
+      });
+    }
+
+    const result = await updateAllowanceAmountOverride({
+        EmpCode,
+        selectedMonth,
+        cash_assistance: Number(cash_assistance),
+        ecola: Number(ecola),
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+    
+  } catch (error) {
+    console.error(
+      "Allowance override error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to update allowance override",
     });
   }
 }

@@ -1,7 +1,7 @@
 import { Prisma, SalaryType } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, ExcelEmployee, ExcelTotals, SummaryAllowanceProps } from "./allowance.types";
-import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, normalizeEmail, round2, to2, toNumber, toPrismaJson } from "./allowance.helper";
+import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, normalizeEmail, parseAllowanceOverrideChanges, round2, to2, toNumber, toPrismaJson } from "./allowance.helper";
 import { nowPH } from "../../utils/timezone";
 import { AllowancePdfData, generateAllowancePDF } from "../print/print.service";
 import nodemailer from "nodemailer";
@@ -135,6 +135,32 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
 
 
 
+    //ca ecola override
+  const allowanceOverrides = await prisma.allowanceTableOverride.findMany({
+    where: {
+      selectedMonth,
+      EmpCodeId: {
+        in: empCodes,
+      },
+    },
+    select: {
+      EmpCodeId: true,
+      changes: true,
+    },
+  });
+
+  const allowanceOverrideMap = new Map(
+  allowanceOverrides.map((override) => [
+    override.EmpCodeId,
+    parseAllowanceOverrideChanges(
+      override.changes
+    ),
+  ])
+);
+  //ca ecola override
+
+
+
   const normalized = employees.map((emp) => {
 
     // const totalAbsentHours = emp.employeesummary.reduce(
@@ -173,12 +199,25 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
     const exclude_complete = emp.EmployeeAbsentOverride[0]?.exclude;
     const absent_count_complete = emp.EmployeeAbsentOverride[0]?.absent_hours;
 
+
+
+
+    //override ca ecola
+    const allowanceOverride = allowanceOverrideMap.get(emp.EmpCode);
+    
+    const calculatedCashAllowance = MathRound(totalCashAllowance);
+    const calculatedEcola = MathRound(totalEcola);
+    const finalCashAllowance = allowanceOverride?.cash_assistance ?? calculatedCashAllowance;
+    const finalEcola = allowanceOverride?.ecola ?? calculatedEcola;
+       //override ca ecola
+
+
     return {
       EmpCode: emp.EmpCode,
       Firstname: emp.Firstname,
       Lastname: emp.Lastname,
-      cash_assistance: totalCashAllowance,
-      ecola: totalEcola,
+      cash_assistance: finalCashAllowance,
+      ecola: finalEcola,
       deduct: totalDeductions,
       total: finalTotal,
       loan: 0,
@@ -267,6 +306,10 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
   }
 
   // loan code ↑
+
+
+
+
 
   const total = await prisma.employee.count({ where: employeeWhere });
 
@@ -368,9 +411,29 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             },
           ],
         },
-      ],
-    },
 
+
+        
+    {
+        OR: [
+          {
+            employeepayroll: {
+              cash_assistance: {
+                not: 0,
+              },
+            },
+          },
+          {
+            employeepayroll: {
+              ecola: {
+                not: 0,
+              },
+            },
+          },
+        ],
+      },
+    ],
+  },
 
 
 
@@ -439,6 +502,30 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
   const empCodes = employees.map((e) => e.EmpCode);
 
+  //ca ecola override
+  const allowanceOverrides = await prisma.allowanceTableOverride.findMany({
+    where: {
+      selectedMonth,
+      EmpCodeId: {
+        in: empCodes,
+      },
+    },
+    select: {
+      EmpCodeId: true,
+      changes: true,
+    },
+  });
+
+  const allowanceOverrideMap = new Map(
+  allowanceOverrides.map((override) => [
+    override.EmpCodeId,
+    parseAllowanceOverrideChanges(
+      override.changes
+    ),
+  ])
+);
+  //ca ecola override
+
   const overrides = await prisma.allowance_branch_override.findMany({
     where: {
       selectedMonth,
@@ -495,7 +582,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
     const totalEcola = hasEcola ? ecola - ecolaDailyRate * totalAbsentHours : 0;
 
     //const total = totalCashAllowance + totalEcola + emergencyAmount;
-    const total = to2(totalCashAllowance) + to2(totalEcola) + to2(emergencyAmount);
+    //const total = to2(totalCashAllowance) + to2(totalEcola) + to2(emergencyAmount);
 
 
     const totalDeduction = cashDailyRate * totalAbsentHours + (hasEcola ? ecolaDailyRate * totalAbsentHours : 0);
@@ -505,7 +592,7 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
 
     // loan code ↓
 
-    // loan code ↑
+
 
     //const companyId = emp.BranchCode?.company_id ?? "UNKNOWN";
     const companyId = baseBranch?.company_id ?? "UNKNOWN";
@@ -520,11 +607,23 @@ export async function computeAllowanceForMonth(selectedMonth: string) {
             : null;
 
 
+      const calculatedCashAllowance = MathRound(totalCashAllowance);
+
+      const calculatedEcola = MathRound(totalEcola);
+
+      const allowanceOverride = allowanceOverrideMap.get(emp.EmpCode);
+
+      const finalCashAllowance = allowanceOverride?.cash_assistance ?? calculatedCashAllowance;
+
+      const finalEcola = allowanceOverride?.ecola ?? calculatedEcola;
+
+      const total = to2(finalCashAllowance) + to2(finalEcola) + to2(emergencyAmount);
+
     return {
       EmpCode: emp.EmpCode,
       name: `${emp.Lastname ?? ""} ${emp.Firstname ?? ""}`.trim(),
-      cash_allowance: MathRound(totalCashAllowance),
-      computed_ecola: MathRound(totalEcola),
+      cash_allowance: finalCashAllowance,
+      computed_ecola: finalEcola,
       absent: totalAbsentHours,
       total: MathRound(total),
       selectedMonth,
@@ -3828,4 +3927,77 @@ export async function updateVarianceEmployeeRemark(
     }
 
     return savedRemark;
+}
+
+
+
+
+
+
+
+
+//overrride
+
+type AllowanceOverrideChanges = {
+  cash_assistance?: number;
+  ecola?: number;
+};
+
+export async function updateAllowanceAmountOverride({
+  EmpCode,
+  selectedMonth,
+  cash_assistance,
+  ecola,
+}: {
+  EmpCode: string;
+  selectedMonth: string;
+  cash_assistance: number;
+  ecola: number;
+}) {
+  const existing =
+    await prisma.allowanceTableOverride.findUnique({
+      where: {
+        EmpCodeId_selectedMonth: {
+          EmpCodeId: EmpCode,
+          selectedMonth,
+        },
+      },
+      select: {
+        changes: true,
+      },
+    });
+
+  const existingChanges: AllowanceOverrideChanges =
+    existing?.changes &&
+    typeof existing.changes === "object" &&
+    !Array.isArray(existing.changes)
+      ? (existing.changes as AllowanceOverrideChanges)
+      : {};
+
+  const changes: AllowanceOverrideChanges = {
+    ...existingChanges,
+    cash_assistance,
+    ecola,
+  };
+
+  return prisma.allowanceTableOverride.upsert({
+    where: {
+      EmpCodeId_selectedMonth: {
+        EmpCodeId: EmpCode,
+        selectedMonth,
+      },
+    },
+
+    update: {
+      changes:
+        changes as Prisma.InputJsonValue,
+    },
+
+    create: {
+      EmpCodeId: EmpCode,
+      selectedMonth,
+      changes:
+        changes as Prisma.InputJsonValue,
+    },
+  });
 }
