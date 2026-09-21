@@ -2811,7 +2811,7 @@ export async function sendPayslipEmailService(archiveId: number): Promise<void> 
 
   const pdfBuffer = await generatePayslipPDF( payslipData );
 
-  await transporter.sendMail({
+await transporter.sendMail({
     from:
       `"Payroll System" <${process.env.EMAIL_USER}>`,
 
@@ -2837,6 +2837,14 @@ export async function sendPayslipEmailService(archiveId: number): Promise<void> 
       <p>
         Regards,<br />
         Payroll Department
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
+
+      <p style="font-size: 12px; color: #666666; line-height: 1.4;">
+        <em>
+          This is an automated system message. Please do not reply directly to this email, as this inbox is not monitored. If you have questions regarding your payslip, please contact the Payroll Department.
+        </em>
       </p>
     `,
 
@@ -2923,7 +2931,7 @@ export async function sendPayslipToEmployee(employee: SendPayslipType): Promise<
     to: email,
 
     subject:
-      `Payslip - ${payslipData.payrollPeriod}`,
+      `Payslip - ${payslipData.payCode}`,
 
     html: `
       <p>
@@ -2942,6 +2950,14 @@ export async function sendPayslipToEmployee(employee: SendPayslipType): Promise<
       <p>
         Regards,<br />
         Payroll Department
+      </p>
+
+       <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;" />
+
+      <p style="font-size: 12px; color: #666666; line-height: 1.4;">
+        <em>
+          This is an automated system message. Please do not reply directly to this email, as this inbox is not monitored. If you have questions regarding your payslip, please contact the Payroll Department.
+        </em>
       </p>
     `,
 
