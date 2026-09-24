@@ -141,7 +141,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
                 <div className="flex justify-between">
                     <div className="font-semibold space-y-1 uppercase">
                         <h2>JAMERO GROUP OF COMPANIES</h2>
-                        <h2>CASH ASSITANCE & ECOLA</h2>
+                        <h2>CASH ASSISTANCE & ECOLA</h2>
                         <h2>FOR THE MONTH OF {formatMonthYear(selectedMonth)}</h2>
                     </div>
 
