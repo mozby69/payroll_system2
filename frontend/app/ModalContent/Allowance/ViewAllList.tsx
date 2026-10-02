@@ -1,6 +1,7 @@
+"use state";
 import { EditableVarianceRemark } from "@/app/components/allowance/allowanceRemarksOverride";
-import {  useFetchViewAll } from "@/app/hooks/useAllowance";
-import { VarianceEmpItem, ViewAllItem } from "@/app/types/allowanceType";
+import {  useAllowanceSignatories, useFetchViewAll } from "@/app/hooks/useAllowance";
+import {  VarianceEmpItem, ViewAllItem } from "@/app/types/allowanceType";
 import { formatAmount, formatCurrency } from "@/app/utils/currencyConverter";
 import { formatMonthYear } from "@/app/utils/DateFormatter";
 import { useRef } from "react";
@@ -14,6 +15,9 @@ interface Props {
 
 
 export default function ViewAllList({ selectedMonth }: Props) {
+
+           
+
       const printRef = useRef<HTMLDivElement>(null);
     
       const handlePrint = useReactToPrint({
@@ -133,6 +137,41 @@ export default function ViewAllList({ selectedMonth }: Props) {
     const final_ca_variance = data?.FINAL_VARIANCE?.final_ca_variance;
     const final_ecola_variance = data?.FINAL_VARIANCE?.final_ecola_variance;
     const final_total_variance = data?.FINAL_VARIANCE?.final_total_variance;
+
+
+
+
+    const sortedMhMancomLoans = [...mh_mancom_loans].sort((a, b) => {
+    const loanTypeCompare = a.loan_type.localeCompare(b.loan_type);
+
+    if (loanTypeCompare !== 0) {
+        return loanTypeCompare;
+    }
+
+    return (a.others_types ?? "").localeCompare(b.others_types ?? "");
+});
+
+
+    const {data: signatoryResponse} = useAllowanceSignatories();
+
+    const signatories = signatoryResponse?.data ?? [];
+
+    const preparedBy = signatories.filter(
+    (item) =>
+        item.signatory_type === "PREPARED_BY"
+    );
+
+    const checkedBy = signatories.filter(
+    (item) =>
+        item.signatory_type === "CHECKED_BY"
+    );
+
+    const notedBy = signatories.filter(
+    (item) =>
+        item.signatory_type === "NOTED_BY"
+    );
+
+
 
     return (
         <>
@@ -341,23 +380,39 @@ export default function ViewAllList({ selectedMonth }: Props) {
                                 <th className="py-1">DESCRIPTION</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {mh_mancom_loans.map((emp, index) => (
-                                <tr key={index} className="border border-gray-300">
-                                    <td className="py-1">Less: A/RE- {emp.Lastname},{emp.Firstname}</td>
-                                    <td>{formatAmount(emp.per_payroll_deduct)}</td>
-                                    <td>{emp.loan_type}, {emp.others_types}</td>
-                                </tr>
-                            ))}
-                            <tr>
-                                <td className="py-1 font-bold">TOTAL</td>
-                                <td className="font-bold">{formatCurrency(data?.totalmhAndMancomLoans)}</td>
-                                <td></td>
+                         <tbody>
+                        {sortedMhMancomLoans.map((emp,index) => (
+                            <tr
+                                key={index}
+                                className="border border-gray-300"
+                            >
+                                <td className="py-1">
+                                    Less: A/RE- {emp.Lastname},{emp.Firstname}
+                                </td>
+
+                                <td>
+                                    {formatAmount(emp.per_payroll_deduct)}
+                                </td>
+
+                                <td className="uppercase">
+                                    {emp.loan_type}
+                                    {emp.others_types ? `, ${emp.others_types}` : ""}
+                                </td>
                             </tr>
+                        ))}
 
+                        <tr>
+                            <td className="py-1 font-bold">
+                                TOTAL
+                            </td>
 
+                            <td className="font-bold">
+                                {formatCurrency(data?.totalmhAndMancomLoans)}
+                            </td>
 
-                        </tbody>
+                            <td />
+                        </tr>
+                    </tbody>
 
                     </table>
 
@@ -1097,6 +1152,55 @@ export default function ViewAllList({ selectedMonth }: Props) {
                         </table>
                     </div>
                 </div>
+
+
+
+             <div className="mt-4 py-4 px-2 grid grid-cols-3">
+                    <div>
+                        <h2 className="font-semibold">
+                        PREPARED BY:
+                        </h2>
+
+                        {preparedBy.map((item) => (
+                        <p
+                            key={item.id}
+                            className="uppercase mt-1"
+                        >
+                            {item.name}
+                        </p>
+                        ))}
+                    </div>
+
+                    <div>
+                        <h2 className="font-semibold">
+                        CHECKED BY:
+                        </h2>
+
+                        {checkedBy.map((item) => (
+                        <p
+                            key={item.id}
+                            className="uppercase mt-1"
+                        >
+                            {item.name}
+                        </p>
+                        ))}
+                    </div>
+
+                    <div>
+                        <h2 className="font-semibold">
+                        NOTED BY:
+                        </h2>
+
+                        {notedBy.map((item) => (
+                        <p
+                            key={item.id}
+                            className="uppercase mt-1"
+                        >
+                            {item.name}
+                        </p>
+                        ))}
+                    </div>
+                    </div>
 
 
 

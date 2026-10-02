@@ -104,6 +104,21 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
         finalVariance?.final_total_variance ?? 0;
 
 
+    const signatory = archive?.SIGNATORY ?? [];
+
+    const preparedBy = signatory.filter(
+        (item) => item.signatory_type === "PREPARED_BY"
+        );
+
+        const checkedBy = signatory.filter(
+        (item) => item.signatory_type === "CHECKED_BY"
+        );
+
+        const notedBy = signatory.filter(
+        (item) => item.signatory_type === "NOTED_BY"
+        );
+
+
 
 
     const printRef = useRef<HTMLDivElement>(null);
@@ -130,6 +145,19 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
     const boardTotals = computeTotals(boardMembers);
     const mancomTotals = computeTotals(mancom);
     const mhTotals2 = computeTotals(mh);
+
+
+
+
+      const sortedMhMancomLoans = [...mhMancomLoans].sort((a, b) => {
+    const loanTypeCompare = a.loan_type.localeCompare(b.loan_type);
+
+    if (loanTypeCompare !== 0) {
+        return loanTypeCompare;
+    }
+
+    return (a.others_types ?? "").localeCompare(b.others_types ?? "");
+});
 
     return (
         <div className="p-2 print-deductions print:bg-white print:shadow-none print:p-2" ref={printRef}>
@@ -427,7 +455,7 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
                         </tr>
                     </thead>
                     <tbody>
-                        {mhMancomLoans.map((emp, index) => (
+                        {sortedMhMancomLoans.map((emp, index) => (
                             <tr key={index} className="border border-gray-300">
                                 <td className="py-1">Less: A/RE- {emp.Lastname},{emp.Firstname}</td>
                                 <td>{formatAmount(emp.per_payroll_deduct)}</td>
@@ -1184,6 +1212,52 @@ export default function AllowanceReportArchive({ allowanceSummary }: ViewEmploye
 
 
 
+      <div className="mt-4 py-4 px-2 grid grid-cols-3">
+            <div>
+                <h2 className="font-semibold">
+                PREPARED BY:
+                </h2>
+
+                {preparedBy.map((item) => (
+                <p
+                    key={item.id}
+                    className="uppercase mt-1"
+                >
+                    {item.name}
+                </p>
+                ))}
+            </div>
+
+            <div>
+                <h2 className="font-semibold">
+                CHECKED BY:
+                </h2>
+
+                {checkedBy.map((item) => (
+                <p
+                    key={item.id}
+                    className="uppercase mt-1"
+                >
+                    {item.name}
+                </p>
+                ))}
+            </div>
+
+            <div>
+                <h2 className="font-semibold">
+                NOTED BY:
+                </h2>
+
+                {notedBy.map((item) => (
+                <p
+                    key={item.id}
+                    className="uppercase mt-1"
+                >
+                    {item.name}
+                </p>
+                ))}
+            </div>
+            </div>
 
 
 

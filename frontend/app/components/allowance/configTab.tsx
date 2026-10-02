@@ -1,5 +1,6 @@
 import { useFetchEmergencyAllowanceList, useUpdateEmergencyAllowance } from "@/app/hooks/useAllowance";
 import { useState } from "react";
+import SignatoryList from "./signatoryList";
 
 
 
@@ -26,7 +27,9 @@ export default function ConfigTab() {
     };
 
     return (
-        <div className="p-6 max-w-xl">
+
+        <>
+        <div className="p-6 max-w-xl mt-4">
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
 
      
@@ -86,7 +89,19 @@ export default function ConfigTab() {
                     </button>
                 </div>
             </div>
+
+       
         </div>
+
+             <div className="mt-4 py-2 w-full border-t border-slate-200">
+                <div className="mt-4">
+                    <SignatoryList/>
+                </div>
+               
+            </div>
+
+
+        </>
     );
 }
 

@@ -15,6 +15,11 @@ getVarianceEmployeesController,
 exportAllowanceExcelController,
 updateVarianceEmployeeRemarkController,
 updateAllowanceAmountOverrideController,
+displaySignatoryListController,
+createSignatoryController,
+updateSignatoryController,
+getAllowanceSignatoriesController,
+fetchAllowanceRowController,
 } from "./allowance.controller";
 import { updateVarianceEmployeeRemark } from "./allowance.service";
 
@@ -39,6 +44,10 @@ router.get("/get-employee-variance",getVarianceEmployeesController);
 router.get("/export-allowance",exportAllowanceExcelController);
 router.put("/variance-employee-remark-edit",updateVarianceEmployeeRemarkController);
 router.post("/update-allowance-amount",updateAllowanceAmountOverrideController);
-
+router.get("/display-signatory-list",displaySignatoryListController);
+router.post("/signatory",createSignatoryController);
+router.put("/update-signatory/:id",updateSignatoryController);
+router.get("/allowance-signatories",getAllowanceSignatoriesController);
+router.get("/allowance-list-row",fetchAllowanceRowController);
 
 export default router;

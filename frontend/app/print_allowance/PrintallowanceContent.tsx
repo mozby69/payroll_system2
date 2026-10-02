@@ -14,12 +14,7 @@ export default function PrintAllowanceContent() {
   const company = searchParams.get("company");
   const branch = searchParams.get("branch");
 
-  const {
-    data: printResponse,
-    isLoading,
-    isError,
-    error,
-  } = usePrintBranch(month, company, branch);
+  const { data: printResponse, isLoading,isError,error } = usePrintBranch(month, company, branch);
 
   const rows = useMemo(
     () => printResponse?.data ?? [],
@@ -44,6 +39,8 @@ export default function PrintAllowanceContent() {
       window.clearTimeout(timer);
     };
   }, [isLoading, rowCount]);
+
+  
 
   if (!month || !company) {
     return (

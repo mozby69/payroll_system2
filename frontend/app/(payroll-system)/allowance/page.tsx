@@ -14,8 +14,11 @@ import ViewAllList from "@/app/ModalContent/Allowance/ViewAllList";
 import { Pencil } from "lucide-react";
 import EditBranchAllowance from "@/app/ModalContent/Allowance/EditBranch";
 import ConfigTab from "@/app/components/allowance/configTab";
+import ViewModalPrintAllowance from "@/app/ModalContent/Allowance/ViewModalPrint";
 
 type AllowanceTab = "current" | "archive" | "config";
+
+
 
 export default function AllowancePage() {
   const [activeTab, setActiveTab] = useState<AllowanceTab>("current");
@@ -27,6 +30,7 @@ export default function AllowancePage() {
   const saveAllowance = useSaveAllowance(month);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalOpen2, setIsModalOpen2] = useState(false);
+  const [isModalOpen3, setIsModalOpen3] = useState(false);
   const [selectedAllowance, setSelectedAllowance] = useState<AllowanceProps | null>(null);
   const { data: allowance_data } = useFetchAllowance({
     page,
@@ -70,19 +74,7 @@ export default function AllowancePage() {
       header: "Ecola",
       render: (row) => `${row.ecola}`,
     },
-    // {
-    //   header: "DEDUCTIONS",
-    //   accessor: (row) => row.deduct ?? "0",
-    // },
-    // {
-    //   header: "Loan",
-    //   render: (row) => `${row.loan ?? "0"}`,
-    // },
-    // {
-    //   header:"TOTAL DEDUCTION",
-    //   render: (row) => `${row.totalDeduction}`,
 
-    // },
     {
       header: "TOTAL",
       accessor: (row) => row.total ?? "0",
@@ -132,6 +124,15 @@ export default function AllowancePage() {
     setIsModalOpen2(false);
   };
 
+
+  const openModal3 = () => {
+    setIsModalOpen3(true);
+  };
+
+  const closeModal3 = () => {
+    setIsModalOpen3(false);
+  };
+
   return (
     <>
       <div className="p-8">
@@ -165,6 +166,15 @@ export default function AllowancePage() {
               </div>
 
               <div className="flex gap-x-2">
+                <button
+                 disabled={!month}
+                 onClick={openModal3}
+                // onClick={() => {
+                // window.open(`${ALLOWANCE_URL}/print_allowance?`, "_blank");
+                // }}
+                className="bg-blue-800 hover:bg-blue-600 text-white py-2.5 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                  Print
+                </button>
                 <button
                   onClick={openModal}
                   disabled={!month}
@@ -213,6 +223,15 @@ export default function AllowancePage() {
             />
           </RequestModal>
         )}
+
+         {isModalOpen3 && (
+          <RequestModal size="md" title={`PRINT ALLOWANCE`} onClose={closeModal3}>
+            <ViewModalPrintAllowance selectedMonth={month}/>
+        
+          </RequestModal>
+        )}
+
+
       </div>
     </>
   );
