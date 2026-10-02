@@ -26,10 +26,44 @@ export default function PrintAllowanceBeforeSave() {
 });
 
 
-const rows = useMemo(
-  () => printResponse ?? [],
-  [printResponse]
-);
+
+
+// const rows = useMemo(() => {
+//   return (printResponse ?? []).filter(
+//     (row) => row.Department !== "M2"
+//   );
+// }, [printResponse]);
+
+const positionOrder: Record<string, number> = {
+  board: 1,
+  mancom: 2,
+};
+
+const rows = useMemo(() => {
+  const filtered = (printResponse ?? []).filter(
+    (row) =>
+      row.Department?.trim().toUpperCase() !== "M2"
+  );
+
+  return [...filtered].sort((a, b) => {
+    const aPosition =
+      a.positionEmp?.trim().toLowerCase() ?? "";
+
+    const bPosition =
+      b.positionEmp?.trim().toLowerCase() ?? "";
+
+    const aOrder = positionOrder[aPosition] ?? 999;
+    const bOrder = positionOrder[bPosition] ?? 999;
+
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+
+    return a.name.localeCompare(b.name);
+  });
+}, [printResponse]);
+
+
 
   const hasPrinted = useRef(false);
   const rowCount = rows.length;
