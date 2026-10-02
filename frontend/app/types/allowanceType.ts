@@ -409,5 +409,5 @@ export interface AllowancePrintRow {
 
   isAlien: boolean;
   secondaryBranchId: string | null;
-  positionEmp: number | null;
+  positionEmp: string | null;
 }
