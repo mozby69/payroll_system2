@@ -1,4 +1,4 @@
-import { Prisma, SalaryType } from "@prisma/client";
+import { Prisma, SalaryType, signatoryType } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, ExcelEmployee, ExcelTotals, SummaryAllowanceProps } from "./allowance.types";
 import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, normalizeEmail, parseAllowanceOverrideChanges, round2, to2, toNumber, toPrismaJson } from "./allowance.helper";
@@ -8,6 +8,7 @@ import nodemailer from "nodemailer";
 import { getAllowanceEmergency } from "../general/general.services";
 import { MathRound } from "../../utils/toFixed";
 import ExcelJS from "exceljs"
+import { StatutoryProps } from "../statutory_deductions/statutory.types";
 
 
 
@@ -870,6 +871,8 @@ export async function saveAllowanceArchive(selectedMonth: string) {
         variance: data_archived.VARIANCE as Prisma.InputJsonValue,
         variance_emp: data_archived.VARIANCE_EMP as Prisma.InputJsonValue,
         final_variance: data_archived.FINAL_VARIANCE as Prisma.InputJsonValue,
+        signatory: data_archived.SIGNATORY as Prisma.InputJsonValue,
+
       },
     });
 
@@ -1039,7 +1042,7 @@ export async function getArchiveAllowanceByMonth(
         variance_emp: true,
         total_per_company: true,
         final_variance: true,
-
+        signatory:true,
       },
     });
 
@@ -1076,6 +1079,7 @@ export async function getArchiveAllowanceByMonth(
 
     FINAL_VARIANCE:
       archive.final_variance,
+    SIGNATORY:archive.signatory,
   };
 }
 
@@ -1134,7 +1138,13 @@ export async function getArchiveAllowanceByCompanyBranch({selectedMonth,company,
           }
         : {}),
 
+        
       EmpCode: {
+      
+        Department: {
+          not: "M2",
+        },
+
         OR: [
           // Normal employee
           {
@@ -1378,6 +1388,7 @@ export async function ViewAllList(selectedMonth: string) {
     const variance_allowance = await getVarianceForAllowance(selectedMonth);
     const variance_employee = await getVarianceEmployees(selectedMonth);
    // const getTotalPerCompanyList = await getTotalPerCompany(selectedMonth);
+   
 
     const branches = await prisma.branch.findMany({
       select: {
@@ -1814,10 +1825,10 @@ export async function ViewAllList(selectedMonth: string) {
       final_total_variance
     }
 
-const totalPerCompany =
-  getTotalPerCompany(
-    summarizedBranches
-  );
+  const totalPerCompany = getTotalPerCompany(summarizedBranches);
+
+  const signatoryLIst = await getAllowanceSignatories();
+
 
     return {
       BOARD_MEMBER: boardMembers,
@@ -1833,7 +1844,8 @@ const totalPerCompany =
       VARIANCE: variance_allowance ?? null,
       VARIANCE_EMP: variance_employee ?? null,
       TOTAL_PER_COMPANY: totalPerCompany ?? null,
-      FINAL_VARIANCE: finVariance
+      FINAL_VARIANCE: finVariance,
+      SIGNATORY:signatoryLIst ?? null,
     };
 
   } catch (error) {
@@ -3998,6 +4010,157 @@ export async function updateAllowanceAmountOverride({
       selectedMonth,
       changes:
         changes as Prisma.InputJsonValue,
+    },
+  });
+}
+
+
+
+
+
+
+
+//signatory 
+export async function displaySignatoryList({
+  page,
+  limit,
+  search,
+}: StatutoryProps) {
+  try {
+    const searchFilter: Prisma.SignatoryListWhereInput = search
+      ? {
+          OR: [
+            {
+              name: {
+                contains: search,
+              },
+            },
+            {
+              category: {
+                contains: search,
+              },
+            },
+            
+          ],
+        }
+      : {};
+
+    const employeeList = await prisma.signatoryList.findMany({
+      where: searchFilter,
+      skip: (page - 1) * limit,
+      take: limit,
+
+      select: {
+        id: true,
+        signatory_type: true,
+        category: true,
+        name: true,
+      },
+
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    const total = await prisma.signatoryList.count({
+      where: searchFilter,
+    });
+
+    return {
+      data: employeeList,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
+    console.error(
+      "Error displaying signatory list:",
+      error
+    );
+
+    throw error;
+  }
+}
+
+
+
+
+export interface CreateSignatoryInput {
+  name: string;
+  signatory_type: signatoryType;
+  category?: string | null;
+}
+
+export interface UpdateSignatoryInput {
+  name: string;
+  signatory_type: signatoryType;
+  category?: string | null;
+}
+
+
+export async function createSignatoryService(data: CreateSignatoryInput) {
+  return prisma.signatoryList.create({
+    data: {
+      name: data.name.trim(),
+      signatory_type: data.signatory_type,
+      category: data.category?.trim() || null,
+    },
+  });
+}
+
+
+
+export async function updateSignatoryService(id: number,data: UpdateSignatoryInput) {
+  const existing =
+    await prisma.signatoryList.findUnique({
+      where: {
+        id,
+      },
+    });
+
+  if (!existing) {
+    throw new Error(
+      "Signatory not found"
+    );
+  }
+
+  return prisma.signatoryList.update({
+    where: {
+      id,
+    },
+
+    data: {
+      name: data.name.trim(),
+      signatory_type:
+        data.signatory_type,
+      category:
+        data.category?.trim() || null,
+    },
+  });
+}
+
+
+
+
+
+export async function getAllowanceSignatories() {
+  return prisma.signatoryList.findMany({
+    where: {
+      category: "ALLOWANCE",
+    },
+
+    select: {
+      id: true,
+      name: true,
+      signatory_type: true,
+      category: true,
+    },
+
+    orderBy: {
+      id: "asc",
     },
   });
 }

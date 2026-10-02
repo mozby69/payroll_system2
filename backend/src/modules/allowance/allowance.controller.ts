@@ -1,5 +1,5 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, displayAllowanceList, displayEmergencyAllowance, exportAllowanceExcel, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceAmountOverride, updateAllowanceBranch, updateEmergencyAllowance, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, CreateSignatoryInput, createSignatoryService, displayAllowanceList, displayEmergencyAllowance, displaySignatoryList, exportAllowanceExcel, fetchAllowanceWithAbsent, getAllowanceSignatories, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceAmountOverride, updateAllowanceBranch, updateEmergencyAllowance, UpdateSignatoryInput, updateSignatoryService, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 import { SendBulkAllowanceBody } from "./allowance.types";
 
@@ -81,6 +81,19 @@ export const fetchAllowanceSummary2Controller = async (req: Request, res: Respon
   const { summary } = await computeAllowanceForMonth(selectedMonth);
 
   res.json(summary);
+};
+
+
+export const fetchAllowanceRowController = async (req: Request, res: Response) => {
+  const selectedMonth = req.query.month as string;
+
+  if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+    return res.status(400).json({ message: "Invalid month" });
+  }
+
+  const { rows } = await computeAllowanceForMonth(selectedMonth);
+
+  res.json( rows );
 };
 
 
@@ -564,6 +577,170 @@ export async function updateAllowanceAmountOverrideController(req: Request,res: 
       success: false,
       message:
         "Failed to update allowance override",
+    });
+  }
+}
+
+
+
+
+
+
+
+//signatory
+
+
+export const displaySignatoryListController = async (req: Request, res: Response) => {
+    try{
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+      const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+  
+      const data = await displaySignatoryList({page,limit,search});
+  
+      return res.status(200).json(data);
+    }
+    catch(error){
+      res.status(500).json({message:`SERVER ERROR: ${error}`})
+    }
+  }
+
+
+
+
+
+
+  export async function createSignatoryController(req: Request<{}, {}, CreateSignatoryInput>,res: Response) {
+  try {
+    const { name, signatory_type, category } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required.",
+      });
+    }
+
+    if (!signatory_type) {
+      return res.status(400).json({
+        success: false,
+        message: "Signatory type is required.",
+      });
+    }
+
+    const signatory = await createSignatoryService({
+      name,
+      signatory_type,
+      category,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Signatory successfully added.",
+      data: signatory,
+    });
+  } catch (error) {
+    console.error("createSignatoryController:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add signatory.",
+    });
+  }
+}
+
+
+
+
+
+
+export async function updateSignatoryController(req: Request< { id: string },{},UpdateSignatoryInput>,res: Response) {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid signatory ID.",
+      });
+    }
+
+    const {
+      name,
+      signatory_type,
+      category,
+    } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required.",
+      });
+    }
+
+    if (!signatory_type) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Signatory type is required.",
+      });
+    }
+
+    const signatory =
+      await updateSignatoryService(
+        id,
+        {
+          name,
+          signatory_type,
+          category,
+        }
+      );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Signatory updated successfully.",
+      data: signatory,
+    });
+  } catch (error) {
+    console.error(
+      "updateSignatoryController:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to update signatory.",
+    });
+  }
+}
+
+
+
+
+
+export async function getAllowanceSignatoriesController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const data = await getAllowanceSignatories();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(
+      "getAllowanceSignatoriesController:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch allowance signatories.",
     });
   }
 }

@@ -222,6 +222,14 @@ export interface FinalVariance {
   final_total_variance:number;
 }
 
+
+export interface SignatoryProp {
+  id: number;
+  signatory_type: "PREPARED_BY" | "CHECKED_BY" | "NOTED_BY";
+  category: string | null;
+  name: string | null;
+}
+
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
@@ -240,6 +248,7 @@ export interface ViewAllResponse {
   TOTAL_PER_COMPANY: TotalPerCompany;
   totalmhAndMancomLoans:number;
   FINAL_VARIANCE:FinalVariance;
+  SIGNATORY:SignatoryProp[];
 }
 
 
@@ -316,3 +325,89 @@ export type VarianceAllowanceEmployee = {
     };
   };
 };
+
+
+
+
+export interface SignatoryProps {
+  id: number;
+  name: string | null;
+  category: string | null;
+  signatory_type: SignatoryType;
+}
+
+export interface SignatoryMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface SignatoryLIstResponse {
+  data: SignatoryProps[];
+  meta: SignatoryMeta;
+}
+
+
+
+export type SignatoryType =
+  | "PREPARED_BY"
+  | "CHECKED_BY"
+  | "NOTED_BY";
+
+export interface Signatory {
+  id: number;
+  name: string | null;
+  signatory_type: SignatoryType;
+  category: string | null;
+}
+
+export interface CreateSignatoryPayload {
+  name: string;
+  signatory_type: SignatoryType;
+  category: string;
+}
+
+export interface UpdateSignatoryPayload {
+  id: number;
+  name: string;
+  signatory_type: SignatoryType;
+  category: string;
+}
+
+export interface AllowanceApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+
+export interface AllowancePrintRow {
+  EmpCode: string;
+  name: string;
+
+  cash_allowance: number;
+  computed_ecola: number;
+
+  absent_cash_assistance: number;
+  absent_ecola: number;
+
+  fch_rfc_deducted: number;
+
+  total: number;
+
+  selectedMonth: string;
+  branch_code: string;
+  company_id: string;
+
+  bod_member: string | null;
+  position: string | null;
+  Department: string | null;
+
+  base_cash_assistance: number;
+  base_ecola: number;
+
+  isAlien: boolean;
+  secondaryBranchId: string | null;
+  positionEmp: number | null;
+}

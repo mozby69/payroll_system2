@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, ViewAllResponse } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, SignatoryLIstResponse, ViewAllResponse } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
-import { updateVarianceRemark } from "../services/allowance.service";
+import { createSignatory, fetchAllowancePrintRows, fetchAllowanceSignatories, updateSignatory, updateVarianceRemark } from "../services/allowance.service";
 
 
 
@@ -202,11 +202,7 @@ type PrintAllowanceResponse = {
   data: PrintAllowanceRow[];
 };
 
-export function usePrintBranch(
-  month: string | null,
-  company: string | null,
-  branch?: string | null
-) {
+export function usePrintBranch(month: string | null, company: string | null, branch?: string | null) {
   return useQuery<PrintAllowanceResponse>({
     queryKey: [
       "print-branch",
@@ -424,5 +420,111 @@ export function useUpdateAllowanceAmountOverride() {
         queryKey: ["fetch-view-all"],
       });
     },
+  });
+}
+
+
+
+
+
+
+export function useFetchSignatoryList(params: {page: number; limit: number; search?: string}) {
+    return useQuery<SignatoryLIstResponse>({
+      queryKey: [
+        "signatories-list",
+        params.page,
+        params.limit,
+        params.search ?? "",
+      ],
+      queryFn: async () => {
+        const res = await api.get("/allowance/display-signatory-list", {params});
+        return res.data;
+      },
+    });
+  }
+
+
+  export function useCreateSignatory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createSignatory,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["signatories-list"],
+      });
+
+        await queryClient.invalidateQueries({
+        queryKey: ["allowance-signatories"],
+      });
+    },
+  });
+}
+
+
+export function useUpdateSignatory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateSignatory,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["signatories-list"],
+      });
+         await queryClient.invalidateQueries({
+        queryKey: ["allowance-signatories"],
+      });
+    },
+  });
+}
+
+
+
+export function useAllowanceSignatories() {
+  return useQuery({
+    queryKey: ["allowance-signatories"],
+    queryFn: fetchAllowanceSignatories,
+  });
+}
+
+
+
+
+export function useFetchAllowancePrintRows({
+  month,
+  company,
+  branch,
+}: {
+  month: string | null;
+  company: string | null;
+  branch: string | null;
+}) {
+  return useQuery({
+    queryKey: [
+      "allowance-print-rows",
+      month,
+      company,
+      branch,
+    ],
+
+    queryFn: () => {
+      if (!month || !company) {
+        throw new Error(
+          "Month and company are required"
+        );
+      }
+
+      return fetchAllowancePrintRows({
+        month,
+        company,
+        branch,
+      });
+    },
+
+    enabled:
+      Boolean(month) &&
+      Boolean(company),
   });
 }
