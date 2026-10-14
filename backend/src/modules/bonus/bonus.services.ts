@@ -1,7 +1,7 @@
 import { AuditAction, AuditModule, BonusType, LeaveName, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getTenureInMonths, getTenureInYears } from "./bonus.utils"
+import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getPayCycleStart, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
 import { formatDateToMMDDYY } from "../../utils/formatDateToMMDDYY"
@@ -1049,18 +1049,43 @@ export async function releaseBonusService(
 }
 
 
+
 export async function getEmployeesByBonusSummaryService(
   companyCode?: string,
   id?: number
 ) {
   return await prisma.$transaction(async (tx) => {
-
-
-    //  1. Get Summary (STRICT)
-    const summary = await tx.bonusSummary.findFirst({
+    // 1. Find the reference summary
+    const referenceSummary = await tx.bonusSummary.findFirst({
       where: {
-        ...(id ? { id } : { status: "GENERATED" }),
-        ...(companyCode && { companyCode }) //  direct filter
+        ...(id != null
+          ? { id }
+          : { status: "GENERATED" }),
+        ...(companyCode ? { companyCode } : {}),
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    if (!referenceSummary) {
+      return {
+        summary: null,
+        summaries: [],
+        companies: [],
+        employees: [],
+        variance: [],
+      };
+    }
+
+    // 2. Find all summaries belonging to the same batch
+    const summaries = await tx.bonusSummary.findMany({
+      where: {
+        ...(referenceSummary.batchId
+          ? { batchId: referenceSummary.batchId }
+          : { id: referenceSummary.id }),
+
+        ...(companyCode ? { companyCode } : {}),
       },
       include: {
         bonusRule: {
@@ -1068,105 +1093,211 @@ export async function getEmployeesByBonusSummaryService(
             code: true,
             name: true,
             bonusType: true,
-            eligibleMonth: true
-          }
-        }
-      }
-    })
-
-    if (!summary) {
-      return {
-        summary: null,
-        companies: [],
-        employees: [],
-        variance: []
-      }
-    }
-
-    //  2. Allowed Companies (optional now, but kept if UI needs it)
-    const allowedCompanies = await tx.bonusRuleCompany.findMany({
-      where: {
-        bonusRuleId: summary.bonusRuleId,
+            eligibleMonth: true,
+          },
+        },
       },
-      select: { companyCode: true },
-      orderBy: { companyCode: "asc" }
-    })
-    if (!summary.companyCode) {
-      throw new Error("CompanyCode is missing in summary")
-    }
-    
-    const selectedCompanyCode = summary.companyCode
-    //  Use summary company directly
+      orderBy: {
+        id: "asc",
+      },
+    });
 
-    //  3. Get EmployeeBonus (FAST + CLEAN)
+    const summaryIds = summaries.map((s) => s.id);
+
+    // 3. Get allowed companies
+    const ruleIds = [
+      ...new Set(summaries.map((s) => s.bonusRuleId)),
+    ];
+
+    const allowedCompanies =
+      await tx.bonusRuleCompany.findMany({
+        where: {
+          bonusRuleId: {
+            in: ruleIds,
+          },
+        },
+        select: {
+          companyCode: true,
+        },
+        orderBy: {
+          companyCode: "asc",
+        },
+      });
+
+    // 4. Get all employee bonuses in this batch
     const employeeBonuses = await tx.employeeBonus.findMany({
       where: {
-        bonusSummaryId: summary.id,
-        companyCode: selectedCompanyCode //  DIRECT FILTER (no joins)
+        bonusSummaryId: {
+          in: summaryIds,
+        },
+        ...(companyCode ? { companyCode } : {}),
       },
       include: {
         employee: {
           include: {
-            employeepayroll: true
-          }
-        }
+            employeepayroll: true,
+          },
+        },
       },
       orderBy: [
         { employee: { Lastname: "asc" } },
-        { employee: { Firstname: "asc" } }
-      ]
-    })
+        { employee: { Firstname: "asc" } },
+      ],
+    });
 
-   
+    // 5. Build summary lookup
+    const summaryMap = new Map(
+      summaries.map((summary) => [
+        summary.id,
+        summary,
+      ])
+    );
 
-    //  4. Variance
-    const variance = await reconcileEmployeePayrollBonus(
-      tx,
-      selectedCompanyCode,
-      summary
-    )
+    // 6. Merge employee bonuses
+    const employeeMap = new Map<string, any>();
 
-    //  5. Map Result
-    const result = employeeBonuses.map(bonus => {
-      const emp = bonus.employee
+    for (const bonus of employeeBonuses) {
+      const emp = bonus.employee;
+      const summary = summaryMap.get(
+        bonus.bonusSummaryId
+      );
 
-      return {
+      if (!summary) continue;
+
+      const key = `${bonus.companyCode}:${bonus.employeeCode}`;
+
+      const existing = employeeMap.get(key);
+
+      const bonusAmount = Number(bonus.amount);
+      const loanDeduction = Number(
+        bonus.loanDeduction
+      );
+      const netAmount = Number(bonus.netAmount);
+
+      if (existing) {
+        existing.bonusAmount += bonusAmount;
+        existing.fchLoan += loanDeduction;
+        existing.netAmount += netAmount;
+
+        existing.bonuses.push({
+          bonusId: bonus.id,
+          bonusSummaryId: bonus.bonusSummaryId,
+          bonusRule: summary.bonusRule,
+          bonusAmount,
+          loanDeduction,
+          netAmount,
+          status: bonus.status,
+          remarks: bonus.remarks,
+          notes: bonus.notes,
+        });
+
+        existing.hasLeave =
+          existing.hasLeave || bonus.hasLeave;
+
+        continue;
+      }
+
+      employeeMap.set(key, {
         employeeCode: bonus.employeeCode,
-        companyCode: bonus.companyCode, // ✅ direct
-        branchCode: bonus.employee?.BranchCodeId,
-        fullName: `${emp?.Lastname}, ${emp?.Firstname}`,
+        companyCode: bonus.companyCode,
+        branchCode: emp?.BranchCodeId,
+
+        fullName: `${emp?.Lastname ?? ""}, ${emp?.Firstname ?? ""}`,
+
         employementDate: emp?.EmployementDate,
 
         tenureYears: emp?.EmployementDate
           ? getTenureInYears(
               emp.EmployementDate,
-              getLastDayOfMonthFromPeriod(summary.releasePeriod)
+              getLastDayOfMonthFromPeriod(
+                summary.releasePeriod
+              )
             )
           : 0,
 
-        basicSalary: emp?.employeepayroll?.basic_salary ?? 0,
+        basicSalary:
+          emp?.employeepayroll?.basic_salary ?? 0,
 
-        bonusAmount: Number(bonus.amount),
+        bonusAmount,
+        fchLoan: loanDeduction,
+        netAmount,
+
         bonusStatus: bonus.status,
         bonusId: bonus.id,
-
-        fchLoan: Number(bonus.loanDeduction),
-        netAmount: Number(bonus.netAmount),
 
         hasLeave: bonus.hasLeave,
         remarks: bonus.remarks,
         notes: bonus.notes,
-      }
-    })
 
-    //  6. Return
-    return {
-      summary,
-      companies: allowedCompanies,
-      employees: result,
-      variance
+        bonuses: [
+          {
+            bonusId: bonus.id,
+            bonusSummaryId: bonus.bonusSummaryId,
+            bonusRule: summary.bonusRule,
+            bonusAmount,
+            loanDeduction,
+            netAmount,
+            status: bonus.status,
+            remarks: bonus.remarks,
+            notes: bonus.notes,
+          },
+        ],
+      });
     }
-  })
+
+    const employees = Array.from(
+      employeeMap.values()
+    );
+
+    // 7. Reconcile each summary independently
+    const varianceResults = await Promise.all(
+      summaries.map(async (summary) => {
+        if (!summary.companyCode) return [];
+
+        const result =
+          await reconcileEmployeePayrollBonus(
+            tx,
+            summary.companyCode,
+            summary
+          );
+
+        return result;
+      })
+    );
+
+    const variance = varianceResults.flat();
+
+    // 8. Calculate batch totals
+    const totals = {
+      totalEmployees: employees.length,
+
+      totalBonusAmount: employees.reduce(
+        (sum, emp) => sum + emp.bonusAmount,
+        0
+      ),
+
+      totalLoanDeduction: employees.reduce(
+        (sum, emp) => sum + emp.fchLoan,
+        0
+      ),
+
+      totalNetAmount: employees.reduce(
+        (sum, emp) => sum + emp.netAmount,
+        0
+      ),
+    };
+
+    // 9. Return merged results
+    return {
+      summary: referenceSummary,
+      summaries,
+      batchId: referenceSummary.batchId,
+      companies: allowedCompanies,
+      employees,
+      variance,
+      totals,
+    };
+  });
 }
 
 
@@ -1520,13 +1651,19 @@ export async function reconcileEmployeePayrollBonus(
           lte: summary.generateDate
         }
       },
-        {
-          OR: [
-            { EmployeeStatus: "Active" },
-            { bod_member: "bod1" },
-            { bod_member: "bod2" },
-          ],
-        },
+       {
+        OR: [
+          { EmployeeStatus: "Active" },
+          {
+            EmployeeStatus: "Resigned",
+            EndDate: {
+              gt: summary.generateDate,
+            },
+          },
+          { bod_member: "bod1" },
+          { bod_member: "bod2" },
+        ],
+      },
       ],
     },
 
@@ -1577,22 +1714,48 @@ export async function reconcileEmployeePayrollBonus(
   })
 
 
+const generatedAt = summary.generateDate.getTime();
+
+if (Number.isNaN(generatedAt)) {
+  throw new Error("Invalid bonus generation date");
+}
+
+// Read the payroll summaries that have already been archived.
+const payrollSummaries = await tx.totalPayrollByCompany.findMany({
+  where: {
+    company_id: selectedCompanyCode,
+  },
+  select: {
+    total_payroll_id: true,
+    total_basic_salary: true,
+    PayCycle: true,
+    cycle_category: true,
+  },
+  orderBy: {
+    id: "desc",
+  },
+});
+
+// Select the latest eligible cycle.
+// For duplicate cycles, the highest ID wins because of the query order.
+let prevPayroll: (typeof payrollSummaries)[number] | null = null;
+let latestCycleStart = Number.NEGATIVE_INFINITY;
+
+for (const payroll of payrollSummaries) {
+  const cycleStart = getPayCycleStart(payroll.PayCycle);
+
+  if (cycleStart <= generatedAt && cycleStart > latestCycleStart) {
+    prevPayroll = payroll;
+    latestCycleStart = cycleStart;
+  }
+}
 
 
-  const prevPayroll = await tx.totalPayrollByCompany.findFirst({
-    where:{
-      company_id: selectedCompanyCode
-    },
-    select: {
-      total_payroll_id: true,
-      total_basic_salary: true,
-      PayCycle: true,
-      cycle_category: true
-    },
-    orderBy:{
-      id: "desc"
-    }
-  })
+if (!prevPayroll) {
+  throw new Error(
+    "No eligible payroll archive found for this bonus generation date",
+  );
+}
 
   // Payroll Archive
   const payrollArchive = await tx.employeePayrollArchive.findMany({
@@ -1629,17 +1792,6 @@ export async function reconcileEmployeePayrollBonus(
     },
   })
 
-
-  // Bonus Records (this summary only)
-  const bonusRecords = await tx.employeeBonus.findMany({
-    where: {
-      bonusSummaryId: summary.id,
-    },
-    select: {
-      employeeCode: true,
-      amount: true, // important
-    },
-  })
 
 
   // Build Sets

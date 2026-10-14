@@ -9,7 +9,7 @@ import {
 } from "@/app/hooks/useBonus"
 import RequestModal from "../Modal"
 import CreateBonusModal from "./modals/CreateBonus"
-import { EmployeBonusType } from "@/app/types/bonusType"
+import { EmployeBonusType, EmployeeWithBonuses } from "@/app/types/bonusType"
 import EditBonusModal from "./modals/EditBonusModal"
 import SweetAlert from "../Swal"
 import toast from "react-hot-toast"
@@ -39,9 +39,71 @@ export default function GenerateBonusPage() {
   const { data } = useGetEmployeeGeneratedBonus(companyCode, selectedGroup )
 
 
-  const summary = data?.data.summary
-  const employees = data?.data.employees ?? []
-  const variance = data?.data.variance
+  const summary = data?.data.summary;
+const summaries = data?.data.summaries ?? [];
+const employees = data?.data.employees ?? [];
+const variance = data?.data.variance;
+
+
+// Dynamic columns, one per bonus rule
+const bonusColumns = Array.from(
+  new Map(
+    summaries.map((summary) => [
+      summary.bonusRuleId,
+      {
+        id: summary.bonusRuleId,
+        name: summary.bonusRule.name,
+        code: summary.bonusRule.code,
+      },
+    ])
+  ).values()
+);
+
+const hasBatch = summaries.length > 1;
+
+const visibleBonusColumns = hasBatch
+  ? bonusColumns
+  : [];
+
+// Get employee amount for a particular bonus rule
+const getBonusAmountByRule = (
+  employee: EmployeeWithBonuses,
+  bonusRuleId: number
+) => {
+  const summaryIds = new Set(
+    summaries
+      .filter((s) => s.bonusRuleId === bonusRuleId)
+      .map((s) => s.id)
+  );
+
+  return (employee.bonuses ?? [])
+    .filter((bonus) =>
+      summaryIds.has(bonus.bonusSummaryId)
+    )
+    .reduce(
+      (total, bonus) =>
+        total + Number(bonus.bonusAmount || 0),
+      0
+    );
+};
+
+// Total amount for each dynamic column
+const getBonusColumnTotal = (bonusRuleId: number) => {
+  return employees.reduce(
+    (total, employee) =>
+      total + getBonusAmountByRule(
+        employee,
+        bonusRuleId
+      ),
+    0
+  );
+};
+
+const formatPeso = (amount: number) =>
+  `₱${amount.toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
   const printRef = useRef<HTMLDivElement>(null)
   const exportExcelMutation = useExportBonusExcel()
@@ -293,9 +355,9 @@ export default function GenerateBonusPage() {
 
 
       {/* Table */}
-      <div className="bg-white border rounded-xl shadow-sm flex flex-col max-h-150">
-        <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-sm border-collapse table-fixed" >
+     <div className="bg-white border rounded-xl shadow-sm flex flex-col">
+  <div className="overflow-auto max-h-[600px]">
+    <table className="w-max min-w-full text-sm border-collapse table-auto">
 
             <thead className="bg-gray-50 border-b sticky top-0 z-20">
               <tr className="text-gray-600">
@@ -305,6 +367,15 @@ export default function GenerateBonusPage() {
                 <th className="px-4 py-3 text-center">Tenure</th>
                 <th className="px-4 py-3 text-right">Monthly Basic</th>
                 <th className="px-4 py-3 text-right">Half Month</th>
+                {/* DYNAMIC BONUS COLUMNS */}
+              {visibleBonusColumns.map((column) => (
+                  <th
+                    key={column.id}
+                    className="px-4 py-3 text-right min-w-[170px] whitespace-nowrap"
+                  >
+                    {column.name}
+                  </th>
+                ))}
                 <th className="px-4 py-3 text-right">Bonus Amount</th>
                 <th className="px-4 py-3 text-right">FCH Loan</th>
                 <th className="px-4 py-3 text-right">Net Bonus</th>
@@ -368,9 +439,26 @@ export default function GenerateBonusPage() {
                       <td className="px-4 py-3 text-right">
                         ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        ₱{Number(bonus.bonusAmount).toLocaleString()}
-                      </td>
+                      {/* DYNAMIC BONUS AMOUNTS */}
+                   {bonusColumns.map((column) => (
+                          <td
+                            key={column.id}
+                            className="px-4 py-2 text-right font-semibold"
+                          >
+                            {formatPeso(
+                              branchEmployees.reduce(
+                                (total, employee) =>
+                                  total +
+                                  getBonusAmountByRule(employee, column.id),
+                                0
+                              )
+                            )}
+                          </td>
+                        ))}
+                      {/* COMBINED BONUS AMOUNT */}
+                    <td className="px-4 py-3 text-right font-semibold">
+                      {formatPeso(Number(bonus.bonusAmount))}
+                    </td>
                       <td className="px-4 py-3 text-right text-red-600">
                         ₱{Number(bonus.fchLoan).toLocaleString()}
                       </td>
@@ -420,10 +508,23 @@ export default function GenerateBonusPage() {
                 <td className="px-4 py-3 text-right">
                   ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-right">
-                  ₱{Number(bonus.bonusAmount).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right text-red-600">
+          {/* DYNAMIC BONUS AMOUNTS */}
+          {visibleBonusColumns.map((column) => (
+            <td
+              key={column.id}
+              className="px-4 py-3 text-right whitespace-nowrap"
+            >
+              {formatPeso(
+                getBonusAmountByRule(bonus, column.id)
+              )}
+            </td>
+          ))}
+
+              {/* COMBINED BONUS AMOUNT */}
+              <td className="px-4 py-3 text-right font-semibold">
+                {formatPeso(Number(bonus.bonusAmount))}
+              </td>
+              <td className="px-4 py-3 text-right text-red-600">
                   ₱{Number(bonus.fchLoan).toLocaleString()}
                 </td>
                 <td className="px-4 py-3 text-right font-semibold text-green-600">
@@ -450,10 +551,22 @@ export default function GenerateBonusPage() {
                   ₱{totals.halfMonth.toLocaleString()}
                 </td>
 
-                <td className="px-4 py-3 text-right">
-                  ₱{totals.bonusAmount.toLocaleString()}
-                </td>
+            {/* DYNAMIC BONUS TOTALS */}
+            {visibleBonusColumns.map((column) => (
+              <td
+                key={column.id}
+                className="px-4 py-3 text-right font-semibold"
+              >
+                {formatPeso(
+                  getBonusColumnTotal(column.id)
+                )}
+              </td>
+            ))}
 
+            {/* COMBINED TOTAL */}
+            <td className="px-4 py-3 text-right font-bold">
+              {formatPeso(totals.bonusAmount)}
+            </td>
                 <td className="px-4 py-3 text-right text-red-600">
                   ₱{totals.fchLoan.toLocaleString()}
                 </td>

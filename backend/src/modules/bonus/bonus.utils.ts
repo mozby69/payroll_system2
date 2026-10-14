@@ -145,3 +145,42 @@ export function generateBatchId(releasePeriod: string) {
   const timestamp = Date.now()
   return `BONUS-${releasePeriod}-${timestamp}`
 }
+
+
+export function getPayCycleStart(payCycle: string): number {
+  const months = [
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December",
+  ];
+
+  const [monthName, startText, endText, yearText] =
+    payCycle.trim().split("-");
+
+  if (!monthName || !startText || !endText || !yearText) {
+    throw new Error(`Invalid PayCycle: ${payCycle}`);
+  }
+
+  const monthIndex = months.indexOf(monthName);
+  const startDay = Number(startText);
+  const endDay = Number(endText);
+  const year = Number(yearText);
+
+  const lastDay = new Date(
+    Date.UTC(year, monthIndex + 1, 0),
+  ).getUTCDate();
+
+  if (
+    monthIndex < 0 ||
+    !Number.isInteger(year) ||
+    !Number.isInteger(startDay) ||
+    !Number.isInteger(endDay) ||
+    startDay < 1 ||
+    endDay < startDay ||
+    endDay > lastDay
+  ) {
+    throw new Error(`Invalid PayCycle: ${payCycle}`);
+  }
+
+  return Date.UTC(year, monthIndex, startDay);
+}
