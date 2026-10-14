@@ -1,5 +1,7 @@
-import {  computeAllowanceForMonth, displayAllowanceList, fetchAllowanceWithAbsent, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, saveAllowanceArchive, ViewAllList } from "./allowance.service";
+import { getBranch } from "../general/general.services";
+import {  computeAllowanceForMonth, CreateSignatoryInput, createSignatoryService, displayAllowanceList, displayEmergencyAllowance, displaySignatoryList, exportAllowanceExcel, fetchAllowanceWithAbsent, getAllowanceSignatories, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceAmountOverride, updateAllowanceBranch, updateEmergencyAllowance, UpdateSignatoryInput, updateSignatoryService, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
+import { SendBulkAllowanceBody } from "./allowance.types";
 
 
 export const fetchAllowanceController = async (req: Request, res: Response) => {
@@ -82,6 +84,19 @@ export const fetchAllowanceSummary2Controller = async (req: Request, res: Respon
 };
 
 
+export const fetchAllowanceRowController = async (req: Request, res: Response) => {
+  const selectedMonth = req.query.month as string;
+
+  if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+    return res.status(400).json({ message: "Invalid month" });
+  }
+
+  const { rows } = await computeAllowanceForMonth(selectedMonth);
+
+  res.json( rows );
+};
+
+
 
 export const fetchAllowanceSummaryController = async (req: Request, res: Response) => {
   try {
@@ -104,18 +119,45 @@ export const fetchAllowanceSummaryController = async (req: Request, res: Respons
 
 
 
-export async function fetchArchiveAllowanceByMonthController(req: Request, res: Response) {
-  const { selectedMonth } = req.params;
+export async function fetchArchiveAllowanceByMonthController(req: Request,res: Response) {
+  try {
+    const selectedMonth =
+      typeof req.params.selectedMonth === "string"
+        ? req.params.selectedMonth.trim()
+        : "";
 
-  if (!selectedMonth) {
-    return res.status(400).json({ message: 'selectedMonth is required' });
+    if (!selectedMonth) {
+      return res.status(400).json({
+        message: "selectedMonth is required",
+      });
+    }
+
+    const data =
+      await getArchiveAllowanceByMonth(
+        selectedMonth
+      );
+
+    if (!data) {
+      return res.status(404).json({
+        message: "Archived allowance not found",
+      });
+    }
+
+    return res.status(200).json({
+      data,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to fetch archived allowance:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Failed to fetch archived allowance",
+    });
   }
-
-  const data = await getArchiveAllowanceByMonth(selectedMonth);
-
-  return res.json({ data });
 }
-
 
 
 
@@ -164,30 +206,49 @@ export const allowancePrintController = async (req: Request,res: Response) => {
 
 export const fetchAllowancePrintDataController = async (req: Request,res: Response) => {
   try {
-    const { month, company, branch } = req.query;
+    const { month, company, branch, empId } = req.query;
 
-    if (!month || !company || !branch) {
-      return res.status(400).json({ message: "Missing parameters" });
+    if (
+      typeof month !== "string" ||
+      typeof company !== "string"
+    ) {
+      return res.status(400).json({
+        message:
+          "Month and company are required",
+      });
     }
 
+    const selectedBranch =
+      typeof branch === "string" &&
+      branch.trim()
+        ? branch.trim()
+        : undefined;
+
+    const selectedEmployee =
+      typeof empId === "string" &&
+      empId.trim()
+        ? empId.trim()
+        : undefined;
+
     const result = await getArchiveAllowanceByCompanyBranch({
-      selectedMonth: month as string,
-      company: company as string,
-      branch: branch as string,
-    });
+        selectedMonth: month,
+        company,
+        branch: selectedBranch,
+        empId: selectedEmployee,
+      });
 
     return res.status(200).json({
       success: true,
       data: result,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error);
+
     return res.status(500).json({
       message: "Failed to fetch print data",
     });
   }
 };
-
 
 
 
@@ -204,3 +265,482 @@ export const fetchViewAllListController = async (req: Request, res: Response) =>
   res.json(data);
 };
 
+
+export async function updateAllowanceBranchController(req:Request, res:Response) {
+  const { EmpCode, selectedMonth, branchCode } = req.body;
+
+  await updateAllowanceBranch({
+    EmpCode,
+    selectedMonth,
+    branchCode,
+  });
+
+  res.json({ success: true });
+}
+
+
+
+
+export async function updateAbsentOverrideController(req: Request, res: Response) {
+  const { EmpCode, selectedMonth, absent_hours, exclude } = req.body;
+
+  await updateAbsentOverride({
+    EmpCode,
+    selectedMonth,
+    absent_hours: Number(absent_hours),
+    exclude
+  });
+
+  res.json({ success: true });
+}
+
+
+
+export async function getTotalPerCompanyController(req: Request,res: Response) {
+  try {
+    const selectedMonth = req.query.month as string;
+
+    if (!selectedMonth) {
+      return res.status(400).json({
+        message: "Month is required",
+      });
+    }
+
+    const data = await ViewAllList(selectedMonth);
+    return res.status(200).json(data.TOTAL_PER_COMPANY);
+
+  } catch (error) {
+    console.error(
+      `error occurred in controller ${error}`
+    );
+
+    return res.status(500).json({
+      message: "error occurred",
+    });
+  }
+}
+
+
+
+export async function sendBulkAllowanceServiceController(req: Request<Record<string, never>, unknown, SendBulkAllowanceBody>,res: Response) {
+  try {
+    const { month, company, branch } = req.body;
+
+    if (
+      typeof month !== "string" ||
+      !month.trim()
+    ) {
+      return res.status(400).json({
+        message: "Month is required",
+      });
+    }
+
+    if (
+      typeof company !== "string" ||
+      !company.trim()
+    ) {
+      return res.status(400).json({
+        message: "Company is required",
+      });
+    }
+
+    const selectedBranch =
+      typeof branch === "string" &&
+      branch.trim()
+        ? branch.trim()
+        : undefined;
+
+    const data =
+      await sendBulkAllowanceService({
+        month: month.trim(),
+        company: company.trim(),
+        branch: selectedBranch,
+      });
+
+    return res.status(200).json(data);
+  } catch (error: unknown) {
+    console.error(
+      "Error occurred while sending allowance emails:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to send allowance emails",
+    });
+  }
+}
+
+
+
+
+
+
+  export const updateEmergencyAllowanceController = async (req: Request, res: Response) => {
+    try{
+      const allowance_id = Number(req.params.allowance_id);
+      const { is_emergency,emergency_allowance_amount } = req.body;
+
+      const updated = await updateEmergencyAllowance(
+        allowance_id,
+        is_emergency,
+        emergency_allowance_amount
+      );
+
+      return res.status(200).json(updated);
+    }
+    catch(error){
+      return res.status(500).json({ message: `SERVER ERROR ${error}`})
+    }
+}
+
+export const displayEmergencyAllowanceController = async (req:Request, res:Response) => {
+  try{
+    const data = await displayEmergencyAllowance();
+    return res.status(200).json(data);
+  }
+
+  catch(error){
+    return res.status(500).json({ message: `SERVER ERROR ${error}`})
+  }
+}
+
+
+export const getVarianceEmployeesController = async (req:Request, res:Response) => {
+  try{
+     const selectedMonth = req.query.month as string;
+
+    if (!selectedMonth) {
+      return res.status(400).json({ message: "Month is required" });
+    }
+    
+    const data = await getVarianceEmployees(selectedMonth);
+    return res.status(200).json(data);
+  }
+
+  catch(error){
+    return res.status(500).json({ message: `SERVER ERROR ${error}`})
+  }
+}
+
+
+
+
+
+export async function exportAllowanceExcelController(req: Request,res: Response) {
+  try {
+    const selectedMonth = String(req.query.selectedMonth ?? "");
+
+    if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+      return res.status(400).json({
+        message:
+          "selectedMonth must use YYYY-MM format",
+      });
+    }
+
+    const fileBuffer = await exportAllowanceExcel(selectedMonth);
+
+    const filename = `cash-assistance-${selectedMonth}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+
+    res.setHeader(
+      "Content-Length",
+      fileBuffer.length.toString()
+    );
+
+    return res.status(200).send(fileBuffer);
+  } catch (error) {
+    console.error(`error occued ${error}`)
+    throw error;
+  }
+}
+
+
+
+
+
+
+
+
+
+export async function updateVarianceEmployeeRemarkController(req: Request,res: Response) {
+  try {
+    const {
+      selectedMonth,
+      empCode,
+      varianceType,
+      remarks,
+    } = req.body as {
+      selectedMonth: string;
+      empCode: string;
+      varianceType: "ADD" | "LESS";
+      remarks: string;
+    };
+
+    if (
+      !selectedMonth ||
+      !empCode ||
+      !varianceType
+    ) {
+      return res.status(400).json({
+        message: "Missing required fields.",
+      });
+    }
+
+    if (
+      varianceType !== "ADD" &&
+      varianceType !== "LESS"
+    ) {
+      return res.status(400).json({
+        message: "Invalid variance type.",
+      });
+    }
+
+    const result =
+      await updateVarianceEmployeeRemark({
+        selectedMonth,
+        empCode,
+        varianceType,
+        remarks: remarks ?? "",
+      });
+
+    return res.status(200).json({
+      message: "Remark updated successfully.",
+      data: result,
+    });
+  } catch (error) {
+    console.error(
+      "Update variance remark error:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Unable to update variance remark.",
+    });
+  }
+}
+
+
+
+
+export async function updateAllowanceAmountOverrideController(req: Request,res: Response) {
+  try {
+    const {
+      EmpCode,
+      selectedMonth,
+      cash_assistance,
+      ecola,
+    } = req.body as {
+      EmpCode: string;
+      selectedMonth: string;
+      cash_assistance: number;
+      ecola: number;
+    };
+
+    if (!EmpCode || !selectedMonth) {
+      return res.status(400).json({
+        message:
+          "EmpCode and selectedMonth are required",
+      });
+    }
+
+    const result = await updateAllowanceAmountOverride({
+        EmpCode,
+        selectedMonth,
+        cash_assistance: Number(cash_assistance),
+        ecola: Number(ecola),
+      });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+    
+  } catch (error) {
+    console.error(
+      "Allowance override error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to update allowance override",
+    });
+  }
+}
+
+
+
+
+
+
+
+//signatory
+
+
+export const displaySignatoryListController = async (req: Request, res: Response) => {
+    try{
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+      const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
+  
+      const data = await displaySignatoryList({page,limit,search});
+  
+      return res.status(200).json(data);
+    }
+    catch(error){
+      res.status(500).json({message:`SERVER ERROR: ${error}`})
+    }
+  }
+
+
+
+
+
+
+  export async function createSignatoryController(req: Request<{}, {}, CreateSignatoryInput>,res: Response) {
+  try {
+    const { name, signatory_type, category } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required.",
+      });
+    }
+
+    if (!signatory_type) {
+      return res.status(400).json({
+        success: false,
+        message: "Signatory type is required.",
+      });
+    }
+
+    const signatory = await createSignatoryService({
+      name,
+      signatory_type,
+      category,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Signatory successfully added.",
+      data: signatory,
+    });
+  } catch (error) {
+    console.error("createSignatoryController:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add signatory.",
+    });
+  }
+}
+
+
+
+
+
+
+export async function updateSignatoryController(req: Request< { id: string },{},UpdateSignatoryInput>,res: Response) {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid signatory ID.",
+      });
+    }
+
+    const {
+      name,
+      signatory_type,
+      category,
+    } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required.",
+      });
+    }
+
+    if (!signatory_type) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Signatory type is required.",
+      });
+    }
+
+    const signatory =
+      await updateSignatoryService(
+        id,
+        {
+          name,
+          signatory_type,
+          category,
+        }
+      );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Signatory updated successfully.",
+      data: signatory,
+    });
+  } catch (error) {
+    console.error(
+      "updateSignatoryController:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to update signatory.",
+    });
+  }
+}
+
+
+
+
+
+export async function getAllowanceSignatoriesController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const data = await getAllowanceSignatories();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(
+      "getAllowanceSignatoriesController:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch allowance signatories.",
+    });
+  }
+}

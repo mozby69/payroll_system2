@@ -48,6 +48,11 @@ export type InvalidEmployees = {
     code: string
     invalidEmployees: InvalidEmployees[]
     message: string
+    error: {
+      code: string
+      message: string
+      invalidEmployees?: InvalidEmployees[]
+    }
   }
 
   export type BonusCompanyRule = {
@@ -60,6 +65,7 @@ export type InvalidEmployees = {
   export type BonusSummaryType = {
       id: number
       bonusRuleId: number
+      batchId?: string | null;
       releasePeriod: string
       asOfDate: string
       generateDate: string
@@ -69,6 +75,7 @@ export type InvalidEmployees = {
       releaseDate: string
       resetAt: string
       createdAt: string
+      companyCode: string
       bonusRule: {
         code: string
         name: string
@@ -81,6 +88,7 @@ export type InvalidEmployees = {
   export type EmployeBonusType = {
     employeeCode: string
     companyCode: string
+    branchCode: string
     fullName: string
     employementDate: string | null
     tenureYears: number
@@ -96,39 +104,81 @@ export type InvalidEmployees = {
 
   }
 
-  export type EmployeeGenerateBonusResponse = {
-    success: boolean
-    data: {
-      summary: {
-        id: number
-        bonusRuleId: number
-        releasePeriod: string
-        asOfDate: string
-        generateDate: string | null
-        totalEmployees: number
-        totalAmount: number
-        status: string
-        releaseDate: string | null
-        resetAt: string | null
-        createdAt: string
-        bonusRule: {
-          bonusType: string
-          code: string
-          name: string
-        }
-      }
-      employees: EmployeBonusType[]
-      companies: {
-        companyCode: string
-      }[]
-    }
-  }
-  
+  export type BonusRuleType = {
+  code: string;
+  name: string;
+  bonusType: string;
+  eligibleMonth?: number | null;
+};
+
+
+export type EmployeeGenerateBonusResponse = {
+  success: boolean;
+  data: {
+    summary: BonusSummaryType | null;
+    summaries: BonusSummaryType[];
+    batchId?: string | null;
+    employees: EmployeeWithBonuses[];
+    companies: {
+      companyCode: string;
+    }[];
+    variance: {
+      prevPayroll: number;
+      prevPayrollDate: string;
+      totalArchive: number;
+      totalEmployees: number;
+      totalVarianceBasicSalary: number;
+      varianceCount: number;
+      varianceEmployees: {
+        EmpCode: string;
+        basic_salary: number;
+        name: string;
+        type: string;
+        remarks: string;
+        date: string;
+      }[];
+    };
+  };
+};
 
   export type BonusRuleCompanyModalProps = {
     initialData?: { id?: number; name?: string }
   }
+
+
+  export type CompanyBonusRule = {
+    id: number
+    code: string
+    name: string
+    bonusType: string 
+    eligibleMonth: number
+    formulaType: string 
+    minTenureYear: number
+    isUsed: boolean
+  }
+
+  export type CompanyBonusRuleResponse = {
+    message: string
+    data: CompanyBonusRule[]
+  }
   
 
+export type EmployeeBonusDetailType = {
+  bonusId: number;
+  bonusSummaryId: number;
+  bonusRule: BonusRuleType;
+  bonusAmount: number;
+  loanDeduction: number;
+  netAmount: number;
+  status: string;
+  remarks: string | null;
+  notes: string | null;
+};
+
+
+export type EmployeeWithBonuses =
+  EmployeBonusType & {
+    bonuses?: EmployeeBonusDetailType[];
+  };
   
   

@@ -1,6 +1,4 @@
-import Image from "next/image";
-import FormInput from "../components/Inputs";
-import Link from "next/link";
+
 
 export default function Home() {
   return (

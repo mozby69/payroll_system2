@@ -1,14 +1,12 @@
 import { prisma } from "../../config/prismaClient";
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
-import {  CYCLE_RULES, CycleCategory, DEFAULT_CYCLE_CATEGORY, LOAN_ACTION_TYPES, LoanActionType, loanProps, LoanResult, PayCyclePeriod, PayrollCycle, updateLoanProps } from "../loans/loan.types";
+import {  CYCLE_RULES, CycleCategory, DEFAULT_CYCLE_CATEGORY, LOAN_ACTION_TYPES, LoanActionType, loanProps, LoanResult, overridedLoanProps, PayCyclePeriod, PayrollCycle, updateLoanProps } from "../loans/loan.types";
 import { computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution } from "../prepare_payroll/prepare_payroll.computation";
 import { LoanLimitError } from "./loan.error";
 
 export async function saveEmployeeLoan(data: loanProps){
 
-  const totalTerms = 
-    data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
-  
+
   const sssTable = await getSSSContributions();
 
     // Phil health code ↓
@@ -16,16 +14,74 @@ export async function saveEmployeeLoan(data: loanProps){
   const phil = await prisma.payroll_Parameters.findFirst({ select: { SettingPercentage: true } });
     // Phil health code ↑
 
-  if (totalTerms <= 0) {
-    throw new Error("Invalid loan terms");
+
+  let perPayroll: number = 0;
+
+  if (data.loan_type !== "OTHERS") {
+
+    const totalTerms = 
+      data.term_unit === "YEARS" ? data.term_value * 12 : data.term_value;
+
+    if (totalTerms <= 0) {
+      throw new Error("Invalid loan terms");
+    }
+
+    if (data.loan_type === "ARE_LOAN") {
+
+      const divisor =
+        Number(data.deduct_allowance) +
+        Number(data.deduct_first_pay) +
+        Number(data.deduct_sec_pay);
+
+      if (divisor <= 0) {
+        throw new Error("At least one deduction option must be selected");
+      }
+
+      const rawPerPayroll =
+        Number(data.principal) / totalTerms / divisor;
+
+      perPayroll = Math.floor(rawPerPayroll * 100) / 100;
+
+    } else {
+
+      const divisor = data.deduct_allowance ? 3 : 2;
+
+      const rawPerPayroll =
+        Number(data.principal) / totalTerms / divisor;
+      
+      // New Update
+
+      if(data.loan_type === "FCH_LOAN"){
+        if (data.rounding_type === "Tens") {
+          perPayroll = Math.round(rawPerPayroll / 10) * 10;
+        } 
+        else if (data.rounding_type === "Two") {
+          perPayroll = Math.ceil(rawPerPayroll / 2) * 2
+        }
+        else if (data.rounding_type === "Five"){
+          perPayroll = Math.round(rawPerPayroll / 5) * 5;
+        }
+        else if (data.rounding_type === "Ones"){
+          perPayroll = Math.ceil(rawPerPayroll);
+        }
+        else {
+          perPayroll = Math.round(rawPerPayroll * 100) / 100;
+        }
+      }
+      else{
+
+        perPayroll = Math.round(rawPerPayroll * 100) / 100;
+      }
+
+      // New Update
+      
+    }
+
+  } else {
+
+    perPayroll = Number(0);
   }
 
-  const divisor = data.deduct_allowance ? 3 : 2;
-
-  const perPayroll =
-    Math.floor((Number(data.principal) / totalTerms / divisor) * 100) / 100;
-
-    
   const startDate = new Date(data.start_date);
 
   return await prisma.$transaction(async (tx) =>{
@@ -39,6 +95,7 @@ export async function saveEmployeeLoan(data: loanProps){
         select: {
           loan_id: true,
           EmpCodeId: true,
+          rounding_types:true,
           principal: true,
           term_value: true,
           term_unit: true,
@@ -125,7 +182,7 @@ export async function saveEmployeeLoan(data: loanProps){
         pagibigEmployeeShare;
 
       const netPerPayroll =
-        semiMonthly - totalGovernmentDeductions;
+        basicSalary - totalGovernmentDeductions;
 
 
       const totalExistingLoanDeduction = existingLoan.reduce(
@@ -141,7 +198,7 @@ export async function saveEmployeeLoan(data: loanProps){
       const excessAmount =
        totalLoanDeductionWithNew - maxAllowedLoanDeduction;
 
-    if (totalLoanDeductionWithNew > maxAllowedLoanDeduction) {
+    if (totalLoanDeductionWithNew > maxAllowedLoanDeduction && data.loan_type in ["PAGIBIG_LOAN", "SSS_LOAN", "FCH_LOAN", "RFC_LOAN", "ARE_LOAN"]) {
       throw new LoanLimitError({
         employee: {
           empCode: existingEmp?.EmpCode,
@@ -167,9 +224,22 @@ export async function saveEmployeeLoan(data: loanProps){
           loan_type: data.loan_type,
           principal: data.principal,
           term_value: data.term_value,
+          rounding_types: data.rounding_type,
+          start_deduction_cycle: data.start_deduction_cycle,
           term_unit: data.term_unit,
           start_date: startDate,
           deduct_allowance: data.deduct_allowance,
+          deduct_first_pay:
+          data.loan_type === "ARE_LOAN"
+            ? data.deduct_first_pay
+            : data.loan_type === "OTHERS"
+              ? false
+              : true,
+          deduct_second_pay: data.loan_type === "ARE_LOAN" 
+            ? data.deduct_sec_pay 
+            : data.loan_type === "OTHERS"
+                ? false
+                : true,
           per_payroll_deduct: perPayroll,
           cycle_category:existingEmp?.BranchCode?.CompanyCode?.CompanyCycle,
           others_types: data.others_type,
@@ -320,6 +390,7 @@ export const getAllLoans = async ({
       per_payroll_deduct: true,
       extended_term:true,
       status: true,
+      others_types: true,
       EmpCode: {
         select: {
           Firstname: true,
@@ -372,6 +443,7 @@ export const getLoanWithLedger = async (loan_id: number) =>{
         orderBy: { transaction_date: "asc" },
         select:{
           loan_ledger_id: true,
+          created_at:true,
           transaction_date: true,
           transaction_type: true,
           debit_amount: true,
@@ -413,10 +485,15 @@ export const getEmpLoan = async (loan_id: number) => {
       loan_id: true,
       principal: true,
       loan_type: true,
+      rounding_types:true,
+      start_deduction_cycle:true,
       term_value: true,
+      override_term: true,
       term_unit: true,
       start_date: true,
       deduct_allowance: true,
+      deduct_first_pay:true,
+      deduct_second_pay:true,
       per_payroll_deduct: true,
       status: true,
       ledger: {
@@ -443,7 +520,8 @@ export const getEmpLoan = async (loan_id: number) => {
   const ledger = empLoan.ledger.map(l => {
     const isDeduction = l.transaction_type === "PAYROLL_DEDUCT";
     const isPaid = isDeduction && l.payment_status === "PAID";
-    const isCreated = isDeduction && l.payment_status === "NEW"
+    const isCreated = isDeduction && l.payment_status === "NEW";
+    const isSkipped = !isDeduction && l.payment_status === "SKIPPED";
 
     return {
       loan_ledger_id: l.loan_ledger_id,
@@ -457,11 +535,9 @@ export const getEmpLoan = async (loan_id: number) => {
       isDeduction,
       isPaid,
       isCreated,
+      isSkipped
     };
   });
-
-
-
 
   const totalPaid = ledger.reduce(
     (sum, l) => sum + l.credit_amount,
@@ -478,29 +554,96 @@ export const getEmpLoan = async (loan_id: number) => {
       ? empLoan.term_value * 12
       : empLoan.term_value;
 
-  const deductionsPerMonth = empLoan.deduct_allowance ? 3 : 2;
+  let deductionsPerMonth: number;
 
-  const totalExpectedDeductions =
-    totalMonths * deductionsPerMonth;
+    if (empLoan.loan_type === "ARE_LOAN") {
 
-  const usedDeductions = ledger.filter(l => l.isPaid).length;
+      const divisor =
+        Number(empLoan.deduct_allowance) +
+        Number(empLoan.deduct_first_pay) +
+        Number(empLoan.deduct_second_pay);
 
-  const remainingPayment =
-    empLoan.status === "CLOSED"
-      ? 0
-      : Math.max(
-          totalExpectedDeductions - usedDeductions,
-          0
-        );
+      if (divisor <= 0) {
+        throw new Error("At least one deduction option must be selected");
+      }
+
+      deductionsPerMonth = divisor; 
+
+    } else {
+
+      deductionsPerMonth = empLoan.deduct_allowance ? 3 : 2;
+
+    }
+
+  // const activeTerms =
+  //   empLoan.override_term > 0
+  //     ? empLoan.override_term
+  //     : totalMonths;
+
+  // const totalExpectedDeductions =
+  //   activeTerms * deductionsPerMonth;
+
+  // const usedDeductions = ledger.filter(l => l.isPaid).length;
+
+  // const remainingPayment =
+  //   empLoan.status === "CLOSED"
+  //     ? 0
+  //     : Math.max(
+  //         totalExpectedDeductions - usedDeductions,
+  //         0
+  //       );
+
+    const usedDeductions =
+    ledger.filter(l => l.isPaid).length;
+
+    // ======================================
+    // OVERRIDDEN LOAN
+    // ======================================
+    let remainingPayment: number;
+    let totalExpectedDeductions: number;
+
+    if (empLoan.override_term > 0) {
+
+      // only future unpaid rows
+      remainingPayment =
+        empLoan.override_term *
+        deductionsPerMonth;
+
+      // historical + future
+      totalExpectedDeductions =
+        usedDeductions +
+        remainingPayment;
+
+    } else {
+
+      // original behavior
+      totalExpectedDeductions =
+        totalMonths *
+        deductionsPerMonth;
+
+      remainingPayment =
+        empLoan.status === "CLOSED"
+          ? 0
+          : Math.max(
+              totalExpectedDeductions -
+              usedDeductions,
+              0
+            );
+    }
+
 
   return {
     loan_id: empLoan.loan_id,
     principal: Number(empLoan.principal),
     loan_type: empLoan.loan_type,
+    start_deduction_cycle: empLoan.start_deduction_cycle,
+    rounding_types: empLoan.rounding_types,
     term_value: empLoan.term_value,
     term_unit: empLoan.term_unit,
     start_date: empLoan.start_date.toISOString(),
     deduct_allowance: empLoan.deduct_allowance,
+    deduct_first_pay: empLoan.deduct_first_pay,
+    deduct_sec_pay: empLoan.deduct_second_pay,
     per_payroll_deduct: Number(empLoan.per_payroll_deduct),
     status: empLoan.status,
 
@@ -514,21 +657,251 @@ export const getEmpLoan = async (loan_id: number) => {
 };
 
 
+export const overrideEmployeeLoan = async (
+  data: overridedLoanProps
+) => {
+
+  return prisma.$transaction(async (tx) => {
+
+    // =========================
+    // GET EXISTING LOAN
+    // =========================
+    const existingLoan =
+      await tx.loan_details.findUnique({
+
+        where: {
+          loan_id: data.loan_id,
+        },
+
+        select: {
+          loan_id: true,
+
+          per_payroll_deduct: true,
+
+          rounding_types: true,
+          start_deduction_cycle: true,
+          EmpCodeId: true,
+
+          principal: true,
+          term_value: true,
+          term_unit: true,
+          start_date: true,
+
+          deduct_allowance: true,
+          deduct_first_pay: true,
+          deduct_second_pay: true,
+
+          ledger: {
+            where: {
+              transaction_type: {
+                not: "LOAN_UPDATED",
+              },
+            },
+
+            orderBy: {
+              transaction_date: "asc",
+            },
+
+            select: {
+              loan_ledger_id: true,
+              transaction_date: true,
+              transaction_type: true,
+              payment_status: true,
+              debit_amount: true,
+              credit_amount: true,
+              remarks: true,
+            },
+          },
+        },
+      });
+
+    // =========================
+    // VALIDATE LOAN
+    // =========================
+    if (!existingLoan) {
+      throw new Error("Loan not found");
+    }
+
+    // =========================
+    // TOTAL PAID
+    // =========================
+    const totalPaid =
+      existingLoan.ledger.reduce(
+        (sum, item) => {
+          return sum + Number(item.credit_amount);
+        },
+        0
+      );
+
+    // =========================
+    // REMAINING BALANCE
+    // =========================
+    const remainingBalance = Math.max(
+      Number(existingLoan.principal) - totalPaid,
+      0
+    );
+
+    // =========================
+    // VALIDATE INPUT
+    // =========================
+    if (
+      Number(data.newPerPayroll) <= 0
+    ) {
+      throw new Error(
+        "Payroll deduction must be greater than zero"
+      );
+    }
+
+    // =========================
+    // DIVISOR
+    // =========================
+    const divisor =
+      Number(existingLoan.deduct_allowance) +
+      Number(existingLoan.deduct_first_pay) +
+      Number(existingLoan.deduct_second_pay);
+
+    // =========================
+    // VALIDATE DIVISOR
+    // =========================
+    if (divisor <= 0) {
+      throw new Error(
+        "At least one deduction schedule must be enabled"
+      );
+    }
+
+    // =========================
+    // VALIDATE PER PAYROLL
+    // =========================
+    if (
+      Number(data.newPerPayroll) >
+      remainingBalance
+    ) {
+      throw new Error(
+        "Per payroll deduction exceeds remaining balance"
+      );
+    }
+
+    // =========================
+    // COMPUTE TOTAL DEDUCTION
+    // =========================
+    const totalDeductionPerCycle =
+      Number(data.newPerPayroll) * divisor;
+
+    // =========================
+    // COMPUTE NEW TERMS
+    // =========================
+    const remainingPayrollTerms =
+      Math.ceil(
+        remainingBalance /
+        totalDeductionPerCycle
+      );
+
+    // =========================
+    // SAVE OLD VALUES TO LOGS
+    // =========================
+    await tx.loan_details_logs.create({
+
+      data: {
+
+        loan_id:
+          existingLoan.loan_id,
+
+        old_payroll_deduct:
+          existingLoan.per_payroll_deduct,
+
+        old_term_value:
+          existingLoan.term_value,
+
+        old_term_unit:
+          existingLoan.term_unit,
+      },
+    });
+
+    // =========================
+    // UPDATE LOAN
+    // =========================
+    const updatedLoan =
+      await tx.loan_details.update({
+
+        where: {
+          loan_id:
+            existingLoan.loan_id,
+        },
+
+        data: {
+
+          per_payroll_deduct:
+            Number(data.newPerPayroll),
+
+          override_term:
+            remainingPayrollTerms,
+
+        },
+      });
+
+    // =========================
+    // CREATE AUDIT LEDGER
+    // =========================
+    await tx.loan_ledger.create({
+
+      data: {
+
+        loan_id:
+          existingLoan.loan_id,
+
+        EmpCodeId:
+          existingLoan.EmpCodeId,
+
+        transaction_date:
+          new Date(),
+
+        transaction_type:
+          "LOAN_UPDATED",
+
+        payment_status:
+          "UPDATED",
+
+        debit_amount: 0,
+        credit_amount: 0,
+
+        remarks:
+          `Loan updated from ` +
+          `${existingLoan.per_payroll_deduct} ` +
+          `to ${data.newPerPayroll}. ` +
+          `Old terms: ${existingLoan.term_value}. ` +
+          `New terms: ${remainingPayrollTerms}`,
+      },
+    });
+
+    // =========================
+    // RETURN UPDATED LOAN
+    // =========================
+    return updatedLoan;
+  });
+};
+
+
 export const updateEmployeeLoan = async (data: updateLoanProps) => {
   return prisma.$transaction(async (tx) => {
     const existingLoan = await tx.loan_details.findUnique({
       where: { loan_id: data.loan_id },
       select: {
         loan_id: true,
+        rounding_types:true,
+        start_deduction_cycle:true,
         EmpCodeId: true,
         principal: true,
         term_value: true,
         term_unit: true,
         start_date: true,
         deduct_allowance: true,
+        deduct_first_pay:true,
+        deduct_second_pay:true,
       },
     });
 
+
+    console.log(data.deduct_first_pay, data.deduct_sec_pay)
     if (!existingLoan) {
       throw new Error("Loan not found");
     }
@@ -569,18 +942,96 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
       ? Number(existingLoan.principal) - totalPaid
       : Number(data.principal);
 
-    const divisor = data.deduct_allowance ? 3 : 2;
 
-    const perPayroll =
-      Math.floor(
-        (baseAmount / totalTerms / divisor) * 100
-      ) / 100;
 
+    let deductionsPerMonth: number;
+
+    if (data.loan_type === "ARE_LOAN") {
+
+      const divisor =
+        Number(data.deduct_allowance) +
+        Number(data.deduct_first_pay) +
+        Number(data.deduct_sec_pay);
+
+      if (divisor <= 0) {
+        throw new Error("At least one deduction option must be selected");
+      }
+
+      deductionsPerMonth = divisor; 
+
+    } else {
+
+      deductionsPerMonth = data.deduct_allowance ? 3 : 2;
+
+    }
+
+
+    let perPayroll: number = 0;
+
+    const rawPerPayroll =
+        Number(data.principal) / totalTerms / deductionsPerMonth;
+        
+    if(data.loan_type === "FCH_LOAN" || data.loan_type === "ARE_LOAN"){
+        if (data.rounding_type === "Tens") {
+          perPayroll = Math.round(rawPerPayroll / 10) * 10;
+        } 
+        else if (data.rounding_type === "Two") {
+          perPayroll = Math.ceil(rawPerPayroll / 2) * 2
+        }
+        else if (data.rounding_type === "Five"){
+          perPayroll = Math.round(rawPerPayroll / 5) * 5;
+        }
+        else if (data.rounding_type === "Ones"){
+          perPayroll = Math.ceil(rawPerPayroll);
+        }
+        else {
+          perPayroll = Math.round(rawPerPayroll * 100) / 100;
+        }
+    }
+    else{
+      perPayroll = Math.round(rawPerPayroll * 100) / 100;
+    }
+
+    
+    // check if start date changed
+    const startDateChanged =
+      data.start_date.getTime() !==
+      new Date(existingLoan.start_date).getTime();
+
+        if (startDateChanged) {
+
+          // get first "Loan created" ledger entry
+          const loanCreatedLedger = await tx.loan_ledger.findFirst({
+            where: {
+              loan_id: data.loan_id,
+              remarks: "Loan created",
+            },
+            orderBy: {
+              transaction_date: "asc",
+            },
+          });
+
+          if (loanCreatedLedger) {
+            await tx.loan_ledger.update({
+              where: {
+            
+                loan_ledger_id: loanCreatedLedger.loan_ledger_id,
+              },
+              data: {
+                transaction_date: data.start_date,
+              },
+            });
+          }
+        }
     const updatedLoan = await tx.loan_details.update({
       where: { loan_id: data.loan_id },
       data: {
         loan_type: data.loan_type,
+        rounding_types: data.rounding_type,
+        start_deduction_cycle: data.start_deduction_cycle,
         deduct_allowance: data.deduct_allowance,
+        deduct_first_pay: data.deduct_first_pay,
+        deduct_second_pay: data.deduct_sec_pay,
         per_payroll_deduct: perPayroll,
 
         ...(hasPayments
@@ -593,6 +1044,8 @@ export const updateEmployeeLoan = async (data: updateLoanProps) => {
             }),
       },
     });
+
+
 
     await tx.loan_ledger.create({
       data: {
@@ -625,6 +1078,14 @@ export const updateLoanStatus = async (loan_id:number,remarks:string) =>{
       select: {
         EmpCodeId: true,
         status: true,
+        principal: true,
+        ledger: {
+            where: {
+              transaction_type: {
+                not: "LOAN_UPDATED",
+              },
+            },
+          },
       },
     });
 
@@ -636,14 +1097,32 @@ export const updateLoanStatus = async (loan_id:number,remarks:string) =>{
       throw new Error("Loan is already CLOSED");
     }
 
+    
+
   const updateLoan = await tx.loan_details.update({
       where:{
         loan_id:loan_id,
       },
       data:{
-        status:"CLOSED",
+        status:"COMPLETED",
       }
     });
+
+   const totalPaid =
+      existingLoan.ledger.reduce(
+        (sum, item) => {
+          return sum + Number(item.credit_amount);
+        },
+        0
+      );
+
+    // =========================
+    // REMAINING BALANCE
+    // =========================
+    const remainingBalance = Math.max(
+      Number(existingLoan.principal) - totalPaid,
+      0
+    );
 
   await tx.loan_ledger.create({
       data:{
@@ -652,7 +1131,7 @@ export const updateLoanStatus = async (loan_id:number,remarks:string) =>{
         transaction_date: new Date(),
         transaction_type: "LOAN_CLOSED",
         debit_amount: 0,
-        credit_amount: 0,
+        credit_amount: remainingBalance,
         remarks: remarks,
         payment_status: "CLOSED",
       }
@@ -680,57 +1159,227 @@ function getLastDayOfMonth(year: number, month: number) {
 
 function getNextPayroll(
   deduct_allowance: boolean,
+  deduct_first_pay: boolean,
+  deduct_second_pay: boolean,
   transactionDate: Date,
   payrollCycle: PayrollCycle,
   cycleCategory: CycleCategory
 ) {
-  const year = transactionDate.getFullYear();
-  const month = transactionDate.getMonth();
 
-  const rule = CYCLE_RULES[cycleCategory];
-  const { first, second } = rule;
-  const third = "third" in rule ? rule.third : null;
+  const year =
+    transactionDate.getFullYear();
 
-  const lastDayOfMonth = getLastDayOfMonth(year, month);
+  const month =
+    transactionDate.getMonth();
 
+  const rule =
+    CYCLE_RULES[cycleCategory];
 
-  if (String(payrollCycle) === String(first)) {
-    return {
-      transaction_date: new Date(
-        year,
-        month,
-        Math.min(second, lastDayOfMonth)
-      ),
-      payroll_cycle: String(second) as PayrollCycle,
-    };
+  const first =
+    rule.first;
+
+  const second =
+    rule.second;
+
+  const lastDayOfMonth =
+    getLastDayOfMonth(
+      year,
+      month
+    );
+
+  // =====================================
+  // ALLOWANCE
+  // =====================================
+
+  let third: number | null =
+    null;
+
+  if (
+    "third" in rule
+  ) {
+    third =
+      lastDayOfMonth;
+  }
+
+  // =====================================
+  // BUILD ACTIVE CYCLES
+  // =====================================
+
+  const activeCycles: number[] = [];
+
+  if (deduct_first_pay) {
+    activeCycles.push(first);
+  }
+
+  if (deduct_second_pay) {
+    activeCycles.push(second);
   }
 
   if (
     deduct_allowance &&
-    third &&
-    String(payrollCycle) === String(second)
+    third
   ) {
+    activeCycles.push(third);
+  }
+
+  // =====================================
+  // FALLBACK
+  // =====================================
+
+  if (
+    activeCycles.length === 0
+  ) {
+    activeCycles.push(first);
+  }
+
+  // =====================================
+  // REMOVE DUPLICATES
+  // =====================================
+
+  const uniqueCycles =
+    [...new Set(activeCycles)];
+
+  // =====================================
+  // SORT ASC
+  // =====================================
+
+  uniqueCycles.sort(
+    (a, b) => a - b
+  );
+
+  const currentCycle =
+    Number(payrollCycle);
+
+  // =====================================
+  // FIND NEXT CYCLE
+  // =====================================
+
+  const nextCycle =
+    uniqueCycles.find(
+      (c) => c > currentCycle
+    );
+
+  // =====================================
+  // SAME MONTH
+  // =====================================
+
+  if (nextCycle) {
+
+    let transactionDay =
+      nextCycle;
+
+    // =====================================
+    // 15-30-Cycle February Fix
+    // =====================================
+
+    if (
+      cycleCategory ===
+        "15-30-Cycle" &&
+      nextCycle === 29 &&
+      lastDayOfMonth < 29
+    ) {
+
+      // Feb 28 -> 27
+      transactionDay =
+        lastDayOfMonth - 1;
+    }
+
     return {
-      transaction_date: new Date(
-        year,
-        month,
-        Math.min(third, lastDayOfMonth)
-      ),
-      payroll_cycle: String(third) as PayrollCycle,
+
+      transaction_date:
+        new Date(
+          year,
+          month,
+          transactionDay
+        ),
+
+      payroll_cycle:
+        String(
+          nextCycle
+        ) as PayrollCycle,
     };
   }
 
+  // =====================================
+  // NEXT MONTH
+  // =====================================
+
+  const nextMonthLastDay =
+    getLastDayOfMonth(
+      year,
+      month + 1
+    );
+
+  const nextMonthCycles: number[] = [];
+
+  if (deduct_first_pay) {
+    nextMonthCycles.push(first);
+  }
+
+  if (deduct_second_pay) {
+    nextMonthCycles.push(second);
+  }
+
+  if (
+    deduct_allowance
+  ) {
+    nextMonthCycles.push(
+      nextMonthLastDay
+    );
+  }
+
+  // =====================================
+  // REMOVE DUPLICATES
+  // =====================================
+
+  const uniqueNextMonthCycles =
+    [...new Set(nextMonthCycles)];
+
+  uniqueNextMonthCycles.sort(
+    (a, b) => a - b
+  );
+
+  const nextMonthCycle =
+    uniqueNextMonthCycles[0];
+
+  let nextMonthTransactionDay =
+    nextMonthCycle;
+
+  // =====================================
+  // 15-30-Cycle February Fix
+  // =====================================
+
+  if (
+    cycleCategory ===
+      "15-30-Cycle" &&
+    nextMonthCycle === 29 &&
+    nextMonthLastDay < 29
+  ) {
+
+    nextMonthTransactionDay =
+      nextMonthLastDay - 1;
+  }
 
   return {
-    transaction_date: new Date(year, month + 1, first),
-    payroll_cycle: String(first) as PayrollCycle,
-  };
 
+    transaction_date:
+      new Date(
+        year,
+        month + 1,
+        nextMonthTransactionDay
+      ),
+
+    payroll_cycle:
+      String(
+        nextMonthCycle
+      ) as PayrollCycle,
+  };
 }
 
-export const insertLoanPayment = async (loan_id: number,
-  actionType: LoanActionType) => {
-    
+export const insertLoanPayment = async (
+  loan_id: number,
+  actionType: LoanActionType
+) => {
   return prisma.$transaction(async (tx) => {
 
     if (!LOAN_ACTION_TYPES.includes(actionType)) {
@@ -741,6 +1390,7 @@ export const insertLoanPayment = async (loan_id: number,
       where: { loan_id },
       select: {
         loan_id: true,
+        start_date: true,
         EmpCodeId: true,
         status: true,
         principal: true,
@@ -748,8 +1398,13 @@ export const insertLoanPayment = async (loan_id: number,
         cycle_category: true,
         term_value: true,
         term_unit: true,
+        loan_type:true,
+        override_term:true,
         deduct_allowance: true,
-        extended_term:true,
+        deduct_second_pay:true,
+        deduct_first_pay:true,
+        extended_term: true,
+        start_deduction_cycle: true,
       },
     });
 
@@ -758,33 +1413,109 @@ export const insertLoanPayment = async (loan_id: number,
       throw new Error("Loan is already CLOSED");
 
     const cycleCategory: CycleCategory =
-      fetchLoan.cycle_category !== null &&
+      fetchLoan.cycle_category &&
       fetchLoan.cycle_category in CYCLE_RULES
         ? (fetchLoan.cycle_category as CycleCategory)
         : DEFAULT_CYCLE_CATEGORY;
 
+    // ===============================
+    // GET LAST VALID PAYROLL STEP
+    // ===============================
+    const latestValidLedger = await tx.loan_ledger.findFirst({
+      where: {
+        loan_id,
+        payment_status: { in: ["PAID", "SKIPPED"] },
+      },
+      orderBy: { transaction_date: "desc" },
+    });
+
+    let transaction_date: Date;
+    let payroll_cycle: PayrollCycle;
+
+    const startCycle = String(fetchLoan.start_deduction_cycle ?? "");
+
+    // ===============================
+    // DETERMINE SCHEDULE
+    // ===============================
+    if (!latestValidLedger) {
+      // 🔥 FIRST SCHEDULE (BASED ONLY ON start_date)
+
+      const baseDate = fetchLoan.start_date;
+      const year = baseDate.getFullYear();
+      const month = baseDate.getMonth();
+      const lastDay = getLastDayOfMonth(year, month);
+
+      if (startCycle) {
+
+        let cycleDay =
+          Number(startCycle);
 
 
-    const latestLedger = await tx.loan_ledger.findFirst({
-          where: { loan_id, payment_status: { in: ["PAID", "SKIPPED"],}},
-          orderBy: { transaction_date: "desc" },
-        });
+        if (
+          cycleCategory ===
+            "15-30-Cycle" &&
+          cycleDay === 30
+        ) {
+          cycleDay = 29;
+        }
+
+      
+
+        let transactionDay =
+          cycleDay;
 
 
-    const { transaction_date, payroll_cycle } = latestLedger
-      ? getNextPayroll(
-          fetchLoan.deduct_allowance,
-          latestLedger.transaction_date,
-          latestLedger.payroll_cycle as PayrollCycle,
-          cycleCategory
-        )
-      : {
-          transaction_date: new Date(),
-          payroll_cycle: String(
-            CYCLE_RULES[cycleCategory].first
-          ) as PayrollCycle,
-        };
+        if (
+          cycleCategory ===
+            "15-30-Cycle" &&
+          cycleDay === 29 &&
+          lastDay < 29
+        ) {
 
+       
+          transactionDay =
+            lastDay - 1;
+        }
+
+        transaction_date =
+          new Date(
+            year,
+            month,
+            Math.min(
+              transactionDay,
+              lastDay
+            )
+          );
+
+        payroll_cycle =
+          String(
+            cycleDay
+          ) as PayrollCycle;
+      } else {
+        const rule = CYCLE_RULES[cycleCategory];
+
+        transaction_date = new Date(year, month, rule.first);
+        payroll_cycle = String(rule.first) as PayrollCycle;
+      }
+
+    } else {
+      // ✅ NORMAL CONTINUATION
+
+      const next = getNextPayroll(
+        fetchLoan.deduct_allowance,
+        fetchLoan.deduct_first_pay,
+        fetchLoan.deduct_second_pay,
+        latestValidLedger.transaction_date,
+        latestValidLedger.payroll_cycle as PayrollCycle,
+        cycleCategory
+      );
+      transaction_date = next.transaction_date;
+      payroll_cycle = next.payroll_cycle;
+    }
+
+    // ===============================
+    // PAYMENT CALCULATIONS
+    // ===============================
     const paidLedgers = await tx.loan_ledger.findMany({
       where: {
         loan_id,
@@ -799,27 +1530,91 @@ export const insertLoanPayment = async (loan_id: number,
       0
     );
 
-    const totalMonths =
-      fetchLoan.term_unit === "YEARS"
-        ? fetchLoan.term_value * 12
-        : fetchLoan.term_value;
 
-    const deductionsPerMonth = fetchLoan.deduct_allowance ? 3 : 2;
 
-    const totalExpectedDeductions =
-      totalMonths * deductionsPerMonth;
+    // ======================================
+    // DEDUCTIONS PER MONTH
+    // ======================================
+    let deductionsPerMonth: number;
 
-    const isLastPayment =
-      paidLedgers.length + 1 === totalExpectedDeductions;
+    if (fetchLoan.loan_type === "ARE_LOAN") {
 
+      const divisor =
+        Number(fetchLoan.deduct_allowance) +
+        Number(fetchLoan.deduct_first_pay) +
+        Number(fetchLoan.deduct_second_pay);
+
+      deductionsPerMonth = divisor;
+
+    } else {
+
+      deductionsPerMonth =
+        fetchLoan.deduct_allowance
+          ? 3
+          : 2;
+    }
+
+    // ======================================
+    // EXPECTED DEDUCTIONS
+    // ======================================
+    let totalExpectedDeductions: number;
+
+    if (fetchLoan.override_term > 0) {
+
+      totalExpectedDeductions =
+        paidLedgers.length +
+        (
+          fetchLoan.override_term *
+          deductionsPerMonth
+        );
+
+    } else {
+
+      const totalMonths =
+        fetchLoan.term_unit === "YEARS"
+          ? fetchLoan.term_value * 12
+          : fetchLoan.term_value;
+
+      totalExpectedDeductions =
+        totalMonths *
+        deductionsPerMonth;
+    }
+
+    // ======================================
+    // BALANCE
+    // ======================================
     const remainingBalance =
-      Number(fetchLoan.principal) - totalPaidSoFar;
+      Math.max(
+        Number(fetchLoan.principal) -
+        totalPaidSoFar,
+        0
+      );
 
-    const creditAmount = isLastPayment
-      ? remainingBalance
-      : Number(fetchLoan.per_payroll_deduct);
+    // ======================================
+    // LAST PAYMENT
+    // ======================================
+    const isLastPayment =
+      paidLedgers.length + 1 >=
+      totalExpectedDeductions;
 
-    if (isLastPayment) {
+    // ======================================
+    // SAFE DEDUCTION
+    // ======================================
+    const creditAmount = Math.min(
+      Number(fetchLoan.per_payroll_deduct),
+      remainingBalance
+    );
+
+    // ===============================
+    // INSERT LEDGER
+    // ===============================
+    const willFullyCloseLoan =
+    remainingBalance - creditAmount <= 0;
+
+    if (
+      isLastPayment ||
+      willFullyCloseLoan
+    ) {
       const closedLedger = await tx.loan_ledger.create({
         data: {
           loan_id,
@@ -829,34 +1624,35 @@ export const insertLoanPayment = async (loan_id: number,
           transaction_type: "LOAN_CLOSED",
           debit_amount: 0,
           credit_amount: creditAmount,
-          payment_status: "CLOSED",
+          payment_status: "COMPLETED",
         },
       });
 
       await tx.loan_details.update({
         where: { loan_id },
-        data: { status: "CLOSED" },
+        data: { status: "COMPLETED" },
       });
 
       return closedLedger;
     }
 
     if (actionType === "EARLY_PAY") {
-        return tx.loan_ledger.create({
-          data: {
-            loan_id,
-            EmpCodeId: fetchLoan.EmpCodeId,
-            transaction_date,
-            payroll_cycle,
-            transaction_type: "PAYROLL_DEDUCT",
-            debit_amount: 0,
-            credit_amount: creditAmount,
-            remarks: "Loan Credited to Payroll",
-            payment_status: "PAID",
-          },
-        });
+      return tx.loan_ledger.create({
+        data: {
+          loan_id,
+          EmpCodeId: fetchLoan.EmpCodeId,
+          transaction_date,
+          payroll_cycle,
+          transaction_type: "PAYROLL_DEDUCT",
+          debit_amount: 0,
+          credit_amount: creditAmount,
+          remarks: "Loan Credited to Payroll",
+          payment_status: "PAID",
+        },
+      });
     }
-    else if (actionType === "SKIPPED") {
+
+    if (actionType === "SKIPPED") {
       const skippedLoan = await tx.loan_ledger.create({
         data: {
           loan_id,
@@ -880,11 +1676,8 @@ export const insertLoanPayment = async (loan_id: number,
 
       return skippedLoan;
     }
-
-
   });
 };
-
 
 export const fetchLoanByEmpCode = async (payCyclePeriod: PayCyclePeriod): Promise<LoanResult> => {
   const [payrollYear, payrollMonth] = payCyclePeriod.payPeriod
@@ -1006,3 +1799,198 @@ export async function searchEmployees(keyword: string) {
     basic_salary: emp.employeepayroll?.basic_salary ?? 0
   }));
 }
+
+
+export const getLoanSummary = async (
+  month: string,
+  cycle:string,
+  period: string,
+  companyCode?: string,
+  loanType?:string
+) => {
+
+  const startDate = new Date(`${month}-01`);
+  const endDate = new Date(startDate);
+  endDate.setMonth(endDate.getMonth() + 1);
+
+  const loans = await prisma.loan_details.findMany({
+    where: {
+      loan_type: loanType || undefined,
+      cycle_category: cycle || undefined,
+      EmpCode: {
+        BranchCode: {
+          company_id: companyCode || undefined
+        }
+      },
+
+      ledger: {
+        some: {
+          payroll_cycle: period,
+          transaction_date: {
+            gte: startDate,
+            lt: endDate
+          }
+        }
+      }
+    },
+
+    include: {
+      EmpCode: {
+        select: {
+          Firstname: true,
+          Lastname: true,
+          BranchCode: {
+            select: {
+              company_id: true
+            }
+          }
+        }
+      },
+
+      ledger: {
+        where: {
+          transaction_date: {
+            lt: endDate
+          }
+        },
+        select: {
+          credit_amount: true,
+          payroll_cycle: true,
+          transaction_date: true
+        }
+      }
+    }
+  });
+
+  return loans.map((loan) => {
+
+    const totalPaid = Number(
+      loan.ledger
+        .filter((l) => {
+          const txDate = new Date(l.transaction_date);
+
+          if (txDate < startDate) return true;
+
+          if (txDate >= startDate && txDate < endDate) {
+            return (
+              l.payroll_cycle !== null &&
+              Number(l.payroll_cycle) <= Number(period)
+            );
+          }
+
+          return false;
+        })
+        .reduce((sum, l) => sum + Number(l.credit_amount), 0)
+        .toFixed(2)
+    );
+
+    const runningBalance = Number(
+      (Number(loan.principal) - totalPaid).toFixed(2)
+    );
+
+    const endDateComputed = new Date(loan.start_date);
+    endDateComputed.setMonth(
+      endDateComputed.getMonth() +
+      loan.term_value * (loan.term_unit === "YEARS" ? 12 : 1)
+    );
+
+    return {
+      loan_id: loan.loan_id,
+      name: `${loan.EmpCode?.Firstname} ${loan.EmpCode?.Lastname}`,
+      loan_type: loan.loan_type,
+      description: loan.others_types,
+      principal: loan.principal,
+      start: loan.start_date,
+      end: endDateComputed,
+      deduction: loan.per_payroll_deduct,
+      total_deduction: totalPaid,
+      running_balance: runningBalance
+    };
+  });
+};
+
+
+export const removeLoanLedger = async (
+  loan_id: number,
+  ledger_id: number,
+  remarks: string
+) => {
+  return prisma.$transaction(async (tx) => {
+
+    const ledger = await tx.loan_ledger.findUnique({
+      where: { loan_ledger_id: ledger_id }
+    });
+
+    if (!ledger) {
+      throw new Error("Ledger not found");
+    }
+
+    if (ledger.loan_id !== loan_id) {
+      throw new Error("Ledger mismatch");
+    }
+
+    await tx.loan_ledger_logs.create({
+      data: {
+        loan_id: ledger.loan_id,
+        ledger_id: ledger.loan_ledger_id,
+
+        transaction_date: ledger.transaction_date,
+        transaction_type: ledger.transaction_type,
+        debit_amount: ledger.debit_amount,
+        credit_amount: ledger.credit_amount,
+        payment_status: ledger.payment_status,
+        payroll_cycle: ledger.payroll_cycle,
+
+        remarks,
+        type: "LEDGER_DELETED"
+      }
+    });
+
+    await tx.loan_ledger.delete({
+      where: { loan_ledger_id: ledger_id }
+    });
+
+    return { success: true };
+
+  });
+};
+
+
+export const updateLedgerTransactionDate = async (
+  loan_id: number,
+  ledger_id: number,
+  transaction_date: Date,
+  remarks: string
+) => {
+  return prisma.$transaction(async (tx) => {
+
+    const ledger = await tx.loan_ledger.findUnique({
+      where: { loan_ledger_id: ledger_id }
+    });
+
+    if (!ledger) {
+      throw new Error("Ledger not found");
+    }
+
+    if (ledger.loan_id !== loan_id) {
+      throw new Error("Ledger mismatch");
+    }
+
+    const updatedLedger = await tx.loan_ledger.update({
+      where: { loan_ledger_id: ledger_id },
+      data: {
+        transaction_date
+      }
+    });
+
+    await tx.loan_ledger_logs.create({
+      data: {
+        loan_id,
+        remarks,
+        type: "LEDGER_DATE_UPDATED"
+      }
+    });
+
+    return updatedLedger;
+  });
+};

@@ -68,7 +68,9 @@ export type BonusRuleList =
 
 
   export const GenerateBonusSchema = z.object({
-    bonusRuleId: z.number().int().min(1, "Bonus rule is required"),
+    bonusRuleIds: z
+    .array(z.number().int().min(1))
+    .min(1, "At least one bonus rule is required"),
 
 
 
@@ -86,7 +88,11 @@ export type BonusRuleList =
     generateDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Generate date is required").min(1),
-     })
+
+    companyCode: z.string().optional()
+     },
+    )
+
 
   
 

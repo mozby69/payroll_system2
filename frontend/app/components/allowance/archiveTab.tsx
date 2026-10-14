@@ -4,12 +4,13 @@ import { useDebounce } from "@/app/utils/useDebounce";
 import { useState } from "react";
 import Datatable from "../Datatable";
 import { Column } from "@/app/types/preparePayroll";
-import { FileText, Printer } from "lucide-react";
+import { FilePenLine, Printer } from "lucide-react";
 import RequestModal from "../Modal";
-import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
+//import { ViewEmployeeListAllowance } from "@/app/ModalContent/Allowance/ViewEmployeeList";
 import { Pagination } from "../Pagination";
 
 import CompanyBranchSelector from "@/app/ModalContent/Allowance/ViewPrint";
+import AllowanceReportArchive from "@/app/ModalContent/Allowance/ViewReportArchive";
 
 
 
@@ -18,8 +19,9 @@ export default function AllowanceArchiveTab(){
             const PAGE_SIZE = 5;
             const [page, setPage] = useState(1);
             const [search, setSearch] = useState("");
-            const [isModalOpen, setIsModalOpen] = useState(false);
+          //  const [isModalOpen, setIsModalOpen] = useState(false);
             const [isModalOpenPrint, setIsModalOpenPrint] = useState(false);
+            const [isModalOpenReport, setIsModalOpenReport] = useState(false);
             const debouncedSearch = useDebounce(search, 400);
             const [selectedRow, setSelectedRow] = useState<AllowanceSummary | null>(null);
        
@@ -59,11 +61,18 @@ export default function AllowanceArchiveTab(){
                             header:"Actions",
                             render: (row) => (
                               <div className="flex gap-2">
+
                                 <button
+                                 className="px-3 py-2 bg-emerald-700 hover:bg-emerald-500 text-white rounded"
+                                 onClick={() => openModalReport(row)}>
+                                  <FilePenLine/>
+                                </button>
+
+                                {/* <button
                                 onClick={ () => openModal(row)}
                                 className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 hover:cursor-pointer text-white rounded">
                                 <FileText/>
-                                </button>
+                                </button> */}
 
                                 <button
                                   onClick={() => {openModalPrint(row) }}
@@ -76,15 +85,15 @@ export default function AllowanceArchiveTab(){
                           
                        ];
                        
-                  const openModal = (row: AllowanceSummary) => {
-                    setSelectedRow(row);
-                    setIsModalOpen(true);
-                  };
+                  // const openModal = (row: AllowanceSummary) => {
+                  //   setSelectedRow(row);
+                  //   setIsModalOpen(true);
+                  // };
 
-                  const closeModal = () => {
-                    setIsModalOpen(false);
-                    setSelectedRow(null);
-                  };
+                  // const closeModal = () => {
+                  //   setIsModalOpen(false);
+                  //   setSelectedRow(null);
+                  // };
 
                   const openModalPrint = (row:AllowanceSummary) => {
                     setSelectedRow(row);
@@ -95,11 +104,25 @@ export default function AllowanceArchiveTab(){
                   const closeModalPrint = () => {
                     setIsModalOpenPrint(false);
                   };
+
+
+
+                  const openModalReport = (row:AllowanceSummary) => {
+                          setSelectedRow(row);
+                    setIsModalOpenReport(true);
+                  };
+
+
+                  const closeModalReport = () => {
+                    setIsModalOpenReport(false);
+                  };
+
+                  
             
 
             return(
         
-                <div className="p-4">
+                <div className="px-4 py-8">
 
                     <input
                       type="text"
@@ -108,7 +131,8 @@ export default function AllowanceArchiveTab(){
                       onChange={(e) => setSearch(e.target.value)}
                       className="w-64 px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
                       />  
-
+                      
+                      <h2></h2>
 
                     <div className="py-4">
                       <Datatable columns={columns} data={tableData}/>
@@ -124,19 +148,28 @@ export default function AllowanceArchiveTab(){
 
 
 
-            {isModalOpen && selectedRow && (
+            {/* {isModalOpen && selectedRow && (
                 <RequestModal size="xxxl" title={`Employee Allowance List`} onClose={closeModal}>
                   <ViewEmployeeListAllowance
                     allowanceSummary={selectedRow}
                     onClose={closeModal}
                   />
                 </RequestModal>
-              )}
+              )} */}
 
 
           {isModalOpenPrint && (
-              <RequestModal size="sm" title={`PRINT ALLOWANCE`} onClose={closeModalPrint}>
+              <RequestModal size="md" title={`PRINT ALLOWANCE -${selectedRow?.selectedMonth}`} onClose={closeModalPrint}>
                   <CompanyBranchSelector selectedMonth={selectedRow?.selectedMonth ?? ""}/>
+              </RequestModal>
+            )}
+
+
+
+
+          {isModalOpenReport && selectedRow && (
+              <RequestModal size="xxxl" title={`REPORT`} onClose={closeModalReport}>
+                  <AllowanceReportArchive allowanceSummary={selectedRow} onClose={closeModalReport}/>
               </RequestModal>
             )}
 

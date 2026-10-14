@@ -69,7 +69,11 @@ export const getAllEmployees = async ({
       Lastname: true,
       Department: true,
       EmploymentStatus: true,
-      BranchCodeId: true,
+      BranchCode: {
+        select: {
+          branchCode: true,
+        }
+      },
       employeepayroll:{
         select:{
           basic_salary:true,
@@ -109,7 +113,10 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
       bod_member:true,
       Disbursing:true,
       WithAtm:true,
+      isOfficerAllowance:true,
+      isSixDaysWork:true,
       Taxable:true,
+      isDisabled:true,
       employeepr: {
         select: {
           EmpTin: true,
@@ -120,6 +127,13 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           EmpChildrenBirthday: true,
           EmpChildrenBplace: true,
         },
+      },
+
+      officersAllowance:{
+        select:{
+           basic_salary:true,
+           EmpCodeId:true,
+        }
       },
 
       loan_details:{
@@ -142,6 +156,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           cash_assistance: true,
           ecola: true,
           bank_account:true,
+          with_ecola:true,
+          gmail_account:true,
         },
       },
 
@@ -171,6 +187,10 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
   if (!employee) return null;
 
   const payroll = employee.employeepayroll ?? null;
+
+  const officersAllowance = employee.officersAllowance ?? null;
+  const OaSalary = Number(officersAllowance?.basic_salary ?? 0);
+
 
   const basicSalary = Number(payroll?.basic_salary ?? 0);
   const bankAccount = String(payroll?.bank_account ?? 0);
@@ -204,6 +224,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
 
   const philhealthRateEmployee = computePhilRateEmployee(semiMonthly, phil_percentage,isBod,bodShare,isNewProbi);
 
+  console.log('emp',empCode, semiMonthly);
+
   const pagibigEmployeeShare = computePagibig(rawPagibigEmployee);
 
   const totalEdeduction = sssContribEmployee + philhealthRateEmployee + pagibigEmployeeShare
@@ -216,6 +238,8 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           BasicSalary: basicSalary,
           CashAssistance: cashAssistance,
           Ecola: ecola,
+          isecola: payroll?.with_ecola,
+          gmail_account: payroll?.gmail_account,
           TotalSalary: totalSalary,
           bankAccount: bankAccount,
           sssContribEmployee: sssContribEmployee,
@@ -224,6 +248,13 @@ export const getEmployeeByEmpCode = async (empCode: string) => {
           totalEdeduction:totalEdeduction,
         }
       : null,
+
+    officersAllowance: officersAllowance
+
+        ?{
+          OaBasicSalary : OaSalary
+        }
+        :null,
   };
 };
 
@@ -235,7 +266,7 @@ export const updateEmployeePayroll = async (
 ) => {
   try {
     return await prisma.$transaction(async (tx) => {
-
+      console.log("ser ", payLoad.isDisabled)
     
       const existing = await tx.employee_payroll.findUnique({
         where: { EmpCodeId: empCode },
@@ -297,7 +328,9 @@ export const updateEmployeePayroll = async (
           WithAtm: payLoad.WithAtm,
           Disbursing: payLoad.Disbursing,
           Taxable: payLoad.Taxable,
-
+          isOfficerAllowance: payLoad.isOfficerAllowance,
+          isSixDaysWork: payLoad.isSixDaysWork,
+          isDisabled: payLoad.isDisabled,
           employeepayroll: {
             upsert: {
               update: {
@@ -305,14 +338,28 @@ export const updateEmployeePayroll = async (
                 cash_assistance: payLoad.cashAssistance,
                 ecola: payLoad.ecola,
                 bank_account: payLoad.bankAccount,
+                with_ecola: payLoad.isecola,
+                gmail_account: payLoad.gmail_account,
               },
               create: {
                 basic_salary: payLoad.basicSalary,
                 cash_assistance: payLoad.cashAssistance,
                 ecola: payLoad.ecola,
-                bank_account: payLoad.bankAccount
+                bank_account: payLoad.bankAccount,
+                with_ecola: payLoad.isecola,
+                gmail_account: payLoad.gmail_account,
               },
             },
+          },
+          officersAllowance:{
+            upsert:{
+                update: {
+                  basic_salary: payLoad.OaBasicSalary,
+                },
+                create: {
+                  basic_salary: payLoad.OaBasicSalary,
+                }
+              }
           },
 
           pagibig_list: {
@@ -339,15 +386,7 @@ export const updateEmployeePayroll = async (
   }
 };
 
-export const getAllCompanies = async () => {
-  return prisma.company_details.findMany({
-    select: {
-      CompanyCode: true,
-      CompanyName: true,
-    },
-    orderBy: { CompanyName: "asc" },
-  });
-};
+
 
 export const getEmployeesByCompanyGrouped = async (companyCode: string) => {
   const employees = await prisma.employee.findMany({
@@ -432,3 +471,76 @@ export const bulkIncreaseSalary = async (
     return { success: true };
   });
 };
+
+
+
+
+
+
+//xyryl
+
+export async function DisplayGmailAccountList() {
+  try {
+    const validEmployees = await prisma.employee.findMany({
+      where:{
+        EmployeeStatus:{
+          notIn:['Resigned']
+        },
+      },
+      select: {
+        EmpCode: true,
+      },
+    });
+
+    const validEmpCodes = validEmployees.map(
+      (employee) => employee.EmpCode
+    );
+
+    const data = await prisma.employee_payroll.findMany({
+      where: {
+        EmpCodeId: {
+          in: validEmpCodes,
+        },
+      },
+
+      select: {
+        EmpCodeId: true,
+        gmail_account: true,
+
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Lastname: true,
+          },
+        },
+      },
+
+      orderBy: {
+        EmpCode:{
+          Lastname: 'asc',
+        }
+      },
+    });
+
+    return data.map((employee) => {
+      const firstname = employee.EmpCode.Firstname?.trim() ?? "";
+
+      const lastname =
+        employee.EmpCode.Lastname?.trim() ?? "";
+
+      return {
+        emp_code: employee.EmpCodeId,
+        name: `${lastname}, ${firstname}`,
+        gmail_account:
+          employee.gmail_account?.trim() ?? null,
+      };
+    });
+  } catch (error) {
+    console.error(
+      "Error occurred in DisplayGmailAccountList:",
+      error
+    );
+
+    throw error;
+  }
+}

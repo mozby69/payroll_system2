@@ -5,16 +5,22 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../components/UserContext";
 import { redirect } from "next/navigation";
 import SweetAlert from "../components/Swal";
-import { LogOut, Settings, User, User2 } from "lucide-react";
+import { Bell, Home, LogOut, Settings, User, User2 } from "lucide-react";
 import RequestModal from "../components/Modal";
 import AccountConfigurationModal from "../components/users/modal/AccountConfigurationModal";
+import BranchList from "../components/general/BranchList";
+import SettingsModal from "../components/settings/SettingsModal";
+import AlertConfigurationModal from "../components/users/modal/AlertConfigurationModal";
 
 
 
 export default function PayrollLayout({children,}: {children: React.ReactNode;}) {
   const [OpenSidebar, setOpenSideBar] = useState(true);
   const [openMenu, setOpenMenu] = useState(false);
-  const { user, loading, logout } = useAuth();
+  const[openBranchModal, setOpenBranchModal] = useState(false)
+  const [openSettings, setOpenSettings] = useState(false);
+  const { user, loading, logout, hasPermission } = useAuth();
+  const [openAlert, setOpenAlert] = useState(false)
 
   const [userModal, setUserModal] = useState(false)
 
@@ -22,12 +28,8 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
   if (!user) redirect("/login");
 
 
-
   return (
     <div className=" flex min-h-screen">
-
-
-
       <aside className={`sticky top-0 h-screen 
         transition-all duration-300
         ${OpenSidebar ? "w-64" : "w-16"} 
@@ -43,7 +45,7 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
       <main className="flex-1 overflow-y-auto h-screen relative">
 
 
-        <div className="sticky top-0 z-10 text-md flex items-center justify-end bg-mainNeutral px-8 py-2 shadow-[0px_0px_6px_4px_rgba(0,0,0,0.1)] min-h-14">
+        <div className="sticky top-0 z-30 text-md flex items-center justify-end bg-mainNeutral px-8 py-2 shadow-[0px_0px_6px_4px_rgba(0,0,0,0.1)] min-h-14">
             <div onClick={() => setOpenMenu(prev => !prev)} className="inline-flex gap-x-2 cursor-pointer hover:scale-[1.03] transition duration-75">
               <User2 className="w-4"/>
               <h1>{user.username}</h1>
@@ -51,16 +53,35 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
             {openMenu &&(
               <ul className="absolute text-sm top-14 right-0 bg-mainLight w-50 h-auto rounded-bl-xl py-4 px-8 flex flex-col gap-y-4 items-start justify-end shadow-[0px_4px_6px_2px_rgba(0,0,0,0.1)] cursor-pointer">
-                <li className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
+                <li   onClick={() => setOpenSettings(true)} className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight">
                   <Settings/>
                   Settings
                 </li>
+                {hasPermission("USER_MANAGE") && (
+                    <li
+                    className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                     onClick={()=>setUserModal(true)}
+                    >
+                     <User/>
+                     Users
+                   </li>
+                  )}
+           
+
                 <li
                  className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
-                  onClick={()=>setUserModal(true)}
+                  onClick={()=>setOpenBranchModal(true)}
                  >
-                  <User/>
-                  Users
+                  <Home/>
+                  Branches
+                </li>
+
+                <li 
+                   className="inline-flex gap-4 items-end justify-start w-full p-2 rounded-lg hover:bg-mainhighlight hover:text-mainLight"
+                  onClick={()=>setOpenAlert(true)}
+                  >
+                    <Bell />
+                    Alerts
                 </li>
                 <li 
                   onClick={() => {
@@ -93,11 +114,33 @@ export default function PayrollLayout({children,}: {children: React.ReactNode;})
 
       </main>
       {userModal && (
-          <RequestModal title=" Account Configuration" size="xl" onClose={()=>setUserModal(false)}>
+          <RequestModal title=" Account Configuration" size="xxl" onClose={()=>setUserModal(false)}>
               <AccountConfigurationModal onClose={()=>setUserModal(false)} />
         </RequestModal>
       )}
-        
+
+      {openBranchModal && (
+        <RequestModal title="Reorder Branches" size="lg" onClose={()=>setOpenBranchModal(false)}>
+            <BranchList />
+        </RequestModal>
+      )}
+
+      {openSettings && (
+        <RequestModal
+          title="System Settings"
+          size="xxl"
+          onClose={() => setOpenSettings(false)}
+        >
+          <SettingsModal />
+        </RequestModal>
+      )}
+      {openAlert && (
+        <RequestModal title="Configure Alert Notification" size="md" onClose={()=>setOpenAlert(false)} >
+          <AlertConfigurationModal />
+        </RequestModal>
+      )
+      }
+              
 
     </div>
   );

@@ -9,26 +9,50 @@ export const addEmployeeLoanController = async (req: Request, res: Response) => 
     const {
       empCode,
       loan_type,
+      rounding_type,
       principal,
       term_value,
       term_unit,
       start_date,
+      start_deduction_cycle,
       deduct_allowance,
+      deduct_first_pay,
+      deduct_sec_pay,
       others_type,
     } = req.body;
 
-    if (!empCode || !loan_type || !principal || !term_value || !term_unit || !start_date) {
+    const startDateValue =
+      loan_type === "OTHERS"
+        ? new Date()
+        : new Date(start_date || new Date());
+
+    const termValueFinal =
+      loan_type === "OTHERS"
+        ? 1
+        : Number(term_value || 1);
+
+    const termUnitFinal =
+      loan_type === "OTHERS" ? "BONUS" : term_unit;
+
+    const roundTypes = 
+      loan_type === "FCH_LOAN" ? rounding_type : ""
+
+    if (!empCode || !loan_type || !start_deduction_cycle || !principal) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
     const loan = await saveEmployeeLoan({
       empCode,
       loan_type,
+      start_deduction_cycle,
+      rounding_type: roundTypes,
       principal: Number(principal),
-      term_value: Number(term_value),
-      term_unit,
-      start_date: new Date(start_date),
+      term_value: termValueFinal,
+      term_unit: termUnitFinal,
+      start_date: startDateValue,
       deduct_allowance: Boolean(deduct_allowance),
+      deduct_first_pay: Boolean(deduct_first_pay),
+      deduct_sec_pay: Boolean(deduct_sec_pay),
       others_type,
     });
 
@@ -187,15 +211,20 @@ export const updateEmployeeLoanController = async (
 
     const {
       loan_type,
+      rounding_type,
       principal,
       term_value,
       term_unit,
       start_date,
       deduct_allowance,
+      deduct_first_pay,
+      start_deduction_cycle,
+      deduct_sec_pay
     } = req.body;
 
     if (
       !loan_type ||
+      !start_deduction_cycle ||
       principal === undefined ||
       term_value === undefined ||
       !term_unit ||
@@ -209,11 +238,15 @@ export const updateEmployeeLoanController = async (
     const updatedLoan = await loanService.updateEmployeeLoan({
       loan_id,
       loan_type,
+      rounding_type,
+      start_deduction_cycle,
       principal: Number(principal),
       term_value: Number(term_value),
       term_unit,
       start_date: new Date(start_date),
       deduct_allowance: Boolean(deduct_allowance),
+      deduct_first_pay: Boolean(deduct_first_pay),
+      deduct_sec_pay: Boolean(deduct_sec_pay)
     });
 
     return res.status(200).json(updatedLoan);
@@ -401,3 +434,221 @@ export const searchEmployeeController = async (req: Request, res: Response) => {
   res.json(data);
 };
 
+
+export const getLoanSummaryController = async (req: Request, res: Response) => {
+  try {
+    const { month,cycle, period, company,loanType } = req.query;
+
+    if (!month || !period) {
+      return res.status(400).json({
+        message: "month and period are required"
+      });
+    }
+
+    const data = await loanService.getLoanSummary(
+      month as string,
+      cycle as string,
+      period as string,
+      company as string,
+      loanType as string
+    );
+
+    res.json(data);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Server Error"
+    });
+  }
+};
+
+
+
+export const removeLoanLedgerController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const loan_id = Number(req.params.loan_id);
+    const { ledger_id, remarks } = req.body;
+
+    if (!loan_id || isNaN(loan_id)) {
+      return res.status(400).json({
+        message: "Invalid loan id",
+      });
+    }
+
+    if (!ledger_id) {
+      return res.status(400).json({
+        message: "ledger_id is required",
+      });
+    }
+
+    if (!remarks || !remarks.trim()) {
+      return res.status(400).json({
+        message: "Remarks are required",
+      });
+    }
+
+    const result = await loanService.removeLoanLedger(
+      loan_id,
+      Number(ledger_id),
+      remarks
+    );
+
+    return res.status(200).json(result);
+
+  } catch (error: any) {
+
+    if (
+      error.message === "Ledger not found" ||
+      error.message === "Ledger mismatch"
+    ) {
+      return res.status(404).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to remove ledger",
+      error: error.message,
+    });
+  }
+};
+
+
+export const updateLedgerDateController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+
+    const loan_id = Number(req.params.loan_id);
+    const { ledger_id, transaction_date, remarks } = req.body;
+
+    if (!loan_id || isNaN(loan_id)) {
+      return res.status(400).json({
+        message: "Invalid loan id"
+      });
+    }
+
+    if (!ledger_id) {
+      return res.status(400).json({
+        message: "ledger_id is required"
+      });
+    }
+
+    if (!transaction_date) {
+      return res.status(400).json({
+        message: "transaction_date is required"
+      });
+    }
+
+    const result = await loanService.updateLedgerTransactionDate(
+      loan_id,
+      Number(ledger_id),
+      new Date(transaction_date),
+      remarks
+    );
+
+    return res.status(200).json(result);
+
+  } catch (error: any) {
+
+    if (
+      error.message === "Ledger not found" ||
+      error.message === "Ledger mismatch"
+    ) {
+      return res.status(404).json({
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to update ledger date",
+      error: error.message
+    });
+  }
+};
+
+
+export const overrideEmployeeLoanController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+
+    const loan_id = Number(req.params.loan_id);
+
+    if (!loan_id || isNaN(loan_id)) {
+      return res.status(400).json({
+        message: "Invalid loan ID",
+      });
+    }
+
+    const { newPerPayroll } = req.body;
+
+    if (
+      newPerPayroll === undefined ||
+      Number(newPerPayroll) <= 0
+    ) {
+      return res.status(400).json({
+        message: "newPerPayroll is required",
+      });
+    }
+
+    const updatedLoan =
+      await loanService.overrideEmployeeLoan({
+        loan_id,
+        newPerPayroll: Number(newPerPayroll),
+      });
+
+    return res.status(200).json({
+      message: "Loan successfully overridden",
+      data: updatedLoan,
+    });
+
+    } catch (error: unknown) {
+
+    const err = error as Error;
+
+    if (err.message === "Loan not found") {
+      return res.status(404).json({
+        message: err.message,
+      });
+    }
+
+    if (
+      err.message ===
+      "At least one deduction schedule must be enabled"
+    ) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+
+    // FIX
+    if (
+      err.message ===
+      "Payroll deduction exceeds remaining loan balance"
+    ) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+
+    if (
+      err.message ===
+      "Payroll deduction must be greater than zero"
+    ) {
+      return res.status(400).json({
+        message: err.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: err.message || "Failed to override loan",
+    });
+  }
+};

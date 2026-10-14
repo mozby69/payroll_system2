@@ -1,56 +1,194 @@
-
+import { useState } from "react";
+import SweetAlert from "../Swal";
+//import { useSaveWtaxOverride } from "@/app/hooks/usePayrollArchive";
+import AuthenticationModal from "@/app/components/editableLoanModal/AuthenticationModal"
+import { useVerifyPassword } from "@/app/hooks/useEditableLoan";
+import RequestModal from "../Modal";
+import EditLoanModal from "../editableLoanModal/EditLoanModal";
+import { formatAmount } from "@/app/utils/currencyConverter";
 
 export interface SpreadsheetRow {
   name: string;
-  basicPay: number | string;
-  overtime: number | string;
-  late: number | string;
-  undertime: number | string;
-  absence: number | string;
-  gross: number | string;
-  wtax: number | string;
-  sss: number | string;
-  philhealth: number | string;
-  pagibig: number | string;
-  arE: number | string;
-  fch: number | string;
-  rfc: number | string;
-  salaryLoan: number | string;
-  calamityLoan: number | string;
-  pagibigSalaryLoan: number | string;
-  netPayable: number | string;
-  sssEmployer: number | string;
-  philEmployer: number | string;
-  pagibigEmployer: number | string;
+  basicPay: number;
+  overtime: number;
+  late: number;
+  undertime: number;
+  absence: number;
+  gross: number;
+  wtax: number;
+  sss: number;
+  philhealth: number;
+  pagibig: number;
+  arE: number;
+  fch: number;
+  rfc: number;
+  salaryLoan: number;
+  calamityLoan: number;
+  pagibigSalaryLoan: number;
+  netPayable: number;
+  sssEmployer: number;
+  philEmployer: number;
+  pagibigEmployer: number;
+
+  rowKey: string;
+  PayCode: string;
+  EmpCodeId: string;
+  PayrollPeriod: string;
+  computedWtax: number;
+  officers_allowance:number;
+}
+
+
+interface TotalsType{
+  basicPay: number;
+  overtime: number;
+  late: number;
+  undertime: number;
+  absence: number;
+  gross: number;
+  wtax: number;
+  sss: number;
+  philhealth: number;
+  pagibig: number;
+  arE:number,
+  rfc:number,
+  fch:number,
+  salaryLoan:number,
+  calamityLoan:number;
+  pagibigSalaryLoan:number;
+  netPayable: number;
+  sssEmployer: number;
+  philEmployer: number;
+  pagibigEmployer: number;
+  officers_allowance:number;
 }
 
 interface Props {
   data: SpreadsheetRow[];
-  totals: {
-    basicPay: number;
-    overtime: number;
-    late: number;
-    undertime: number;
-    absence: number;
-    gross: number;
-    wtax: number;
-    sss: number;
-    philhealth: number;
-    pagibig: number;
-    netPayable: number;
-    sssEmployer: number;
-    philEmployer: number;
-    pagibigEmployer: number;
-  };
+  totals: TotalsType;
+  onWtaxChange: (key: string, value: number) => void;
 }
 
+
+// interface EditableProps {
+//   value: number;
+//   rowKey: string;
+//   emp: {
+//     PayCode: string;
+//     EmpCodeId: string;
+//     PayrollPeriod: string;
+//     computedWtax: number;
+//   };
+//   onChange: (key: string, value: number) => void;
+// }
+
+// function EditableWtax({
+//   value,
+//   rowKey,
+//   emp,
+//   onChange
+// }: EditableProps) {
+//   const [editing, setEditing] = useState(false);
+//   const [isSaving, setIsSaving] = useState(false);
+//   const saveOverride = useSaveWtaxOverride();
+
+//   const handleSave = async () => {
+   
+//     if (value === emp.computedWtax) {
+//       return;
+//     }
+
+//     if (isSaving) return;
+
+//     try {
+//       setIsSaving(true);
+
+//       await saveOverride.mutateAsync({
+//         PayCode: emp.PayCode,
+//         EmpCodeId: emp.EmpCodeId,
+//         PayrollPeriod: emp.PayrollPeriod,
+//         computedWtax: emp.computedWtax,
+//         editedValue: value
+//       });
+
+//       SweetAlert.successAlert("Saved successfully");
+//     } catch (error) {
+//       console.error(error);
+//     } finally {
+//       setIsSaving(false);
+//     }
+//   };
+
+//   if (editing) {
+//     return (
+//       <input
+//         type="number"
+//         value={value}
+//         autoFocus
+//         onChange={(e) =>
+//           onChange(rowKey, Number(e.target.value))
+//         }
+//         onKeyDown={(e) => {
+//           if (e.key === "Enter") {
+//             setEditing(false);
+//             handleSave();
+//           }
+//         }}
+//         onBlur={() => {
+//           setEditing(false);
+//           handleSave();
+//         }}
+//         className="w-20 border px-1"
+//       />
+//     );
+//   }
+
+
+
+//   return (
+//     <div onDoubleClick={() => setEditing(true)}>
+//       {value.toFixed(2)}
+//     </div>
+//   );
+// }
+
 export default function SpreadSheet({ data,totals }: Props) {
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedLoanType, setSelectedLoanType] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<SpreadsheetRow | null>(null);
+  const [verifiedUserId, setVerifiedUserId] = useState<number | null>(null);
+
+  const verifyPasswordMutation = useVerifyPassword();
+
+  const handlePasswordConfirm = async (password: string) => {
+    try {
+      const result = await verifyPasswordMutation.mutateAsync(password);
+
+      setVerifiedUserId(result.user_id);
+
+      SweetAlert.successAlert("Access Granted");
+
+      setIsModalOpen(false);
+      setIsDetailModalOpen(true);
+
+    } catch {
+      SweetAlert.errorAlert("Invalid password or no permission");
+    }
+  };
+
+  const closeSecModal = () => {
+    setIsDetailModalOpen(false);
+    setVerifiedUserId(null);
+  }
+
   return (
-    <div className="print-area1 w-full p-4">
+    <div className="print-area1 w-full max-h-[75vh] overflow-auto">
       <table className="w-full border-collapse text-[9pt] table-auto">
-        <thead>
+        <thead className="sticky top-0 z-20 bg-slate-100">
           <tr className="border border-gray-300">
-            <th colSpan={14}></th>
+            <th colSpan={15}></th>
             <th
               colSpan={2}
               className="text-center py-2 border border-gray-300 align-middle bg-gray-50"
@@ -64,6 +202,7 @@ export default function SpreadSheet({ data,totals }: Props) {
             >
               EMPLOYER SHARE
             </th>
+            <th colSpan={1}></th>
           </tr>
 
           <tr className="bg-gray-100 border border-slate-300">
@@ -89,6 +228,7 @@ export default function SpreadSheet({ data,totals }: Props) {
             <th className="border border-gray-300">SSS</th>
             <th className="border border-gray-300">PhilHealth</th>
             <th className="border border-gray-300">Pag-ibig</th>
+            <th className="border border-gray-300 p-2">OA</th>
           </tr>
         </thead>
 
@@ -107,29 +247,52 @@ export default function SpreadSheet({ data,totals }: Props) {
                 <td className="py-2 text-center">{idx + 1}</td>
                 <td className="py-2 text-center">{row.name}</td>
                 <td className="py-2 text-center">{row.basicPay}</td>
-                <td className="py-2 text-center">{row.overtime}</td>
-                <td className="py-2 text-center">{row.late}</td>
-                <td className="py-2 text-center">{row.undertime}</td>
-                <td className="py-2 text-center">{row.absence}</td>
+                <td className="py-2 text-center">{row.overtime.toFixed(2)}</td>
+                <td className="py-2 text-center">{row.late.toFixed(2)}</td>
+                <td className="py-2 text-center">{row.undertime.toFixed(2)}</td>
+                <td className="py-2 text-center">{row.absence.toFixed(2)}</td>
                 <td className="py-2 text-center">{row.gross}</td>
-                <td className="py-2 text-center">{row.wtax}</td>
+                <td> {row.wtax}
+                  {/* <EditableWtax
+                    value={row.wtax}
+                    rowKey={row.rowKey}
+                    emp={{
+                      PayCode: row.PayCode,
+                      EmpCodeId: row.EmpCodeId,
+                      PayrollPeriod: row.PayrollPeriod,
+                      computedWtax: row.computedWtax
+                    }}
+                    onChange={onWtaxChange}
+                  /> */}
+                </td>
                 <td className="py-2 text-center">{row.sss}</td>
                 <td className="py-2 text-center">{row.philhealth}</td>
                 <td className="py-2 text-center">{row.pagibig}</td>
                 <td className="py-2 text-center">{row.arE}</td>
                 <td className="py-2 text-center">{row.rfc}</td>
                 <td className="py-2 text-center">{row.fch}</td>
-                <td className="py-2 text-center">{row.salaryLoan}</td>
-                <td className="py-2 text-center">{row.calamityLoan}</td>
-                <td className="py-2 text-center">{row.pagibigSalaryLoan}</td>
+                <td className="py-2 text-center cursor-pointer"
+                  onDoubleClick={() => {
+                    setSelectedRow(row);
+                    setIsModalOpen(true);
+                    setSelectedLoanType("SSS_LOAN");
+                  }}>{row.salaryLoan}</td>
+                <td className="py-2 text-center">{row.calamityLoan.toFixed(2)}</td>
+                <td className="py-2 text-center cursor-pointer"
+                  onDoubleClick={() => {
+                    setSelectedRow(row);
+                    setIsModalOpen(true);
+                    setSelectedLoanType("PAGIBIG_LOAN");
+                  }}>{row.pagibigSalaryLoan}</td>
 
                 <td className="py-2 text-center font-semibold bg-blue-50">
-                  {row.netPayable}
+                  {row.netPayable.toFixed(2)}
                 </td>
 
                 <td className="py-2 text-center">{row.sssEmployer}</td>
                 <td className="py-2 text-center">{row.philEmployer}</td>
                 <td className="py-2 text-center">{row.pagibigEmployer}</td>
+                <td className="py-2 text-center">{row.officers_allowance.toFixed(2)}</td>
               </tr>
             ))
           )}
@@ -141,26 +304,50 @@ export default function SpreadSheet({ data,totals }: Props) {
             GRAND TOTAL
           </td>
 
-          <td className="text-center border border-gray-400">{totals.basicPay.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.overtime.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.late.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.undertime.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.absence.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.gross.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.wtax.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.sss.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.philhealth.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.pagibig.toFixed(2)}</td>
-          <td colSpan={6} className="border border-gray-400"></td>
-          <td className="text-center bg-blue-200 border border-gray-400">{totals.netPayable.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.philEmployer.toFixed(2)}</td>
-          <td className="text-center border border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{formatAmount(totals.basicPay)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.overtime.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.late.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.undertime.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.absence.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 bg-blue-200 font-mono">{formatAmount(totals.gross)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.wtax.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.sss.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.philhealth.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.pagibig.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.arE.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.rfc.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.fch.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.salaryLoan.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.calamityLoan.toFixed(2)}</td>
+          <td className="text-center px-1 border border-gray-400 font-mono">{totals.pagibigSalaryLoan.toFixed(2)}</td>
+          <td className="text-center px-1 bg-blue-200 border border-gray-400 font-mono">{formatAmount(totals.netPayable)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.sssEmployer.toFixed(2)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.philEmployer.toFixed(2)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.pagibigEmployer.toFixed(2)}</td>
+          <td className="text-center border px-1 font-mono border-gray-400">{totals.officers_allowance.toFixed(2)}</td>
         </tr>
       </tfoot>
 
 
       </table>
+
+      <AuthenticationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handlePasswordConfirm}
+      />
+
+      {isDetailModalOpen && selectedRow && verifiedUserId !== null && (
+        <RequestModal size="xl" title="Editable Loan" onClose={closeSecModal}>
+          <EditLoanModal 
+            selectedRow={selectedRow} 
+            loanType={selectedLoanType!}  
+            master_id={verifiedUserId} 
+            onClose={closeSecModal}
+          />
+        </RequestModal>
+      )}
     </div>
   );
 }
+

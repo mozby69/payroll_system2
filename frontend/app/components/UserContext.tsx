@@ -6,8 +6,10 @@ import api from "../services/axios"
 type User = {
   id: number
   username: string
+  name: string
   roles: string[]
   permissions: string[]
+  company_id:string;
 }
 
 type AuthContextType = {

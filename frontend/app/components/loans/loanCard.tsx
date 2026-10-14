@@ -10,6 +10,7 @@ import EarlyPayModal from "./earlyPayModal";
 import SkipPayModal from "./skipPayModal";
 import { InfoProps, LoanLedgerItem } from "@/app/types/loanTypes";
 import { useReactToPrint } from "react-to-print";
+import EditLoanLedger from "./editLoanLedger";
 
 type LoanCardProps = {
   loan: {
@@ -21,6 +22,7 @@ type LoanCardProps = {
     term_unit: string;
     start_date: string;
     status: string;
+    others_types: string;
     per_payroll_deduct: number;
     deduct_allowance: boolean;
     extended_term: number;
@@ -38,8 +40,10 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
 
   const [editContext, setEditContext] = useState<LoanContext | null>(null);
   const [earlyPay, setEarlyPay] = useState<LoanContext | null> (null);
+  const [editLoan, setEditLoan] = useState<LoanContext | null> (null);
   const [skipPay, setSkipPay] = useState<LoanContext | null> (null);
   const [openMenu, setOpenMenu] = useState(false);
+ 
 
   const ledgerRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +90,10 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
       <div className="grid grid-cols-4 gap-y-4 gap-x-6 p-6 border border-mainNeutral rounded-lg">
         <Info label="Fullname" value={loan.fullname} />
         <Info label="Loan Type" value={loan.loan_type} />
+        
+        {loan.others_types != "" && (
+           <Info label="Sub Type" value={loan.others_types} />
+        )}
         <Info label="Principal" value={loan.principal} />
         <Info label="Original Term" value={`${loan.term_value} ${loan.term_unit}`} />
         <Info
@@ -101,13 +109,19 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
           value={loan.deduct_allowance ? "Yes" : "No"}
         />
         <Info label="Extended Term" value={`${loan.extended_term} MONTHS`} />
+
+       
       </div>
 
 
       <div className="flex justify-between items-center">
         <span
           className={`text-sm font-medium px-2 py-1 rounded ${
-            loan.status === "ACTIVE" ? "bg-positive" : "bg-negative"
+            loan.status === "ACTIVE"
+            ? "bg-positive"
+            : loan.status === "COMPLETED"
+            ? "bg-mainBg"
+            : "bg-negative"
           } text-white`}
         >
           {loan.status}
@@ -206,13 +220,81 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
         `}
       >
         <div ref={ledgerRef} className="print-container border rounded-lg p-4 space-y-3 bg-mainNeutral">
+             <style>{`
+                     
+                    @media print {
+
+                      @page {
+                        size: auto;          
+                        margin: 10mm;        
+                      }
+
+                      .no-print {
+                        display: none !important;
+                      }
+
+                      .print-only {
+                        display: block !important;
+                      }
+
+                      body {
+                        background: white !important;
+                      }
+
+                      .print-container {
+                        background: white !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        width: 100%;
+                        overflow: visible !important;
+                      }
+
+                      table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-block: 2rem;
+                      }
+
+                      th, td {
+                        font-size: 11px;
+                        padding:4px;
+                        word-break: break-word;
+                      }
+
+                      thead {
+                        display: table-header-group;
+                        background-color: #7c7c7c;
+                        color: white;
+                      }
+
+                      tr {
+                        page-break-inside: avoid;
+                      }
+                    }
+
+
+
+                    `}</style>
           {isLoading || !details ? (
             <p className="text-sm text-mainGray">Loading ledger...</p>
           ) : (
             <>
-              <div className="flex justify-end no-print">
+              <div className="flex justify-end no-print gap-x-4 gap-y-2">
+                
+
                   <GenButton variant="primary" onClick={handlePrintLedger}>
                     Print Loan Ledger
+                  </GenButton>
+
+                  <GenButton variant="edit"
+                    onClick={()=>{
+                      setEditLoan({
+                        loan_id: loan.loan_id,
+                        fullname: loan.fullname
+                      });
+                    }}
+                  >
+                    Edit Loan Ledger
                   </GenButton>
               </div>
 
@@ -252,8 +334,9 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
                         </li>
                     ) : (
                         <>
-                        <li className="grid grid-cols-5 text-xs font-semibold text-mainGray border-b border-mainGray px-2 pb-2">
-                            <span>Date Paid</span>
+                        <li className="grid grid-cols-6 text-xs font-semibold text-mainGray border-b border-mainGray  pb-2">
+                            <span>Transaction Date</span>
+                            <span>Payroll Cycle Date</span>
                             <span>Transaction</span>
                             <span className="text-right">Credit</span>
                             <span className="text-right">Debit</span>
@@ -263,8 +346,13 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
                         {details.ledger.map((l: LoanLedgerItem) => (
                             <li
                             key={l.loan_ledger_id}
-                            className="grid grid-cols-5 text-sm items-center py-1 gap-x-4"
+                            className="grid grid-cols-6 text-sm items-center py-1 gap-x-4"
                             >
+                            <span>
+                              {l.created_at
+                                ? new Date(l.created_at).toLocaleDateString()
+                                : "-"}
+                            </span>
                             <span>
                               {l.transaction_date
                                 ? new Date(l.transaction_date).toLocaleDateString()
@@ -315,6 +403,17 @@ export default function LoanCard({ loan, isOpen, onToggle }: LoanCardProps) {
           >
             <EarlyPayModal loan_id={earlyPay.loan_id} fullname={earlyPay.fullname} onSuccess={() => setEarlyPay(null)}/>
           </RequestModal>
+        )}
+
+        {editLoan && (
+          <RequestModal 
+              size = "xl"
+              title={`${editLoan.fullname}, Would like to edit this ledger?`}
+              onClose={()=>setEditLoan(null)}
+          >
+             <EditLoanLedger loan_id={editLoan.loan_id} fullname={editLoan.fullname} onSuccess={() => setEditLoan(null)}/>
+          </RequestModal>
+
         )}
 
         {skipPay && (

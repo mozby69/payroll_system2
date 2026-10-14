@@ -95,11 +95,20 @@ export const updateEmployeePayrollByEmpCode = async (
       Disbursing,
       remarks,
       Taxable,
-      bankAccount
+      isOfficerAllowance,
+      isSixDaysWork,
+      isecola,
+      gmail_account,
+      OaBasicSalary,
+      bankAccount,
+      isDisabled
     } = req.body;
 
 
     const changedBy = (req as any).user?.username || "SYSTEM";
+
+
+    console.log("dis", isDisabled)
 
     const updated = await employeeService.updateEmployeePayroll(
       empCode,
@@ -112,7 +121,13 @@ export const updateEmployeePayrollByEmpCode = async (
         Disbursing: Boolean(Disbursing),
         remarks: remarks ? String(remarks) : undefined, 
         Taxable: Boolean(Taxable),
+        isOfficerAllowance: Boolean(isOfficerAllowance),
+        isSixDaysWork: Boolean(isSixDaysWork),
+        isecola: Boolean(isecola),
+        OaBasicSalary: Number(OaBasicSalary), 
+        gmail_account:gmail_account ? String(gmail_account) : "",
         bankAccount:bankAccount ? String(bankAccount) : undefined,
+        isDisabled: Boolean(isDisabled),
       },
       changedBy 
     );
@@ -122,21 +137,6 @@ export const updateEmployeePayrollByEmpCode = async (
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Failed to update payroll" });
-  }
-};
-
-export const getCompanies = async (_req: Request, res: Response) => {
-  try {
-    const companies = await employeeService.getAllCompanies();
-
-    return res.json({
-      data: companies,
-    });
-  } catch (error) {
-    console.error("Failed to fetch companies:", error);
-    return res.status(500).json({
-      message: "Failed to fetch companies",
-    });
   }
 };
 
@@ -202,3 +202,27 @@ export const bulkIncreaseEmployeeSalary = async (
     });
   }
 };
+
+
+
+export async function DisplayGmailAccountListController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const data =
+      await employeeService.DisplayGmailAccountList();
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error(
+      "Error occurred in DisplayGmailAccountListController:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Failed to retrieve employee Gmail accounts",
+    });
+  }
+}

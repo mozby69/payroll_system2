@@ -1,27 +1,85 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Column } from "@/app/types/preparePayroll"
 import { useGetEmployeeArchived } from "@/app/hooks/usePayrollArchive"
 import { useDebounce } from "@/app/utils/useDebounce"
 import Datatable from "@/app/components/Datatable"
 import { Pagination } from "@/app/components/Pagination"
-import { Eye, Printer } from "lucide-react"
+import {  Eye, Mail, Printer } from "lucide-react"
 import { formatCurrency } from "@/app/utils/currencyConverter"
 import GenButton from "@/app/components/Buttons"
 import { EmployeeArchivedType } from "@/app/types/totalPayroll"
-import { ProcessingOverlay } from "@/app/ui/loader/ProcessingOverlay"
+import { PayslipProgressOverlay } from "@/app/ui/loader/ProcessingOverlay"
 import { useFetchBranchesByCompany, useFetchCompanies } from "@/app/hooks/useAllowance"
 import { printEmployeeArchivedService } from "@/app/services/archive.services"
 import RequestModal from "../Modal"
 import ViewEmployeeList from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewEmployeeList"
+import EmployeeGmail from "@/app/ModalContent/ArchivePayroll/ViewEmployee/ViewGmail"
+import SweetAlert from "../Swal"
+import { socket } from "@/app/lib/socket"
+import { getSocketId } from "./helperSendEmail"
+
+
+// type BulkPayslipResponse = {
+//   success: boolean;
+//   message: string;
+//   data: {
+//     totalEmployees: number;
+//     sentCount: number;
+//     skippedCount: number;
+//     failedCount: number;
+//     failures: {
+//       archiveId: number;
+//       employeeCode: string;
+//       message: string;
+//     }[];
+//   };
+// };
+
+
+export type BulkPayslipProgress = {
+  total: number;
+  completed: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  percentage: number;
+  currentEmployeeCode?: string;
+};
+
+type BulkPayslipFailure = {
+  archiveId: number;
+  employeeCode: string;
+  message: string;
+};
+
+type BulkPayslipResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    totalEmployees: number;
+    sentCount: number;
+    skippedCount: number;
+    failedCount: number;
+    failures: BulkPayslipFailure[];
+  };
+};
+
+const initialPayslipProgress: BulkPayslipProgress = {
+  total: 0,
+  completed: 0,
+  sent: 0,
+  skipped: 0,
+  failed: 0,
+  percentage: 0,
+};
 
 type PayslipProps = {
   totalPayrollId: number
 }
-export default function GeneratePayslipModal({
-  totalPayrollId,
-}: PayslipProps) {
+export default function GeneratePayslipModal({totalPayrollId}: PayslipProps) {
+
 
   const PAGE_SIZE = 10
   const [page, setPage] = useState(1)
@@ -29,6 +87,7 @@ export default function GeneratePayslipModal({
   const [loading, setLoading] = useState(false)
   const debouncedSearch = useDebounce(search, 400)
   const [isModalViewOpen, setIsModalViewOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeArchivedType | null>(null);
 
   const [selectedCompany, setSelectedCompany] = useState<string>("");
@@ -44,7 +103,110 @@ export default function GeneratePayslipModal({
     selectedBranch
   })
 
+  const [payslipProgress, setPayslipProgress] =
+    useState<BulkPayslipProgress>(
+      initialPayslipProgress
+    );
+
+
+
+    useEffect(() => {
+  const handlePayslipProgress = (
+    progress: BulkPayslipProgress
+  ): void => {
+    setPayslipProgress(progress);
+  };
+
+  socket.on(
+    "bulk-payslip-progress",
+    handlePayslipProgress
+  );
+
+  return () => {
+    socket.off(
+      "bulk-payslip-progress",
+      handlePayslipProgress
+    );
+  };
+}, []);
+
+
+const handleSendBulkEmail = async (): Promise<void> => {
+  try {
+    setLoading(true);
+
+    setPayslipProgress(
+      initialPayslipProgress
+    );
+
+    const socketId =
+      await getSocketId();
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/payroll-archive/send-bulk-email-payslip`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        credentials: "include",
+
+        body: JSON.stringify({
+          totalPayrollId,
+          selectedCompany,
+          selectedBranch,
+          search,
+          socketId,
+        }),
+      }
+    );
+
+    const data =
+      (await response.json()) as BulkPayslipResponse;
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to send payslips"
+      );
+    }
+
+    setPayslipProgress({
+      total: data.data.totalEmployees,
+      completed:
+        data.data.totalEmployees,
+      sent: data.data.sentCount,
+      skipped:
+        data.data.skippedCount,
+      failed:
+        data.data.failedCount,
+      percentage: 100,
+    });
+
+    SweetAlert.successAlert(
+      `${data.data.sentCount} payslips sent. ` +
+        `${data.data.skippedCount} skipped. ` +
+        `${data.data.failedCount} failed.`
+    );
+  } catch (error: unknown) {
+    console.error(error);
+
+    SweetAlert.errorAlert(
+      error instanceof Error
+        ? error.message
+        : "Failed to send payslips"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
   const preselectedbranch = branches.length === 1 ? branches[0].branchCode : selectedBranch;
+
+
   const handlePrint = async () => {
     try {
       setLoading(true);
@@ -138,6 +300,16 @@ export default function GeneratePayslipModal({
 
 
 
+  const handleOpenModal = (row: EmployeeArchivedType) => {
+    setSelectedEmployee(row);
+    setIsModalOpen(true);
+  };
+
+  const closeModal3 = () => {
+    setIsModalOpen(false);
+  }
+
+
 
   const closeModal2 = () => {
     setIsModalViewOpen(false);
@@ -162,11 +334,8 @@ export default function GeneratePayslipModal({
     {
       header: "Total Deduction",
       accessor: (row) =>
-        formatCurrency(
-          Number(row.w_tax) +
-          Number(row.sss_loan) +
-          Number(row.pagibig_loan) +
-          Number(row.sss_calamity_loan)
+        formatCurrency(Number(row.total_deductions)
+         
         ),
     },
     {
@@ -191,6 +360,13 @@ export default function GeneratePayslipModal({
           >
             <Printer size={16} />
           </button>
+
+          <button
+            onClick={() => handleOpenModal(row)}
+            className="p-2 text-cyan-600 hover:text-cyan-400 hover:cursor-pointer rounded-md transition">
+            <Mail size={16}/>
+          </button>
+
         </div>
       ),
     },
@@ -200,10 +376,9 @@ export default function GeneratePayslipModal({
   return (
     <div className="space-y-6">
   
-      {loading && (
-        <ProcessingOverlay
-          title="Generating Payslips"
-          message="Please wait while we prepare the employee payslip document."
+     {loading && (
+        <PayslipProgressOverlay
+          progress={payslipProgress}
         />
       )}
   
@@ -220,14 +395,20 @@ export default function GeneratePayslipModal({
             </p>
           </div>
   
+          <div className="flex gap-x-2">
           <GenButton
             variant="positive"
-            onClick={handlePrint}
-            className="flex items-center gap-2"
-          >
+            onClick={handlePrint}>
             <Printer size={16} />
             Print All
           </GenButton>
+
+          <button
+          onClick={handleSendBulkEmail} 
+          className="flex items-center gap-x-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 hover:cursor-pointer rounded text-white shadow">
+              <Mail size={16}/>Send email
+          </button>
+          </div>
   
         </div>
   
@@ -243,14 +424,12 @@ export default function GeneratePayslipModal({
             }}
             className="w-full rounded-lg border border-slate-300 px-4 py-2.5 
                        text-sm bg-white focus:outline-none focus:ring-2 
-                       focus:ring-blue-500 focus:border-blue-500 transition"
-          >
+                       focus:ring-blue-500 focus:border-blue-500 transition">
             <option value="">Choose Company</option>
             {companies.map((company) => (
               <option
                 key={company.CompanyCode}
-                value={company.CompanyCode}
-              >
+                value={company.CompanyCode}>
                 {company.CompanyName}
               </option>
             ))}
@@ -266,7 +445,9 @@ export default function GeneratePayslipModal({
                        focus:ring-blue-500 focus:border-blue-500 
                        disabled:bg-slate-100 transition"
           >
-            <option value="">Choose Branch</option>
+                <option value="">
+              All branches
+            </option>
             {branches.map((branch) => (
               <option
                 key={branch.branchCode}
@@ -318,6 +499,12 @@ export default function GeneratePayslipModal({
             </RequestModal>
           )}
 
+
+      {isModalOpen && selectedEmployee &&(
+            <RequestModal size="sm" title={`VIEW GMAIL`} onClose={closeModal3}>
+                <EmployeeGmail employee={selectedEmployee}/>
+            </RequestModal>
+          )}
   
     </div>
   );

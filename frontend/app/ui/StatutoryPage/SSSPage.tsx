@@ -18,8 +18,7 @@ import { useState } from "react";
 
 export default function SSSPage(){
 
-         const [selectedSSS,setSelectedSSS] = useState<SSSProps | null>(null);
-
+            const [selectedSSS,setSelectedSSS] = useState<SSSProps | null>(null);
             const [page, setPage] = useState(1);
             const PAGE_SIZE = 10;
             const [search, setSearch] = useState("");
@@ -48,13 +47,14 @@ export default function SSSPage(){
                                   accessor: (row) => row.end_range,
                                 },
                                 {
+                                  header: "Employer Share",
+                                  accessor: (row) => row.employer_share,
+                                  },
+                                {
                                     header: "Employee Share",
                                     accessor: (row) => row.employee_share,
                                 },
-                                {
-                                header: "Employer Share",
-                                accessor: (row) => row.employer_share,
-                                },
+                             
                                 {
                                     header:"Actions",
                                     render: (row) => (

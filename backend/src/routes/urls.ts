@@ -19,6 +19,11 @@ import disburseRoutes from '../modules/Disburse/disburse.routes';
 import printeRoutes from '../modules/print/print.routes';
 import conversionRouites from '../modules/conversion/conversion.routes';
 
+import editableLoanRoutes from '../modules/editableLoan/editableLoan.routes';
+import manualPayrollRoutes from '../modules/manual_payroll/manual_payroll.routes';
+
+import alertRoutes from '../modules/alert/alert.routes'
+
 
 const router = Router();
 
@@ -29,7 +34,6 @@ router.use('/import',importRoutes);
 router.use('/process', apiRoutes)
 
 router.use("/auth", loginRoutes);
-router.use("/auth", authRoutes); 
 
 router.use("/bonus", bonusRoutes);
 
@@ -54,11 +58,17 @@ router.use("/loans", addLoanRoutes);
 router.use("/Disburse", disburseRoutes);
 // Disburse code ↑
 
+// Editable Load ↓
+router.use("/editable-loan", editableLoanRoutes);
+// Editable Load ↑
 
 //Print
 router.use("/print", printeRoutes)
 
 
 router.use("/conversion", conversionRouites)
+router.use("/manual-payroll",manualPayrollRoutes);
+
+router.use("/alert", alertRoutes)
 
 export default router;

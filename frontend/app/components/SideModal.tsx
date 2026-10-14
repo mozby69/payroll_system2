@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { Save, X } from "lucide-react";
 import SweetAlert from "./Swal";
 
@@ -29,7 +29,7 @@ export default function SideModalLayout({
 }: SideModalProps) {
 
   
-  const handleAttemptClose = () => {
+  const handleAttemptClose = useCallback(() => {
     if (!isDirty) {
       onClose();
       return;
@@ -50,16 +50,14 @@ export default function SideModalLayout({
         }
       }
     );
-  };
-
+  }, [isDirty, onClose, onSave, onReset]);
 
   useEffect(() => {
     if (!open) return;
 
-  const handleEsc = (e: KeyboardEvent) => {
-    if (e.key === "Escape") handleAttemptClose();
-  };
-
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleAttemptClose();
+    };
 
     document.addEventListener("keydown", handleEsc);
     document.body.style.overflow = "hidden";
@@ -68,7 +66,7 @@ export default function SideModalLayout({
       document.removeEventListener("keydown", handleEsc);
       document.body.style.overflow = "auto";
     };
-  }, [open, onClose]);
+  }, [open, handleAttemptClose]);
 
 
 
@@ -92,7 +90,7 @@ export default function SideModalLayout({
         <div className="h-full flex flex-col gap-2">
             <div className="flex justify-between items-center px-6 py-4 bg-mainBg text-mainLight">
                 <h2 className="font-bold text-lg">{title}</h2>
-                <button onClick={onClose} className="cursor-pointer hover:scale-[1.2] hover:text-mainhighlight transition duration-75 ease-in-out">
+                <button onClick={handleAttemptClose} className="cursor-pointer hover:scale-[1.2] hover:text-mainhighlight transition duration-75 ease-in-out">
                 <X />
                 </button>
             </div>

@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { hrApi } from "../../lib/hrApi";
 import { ApiParams } from "../../types/utilsTypes";
-import { fetchHrAttendance, getDisabledPayrollRangesByCycle, saveEmployeeAttendance, transformAttendanceData } from "./api.services";
+import { checkPayCodeExists, fetchHrAttendance, getDisabledPayrollRangesByCycle, saveEmployeeAttendance, sendSmsToGateway, transformAttendanceData } from "./api.services";
+import { generatePayCode } from "./api.utils";
 
 export const getAttendance = async (req: Request, res: Response) => {
   try {
@@ -19,14 +20,21 @@ export const getAttendance = async (req: Request, res: Response) => {
       });
     }
 
+    
+
     // Fetch data from HR system
     const data = await fetchHrAttendance(params);
+
+    const payCode = generatePayCode(data.CyclePay, params.endDate);
+
+    // Check if payroll already exists
+    await checkPayCodeExists(payCode, params.branchCycle);
     
     // Transform the data
     const employees = transformAttendanceData(data, params);
     
     // IMPORTANT: await the save operation
-    await saveEmployeeAttendance(employees);
+    await saveEmployeeAttendance(employees,params.branchCycle);
     
     // Return success response with count
     res.status(200).json({
@@ -40,9 +48,8 @@ export const getAttendance = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error("HR API ERROR:", error.response?.data || error.message);
 
-    if (error.message?.includes("already submitted for approval")) {
+    if (error.message?.includes("Payroll already exists")) {
       return res.status(409).json({
         message: error.message,
       });
@@ -57,10 +64,7 @@ export const getAttendance = async (req: Request, res: Response) => {
 
 
 
-export async function getDisabledPayrollDatesController(
-  req: Request,
-  res: Response
-) {
+export async function getDisabledPayrollDatesController(req: Request,res: Response) {
   const cycle = req.query.cycle as string;
 
   if (!cycle) {
@@ -73,3 +77,18 @@ export async function getDisabledPayrollDatesController(
 
   res.json(data);
 }
+
+
+export const approveRequest = async (req: Request, res: Response) => {
+  // your approval logic here
+
+  await sendSmsToGateway(
+    "09123456789",
+    "Your request has been approved."
+  );
+
+  return res.json({
+    success: true,
+    message: "Request approved and SMS sent.",
+  });
+};

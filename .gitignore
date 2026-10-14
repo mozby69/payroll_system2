@@ -3,7 +3,7 @@
 # ------------------------
 frontend/node_modules/
 backend/node_modules/
-backend/prisma/migrations/
+# backend/prisma/migrations/
 
 # Yarn / PnP
 /.pnp
@@ -27,6 +27,7 @@ backend/dist/
 # ------------------------
 frontend/.env*
 backend/.env*
+
 
 # ------------------------
 # Logs

@@ -1,3 +1,4 @@
+import { PayrollArchiveEmployee, PayrollArchiveReport } from "../types/archiveTypes"
 import { PaginatedResponse } from "../types/preparePayroll"
 import { EmployeeArchivedType, GetEmployeeArchivedParams, TotalPayroll } from "../types/totalPayroll"
 import api from "./axios"
@@ -40,4 +41,25 @@ export async function getTotalPayrollRequest(
       );
     
       return response.data;
+    }
+
+
+    type PayrollArchiveReportParams = {
+      totalPayrollId: number;
+      company_id: string;
+    };
+
+  
+    export async function getPayrollArchiveReportService({
+      totalPayrollId,
+      company_id,
+    }: PayrollArchiveReportParams): Promise<PayrollArchiveReport> {
+      const response = await api.get(
+        `/payroll-archive/payroll-archive-report/${totalPayrollId}`,
+        {
+          params: { company_id },
+        }
+      );
+    
+      return response.data.data;
     }

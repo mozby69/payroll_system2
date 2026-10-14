@@ -9,7 +9,9 @@ import {
     HandCoins,
     PhilippinePeso,
     CreditCard,
-    FilePlus
+    FilePlus,
+    WorkflowIcon,
+    Calendar1
   } from "lucide-react"
 import { MenuSection } from "../types/sideTypes"
   
@@ -23,6 +25,13 @@ export const MENU_SECTIONS: MenuSection[] = [
           path: "/",
           icon: LayoutDashboard
         },
+        {
+          label: "Initialize Payroll",
+          path: "/initialize-payroll",
+          icon: WorkflowIcon,
+          permission: "PAYROLL_INITIALIZE"
+        },
+
         {
           label: "Payroll",
           icon: Calculator,
@@ -51,10 +60,11 @@ export const MENU_SECTIONS: MenuSection[] = [
           label:"Disbursement",
           path:"/disburse-payroll",
           icon: CreditCard,
-          permission: "BONUS_GENERATE",
+          permission: "DEDUCTION_VIEW",
         }
       ]
     },
+   
     {
       title: "Employees",
       items: [
@@ -62,7 +72,13 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees List",
           path: "/employee-list",
           icon: User,
-          permission: "BONUS_GENERATE"
+          permission: "EMPLOYEE_VIEW"
+        },
+        {
+          label:"Annual List",
+          path:"/annual-list",
+          icon: Calendar1,
+          permission:"EMPLOYEE_VIEW"
         },
      
       ]
@@ -74,13 +90,13 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Statutory Deductions",
           path: "/statutory-deductions",
           icon: ShieldCheck,
-          permission: "BONUS_GENERATE"
+          permission: "DEDUCTION_VIEW"
         },
         {
           label: "Employees Loan",
           path: "/employee-loan",
           icon: HandCoins,
-          permission: "BONUS_GENERATE"
+          permission: "VIEW_LOANS"
         }
       ]
     },
@@ -97,14 +113,26 @@ export const MENU_SECTIONS: MenuSection[] = [
           label: "Employees Allowance",
           path: "/allowance",
           icon: PhilippinePeso,
-          permission: "PAYROLL_LIST"
+          permission: "ALLOWANCE_VIEW"
         },
         {
           label: "Employees Conversion",
           path: "/conversion",
           icon: FilePlus,
-          permission: "BONUS_GENERATE"
+          permission: "CONVERSION_VIEW"
         },
+      ]
+    },
+    {
+      title: "Super Admin",
+      items: [
+        {
+          label: "Manual Payroll",
+          path: "/manual_payroll",
+          icon: CircleDollarSign,
+          permission: "ADMIN_MANUAL_PAYROLL"
+        },
+    
       ]
     }
   ]

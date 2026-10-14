@@ -984,9 +984,109 @@ export const importSQLService = async (filePath:string | undefined, originalFile
   };
 
 
-
+ 
     "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "build": "tsc"
   },
+
+
+
+********************************** march 31 **********************
+
+
+  if (include_payroll === false) {
+            await tx.employeeSummary.updateMany({
+              where: {
+                EmpCodeId: empCode,
+                status: "PENDING",
+              },
+              data: {
+                status: "EXCLUDED", 
+              },
+            });
+          }
+
+
+
+
+
+
+
+
+************ FILTERING FOR EMPLOYEES IN ALLOWANCE WITH ALIEN TRUEN ,USE SECONDARY BRANCGH ,VIEWLIST - FUNCTION
+
+  for (const employee of regularEmployees) {
+    const branch = employee.isAlien && employee.secondaryBranchId ? employee.secondaryBranchId : employee.branch_code ?? "NO_BRANCH";
+    const company = branch.split("-")[0] ?? "UNKNOWN";
+
+    if (!branchesByCompany[company]) {
+      branchesByCompany[company] = {};
+    }
+
+    if (!branchesByCompany[company][branch]) {
+      branchesByCompany[company][branch] = [];
+    }
+    branchesByCompany[company][branch].push(employee);
+  }
+
+    for (const company of Object.keys(branchesByCompany)) {
+      for (const branch of Object.keys(branchesByCompany[company])) {
+        branchesByCompany[company][branch].sort((a, b) => {
+          return (a.EmpCode ?? "").localeCompare(b.EmpCode ?? "");
+        });
+      }
+    }
+
+
+
+
+
+  for (const employee of regularEmployees) {
+      const company = employee.company_id ?? "UNKNOWN";
+      const branch = employee.branch_code ?? "NO_BRANCH";
+
+      if (!branchesByCompany[company]) {
+        branchesByCompany[company] = {};
+      }
+
+      if (!branchesByCompany[company][branch]) {
+        branchesByCompany[company][branch] = [];
+      }
+
+      branchesByCompany[company][branch].push(employee);
+    }
+
+    for (const company of Object.keys(branchesByCompany)) {
+      for (const branch of Object.keys(branchesByCompany[company])) {
+        branchesByCompany[company][branch].sort((a, b) => {
+          return (a.EmpCode ?? "").localeCompare(b.EmpCode ?? "");
+        });
+      }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+           const deductions =
+          sssContribEmployee +
+          pagibigEmployeeShare +
+          philhealthRateEmployee +
+          totalLoanDeduction +
+          finalWtax;
+
+        const netPay = (hasNoAtm || isDisbursing) ? 0 : grossPay - deductions;
+
+
+
+               const isDisbursing = emp.EmpCode.Disbursing === true;
+        const hasNoAtm = emp.EmpCode.WithAtm === false;

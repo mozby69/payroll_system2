@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices } from "./general.services";
+import { assignBranchService, createGroupService, deleteGroupService, fetchCompanyCycles, getAllCompanies, getBranch, getBranchesDetailsService, getCompaniesByCode, getCompaniesByCycle, getCompanyDetailsServices, getGroupsService, getLocalMode, getUniqueLoan, reorderBranchesService, updateLocalMode } from "./general.services";
 import { string } from "zod";
 import { getBrowser } from "../../utils/pdfBrowser";
+
 
 export async function getCompanyDetailsController(
    req: Request,
@@ -39,6 +40,15 @@ export async function getCompaniesByCycleController(req: Request, res: Response)
   }
 
 
+
+  export async function fetchCompanyCyclesController(req: Request, res: Response) {
+    try {
+      const result = await fetchCompanyCycles()
+      return res.json({ success: true, data: result });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch cycles" });
+    }
+  }
   
 export async function getCompaniesByCodeController(req: Request, res: Response) {
     try {
@@ -65,7 +75,6 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
       const browser = await getBrowser(); 
       const page = await browser.newPage();
   
-      //const fullUrl = `http://localhost:3000${path}`;
       const fullUrl = `${process.env.FRONTEND_LAN_URL}${path}`;
   
       await page.goto(fullUrl, {
@@ -107,3 +116,218 @@ export async function getCompaniesByCodeController(req: Request, res: Response) 
 
 
 
+export const getCompaniesController = async (_req: Request, res: Response) => {
+  try {
+    const companies = await getAllCompanies();
+
+    return res.json({
+      data: companies,
+    });
+  } catch (error) {
+    console.error("Failed to fetch companies:", error);
+    return res.status(500).json({
+      message: "Failed to fetch companies",
+    });
+  }
+};
+
+
+export const getUniqueLoanController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const loans = await getUniqueLoan();
+
+    res.status(200).json({
+      success: true,
+      data: loans
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch loan types"
+    });
+  }
+};
+
+
+export async function getBranchesDetailsController(
+  req: Request,
+  res: Response
+) {
+
+  try{
+    const branches = await getBranchesDetailsService()
+    res.status(200).json({
+      success: true,
+      data: branches
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch branches"
+    });
+  }
+  
+}
+
+
+export const reorderBranchesController = async (
+  req: Request,
+  res: Response
+) => {
+
+  try {
+
+    const { company_id, branchCodes } = req.body
+
+    if (!company_id || !branchCodes) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request payload"
+      })
+    }
+
+    await reorderBranchesService(company_id, branchCodes)
+
+    res.json({
+      success: true,
+      message: "Branch order updated"
+    })
+
+  } catch (error: any) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+
+  }
+
+}
+
+
+
+
+
+
+export const getBranchController = async (req:Request, res:Response) => {
+  try{
+    const data = await getBranch();
+
+    return res.status(200).json(data);
+  }
+  catch(error){
+    console.error("error occured",error);
+  }
+}
+
+
+
+// CREATE
+export const createGroup = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: "Group name is required" });
+    }
+
+    const group = await createGroupService(name.toUpperCase());
+
+    res.json(group);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// GET ALL
+export const getGroups = async (_req: Request, res: Response) => {
+  try {
+    const data = await getGroupsService();
+    res.json(data);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch groups" });
+  }
+};
+
+// DELETE
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    await deleteGroupService(id);
+
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: "Failed to delete group" });
+  }
+};
+
+// ASSIGN
+export const assignBranch = async (req: Request, res: Response) => {
+  try {
+    const { branchCode } = req.params;
+    const { groupId } = req.body;
+
+    await assignBranchService(
+      branchCode,
+      groupId ? Number(groupId) : null
+    );
+
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: "Failed to assign branch" });
+  }
+};
+
+
+
+//local mode
+export async function getLocalModeController(req: Request,res: Response) {
+
+  try {
+
+    const data = await getLocalMode();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
+
+}
+
+export async function updateLocalModeController(req: Request,res: Response) {
+
+  try {
+
+    const { local_mode } = req.body as { local_mode: boolean;};
+
+    const data = await updateLocalMode(local_mode);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+
+  }
+
+}

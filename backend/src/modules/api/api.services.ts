@@ -6,22 +6,37 @@ import { nowPH } from "../../utils/timezone";
 import { EmployeeSummaryTypes } from "./api.types";
 import { generatePayCode } from "./api.utils";
 import { io } from "../../server";
-import { appendMissingBodEmployees } from "../general/general.services";
-
+import { appendMissingBodEmployees, probitionaryEmployees, specialLeaveEmployeesServices } from "../general/general.services";
+import { totalmem } from "os";
+import axios from "axios";
 export async function fetchHrAttendance(params: ApiParams){
-    const {startDate, endDate, branchCycle} = params;
+  const {startDate, endDate, branchCycle} = params;
 
-    const response = await hrApi.get("/attendance/summary/", {
-        params: {
-            startDate,
-            endDate,
-            branchCycle
-        },
-    });
 
-    return response.data;
+  const totatPayroll = await prisma.totalPayroll.findFirst({
+    where: {
+      cycle_category: branchCycle,
+      status: "COMPLETED"
+    },
+    orderBy: {
+      id: "desc"
+    }
+  })
+ const  prevPeriod = totatPayroll?.payroll_period ?? "";
+ const api = await hrApi();
+
+
+  const response = await api.get("/api/attendance/summary/", {
+      params: {
+          startDate,
+          endDate,
+          branchCycle,
+          prevPeriod
+      },
+  });
+
+  return response.data;
 }
-
 export function transformAttendanceData(
     hrData: any,
     params: ApiParams
@@ -55,36 +70,40 @@ export function transformAttendanceData(
 
 
 
-export async function saveEmployeeAttendance(
-    employees: EmployeeSummaryTypes[]
-  ) {
+  export async function saveEmployeeAttendance(employees: EmployeeSummaryTypes[],branchCycle: string) {
     if (!employees.length) return;
-  
-
     await prisma.$transaction(async (tx) => {
 
-      const hasForApproval = await tx.employeeSummary.count({
-        where: {
-          status: "FOR_APPROVAL",
+      //EXCEPT COMPANY 
+      const excludedEmployees = await tx.employee.findMany({
+      where: {
+        EmpCode: {
+          in: employees.map((e) => e.EmpCode_id),
         },
-      });
-  
-      if (hasForApproval > 0) {
-        throw new Error(
-          "There is an existing approval payroll"
-        );
-      }
+        BranchCode: {
+          company_id: {
+            in: ['KOHI-MANJU','KOHI','likhain','LIKHAIN'],
+          },
+        },
+      },
+      select: {
+        EmpCode: true,
+      },
+    });
+    const excludedSet = new Set(excludedEmployees.map((e) => e.EmpCode));
+    const filteredEmployees = employees.filter((emp) => !excludedSet.has(emp.EmpCode_id));
+    // END OF EXCEPT COMPANY
 
-      await tx.employeeSummary.deleteMany({
-        where: {
-          status: "PENDING",
-        },
-      });
-      
-      const bodAttendance = await appendMissingBodEmployees(tx, employees);
+
+
+      const bodAttendance = await appendMissingBodEmployees(tx, filteredEmployees);
+      const probiAttendance = await probitionaryEmployees(tx, filteredEmployees);
+      const specialLeaveAttendance = await specialLeaveEmployeesServices(tx, filteredEmployees);
+
+
   
       const finalData = [
-        ...employees.map((emp) => ({
+        ...filteredEmployees.map((emp) => ({
           EmpCodeId: emp.EmpCode_id,
           PayCode: emp.PayCode,
           CycleCategory: emp.CycleCategory,
@@ -99,15 +118,55 @@ export async function saveEmployeeAttendance(
           NightShiftOtAtt: emp.NightShiftOtAtt,
           selected_payroll_date: emp.selected_payroll_date,
           createdAt: nowPH(),
+          updatedAt: nowPH(),
         })),
         ...bodAttendance,
+        ...probiAttendance,
+        ...specialLeaveAttendance,
       ];
-    
-      await tx.employeeSummary.createMany({
-        data: finalData,
-        skipDuplicates: true,
-      });
-      
+      // 🚀 UPSERT LOOP (SAFE — keeps relations)
+      for (const emp of finalData) {
+        const existing = await tx.employeeSummary.findFirst({
+          where: {
+            PayCode: emp.PayCode,
+            EmpCodeId: emp.EmpCodeId,
+            PayrollPeriod: emp.PayrollPeriod,
+          },
+        });
+        
+        if (!existing) {
+          await tx.employeeSummary.create({
+            data: {
+              ...emp,
+              status: "PENDING",
+              
+            },
+          });
+        } else if (existing.status === "PENDING") {
+          await tx.employeeSummary.update({
+            where: {
+              PayCode_EmpCodeId_PayrollPeriod: {
+                PayCode: emp.PayCode,
+                EmpCodeId: emp.EmpCodeId,
+                PayrollPeriod: emp.PayrollPeriod,
+              },
+            },
+            data: {
+              CycleCategory: emp.CycleCategory,
+              LateCount: emp.LateCount,
+              TotalAbsentHours: emp.TotalAbsentHours,
+              TotalUndertime: emp.TotalUndertime,
+              TotalOvertime: emp.TotalOvertime,
+              RegularAtt: emp.RegularAtt,
+              OvertimeAtt: emp.OvertimeAtt,
+              NightShiftAtt: emp.NightShiftAtt,
+              NightShiftOtAtt: emp.NightShiftOtAtt,
+              selected_payroll_date: emp.selected_payroll_date,
+              updatedAt: nowPH(),
+            },
+          });
+        }
+      }
     });
   }
   
@@ -117,10 +176,11 @@ export async function saveEmployeeAttendance(
 
 
 
-  export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
+export async function getDisabledPayrollRangesByCycle(cycleCategory: string) {
     const records = await prisma.totalPayroll.findMany({
       where: {
         cycle_category: cycleCategory,
+        status:"COMPLETED",
         selected_payroll_date: {
           not: Prisma.JsonNull,
         },
@@ -137,5 +197,45 @@ export async function saveEmployeeAttendance(
           "start_date" in r &&
           "end_date" in r
       );
-  }
+}
+
+
+export const checkPayCodeExists = async(
+  payCode: string,
+  branchCycle: string
+): Promise<void> =>{
+    const payroll = await prisma.totalPayroll.findFirst({
+      where:{
+        PayCycle: payCode,
+        cycle_category: branchCycle
+      },
+    });
+
+    if(payroll){
+      throw new Error(
+        "Payroll already exists for the selected payroll period. Please check and revise the start and end dates."
+      );
+    }
+}
   
+
+
+export const sendSmsToGateway = async (
+  number: string,
+  message: string
+) => {
+  const url = process.env.SMS_GATEWAY_URL as string;
+
+  try {
+    const response = await axios.post(url, {
+      number,
+      message,
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("SMS Gateway URL:", url);
+    console.error("SMS Gateway Error:", error.response?.data || error.message);
+    throw error;
+  }
+};

@@ -1,100 +1,365 @@
-import { useDisplayVariance } from "@/app/hooks/useVariance";
+import { useCompleteVariance, useDisplayVariance, useSaveFinalVariance } from "@/app/hooks/useVariance";
+import { CompleteVarianceProp, CycleCategory } from "@/app/types/varianceType";
+import EmployeeVariance from "./EmployeeVariance";
+import { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
+import SweetAlert from "@/app/components/Swal";
+//import EmployeeVariance from "./EmployeeVariance";
 
 
-export default function FinancialVarianceModal() {
-    const { data, isLoading } = useDisplayVariance();
-  
-    if (isLoading || !data?.current_period?.rows) {
-        return <div className="p-4 text-sm text-gray-500">Loading...</div>;
-      }
-      
-  
-    const rows = data.current_period.rows;
 
-  
-    const currencyFormatter = new Intl.NumberFormat("en-US", {
+interface Props {
+  paycode: string;
+  cycle: CycleCategory;
+  company_id?: string;
+}
+
+type VarianceRow = {
+  paycode?: string;
+  basic_pay?: number;
+  basic_pay_variance?: number;
+
+  pagibig_employee?: number;
+  pagibig_employer?: number;
+  wtax?: number;
+
+  sss_employee?: number;
+  sss_employee_variance?: number;
+  sss_employer?: number;
+  sss_employer_variance?: number;
+
+  phil_employee?: number;
+  phil_employee_variance?: number;
+  phil_employer?: number;
+  phil_employer_variance?: number;
+};
+
+type ColumnKey =
+  | "basic_pay"
+  | "pagibig_employee"
+  | "pagibig_employer"
+  | "wtax"
+  | "sss_employee"
+  | "sss_employer"
+  | "phil_employee"
+  | "phil_employer";
+
+interface ColumnDefinition {
+  key: ColumnKey;
+  label: string;
+  varianceKey?: keyof VarianceRow;
+}
+
+const allColumns: ColumnDefinition[] = [
+  {
+    key: "basic_pay",
+    label: "BASIC",
+    varianceKey: "basic_pay_variance",
+  },
+  {
+    key: "pagibig_employee",
+    label: "PAG-IBIG EMPLOYEE",
+  },
+  {
+    key: "pagibig_employer",
+    label: "PAG-IBIG EMPLOYER",
+  },
+  {
+    key: "wtax",
+    label: "WITHHOLDING TAX",
+  },
+  {
+    key: "sss_employee",
+    label: "SSS EMPLOYEE",
+    varianceKey: "sss_employee_variance",
+  },
+  {
+    key: "sss_employer",
+    label: "SSS EMPLOYER",
+    varianceKey: "sss_employer_variance",
+  },
+  {
+    key: "phil_employee",
+    label: "PHILHEALTH EMPLOYEE",
+    varianceKey: "phil_employee_variance",
+  },
+  {
+    key: "phil_employer",
+    label: "PHILHEALTH EMPLOYER",
+    varianceKey: "phil_employer_variance",
+  },
+];
+
+export default function FinancialVarianceModal({ paycode, cycle, company_id }: Props) {
+  const { data, isLoading } = useDisplayVariance(company_id, cycle);
+  const { data: all_variance } = useCompleteVariance(company_id, cycle);
+  const { mutate: saveFinalVariance } = useSaveFinalVariance();
+
+  const variance = data?.data;
+
+  const rows: VarianceRow[] = variance
+    ? [
+      variance.older_prev,
+      variance.recent_prev,
+      variance.current,
+      variance.variance,
+    ]
+    : [];
+
+  const columns = allColumns.filter((column) => {
+    return rows.some((row) => {
+      const value = row[column.key];
+      const varianceValue = column.varianceKey
+        ? row[column.varianceKey]
+        : undefined;
+
+      return value !== undefined || varianceValue !== undefined;
+    });
+  });
+
+  const getValue = (row: VarianceRow, column: ColumnDefinition) => {
+    if (row.paycode === "VARIANCE" && column.varianceKey) {
+      return Number(row[column.varianceKey] ?? row[column.key] ?? 0);
+    }
+
+    return Number(row[column.key] ?? 0);
+  };
+
+  const formatAmount = (value: number) => {
+    const absValue = Math.abs(value).toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-  
-    const formatCurrency = (value?: number | null): string => {
-      return currencyFormatter.format(Number(value ?? 0));
-    };
-  
-    const formatSigned = (value?: number | null) => {
-      const numeric = Number(value ?? 0);
-      const formatted = formatCurrency(Math.abs(numeric));
-      return numeric < 0 ? `(${formatted})` : formatted;
-    };
-  
-    return (
-      <div className="p-6">
-        <h2 className="text-lg font-semibold mb-4">
-          FOR THE PERIOD: {rows[rows.length - 2]?.PayCycle ?? ""}
-        </h2>
-  
-        <table className="w-full border-collapse text-sm">
-          <thead className="text-center">
-            <tr className="bg-gray-100 border border-slate-100">
-              <th className="border border-slate-300 p-2">Payroll Period</th>
-              <th className="border border-slate-300 p-2">Basic</th>
-              <th className="border border-slate-300 p-2">SSS Employee</th>
-              <th className="border border-slate-300 p-2">SSS Employer</th>
-              <th className="border border-slate-300 p-2">PhilHealth Employee</th>
-              <th className="border border-slate-300 p-2">PhilHealth Employer</th>
-            </tr>
-          </thead>
-  
-          <tbody className="text-center">
-            {rows.map((row) => {
-              const isVariance = row.PayCycle === "VARIANCE";
-              const isCurrent =
-                row.PayCycle !== "VARIANCE" &&
-                row === rows[rows.length - 2];
-  
-              return (
-                <tr
-                  key={row.PayCycle}
-                  className={`border border-slate-300 ${
-                    isVariance
-                      ? "border-t-2 border-slate-300 font-bold bg-gray-100"
-                      : isCurrent
-                      ? "bg-blue-50 font-medium"
-                      : ""
-                  }`}
-                >
-                  <td className="border border-slate-300 p-2">{row.PayCycle}</td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.basic)
-                      : formatCurrency(row.basic)}
+
+    return value < 0 ? `(${absValue})` : absValue;
+  };
+
+
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: "Deductions",
+    pageStyle: `
+    @page {
+      size: landscape;
+      margin: 20mm;
+    }
+
+    @media print {
+      .table-print-wrapper {
+        overflow: visible !important;
+        width: 100% !important;
+      }
+
+      .print-area {
+        overflow: visible !important;
+      }
+
+      table {
+        width: 100% !important;
+        font-size: 10px;
+      }
+
+      th, td {
+        padding: 4px !important;
+        white-space: nowrap;
+      }
+    }
+  `,
+  });
+
+
+
+
+
+
+  const varianceLabels: Record<keyof CompleteVarianceProp, string> = {
+    final_basic_variance: "Basic Pay Variance",
+    final_pagibig_employee_var: "Pag-IBIG Employee Variance",
+    final_pagibig_employer_var: "Pag-IBIG Employer Variance",
+    final_wtax_var: "Withholding Tax Variance",
+    final_SSS_EE_var: "SSS Employee Variance",
+    final_SSS_ER_var: "SSS Employer Variance",
+    final_Phil_EE_var: "PhilHealth Employee Variance",
+    final_Phil_ER_var: "PhilHealth Employer Variance",
+  };
+
+  const finalVarianceRows = all_variance
+    ? (
+      Object.entries(all_variance) as Array<
+        [
+          keyof CompleteVarianceProp,
+          number | undefined
+        ]
+      >
+    )
+      .filter(
+        (
+          entry
+        ): entry is [
+          keyof CompleteVarianceProp,
+          number
+        ] => entry[1] !== undefined
+      )
+      .map(([key, value]) => ({
+        key,
+        label: varianceLabels[key],
+        value,
+      }))
+    : [];
+
+
+
+
+  const handleSaveVariance = () => {
+    if (!company_id || !cycle || !paycode) {
+      SweetAlert.errorAlert(
+        "Missing Information",
+        "Company, cycle, and paycode are required."
+      );
+      return;
+    }
+
+    SweetAlert.confirmationAlert("Save Variance?", "This will save variance for the current payroll date.",
+      () => {
+        saveFinalVariance(
+          {
+            company_id,
+            cycle,
+            paycode,
+          },
+          {
+            onSuccess: (response) => {
+              SweetAlert.successAlert("Success", response.message);
+            },
+
+            onError: (error) => {
+              console.error("Unable to save variance:", error);
+              SweetAlert.errorAlert("Save Failed", "Unable to save final variance.");
+            },
+          }
+        );
+      }
+    );
+  };
+
+  return (
+    <div className="p-1">
+
+
+      <div className="py-4 flex justify-end gap-x-2">
+        <button
+          onClick={handleSaveVariance}
+          className="bg-green-800 text-white px-8 py-2 rounded font-bold shadow hover:bg-green-700">
+          Save
+        </button>
+        <button
+          onClick={handlePrint}
+          className="bg-blue-700 py-2 px-8 rounded text-white shadow font-bold hover:bg-blue-500">
+          Print
+        </button>
+
+      </div>
+
+
+      <div ref={printRef} className="print-deductions">
+
+        {isLoading ? (
+          <div className="text-sm text-slate-500">Loading variance...</div>
+        ) : (
+
+          <div className="overflow-x-auto px-4">
+            <div className="py-8 font-bold text-xs">
+              <h2>EMB CAPITAL LENDING CORP.</h2>
+              <h2>PAYROLL EXPLANATION</h2>
+              <h2>FOR THE PERIOD :{paycode}</h2>
+            </div>
+
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="border border-slate-400 px-3 py-2 text-left" />
+
+                  {columns.map((column) => (
+                    <th
+                      key={column.key}
+                      className="border border-slate-400 px-3 py-2 italic">
+                      {column.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={`${row.paycode ?? "row"}-${index}`}
+                    className={row.paycode === "VARIANCE" ? "font-semibold" : ""}>
+                    <td className="border border-slate-400 px-3 py-2 whitespace-nowrap italic">
+                      {row.paycode ?? ""}
+                    </td>
+
+                    {columns.map((column) => (
+                      <td
+                        key={`${row.paycode ?? "row"}-${column.key}-${index}`}
+                        className="border border-slate-400 px-3 py-2 text-right italic">
+                        {formatAmount(getValue(row, column))}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+
+        )}
+
+
+        <div className="py-4">
+          <EmployeeVariance paycode={paycode} cycle={cycle} company_id={company_id} />
+        </div>
+
+
+
+
+
+        <div className="pt-4 px-4">
+          <h2 className="mb-3 font-bold">
+            Final Variance
+          </h2>
+
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-slate-400 px-3 py-2 text-left">
+                  Description
+                </th>
+
+                <th className="border border-slate-400 px-3 py-2 text-right">
+                  Variance
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {finalVarianceRows.map((item) => (
+                <tr key={item.key}>
+                  <td className="border border-slate-400 px-3 py-2">
+                    {item.label}
                   </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.sssEmployee)
-                      : formatCurrency(row.sssEmployee)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.sssEmployer)
-                      : formatCurrency(row.sssEmployer)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.phil)
-                      : formatCurrency(row.phil)}
-                  </td>
-                  <td className="border border-slate-300 p-2">
-                    {isVariance
-                      ? formatSigned(row.phil)
-                      : formatCurrency(row.phil)}
+
+                  <td className="border border-slate-400 px-3 py-2 text-right">
+                    {formatAmount(item.value)}
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
       </div>
-    );
-  }
-  
+
+    </div>
+  );
+}

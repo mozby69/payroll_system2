@@ -1,10 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, ViewAllResponse } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, SignatoryLIstResponse, ViewAllResponse } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
+import { createSignatory, fetchAllowancePrintRows, fetchAllowanceSignatories, updateSignatory, updateVarianceRemark } from "../services/allowance.service";
 
+
+
+export function useUpdateBranch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      EmpCode: string;
+      branchCode: string;
+      selectedMonth: string;
+    }) => {
+      await api.post("/allowance/update-branch", payload);
+    },
+    onSuccess: () => {
+      SweetAlert.successAlert("Branch updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["allowance-list"] });
+        queryClient.invalidateQueries({ queryKey: ["fetch-view-all"] });
+    },
+  });
+}
 
 
 
@@ -121,24 +142,33 @@ export function useFetchAllowanceSummary(params: {page: number; limit: number; s
 
 
 
-export function useFetchArchiveAllowanceModal(selectedMonth: string | null) {
+export function useFetchArchiveAllowanceModal(
+  selectedMonth: string | null
+) {
   return useQuery<ArchiveAllowanceResponse>({
-    queryKey: ['archive-allowance', selectedMonth],
+    queryKey: [
+      "archive-allowance",
+      selectedMonth,
+    ],
+
     queryFn: async () => {
       if (!selectedMonth) {
-        throw new Error('selectedMonth is required');
+        throw new Error(
+          "selectedMonth is required"
+        );
       }
 
-      const response = await api.get<ArchiveAllowanceResponse>(
-        `/allowance/archive-allowance/${selectedMonth}`
-      );
+      const response =
+        await api.get<ArchiveAllowanceResponse>(
+          `/allowance/archive-allowance/${selectedMonth}`
+        );
 
       return response.data;
     },
+
     enabled: Boolean(selectedMonth),
   });
 }
-
 
 
 export function useFetchCompanies() {
@@ -167,22 +197,43 @@ export function useFetchBranchesByCompany(companyCode: string) {
 }
 
 
-export function usePrintBranch(month: string | null,company: string | null,branch: string | null) {
-  return useQuery<{
-    success: boolean;
-    data: PrintAllowanceRow[];
-  }>({
-    queryKey: ["print-branch", month, company, branch],
+type PrintAllowanceResponse = {
+  success: boolean;
+  data: PrintAllowanceRow[];
+};
+
+export function usePrintBranch(month: string | null, company: string | null, branch?: string | null) {
+  return useQuery<PrintAllowanceResponse>({
+    queryKey: [
+      "print-branch",
+      month,
+      company,
+      branch ?? "all",
+    ],
+
     queryFn: async () => {
-      const res = await api.get("/allowance/print-data", {
-        params: { month, company, branch },
-      });
-      return res.data;
+      const response =
+        await api.get<PrintAllowanceResponse>(
+          "/allowance/print-data",
+          {
+            params: {
+              month,
+              company,
+              ...(branch
+                ? {
+                    branch,
+                  }
+                : {}),
+            },
+          }
+        );
+
+      return response.data;
     },
-    enabled: !!month && !!company && !!branch,
+
+    enabled: Boolean(month && company),
   });
 }
-
 
 
 
@@ -198,5 +249,282 @@ export function useFetchViewAll(selectedMonth: string | null) {
       return response.data;
     },
     enabled: Boolean(selectedMonth),
+  });
+}
+
+
+
+
+
+export interface EmergencyAllowanceResponse {
+  allowance_id:number;
+  is_emergency:boolean;
+  emergency_allowance_amount:number;
+}
+
+
+
+export function useFetchEmergencyAllowanceList() {
+  return useQuery<EmergencyAllowanceResponse>({
+    queryKey: ["emergency-allowance-list"],
+    queryFn: async () => {
+      const res = await api.get<EmergencyAllowanceResponse>(
+        "/allowance/display-emergency-allowance"
+      );
+
+      return res.data;
+    },
+  });
+}
+
+
+  export function useUpdateEmergencyAllowance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: EmergencyAllowanceResponse) => {
+      const res = await api.put<EmergencyAllowanceResponse>(
+        `/allowance/emergency-allowance-edit/${payload.allowance_id}`,
+        {
+          is_emergency: payload.is_emergency,
+          emergency_allowance_amount: payload.emergency_allowance_amount,
+        }
+      );
+
+      return res.data;
+    },
+
+    onSuccess: () => {
+      SweetAlert.successAlert("Updated successfully");
+      queryClient.invalidateQueries({
+        queryKey: ["emergency-allowance-list"],
+      });
+       queryClient.invalidateQueries({
+        queryKey: ["fetch-view-all"],
+      });
+    },
+  });
+}
+
+
+
+
+
+
+export function useUpdateAbsentOverride() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      EmpCode: string;
+      selectedMonth: string;
+      absent_hours: number;
+      exclude:boolean;
+    }) => {
+      await api.post("/allowance/update-absent", payload);
+    },
+    onSuccess: () => {
+      SweetAlert.successAlert("Absent override updated");
+      queryClient.invalidateQueries({ queryKey: ["allowance-list"] });
+      queryClient.invalidateQueries({ queryKey: ["fetch-view-all"] });
+    },
+  });
+}
+
+
+
+
+
+type ExportAllowanceParams = {
+  selectedMonth: string;
+};
+
+export function useExportAllowance() {
+  return useMutation({
+    mutationFn: async ({
+      selectedMonth,
+    }: ExportAllowanceParams): Promise<Blob> => {
+      const response = await api.get<Blob>(
+        "/allowance/export-allowance",
+        {
+          params: {
+            selectedMonth,
+          },
+          responseType: "blob",
+        }
+      );
+
+      return response.data;
+    },
+
+    onSuccess: (file, variables) => {
+      const url = window.URL.createObjectURL(file);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download = `cash-assistance-${variables.selectedMonth}.xlsx`;
+
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
+      window.URL.revokeObjectURL(url);
+    },
+  });
+}
+
+
+
+export function useUpdateVarianceRemark() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateVarianceRemark,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["fetch-view-all"],
+      });
+    },
+  });
+}
+
+
+
+export function useUpdateAllowanceAmountOverride() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      EmpCode: string;
+      selectedMonth: string;
+      cash_assistance: number;
+      ecola: number;
+    }) => {
+      await api.post(
+        "/allowance/update-allowance-amount",
+        payload
+      );
+    },
+
+    onSuccess: () => {
+      SweetAlert.successAlert(
+        "Allowance override updated"
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: ["allowance-list"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["fetch-view-all"],
+      });
+    },
+  });
+}
+
+
+
+
+
+
+export function useFetchSignatoryList(params: {page: number; limit: number; search?: string}) {
+    return useQuery<SignatoryLIstResponse>({
+      queryKey: [
+        "signatories-list",
+        params.page,
+        params.limit,
+        params.search ?? "",
+      ],
+      queryFn: async () => {
+        const res = await api.get("/allowance/display-signatory-list", {params});
+        return res.data;
+      },
+    });
+  }
+
+
+  export function useCreateSignatory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createSignatory,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["signatories-list"],
+      });
+
+        await queryClient.invalidateQueries({
+        queryKey: ["allowance-signatories"],
+      });
+    },
+  });
+}
+
+
+export function useUpdateSignatory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateSignatory,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["signatories-list"],
+      });
+         await queryClient.invalidateQueries({
+        queryKey: ["allowance-signatories"],
+      });
+    },
+  });
+}
+
+
+
+export function useAllowanceSignatories() {
+  return useQuery({
+    queryKey: ["allowance-signatories"],
+    queryFn: fetchAllowanceSignatories,
+  });
+}
+
+
+
+
+export function useFetchAllowancePrintRows({
+  month,
+  company,
+  branch,
+}: {
+  month: string | null;
+  company: string | null;
+  branch: string | null;
+}) {
+  return useQuery({
+    queryKey: [
+      "allowance-print-rows",
+      month,
+      company,
+      branch,
+    ],
+
+    queryFn: () => {
+      if (!month || !company) {
+        throw new Error(
+          "Month and company are required"
+        );
+      }
+
+      return fetchAllowancePrintRows({
+        month,
+        company,
+        branch,
+      });
+    },
+
+    enabled:
+      Boolean(month) &&
+      Boolean(company),
   });
 }

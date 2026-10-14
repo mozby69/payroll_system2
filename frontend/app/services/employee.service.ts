@@ -48,7 +48,13 @@ export const updateEmployeePayroll = async (
     Disbursing,
     remarks,
     Taxable,
+    isOfficerAllowance,
+    isSixDaysWork,
+    isecola,
+    gmail_account,
+    OaBasicSalary,
     bankAccount,
+    isDisabled
   } = payload;
 
   const { data } = await api.put(
@@ -61,7 +67,13 @@ export const updateEmployeePayroll = async (
       WithAtm,
       Disbursing,
       Taxable,
+      isOfficerAllowance,
+      isSixDaysWork,
+      isecola,
+      gmail_account,
+      OaBasicSalary,
       bankAccount,
+      isDisabled,
       ...(remarks ? { remarks } : {}),
     }
   );

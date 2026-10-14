@@ -44,6 +44,7 @@ export type User = {
   email?: string
   isActive: boolean
   createdAt: string
+  company_id?: string
   roles: {
     role: UserRole
   }[]

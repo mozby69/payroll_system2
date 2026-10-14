@@ -6,6 +6,7 @@ interface Props {
     month?: string;
     company?: string;
     branch?: string;
+    empId?: string;
   };
 }
 
@@ -26,17 +27,18 @@ export default async function AllowancePrintPage({ searchParams }: Props) {
   
   const params = await searchParams; 
 
-  const { month, company, branch } = params;
+  const { month, company, branch,empId } = params;
 
   if (!month || !company || !branch) {
     return <div>Missing parameters</div>;
   }
 
-  // SERVER FETCH (no React Query)
+
+
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/allowance/print-data?month=${month}&company=${company}&branch=${branch}`,
-    { cache: "no-store" }
-  );
+  `${process.env.NEXT_PUBLIC_API_URL}/allowance/print-data?month=${month}&company=${company}&branch=${branch}${empId ? `&empId=${empId}` : ""}`,
+  { cache: "no-store" }
+);
 
   const json = await res.json();
   const list: PrintRow[] = json.data ?? [];
@@ -80,8 +82,8 @@ export default async function AllowancePrintPage({ searchParams }: Props) {
                 </p>
                 <p className="mt-2">{row.cash_allowance}</p>
                 <p className="mt-2">{row.ecola}</p>
-                <p className="mt-2">-{row.deduct}</p>
-                <p className="mt-2">-{row.loan}</p>
+                <p className="mt-2">{row.deduct}</p>
+                <p className="mt-2">{row.loan}</p>
                 <p className="mt-2 font-semibold">{row.total}</p>
                 <p className="mt-2 border-b w-40">&nbsp;</p>
                 <p className="mt-2 border-b w-40">&nbsp;</p>
@@ -93,3 +95,5 @@ export default async function AllowancePrintPage({ searchParams }: Props) {
     </div>
   );
 }
+
+

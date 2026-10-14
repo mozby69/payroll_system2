@@ -30,7 +30,11 @@ export interface EmployeeSummary {
     message: string;
   }
 
+export interface ErrorResponse {
+    message: string;
+  }
 
+  
   export interface CompanyDetailsType {
     CompanyCode: string;
     CompanyCycle: string;
@@ -67,3 +71,47 @@ export interface EmployeeSummary {
 
 
   
+export type FecthCompany = {
+  CompanyCode: string;
+  CompanyName: string;
+};
+
+export type LoanTypeResponse = string[];
+
+
+export type BranchesType = {
+  branchCode: string;
+  Location: string;
+  company_id: string;
+  position: number;
+  Company?: string
+  groupId?: number 
+
+  group:  BranchGroup
+}
+
+export type ReorderBranchesPayload = {
+  company_id: string
+  branchCodes: string[]
+}
+
+
+export type ApiResponse<T> = {
+  success: boolean
+  message?: string
+  data: T
+}
+
+export type BranchGroup = {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  position: number;
+};
+
+export type BranchGroupType = {
+  groups: BranchGroup[]
+  ungrouped: BranchesType[]
+}
+

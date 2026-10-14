@@ -4,7 +4,24 @@ import { fetchAllowanceController, saveAllowanceController,fetchAllowanceSummary
 fetchArchiveAllowanceByMonthController, allowancePrintController, 
 getBranchesByCompanyController,
 fetchAllowancePrintDataController,
-fetchViewAllListController} from "./allowance.controller";
+fetchViewAllListController,
+updateAllowanceBranchController,
+getTotalPerCompanyController,
+sendBulkAllowanceServiceController,
+updateEmergencyAllowanceController,
+displayEmergencyAllowanceController,
+updateAbsentOverrideController,
+getVarianceEmployeesController,
+exportAllowanceExcelController,
+updateVarianceEmployeeRemarkController,
+updateAllowanceAmountOverrideController,
+displaySignatoryListController,
+createSignatoryController,
+updateSignatoryController,
+getAllowanceSignatoriesController,
+fetchAllowanceRowController,
+} from "./allowance.controller";
+import { updateVarianceEmployeeRemark } from "./allowance.service";
 
 const router = Router();
 
@@ -17,6 +34,20 @@ router.get('/print-branch',allowancePrintController);
 router.get("/branches-by-company",getBranchesByCompanyController);
 router.get("/print-data", fetchAllowancePrintDataController);
 router.get("/view-all",fetchViewAllListController);
-
+router.post("/update-branch", updateAllowanceBranchController);
+router.post("/send-allowance-email",sendBulkAllowanceServiceController);
+router.put("/emergency-allowance-edit/:allowance_id",updateEmergencyAllowanceController);
+router.get("/display-emergency-allowance",displayEmergencyAllowanceController);
+router.post("/update-absent",updateAbsentOverrideController);
+router.get("/test",getTotalPerCompanyController);
+router.get("/get-employee-variance",getVarianceEmployeesController);
+router.get("/export-allowance",exportAllowanceExcelController);
+router.put("/variance-employee-remark-edit",updateVarianceEmployeeRemarkController);
+router.post("/update-allowance-amount",updateAllowanceAmountOverrideController);
+router.get("/display-signatory-list",displaySignatoryListController);
+router.post("/signatory",createSignatoryController);
+router.put("/update-signatory/:id",updateSignatoryController);
+router.get("/allowance-signatories",getAllowanceSignatoriesController);
+router.get("/allowance-list-row",fetchAllowanceRowController);
 
 export default router;

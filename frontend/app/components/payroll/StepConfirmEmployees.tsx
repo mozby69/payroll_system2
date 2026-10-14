@@ -62,10 +62,14 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
   //   }
   // }, [rows]);
 
+  // const currentSelectedRow = selectedRow
+  // ? data.find(r => r.EmpCode === selectedRow.EmpCode) ?? selectedRow
+  // : null;
+
   const currentSelectedRow = selectedRow
-  ? data.find(r => r.EmpCode === selectedRow.EmpCode) ?? selectedRow
+  ? data.find(r => r.EmpCode === selectedRow.EmpCode)
   : null;
-  
+
 
     
   const columns: Column<EmployeeRow>[] = [
@@ -80,8 +84,7 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
     },
     {
       header:"Branch",
-      render: (row) =>
-        `${row.BranchCode?.branchCode}`,
+      render: (row) => `${row.BranchCode?.branchCode}`,
     },
     {
       header:"Basic Pay",
@@ -113,10 +116,16 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
   const savePayrollSilently = async (payload: PayrollSavePayload) => {
     if (!selectedRow) return;
 
+    // await updatePayrollMutation.mutateAsync({
+    //   empCode: selectedRow.EmpCode,
+    //   ...payload,
+    // });
+
     await updatePayrollMutation.mutateAsync({
-      empCode: selectedRow.EmpCode,
       ...payload,
+      empCode: selectedRow.EmpCode, 
     });
+
 
     await queryClient.invalidateQueries({
       queryKey: ["employees"],
@@ -129,12 +138,12 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
 
   const handleSavePayroll = async (payload: PayrollSavePayload) => {
     await savePayrollSilently(payload);
-
-    SweetAlert.successAlert("Saved successfully");
     closeModal();
+    SweetAlert.successAlert("Saved successfully");
+
   };
   
-  
+
 
   return (
 
@@ -173,13 +182,13 @@ export default function StepConfirmEmployees({data,meta,search,onSearchChange,pa
         </button>
       </div>
 
-
+    
 
 
      {isModalOpen && currentSelectedRow && (
       <RequestModal size="xxxl" title={`Employee:${currentSelectedRow.Firstname}, ${currentSelectedRow.Lastname}`} onClose={closeModal}>
         <ViewEmployeePayroll
-           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.basic_salary}`}
+           key={`${currentSelectedRow.EmpCode}-${currentSelectedRow.include_payroll}`}
           employeeSummary={currentSelectedRow}
           onFinalSave={handleSavePayroll}
           onQuickSave={savePayrollSilently}

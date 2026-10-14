@@ -1,10 +1,13 @@
-import { AuditAction, AuditModule, Prisma } from "@prisma/client"
+import { AuditAction, AuditModule, BonusType, LeaveName, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getTenureInMonths, getTenureInYears } from "./bonus.utils"
+import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getPayCycleStart, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
 import { formatDateToMMDDYY } from "../../utils/formatDateToMMDDYY"
+import { VarianceEmployee } from "./bonus.types"
+import { getPreviousPayrollDate } from "../../utils/getPreviousPayrollDate"
+import ExcelJS from "exceljs"
 
 //Bonus Rules
 export async function createBonusRuleService(data: CreateBonusRuleInput) {
@@ -173,12 +176,16 @@ export async function generateBonusForAllEmployees({
   companyCode, 
   asOfDate,
   generateDate,
+  batchId,
+  tx
 }: {
   bonusRuleId: number
   releasePeriod: string
   companyCode?: string
   asOfDate: Date
   generateDate: Date
+  batchId: string
+  tx: Prisma.TransactionClient
 }) {
   return prisma.$transaction(async tx => {
     const rule = await tx.bonusRule.findUnique({
@@ -191,23 +198,21 @@ export async function generateBonusForAllEmployees({
     if (!rule) {
       throw new Error("Bonus rule not found")
     }
+
     const startAndEnd = getBonusStartAndEndDate(rule.eligibleMonth, rule.bonusType, asOfDate)
-
-
-    const pendingChecker = await tx.employeeBonus.findMany({
-        where: {
-          status: "GENERATED"
-        }
-    })
+ 
     const blockingSummary = await tx.bonusSummary.findFirst({
       where: {
         bonusRuleId,
         releasePeriod,
+        companyCode,
         status: {
           in: ["GENERATED", "PENDING", "RELEASED", "APPROVED"]
         }
       }
     })
+
+
     if (blockingSummary?.status === "RELEASED") {
       throw {
         code: "PENDING_BONUS",  
@@ -224,13 +229,16 @@ export async function generateBonusForAllEmployees({
       }
     }
 
-    if(pendingChecker.length > 0 || blockingSummary){
+    if (blockingSummary) {
       throw {
         code: "PENDING_BONUS",
         status: 409,
-        message: "A bonus generation is already pending. Please complete or cancel the existing process before generating a new bonus."
+        message: "Bonus already generated for this period."
       }
-    } 
+    }
+
+
+  
  
     const companies = await tx.bonusRuleCompany.findMany({
       where: {
@@ -248,24 +256,58 @@ export async function generateBonusForAllEmployees({
  
     const employees = await tx.employee.findMany({
       where: {
-        AND: [
-          {
-            BranchCode: {
-              CompanyCode: {
-                CompanyCode: {
-                  in: companyCodes,
-                },
+          OR: [
+            {
+              isAlien: true,
+              secondaryBranch:{
+                company_id: companyCode
               },
+              EmployeeStatus: {
+                in: ["Active", "Inactive"],
+              },
+              isDisabled: false,
             },
-          },
-          {
-            OR: [
-              { EmployeeStatus: "Active" },
-              { bod_member: "bod1" },
-              { bod_member: "bod2" },
-            ],
-          },
-        ],
+
+            {
+              AND: [
+                {
+                  EmployementDate: {
+                    lte: generateDate
+                  },
+                  isAlien: false,
+                  EmployeeStatus: {
+                      in: ["Active", "Inactive"],
+                  },
+                  isDisabled: false,
+              },
+                {
+                  BranchCode: {
+                    CompanyCode: {
+                      CompanyCode: {
+                        in: companyCodes,
+                      },
+                    },
+                  },
+                },
+                {
+                  OR: [
+                    {  EmployeeStatus: {
+                      in: ["Active", "Inactive"],
+                    },
+                  },
+                    { bod_member: "bod1" },
+                    { bod_member: "bod2" },
+                    {EndDate: {
+                      gte: generateDate
+                    }},
+                 
+                  ],
+                },
+              ],
+      
+            }
+          ]
+
       },
       include: { 
         employeepayroll: true,
@@ -277,8 +319,9 @@ export async function generateBonusForAllEmployees({
          }
     })
 
+  
 
-    console.log(employees)
+
 
     const invalidEmployees: Array<{
       empCode: string
@@ -288,11 +331,23 @@ export async function generateBonusForAllEmployees({
     }> = []
 
     for (const emp of employees) {
-      if (!emp.EmployementDate) continue
-
-      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureYear) continue
       const payroll = emp.employeepayroll
+      const basicSalary = Number(payroll?.basic_salary ?? 0)
+
+      const tenure = emp.EmployementDate
+      ? getTenureInYears(emp.EmployementDate, asOfDate)
+      : 0
+      
+      const isEligible =
+      emp.EmployementDate &&
+      tenure >= rule.minTenureYear &&
+      basicSalary > 0
+
+      let amount = 0
+      let remarks = ""
+      let hasLeave = false
+
+
       if (!payroll || !payroll.basic_salary){
         invalidEmployees.push({
           empCode: emp.EmpCode,
@@ -300,10 +355,12 @@ export async function generateBonusForAllEmployees({
           basicSalary: 0,
           amount: 0
         })
-        continue
       } 
-      const basicSalary = Number(payroll.basic_salary)
-      const amount = calculateBonusAmount(rule.formulaType, basicSalary)
+
+      if (isEligible) {
+        amount = calculateBonusAmount(rule.formulaType, basicSalary)
+      }
+      
       if (amount <= 0) {
         invalidEmployees.push({
           empCode: emp.EmpCode,
@@ -332,7 +389,9 @@ export async function generateBonusForAllEmployees({
         asOfDate,
         generateDate,
         totalAmount: 0,
-        totalEmployees: 0
+        totalEmployees: 0,
+        batchId,
+        companyCode
       }
     })
 
@@ -363,21 +422,30 @@ export async function generateBonusForAllEmployees({
       where: {
         specialLeaves: {
           some: {
-            OR: [
-              // Normal leave (Active, etc.)
+            AND: [
               {
-                status: { not: "Expected" },
-                start: { not: null, lte: bonusEnd },
-                end:   { not: null, gte: bonusStart }
+                OR: [
+                    // Normal leave (Active, etc.)
+                    {
+                      status: { not: "Expected" },
+                      start: { not: null, lte: bonusEnd },
+                      end:   { not: null, gte: bonusStart }
+                    },
+          
+                    // Expected leave
+                    {
+                      status: "Expected",
+                      expectedStart: { not: null, lte: bonusEnd },
+                      expectedEnd:   { not: null, gte: bonusStart }
+                    }
+                  ]
               },
-    
-              // Expected leave
-              {
-                status: "Expected",
-                expectedStart: { not: null, lte: bonusEnd },
-                expectedEnd:   { not: null, gte: bonusStart }
-              }
-            ]
+                {
+                    leaveName: {
+                      not: "Paternity"
+                    }
+                }
+            ],
           }
         }
       },
@@ -408,30 +476,36 @@ export async function generateBonusForAllEmployees({
       ])
     )
 
-
-
-
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
     
     let remarks = ""
     let hasLeave = false
 
     for (const emp of employees) {
-      if (!emp.EmployementDate) continue
-    
-      const tenure = getTenureInYears(emp.EmployementDate, asOfDate)
-      if (tenure < rule.minTenureYear) continue
+      const tenure = emp.EmployementDate
+      ? getTenureInYears(emp.EmployementDate, asOfDate)
+      : 0
+
+      
     
       const payroll = emp.employeepayroll
-      if (!payroll?.basic_salary) continue
+      const basicSalary = Number(payroll?.basic_salary ?? 0)
     
-      if (existingEmployeeCodes.has(emp.EmpCode)) continue
-
       const employeeLeaves = leaveMap.get(emp.EmpCode)
+
+      // Skip entire employee if ANY leave is SpecialChild
+      if (employeeLeaves?.some(leave => leave.leaveName === "SpecialChild" && leave.status === "Active")) {
+        continue
+      }
+
+      const isEligible =
+      emp.EmployementDate &&
+      tenure >= rule.minTenureYear &&
+      basicSalary > 0
 
       let amount = 0
       
-      if (employeeLeaves && employeeLeaves.length > 0) {
+      if (employeeLeaves && employeeLeaves.length > 0 ) {
           employeeLeaves.forEach(leave => {
             if (!leave.start && !leave.expectedStart) return
             if (!leave.end && !leave.expectedEnd) return
@@ -457,18 +531,20 @@ export async function generateBonusForAllEmployees({
                     leaveEnd
                   )
                   hasLeave= true
+                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(basicSalary))
 
-                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(payroll.basic_salary))
-                  amount = res.amount
-
-                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(payroll.basic_salary) / 2} X ${eligibleMonth} / ${res.count})` 
+                  if(isEligible){
+                    amount = res.amount
+                  }
+                 
+                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${res.count})` 
         })
       
       } else {
-        amount = calculateBonusAmount(
-          rule.formulaType,
-          Number(payroll.basic_salary)
-        )
+        if (isEligible) {
+          amount = calculateBonusAmount(rule.formulaType, basicSalary)
+        }
+     
 
         remarks = ""
         hasLeave= false
@@ -496,7 +572,6 @@ export async function generateBonusForAllEmployees({
         finalAmount = 0
       }
     
-      if (amount <= 0) continue
 
       rows.push({
         employeeCode: emp.EmpCode,
@@ -509,7 +584,8 @@ export async function generateBonusForAllEmployees({
         releasePeriod,
         status: "GENERATED",
         hasLeave,
-        remarks
+        remarks,
+        companyCode
       })
     
       totalEmployees++
@@ -532,9 +608,14 @@ export async function generateBonusForAllEmployees({
       }
     })
 
-    return { success: true }
+    return {
+      success: true,
+      totalEmployees: rows.length,
+      totalAmount,
+    }
   })
 }
+
 
 export async function getEmployeeBonusService() {
   const rows = await prisma.employeeBonus.findMany({
@@ -623,12 +704,13 @@ export async function getEmployeeBonusServiceBySummaryIdService(
 
 
 
-export async function resetBonusService() {
+export async function resetBonusService(companyCode: string) {
   return prisma.$transaction(async tx => {
 
     const summaries = await tx.bonusSummary.findMany({
       where: {
-        status: "GENERATED"
+        status: "GENERATED",
+        companyCode
       },
       select: {
         id: true
@@ -673,12 +755,13 @@ export async function resetBonusService() {
   })
 }
 
-export async function submitBonusSerive(){
+export async function submitBonusSerive(companyCode: string){
     return prisma.$transaction(async tx => {
 
       const summaries = await tx.bonusSummary.findMany({
         where: {
-          status: "GENERATED"
+          status: "GENERATED",
+          companyCode
         },
         select: {
           id: true
@@ -720,32 +803,34 @@ export async function submitBonusSerive(){
     })
 }
 
-export async function getBonusSummaryService() {
-    return await prisma.bonusSummary.findMany({
-      where: {
-        status: {
-          notIn: ["RESET", "GENERATED"]
-        }
+export async function getBonusSummaryService(companyCode?: string) {
+  return await prisma.bonusSummary.findMany({
+    where: {
+      status: {
+        notIn: ["RESET", "GENERATED"]
       },
-      include:{
-        bonusRule: {
-          select: {
-            code: true,
-            name: true,
-            companyRule: {
-              select: {
-                companyCode: true
-              }
+      ...(companyCode && { companyCode })
+    },
+
+    include: {
+      bonusRule: {
+        select: {
+          code: true,
+          name: true,
+          companyRule: {
+            select: {
+              companyCode: true
             }
           }
         }
-      },
-      orderBy: {
-        id: "desc"
       }
-    })
-}
+    },
 
+    orderBy: {
+      id: "desc"
+    }
+  })
+}
 
 export async function approveBonusService(
   bonusSummaryId: number,
@@ -818,7 +903,10 @@ export async function  rejectBonusService(
     return prisma.$transaction(async (tx) =>{
       const summary = await tx.bonusSummary.update({
         where: {
-          id: bonusSummaryId
+          id: bonusSummaryId,
+          NOT:{
+            status: "APPROVED"
+          }
         },
         data:{
           status: "CANCELLED",
@@ -826,7 +914,6 @@ export async function  rejectBonusService(
           rejectedById: releasedBy
         }
       })
-
       await tx.employeeBonus.updateMany({
         where:{
           bonusSummaryId: bonusSummaryId
@@ -835,7 +922,6 @@ export async function  rejectBonusService(
           status: "CANCELLED"
         }
       })
-      
       return {
         message: "Bonus summary has been successfully cancelled.",
         summary,
@@ -852,7 +938,7 @@ export async function releaseBonusService(
 
 
     const summary = await tx.bonusSummary.findUnique({
-      where: { id: bonusSummaryId },
+      where: { id: bonusSummaryId, status: "APPROVED" },
       include: {
         bonusRule: {
           select: {
@@ -963,145 +1049,731 @@ export async function releaseBonusService(
 }
 
 
-export async function getEmployeesByBonusSummarySerive(
+
+export async function getEmployeesByBonusSummaryService(
   companyCode?: string,
   id?: number
 ) {
   return await prisma.$transaction(async (tx) => {
-    const summary = await tx.bonusSummary.findFirst({
+    // 1. Find the reference summary
+    const referenceSummary = await tx.bonusSummary.findFirst({
+      where: {
+        ...(id != null
+          ? { id }
+          : { status: "GENERATED" }),
+        ...(companyCode ? { companyCode } : {}),
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    if (!referenceSummary) {
+      return {
+        summary: null,
+        summaries: [],
+        companies: [],
+        employees: [],
+        variance: [],
+      };
+    }
+
+    // 2. Find all summaries belonging to the same batch
+    const summaries = await tx.bonusSummary.findMany({
+      where: {
+        ...(referenceSummary.batchId
+          ? { batchId: referenceSummary.batchId }
+          : { id: referenceSummary.id }),
+
+        ...(companyCode ? { companyCode } : {}),
+      },
       include: {
         bonusRule: {
-          select: { code: true, name: true, bonusType: true,  }
-        }
-
+          select: {
+            code: true,
+            name: true,
+            bonusType: true,
+            eligibleMonth: true,
+          },
+        },
       },
-      where: id 
-      ? {id}
-      : {status: "GENERATED"}
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    const summaryIds = summaries.map((s) => s.id);
+
+    // 3. Get allowed companies
+    const ruleIds = [
+      ...new Set(summaries.map((s) => s.bonusRuleId)),
+    ];
+
+    const allowedCompanies =
+      await tx.bonusRuleCompany.findMany({
+        where: {
+          bonusRuleId: {
+            in: ruleIds,
+          },
+        },
+        select: {
+          companyCode: true,
+        },
+        orderBy: {
+          companyCode: "asc",
+        },
+      });
+
+    // 4. Get all employee bonuses in this batch
+    const employeeBonuses = await tx.employeeBonus.findMany({
+      where: {
+        bonusSummaryId: {
+          in: summaryIds,
+        },
+        ...(companyCode ? { companyCode } : {}),
+      },
+      include: {
+        employee: {
+          include: {
+            employeepayroll: true,
+          },
+        },
+      },
+      orderBy: [
+        { employee: { Lastname: "asc" } },
+        { employee: { Firstname: "asc" } },
+      ],
+    });
+
+    // 5. Build summary lookup
+    const summaryMap = new Map(
+      summaries.map((summary) => [
+        summary.id,
+        summary,
+      ])
+    );
+
+    // 6. Merge employee bonuses
+    const employeeMap = new Map<string, any>();
+
+    for (const bonus of employeeBonuses) {
+      const emp = bonus.employee;
+      const summary = summaryMap.get(
+        bonus.bonusSummaryId
+      );
+
+      if (!summary) continue;
+
+      const key = `${bonus.companyCode}:${bonus.employeeCode}`;
+
+      const existing = employeeMap.get(key);
+
+      const bonusAmount = Number(bonus.amount);
+      const loanDeduction = Number(
+        bonus.loanDeduction
+      );
+      const netAmount = Number(bonus.netAmount);
+
+      if (existing) {
+        existing.bonusAmount += bonusAmount;
+        existing.fchLoan += loanDeduction;
+        existing.netAmount += netAmount;
+
+        existing.bonuses.push({
+          bonusId: bonus.id,
+          bonusSummaryId: bonus.bonusSummaryId,
+          bonusRule: summary.bonusRule,
+          bonusAmount,
+          loanDeduction,
+          netAmount,
+          status: bonus.status,
+          remarks: bonus.remarks,
+          notes: bonus.notes,
+        });
+
+        existing.hasLeave =
+          existing.hasLeave || bonus.hasLeave;
+
+        continue;
+      }
+
+      employeeMap.set(key, {
+        employeeCode: bonus.employeeCode,
+        companyCode: bonus.companyCode,
+        branchCode: emp?.BranchCodeId,
+
+        fullName: `${emp?.Lastname ?? ""}, ${emp?.Firstname ?? ""}`,
+
+        employementDate: emp?.EmployementDate,
+
+        tenureYears: emp?.EmployementDate
+          ? getTenureInYears(
+              emp.EmployementDate,
+              getLastDayOfMonthFromPeriod(
+                summary.releasePeriod
+              )
+            )
+          : 0,
+
+        basicSalary:
+          emp?.employeepayroll?.basic_salary ?? 0,
+
+        bonusAmount,
+        fchLoan: loanDeduction,
+        netAmount,
+
+        bonusStatus: bonus.status,
+        bonusId: bonus.id,
+
+        hasLeave: bonus.hasLeave,
+        remarks: bonus.remarks,
+        notes: bonus.notes,
+
+        bonuses: [
+          {
+            bonusId: bonus.id,
+            bonusSummaryId: bonus.bonusSummaryId,
+            bonusRule: summary.bonusRule,
+            bonusAmount,
+            loanDeduction,
+            netAmount,
+            status: bonus.status,
+            remarks: bonus.remarks,
+            notes: bonus.notes,
+          },
+        ],
+      });
+    }
+
+    const employees = Array.from(
+      employeeMap.values()
+    );
+
+    // 7. Reconcile each summary independently
+    const varianceResults = await Promise.all(
+      summaries.map(async (summary) => {
+        if (!summary.companyCode) return [];
+
+        const result =
+          await reconcileEmployeePayrollBonus(
+            tx,
+            summary.companyCode,
+            summary
+          );
+
+        return result;
+      })
+    );
+
+    const variance = varianceResults.flat();
+
+    // 8. Calculate batch totals
+    const totals = {
+      totalEmployees: employees.length,
+
+      totalBonusAmount: employees.reduce(
+        (sum, emp) => sum + emp.bonusAmount,
+        0
+      ),
+
+      totalLoanDeduction: employees.reduce(
+        (sum, emp) => sum + emp.fchLoan,
+        0
+      ),
+
+      totalNetAmount: employees.reduce(
+        (sum, emp) => sum + emp.netAmount,
+        0
+      ),
+    };
+
+    // 9. Return merged results
+    return {
+      summary: referenceSummary,
+      summaries,
+      batchId: referenceSummary.batchId,
+      companies: allowedCompanies,
+      employees,
+      variance,
+      totals,
+    };
+  });
+}
+
+export async function getFCHEmployeesByBonusSummaryService(
+  companyCode?: string,
+  id?: number,
+  groupId?: number
+) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Find the reference summary
+    const referenceSummary = await tx.bonusSummary.findFirst({
+      where: {
+        ...(id != null
+          ? { id }
+          : { status: "GENERATED" }),
+        ...(companyCode ? { companyCode } : {}),
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    if (!referenceSummary) {
+      return {
+        summary: null,
+        summaries: [],
+        companies: [],
+        employees: [],
+        variance: [],
+      };
+    }
+
+    // 2. Find all summaries belonging to the same batch
+    const summaries = await tx.bonusSummary.findMany({
+      where: {
+        ...(referenceSummary.batchId
+          ? { batchId: referenceSummary.batchId }
+          : { id: referenceSummary.id }),
+
+        ...(companyCode ? { companyCode } : {}),
+      },
+      include: {
+        bonusRule: {
+          select: {
+            code: true,
+            name: true,
+            bonusType: true,
+            eligibleMonth: true,
+          },
+        },
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    const summaryIds = summaries.map((s) => s.id);
+
+    // 3. Get allowed companies
+    const ruleIds = [
+      ...new Set(summaries.map((s) => s.bonusRuleId)),
+    ];
+
+    const allowedCompanies =
+      await tx.bonusRuleCompany.findMany({
+        where: {
+          bonusRuleId: {
+            in: ruleIds,
+          },
+        },
+        select: {
+          companyCode: true,
+        },
+        orderBy: {
+          companyCode: "asc",
+        },
+      });
+
+        
+    const selectedCompanyCode = referenceSummary.companyCode
+    //  Use summary company directly
+
+
+    const groups = await tx.branchGroup.findMany({
+      orderBy: { name: "desc" }
+    });
+
+    const effectiveGroupId =
+    groupId ?? (groups.length > 0 ? groups[0].id : undefined);
+
+
+    // 4. Get all employee bonuses in this batch
+    const employeeBonuses = await tx.employeeBonus.findMany({
+      where: {
+        bonusSummaryId: referenceSummary.id,
+        companyCode: selectedCompanyCode, //  DIRECT FILTER (no joins)
+         // ✅ FILTER BY GROUP
+          ...(effectiveGroupId  && {
+                employee: {
+                  OR: [
+                    {
+                      isAlien: false,
+                      BranchCode: { groupId: effectiveGroupId }
+                    },
+                    {
+                      isAlien: true,
+                      secondaryBranch: { groupId: effectiveGroupId }
+                    }
+                  ]
+                }
+              })
+          },
+      include: {
+        employee: {
+          include: {
+            employeepayroll: true,
+            secondaryBranch: true,
+            BranchCode: {
+              select: {
+                branchCode: true,
+                position: true
+              }
+            }
+          },
+        },
+      },
+      orderBy: [
+        { employee: { Lastname: "asc" } },
+        { employee: { Firstname: "asc" } },
+      ],
+    });
+
+    // 5. Build summary lookup
+    const summaryMap = new Map(
+      summaries.map((summary) => [
+        summary.id,
+        summary,
+      ])
+    );
+
+    // 6. Merge employee bonuses
+    const employeeMap = new Map<string, any>();
+
+    for (const bonus of employeeBonuses) {
+      const emp = bonus.employee;
+      const summary = summaryMap.get(
+        bonus.bonusSummaryId
+      );
+
+      if (!summary) continue;
+
+      const key = `${bonus.companyCode}:${bonus.employeeCode}`;
+
+      const existing = employeeMap.get(key);
+
+      const bonusAmount = Number(bonus.amount);
+      const loanDeduction = Number(
+        bonus.loanDeduction
+      );
+      const netAmount = Number(bonus.netAmount);
+
+      if (existing) {
+        existing.bonusAmount += bonusAmount;
+        existing.fchLoan += loanDeduction;
+        existing.netAmount += netAmount;
+
+        existing.bonuses.push({
+          bonusId: bonus.id,
+          bonusSummaryId: bonus.bonusSummaryId,
+          bonusRule: summary.bonusRule,
+          bonusAmount,
+          loanDeduction,
+          netAmount,
+          status: bonus.status,
+          remarks: bonus.remarks,
+          notes: bonus.notes,
+        });
+
+        existing.hasLeave =
+          existing.hasLeave || bonus.hasLeave;
+
+        continue;
+      }
+
+      employeeMap.set(key, {
+        employeeCode: bonus.employeeCode,
+        companyCode: bonus.companyCode,
+      branchCode: emp?.isAlien
+        ? (emp?.secondaryBranchId ?? emp?.BranchCodeId)
+        : emp?.BranchCodeId,
+
+      branchPosition: emp?.isAlien
+  ? (emp?.secondaryBranch?.position ??
+      emp?.BranchCode?.position ??
+      9999)
+  : (emp?.BranchCode?.position ?? 9999),
+
+        fullName: `${emp?.Lastname ?? ""}, ${emp?.Firstname ?? ""}`,
+
+        employementDate: emp?.EmployementDate,
+
+        tenureYears: emp?.EmployementDate
+          ? getTenureInYears(
+              emp.EmployementDate,
+              getLastDayOfMonthFromPeriod(
+                summary.releasePeriod
+              )
+            )
+          : 0,
+
+        basicSalary:
+          emp?.employeepayroll?.basic_salary ?? 0,
+
+        bonusAmount,
+        fchLoan: loanDeduction,
+        netAmount,
+
+        bonusStatus: bonus.status,
+        bonusId: bonus.id,
+
+        hasLeave: bonus.hasLeave,
+        remarks: bonus.remarks,
+        notes: bonus.notes,
+
+        bonuses: [
+          {
+            bonusId: bonus.id,
+            bonusSummaryId: bonus.bonusSummaryId,
+            bonusRule: summary.bonusRule,
+            bonusAmount,
+            loanDeduction,
+            netAmount,
+            status: bonus.status,
+            remarks: bonus.remarks,
+            notes: bonus.notes,
+          },
+        ],
+      });
+    }
+
+   const employees = Array.from(
+  employeeMap.values()
+).sort((a, b) => {
+  // 1. Sort by company
+  const companyCompare =
+    (a.companyCode ?? "").localeCompare(
+      b.companyCode ?? ""
+    );
+
+  if (companyCompare !== 0) {
+    return companyCompare;
+  }
+
+  // 2. Sort by branch position
+  const positionA = Number(a.branchPosition ?? 9999);
+  const positionB = Number(b.branchPosition ?? 9999);
+
+  if (positionA !== positionB) {
+    return positionA - positionB;
+  }
+
+  // 3. Sort by branch code
+  const branchCompare =
+    (a.branchCode ?? "").localeCompare(
+      b.branchCode ?? ""
+    );
+
+  if (branchCompare !== 0) {
+    return branchCompare;
+  }
+
+  // 4. Sort employees alphabetically by full name
+  return (a.fullName ?? "").localeCompare(
+    b.fullName ?? "",
+    undefined,
+    {
+      sensitivity: "base",
+    }
+  );
+});
+    // 7. Reconcile each summary independently
+    const varianceResults = await Promise.all(
+      summaries.map(async (summary) => {
+        if (!summary.companyCode) return [];
+
+        const result =
+          await reconcileEmployeePayrollBonus(
+            tx,
+            summary.companyCode,
+            summary
+          );
+
+        return result;
+      })
+    );
+
+    const variance = varianceResults.flat();
+
+    // 8. Calculate batch totals
+    const totals = {
+      totalEmployees: employees.length,
+
+      totalBonusAmount: employees.reduce(
+        (sum, emp) => sum + emp.bonusAmount,
+        0
+      ),
+
+      totalLoanDeduction: employees.reduce(
+        (sum, emp) => sum + emp.fchLoan,
+        0
+      ),
+
+      totalNetAmount: employees.reduce(
+        (sum, emp) => sum + emp.netAmount,
+        0
+      ),
+    };
+
+    // 9. Return merged results
+    return {
+      summary: referenceSummary,
+      summaries,
+      batchId: referenceSummary.batchId,
+      companies: allowedCompanies,
+      employees,
+      variance,
+      totals,
+    };
+  });
+}
+
+
+
+export async function getEmployeesFCHBonusSummaryService(
+  companyCode?: string,
+  id?: number,
+  groupId?: number
+) {
+  return await prisma.$transaction(async (tx) => {
+
+    //  1. Get Summary (STRICT)
+    const summary = await tx.bonusSummary.findFirst({
+      where: {
+        ...(id ? { id } : { status: "GENERATED" }),
+        ...(companyCode && { companyCode }) //  direct filter
+      },
+      include: {
+        bonusRule: {
+          select: {
+            code: true,
+            name: true,
+            bonusType: true,
+            eligibleMonth: true
+          }
+        }
+      }
     })
+
     if (!summary) {
       return {
         summary: null,
         companies: [],
         employees: [],
+        variance: []
       }
     }
+
+    //  2. Allowed Companies (optional now, but kept if UI needs it)
     const allowedCompanies = await tx.bonusRuleCompany.findMany({
       where: {
         bonusRuleId: summary.bonusRuleId,
       },
       select: { companyCode: true },
-      orderBy:{
-        companyCode: "asc"
-      }
+      orderBy: { companyCode: "asc" }
     })
-
-    const companyCodes = allowedCompanies.map(c => c.companyCode)
-
-    if (companyCodes.length === 0) {
-      return {
-        summary,
-        companies: [],
-        employees: [],
-      }
+    if (!summary.companyCode) {
+      throw new Error("CompanyCode is missing in summary")
     }
+    
+    const selectedCompanyCode = summary.companyCode
+    //  Use summary company directly
 
-    const selectedCompanyCode =
-    companyCode ?? allowedCompanies[0].companyCode
 
+    const groups = await tx.branchGroup.findMany({
+      orderBy: { name: "desc" }
+    });
 
+    const effectiveGroupId =
+    groupId ?? (groups.length > 0 ? groups[0].id : undefined);
 
-    const test = await prisma.$transaction(async (tx) => {
-      return await reconcileEmployeePayrollBonus(
-        tx,
-        selectedCompanyCode,
-        summary
-      )
+    //  3. Get EmployeeBonus (FAST + CLEAN)
+    const employeeBonuses = await tx.employeeBonus.findMany({
+      where: {
+        bonusSummaryId: summary.id,
+        companyCode: selectedCompanyCode, //  DIRECT FILTER (no joins)
+         // ✅ FILTER BY GROUP
+          ...(effectiveGroupId  && {
+                employee: {
+                  OR: [
+                    {
+                      isAlien: false,
+                      BranchCode: { groupId: effectiveGroupId }
+                    },
+                    {
+                      isAlien: true,
+                      secondaryBranch: { groupId: effectiveGroupId }
+                    }
+                  ]
+                }
+              })
+          },
+      include: {
+        employee: {
+          include: {
+            employeepayroll: true,
+             BranchCode: true
+          }
+        }
+      },
+      orderBy: [
+        { employee: { Lastname: "asc" } },
+        { employee: { Firstname: "asc" } }
+      ]
     })
 
-    console.log("test: ", test)
-  
-  const employees = await tx.employee.findMany({
-    where: {
-      AND: [
-        {
-          BranchCode: {
-            CompanyCode: {
-              CompanyCode: selectedCompanyCode
-            },
-          },
-        },
+    console.log("Bonus: ", employeeBonuses)
 
+    //  4. Variance
+    const variance = await reconcileEmployeePayrollBonus(
+      tx,
+      selectedCompanyCode,
+      summary
+    )
 
-        {
-          OR: [
-            { EmployeeStatus: "Active" },
-            { bod_member: "bod1" },
-            { bod_member: "bod2" },
-          ],
-        },
-      ],
-    },
-    include: {
-      employeepayroll: true,
-      employee_bonues: {
-        where: { bonusSummaryId: summary.id },
-      },
-      BranchCode: {
-        select: {
-          CompanyCode: {
-            select: {
-              CompanyCode: true,
-            },
-          },
-        },
-      },
-      loan_details: {
-        where: {
-          status: "ACTIVE",
-          others_types: summary.bonusRule.code,
-        },
-      },
-    },
-    orderBy: { Lastname: "asc" },
-  })
-
-    const result = employees.map(emp => {
-      const bonus = emp.employee_bonues[0]
+    //  5. Map Result
+    const result = employeeBonuses.map(bonus => {
+      const emp = bonus.employee
 
       return {
-        employeeCode: emp.EmpCode,
-        companyCode:
-          emp.BranchCode?.CompanyCode?.CompanyCode,
-        fullName: `${emp.Lastname}, ${emp.Firstname}`,
-        employementDate: emp.EmployementDate,
-        tenureYears: emp.EmployementDate
+        employeeCode: bonus.employeeCode,
+        companyCode: bonus.companyCode, // ✅ direct
+
+        fullName: `${emp?.Lastname}, ${emp?.Firstname}`,
+        employementDate: emp?.EmployementDate,
+
+        tenureYears: emp?.EmployementDate
           ? getTenureInYears(
               emp.EmployementDate,
               getLastDayOfMonthFromPeriod(summary.releasePeriod)
             )
           : 0,
-        basicSalary:
-          emp.employeepayroll?.basic_salary ?? 0,
-        bonusAmount: bonus?.amount ?? 0,
-        bonusStatus:
-          bonus?.status ?? "NOT_GENERATED",
-        bonusId: bonus?.id ?? null,
-        fchLoan: bonus?.loanDeduction ?? 0,
-        netAmount: bonus?.netAmount ?? 0,
-        hasLeave: bonus?.hasLeave ?? false,
-        remarks: bonus?.remarks ?? null,
-        notes: bonus?.notes ?? null,
+
+        basicSalary: emp?.employeepayroll?.basic_salary ?? 0,
+
+        bonusAmount: Number(bonus.amount),
+        bonusStatus: bonus.status,
+        bonusId: bonus.id,
+
+        fchLoan: Number(bonus.loanDeduction),
+        netAmount: Number(bonus.netAmount),
+
+        hasLeave: bonus.hasLeave,
+        remarks: bonus.remarks,
+        notes: bonus.notes,
       }
     })
 
+    //  6. Return
     return {
       summary,
       companies: allowedCompanies,
       employees: result,
+      variance
     }
   })
 }
+
 
 
 export async function updateBonusService(
@@ -1267,101 +1939,701 @@ const employeesWithVariance = currentData
 
 type SummaryInput = {
   id: number
+  generateDate: Date
+  asOfDate: Date
   bonusRule: {
     code: string
+    eligibleMonth: number
+    bonusType: BonusType
   }
 }
+
+
 
 
 export async function reconcileEmployeePayrollBonus(
   tx: Prisma.TransactionClient,
   selectedCompanyCode: string,
-  summary: SummaryInput
+  summary: SummaryInput,
 ) {
-  // 1️⃣ Employees
+  // Employees
+
+  const startAndEnd = getBonusStartAndEndDate(summary.bonusRule.eligibleMonth, summary.bonusRule.bonusType, summary.asOfDate)
+
+    const bonusStart = new Date(startAndEnd.bonusStart)
+    const bonusEnd   = new Date(startAndEnd.bonusEnd)
+
+
   const employees = await tx.employee.findMany({
     where: {
       AND: [
         {
           BranchCode: {
             CompanyCode: {
-              CompanyCode: selectedCompanyCode,
+              CompanyCode: selectedCompanyCode
             },
           },
+         
         },
-        {
-          OR: [
-            { EmployeeStatus: "Active" },
-            { EmployeeStatus: "Probationary" },
-            { bod_member: "bod1" },
-            { bod_member: "bod2" },
-          ],
-        },
+      {
+        EmployementDate: {
+          lte: summary.generateDate
+        }
+      },
+       {
+        OR: [
+          { EmployeeStatus: "Active" },
+          {
+            EmployeeStatus: "Resigned",
+            EndDate: {
+              gt: summary.generateDate,
+            },
+          },
+          { bod_member: "bod1" },
+          { bod_member: "bod2" },
+        ],
+      },
       ],
     },
+
     select: {
       EmpCode: true,
       Firstname: true,
       Lastname: true,
-    },
-  })
-
-  // 2️⃣ Payroll Archive
-  const payrollArchive = await tx.employeePayrollArchive.findMany({
-    where: {
-      EmpCode: {
-        BranchCode: {
-          company_id: selectedCompanyCode,
-        },
+      employeepayroll: {
+        select: {
+          basic_salary: true
+        }
       },
-    },
-    select: {
-      EmpCodeId: true,
-    },
+      specialLeaves: {
+        where: {
+          OR: [
+            {
+              status: { not: "Expected" },
+              start: { not: null, lte: bonusEnd },
+              end:   { not: null, gte: bonusStart }
+            },
+            {
+              status: "Expected",
+              expectedStart: { not: null, lte: bonusEnd },
+              expectedEnd:   { not: null, gte: bonusStart }
+            }
+          ]
+        },
+        select: {
+          leaveName: true,
+          start: true,
+          end: true,
+          expectedStart: true,
+          expectedEnd: true,
+          status: true
+        }
+      },
+      employee_salary_history: {
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 1,
+        select:{
+          remarks: true,
+          createdAt: true
+        }
+      }
+    }
   })
 
-  // 3️⃣ Bonus Records (this summary only)
-  const bonusRecords = await tx.employeeBonus.findMany({
-    where: {
-      bonusSummaryId: summary.id,
-    },
-    select: {
-      employeeCode: true,
-      amount: true, // important
-    },
-  })
 
-  // =============================
-  // Build Sets
-  // =============================
+const generatedAt = summary.generateDate.getTime();
 
-  const archiveSet = new Set<string>(
-    payrollArchive.map(p => p.EmpCodeId)
-  )
+if (Number.isNaN(generatedAt)) {
+  throw new Error("Invalid bonus generation date");
+}
 
-  const bonusSet = new Set<string>(
-    bonusRecords.map(b => b.employeeCode)
-  )
+// Read the payroll summaries that have already been archived.
+const payrollSummaries = await tx.totalPayrollByCompany.findMany({
+  where: {
+    company_id: selectedCompanyCode,
+  },
+  select: {
+    total_payroll_id: true,
+    total_basic_salary: true,
+    PayCycle: true,
+    cycle_category: true,
+  },
+  orderBy: {
+    id: "desc",
+  },
+});
 
-  // =============================
-  // 🎯 CORE VARIANCE LOGIC
-  // =============================
+// Select the latest eligible cycle.
+// For duplicate cycles, the highest ID wins because of the query order.
+let prevPayroll: (typeof payrollSummaries)[number] | null = null;
+let latestCycleStart = Number.NEGATIVE_INFINITY;
 
-  const varianceEmployees = employees
-    .filter(emp =>
-      bonusSet.has(emp.EmpCode) && // has bonus (even zero)
-      !archiveSet.has(emp.EmpCode) // but no payroll archive
-    )
-    .map(emp => ({
-      EmpCode: emp.EmpCode,
-      name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
-    }))
+for (const payroll of payrollSummaries) {
+  const cycleStart = getPayCycleStart(payroll.PayCycle);
 
-  return {
-    totalEmployees: employees.length,
-    varianceCount: varianceEmployees.length,
-    varianceEmployees,
+  if (cycleStart <= generatedAt && cycleStart > latestCycleStart) {
+    prevPayroll = payroll;
+    latestCycleStart = cycleStart;
   }
 }
 
 
+if (!prevPayroll) {
+  throw new Error(
+    "No eligible payroll archive found for this bonus generation date",
+  );
+}
+
+  // Payroll Archive
+  const payrollArchive = await tx.employeePayrollArchive.findMany({
+    where: {
+      AND:[
+            {
+              EmpCode: {
+                BranchCode: {
+                  company_id: selectedCompanyCode,
+                },
+              },
+            },
+            {
+              totalPayrollId: prevPayroll?.total_payroll_id
+            }
+      ]
+    },
+    select: {
+      EmpCodeId: true,
+      Basic_salary: true,
+      EmpCode: {
+        select:{
+          Firstname: true,
+          Lastname: true,
+          EmployeeStatus: true,
+          EndDate: true,
+          employeepayroll:{
+            select:{
+              basic_salary: true
+            }
+          }
+        }
+      }
+    },
+  })
+
+
+
+  // Build Sets
+
+  const archiveSet = new Set<string>(
+    payrollArchive.map(p => p.EmpCodeId)
+  )
+  
+  const bonusSetEmployee = new Set<string>(
+    employees.map(e => e.EmpCode)
+  )
+
+  const archiveSalaryMap = new Map(
+    payrollArchive.map(a => [a.EmpCodeId, Number(a.Basic_salary)])
+  )
+  
+  
+
+  // CORE VARIANCE LOGIC
+
+  //Employees with salary changed
+
+  const salaryChanged: VarianceEmployee[] = employees
+  .filter(emp => archiveSalaryMap.has(emp.EmpCode))
+  .map(emp => {
+    const currentSalary = Number(emp.employeepayroll?.basic_salary ?? 0)
+    const archiveSalary =( archiveSalaryMap.get(emp.EmpCode) ?? 0)  * 2
+
+
+    if (currentSalary !== archiveSalary) {
+
+      const history = emp.employee_salary_history?.[0]
+      
+      return {
+        EmpCode: emp.EmpCode,
+        name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+        basic_salary: (currentSalary - archiveSalary) / 2,
+        type: "SALARY_CHANGED" as const,
+        remarks: history?.remarks ?? history?.remarks ?? "Salary updated",
+        date: history?.createdAt
+          ? new Date(history.createdAt).toLocaleDateString()
+          : ""
+      }
+    }
+
+    return null
+  })
+  .filter(Boolean) as VarianceEmployee[]
+  
+  //  Employees with bonus but no archive
+  const bonusWithoutArchive: VarianceEmployee[] = employees
+  .filter(emp =>
+    bonusSetEmployee.has(emp.EmpCode) &&
+    !archiveSet.has(emp.EmpCode)
+  )
+  .map(emp => {
+    const leave = emp.specialLeaves?.[0]
+
+    const start =
+      leave?.status === "Expected"
+        ? leave?.expectedStart
+        : leave?.start
+
+    const end =
+      leave?.status === "Expected"
+        ? leave?.expectedEnd
+        : leave?.end
+
+    const date =
+      start && end
+        ? `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
+        : ""
+    return {
+      EmpCode: emp.EmpCode,
+      name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+      basic_salary: Number(emp.employeepayroll?.basic_salary) / 2,
+      type: "BONUS_NO_ARCHIVE" as const,
+      remarks: leave?.leaveName === "SpecialChild"
+        ? "Special Case"
+        : (leave?.leaveName ?? ""),
+      date
+    }
+  })
+  
+  //  Archive exists but employee/bonus missing
+  const archiveWithoutBonus: VarianceEmployee[] = payrollArchive
+  .filter(arch => !bonusSetEmployee.has(arch.EmpCodeId))
+  .map(arch => ({
+    EmpCode: arch.EmpCodeId,
+    name: `${arch.EmpCode.Lastname ?? ""}, ${arch.EmpCode?.Firstname ?? ""}`,
+    basic_salary: Number(arch.EmpCode?.employeepayroll?.basic_salary) / 2,
+    type: "ARCHIVE_NO_BONUS" as const,
+    remarks: arch.EmpCode.EmployeeStatus ?? "",
+    date: arch.EmpCode.EndDate
+          ? new Date(arch.EmpCode.EndDate).toLocaleDateString()
+           : ""
+  }))
+  
+  // combine both
+  const varianceEmployees: VarianceEmployee[] = [
+    ...bonusWithoutArchive,
+    ...archiveWithoutBonus,
+    ...salaryChanged
+  ]
+
+  const totalVarianceBasicSalary = varianceEmployees.reduce((sum, emp) => {
+    const amount = emp.basic_salary ?? 0
+  
+    if (emp.type === "ARCHIVE_NO_BONUS") {
+      // employee existed before but not now → subtract
+      return sum - amount
+    }
+  
+    if (emp.type === "SALARY_CHANGED") {
+      // amount already represents the difference
+      return sum + amount
+    }
+  
+    // BONUS_NO_ARCHIVE or other additions
+    return sum + amount
+  }, 0)
+
+
+  return {
+    prevPayroll: prevPayroll?.total_basic_salary,
+    prevPayrollDate: getPreviousPayrollDate(
+      prevPayroll?.PayCycle ?? "",
+      prevPayroll?.cycle_category ?? ""
+    ),
+    totalEmployees: employees.length,
+    totalArchive: payrollArchive.length,
+    varianceCount: varianceEmployees.length,
+    varianceEmployees,
+    totalVarianceBasicSalary
+  }
+}
+
+
+export async function generateMultipleBonuses({
+  bonusRuleIds,
+  releasePeriod,
+  asOfDate,
+  generateDate,
+  companyCode,
+  batchId
+}: {
+  bonusRuleIds: number[]
+  releasePeriod: string
+  asOfDate: Date
+  generateDate: Date
+  companyCode?: string
+  batchId: string
+}) {
+  return prisma.$transaction(async tx => {
+
+    const results = []
+
+    for (const ruleId of bonusRuleIds) {
+      const res = await generateBonusForAllEmployees({
+        bonusRuleId: ruleId,
+        releasePeriod,
+        asOfDate,
+        generateDate,
+        companyCode,
+        batchId,
+        tx
+      })
+
+      results.push({ ruleId, ...res })
+    }
+
+    return results
+  })
+}
+
+
+type ResolveBonusRulesParams = {
+  asOfDate: Date
+  providedRuleIds?: number[]
+}
+
+export async function resolveBonusRuleIds({
+  asOfDate,
+  providedRuleIds
+}: ResolveBonusRulesParams): Promise<number[]> {
+
+  // ✅ If user already selected rules → use them
+  if (providedRuleIds && providedRuleIds.length > 0) {
+    return providedRuleIds
+  }
+
+  const month = asOfDate.getMonth() + 1
+
+  // ✅ Determine bonus types based on month
+  const types =
+    month === 6
+      ? ["MIDYEAR", "QUARTERLY"]
+      : ["QUARTERLY"]
+
+  // ✅ Fetch active rules
+  const rules = await prisma.bonusRule.findMany({
+    where: {
+      bonusType: { in: types as any },
+      isActive: true
+    },
+    select: { id: true }
+  })
+
+  if (rules.length === 0) {
+    throw {
+      code: "NO_ACTIVE_RULE",
+      message: "No active bonus rules found for this period"
+    }
+  }
+
+  return rules.map(r => r.id)
+}
+
+
+
+
+type ExportBonusParams = {
+  bonusSummaryId: number
+  companyCode: string
+}
+
+export async function exportBonusExcelServices({
+  bonusSummaryId,
+  companyCode,
+}: ExportBonusParams) {
+
+  // =============================
+  // 📥 FETCH DATA
+  // =============================
+  const summary = await prisma.bonusSummary.findUnique({
+    where: { id: bonusSummaryId },
+    include: {
+      bonusRule: true,
+      employeeBonuses: {
+        where: {
+          OR:[
+            {
+              employee: {
+                BranchCode: {
+                  company_id: companyCode,
+                },
+                isAlien: false
+              },
+            },{
+                employee:{
+                  isAlien: true,
+                  secondaryBranch:{
+                    company_id: companyCode
+                  }
+                }
+            }
+          ]
+        
+        },
+        include: {
+          employee: {
+            include: {
+              BranchCode: true,
+            },
+          },
+        },
+        orderBy: [
+          { employee: { Lastname: "asc" } },
+          { employee: { Firstname: "asc" } },
+        ],
+      },
+    },
+  })
+
+  if (!summary) throw new Error("Summary not found")
+
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet("Bonus Report")
+    
+    // =============================
+    // 🧾 HEADER (TOP SECTION)
+    // =============================
+    sheet.mergeCells("A1:J1")
+    sheet.getCell("A1").value = "BONUS REPORT"
+    sheet.getCell("A1").font = { bold: true, size: 16 }
+    sheet.getCell("A1").alignment = { horizontal: "center" }
+    
+    sheet.getCell("A2").value = `Company: ${companyCode}`
+    sheet.getCell("A3").value = `Bonus: ${summary.bonusRule.name}`
+    sheet.getCell("A4").value = `Release Period: ${summary.releasePeriod}`
+    sheet.getCell("A5").value = `Generated Date: ${new Date(summary.generateDate).toLocaleDateString()}`
+    
+   // =============================
+// 📊 TABLE HEADER (FIXED)
+// =============================
+const startRow = 7
+const bonusTitle = summary.bonusRule.name.toUpperCase()
+
+// ✅ Manually create header row
+const headerRow = sheet.getRow(startRow)
+
+headerRow.values = [
+  "#",
+  "EMPLOYEE'S NAME",
+  "DATE HIRED",
+  "BASE DATE",
+  "TENURE",
+  "MONTHLY BASIC",
+  "HALF MONTH",
+  `${bonusTitle}\nBONUS`,
+  "FCH LOAN",
+  "NET BONUS",
+]
+
+// ✅ Set column widths separately
+sheet.columns = [
+  { key: "index", width: 5 },
+  { key: "name", width: 30 },
+  { key: "dateHired", width: 15 },
+  { key: "baseDate", width: 15 },
+  { key: "tenure", width: 10 },
+  { key: "basic", width: 18 },
+  { key: "half", width: 18 },
+  { key: "bonus", width: 18 },
+  { key: "loan", width: 18 },
+  { key: "net", width: 18 },
+]
+
+// =============================
+// 🎨 STYLE HEADER
+// =============================
+headerRow.font = { bold: true }
+
+headerRow.eachCell(cell => {
+  cell.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+    wrapText: true,
+  }
+
+  cell.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "D9D9D9" },
+  }
+
+  cell.border = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  }
+})
+
+headerRow.height = 30
+
+  // =============================
+  // 📥 DATA
+  // =============================
+  let totals = {
+    basic: 0,
+    half: 0,
+    bonus: 0,
+    loan: 0,
+    net: 0,
+  }
+
+  const endOfMonth = getLastDayOfMonth(summary.releasePeriod)
+
+  summary.employeeBonuses.forEach((b, index) => {
+    const basic = Number((Number(b.amount) * 2) || 0)
+    const half = basic / 2
+    const bonus = Number(b.amount || 0)
+    const loan = Number(b.loanDeduction || 0)
+    const net = Number(b.netAmount || 0)
+
+    totals.basic += basic
+    totals.half += half
+    totals.bonus += bonus
+    totals.loan += loan
+    totals.net += net
+
+    const row = sheet.addRow({
+      index: index + 1,
+      name: `${b.employee?.Lastname}, ${b.employee?.Firstname}`,
+      dateHired: b.employee?.EmployementDate
+        ? new Date(b.employee.EmployementDate).toLocaleDateString()
+        : "",
+      baseDate: summary.releasePeriod,
+      tenure: b.employee?.EmployementDate
+      ? getTenureInYears(
+          b.employee.EmployementDate,
+          endOfMonth
+        )
+      : 0,
+      basic,
+      half,
+      bonus,
+      loan,
+      net,
+    })
+
+    row.eachCell(cell => {
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      }
+
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: typeof cell.value === "number" ? "right" : "left",
+      }
+    })
+  })
+
+  // =============================
+  // 🧮 TOTAL ROW
+  // =============================
+  const totalRow = sheet.addRow({
+    name: "TOTAL",
+    basic: totals.basic,
+    half: totals.half,
+    bonus: totals.bonus,
+    loan: totals.loan,
+    net: totals.net,
+  })
+
+  totalRow.font = { bold: true }
+
+  totalRow.eachCell(cell => {
+    cell.border = {
+      top: { style: "medium" },
+      bottom: { style: "double" },
+    }
+
+    cell.alignment = {
+      horizontal: typeof cell.value === "number" ? "right" : "left",
+    }
+  })
+
+  // =============================
+  // 💰 CURRENCY FORMAT
+  // =============================
+  ;["F", "G", "H", "I", "J"].forEach(col => {
+    sheet.getColumn(col).numFmt = '"₱"#,##0.00'
+  })
+
+  // =============================
+  // ❄️ FREEZE HEADER
+  // =============================
+  sheet.views = [{ state: "frozen", ySplit: startRow }]
+
+  // =============================
+  // 📦 RETURN
+  // =============================
+  return {
+    workbook,
+    fileName: `Bonus_${companyCode}_${summary.releasePeriod}.xlsx`,
+  }
+}
+
+
+export async function getCompanyBonusRulesService(
+  companyCode: string,
+  releasePeriod?: string
+) {
+  const rules = await prisma.bonusRule.findMany({
+    where: {
+      isActive: true,
+      companyRule: {
+        some: {
+          companyCode
+        }
+      }
+    },
+
+    include: {
+      companyRule: {
+        where: { companyCode },
+        select: { companyCode: true }
+      },
+
+      bonusSummaries: releasePeriod
+        ? {
+            where: {
+              releasePeriod,
+              status: {
+                not: "CANCELLED"
+              }
+            },
+            select: { id: true }
+          }
+        : false
+    },
+
+    orderBy: {
+      createdAt: "desc"
+    }
+  })
+
+  // ✅ transform data
+  return rules.map(rule => ({
+    id: rule.id,
+    code: rule.code,
+    name: rule.name,
+    bonusType: rule.bonusType,
+    eligibleMonth: rule.eligibleMonth,
+    formulaType: rule.formulaType,
+    minTenureYear: rule.minTenureYear,
+    isUsed: releasePeriod
+      ? rule.bonusSummaries.length > 0
+      : false
+  }))
+}

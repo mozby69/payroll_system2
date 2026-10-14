@@ -9,7 +9,9 @@ import { useAuth } from "@/app/components/UserContext"
 
 type BonusTab = "GENERATE" | "ARCHIVE" | "RULES"
 export default function BonusManager() {
-  const { hasPermission } = useAuth()
+  const { hasPermission, user } = useAuth()
+
+
 
   const allowedTabs = useMemo<BonusTab[]>(() => {
     const tabs: BonusTab[] = ["ARCHIVE"]
@@ -18,7 +20,7 @@ export default function BonusManager() {
       tabs.unshift("GENERATE")
     }
 
-    if (hasPermission("ADMIN_MANAGE")) {
+    if (hasPermission("BONUS_RULES_MANAGE")) {
       tabs.push("RULES")
     }
 
@@ -71,7 +73,7 @@ export default function BonusManager() {
                 onClick={() => handleTabChange("ARCHIVE")}
               />
 
-              {hasPermission("ADMIN_MANAGE") && (
+              {hasPermission("BONUS_RULES_MANAGE") && (
                 <TabButton
                   label="Configure Bonus Rules"
                   active={activeTab === "RULES"}

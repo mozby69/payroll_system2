@@ -1,7 +1,10 @@
 import { Request, Response } from "express"
-import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, generateBonusForAllEmployees, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService, getEmployeesByBonusSummarySerive, rejectBonusService, releaseBonusService, resetBonusService, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
+import { approveBonusService, checkPayrollService, createBonusRuleCompanyServices, createBonusRuleService, deleteBonusRuleCompanyServices, deleteBonusRulesService, exportBonusExcelServices, generateBonusForAllEmployees, generateMultipleBonuses, getAllBonusRulesService, getBonusCompanyRuleServices, getBonusSummaryService, getCompanyBonusRulesService, getEmployeeBonusService, getEmployeeBonusServiceBySummaryIdService,  getEmployeesByBonusSummaryService, getEmployeesFCHBonusSummaryService, getFCHEmployeesByBonusSummaryService, rejectBonusService, releaseBonusService, resetBonusService, resolveBonusRuleIds, submitBonusSerive, updateBonusRuleService, updateBonusService } from "./bonus.services"
 import { createBonusRuleCompanySchema, createBonusRuleSchema, updateBonusRuleSchema, updateBonusSchema } from "./bonus.schema"
 import z, { json } from "zod";
+import { generateBatchId } from "./bonus.utils";
+import { prisma } from "../../config/prismaClient";
+import ExcelJS from "exceljs"
 
 
 
@@ -185,49 +188,103 @@ export async function updateBonusRuleController(
 
 //Gerate Bonus Controller
 
+  // export async function generateBonusController(
+  //   req: Request,
+  //   res: Response
+  // ) {
+  //   try {
+  //     const { bonusRuleId, releasePeriod, asOfDate, generateDate } = req.body
+
+  //     if (!bonusRuleId || !releasePeriod || !asOfDate) {
+  //       return res.status(400).json({
+  //         message: "Missing required fields"
+  //       })
+  //     }
+ 
+
+  //    const bonus = await generateBonusForAllEmployees({
+  //       bonusRuleId: Number(bonusRuleId),
+  //       releasePeriod,
+  //       asOfDate: new Date(asOfDate),
+  //       generateDate: new Date(generateDate),
+  //     })
+  
+  //     return res.status(200).json({
+  //       message: "Bonuses generated successfully 1",
+  //       data: bonus
+  //     })
+  //   } catch (err: any) {
+  //     switch (err?.code) {
+  //       case "INVALID_BONUS_AMOUNT":
+  //         return res.status(400).json(err)
+    
+  //       case "PENDING_BONUS":
+  //         return res.status(409).json(err)
+
+  //     case "NO_COMPANY_ASSIGNED":
+  //           return res.status(409).json(err)
+    
+  //       default:
+  //         return res.status(500).json({
+  //           message: "Internal server error"
+  //         })
+  //     }
+  //   }
+    
+  // }
+
+
   export async function generateBonusController(
     req: Request,
     res: Response
   ) {
     try {
-      const { bonusRuleId, releasePeriod, asOfDate, generateDate } = req.body
 
-      if (!bonusRuleId || !releasePeriod || !asOfDate) {
+      let { bonusRuleIds, releasePeriod, asOfDate, generateDate, companyCode } = req.body
+  
+      if (!releasePeriod || !asOfDate || !companyCode) {
         return res.status(400).json({
-          message: "Missing required fields"
+          message: "Missing required fields1"
         })
       }
+  
+      const asOf = new Date(asOfDate)
+      const genDate = generateDate ? new Date(generateDate) : new Date()
+  
  
 
-     const bonus = await generateBonusForAllEmployees({
-        bonusRuleId: Number(bonusRuleId),
+        // ✅ FIX: reassign instead of redeclare
+    bonusRuleIds = await resolveBonusRuleIds({
+      asOfDate: asOf,
+      providedRuleIds: bonusRuleIds
+    })
+  
+      // ✅ CREATE BATCH ID
+      const batchId = generateBatchId(releasePeriod)
+  
+      const result = await generateMultipleBonuses({
+        bonusRuleIds,
         releasePeriod,
-        asOfDate: new Date(asOfDate),
-        generateDate: new Date(generateDate),
+        asOfDate: asOf,
+        generateDate: genDate,
+        companyCode,
+        batchId
       })
   
       return res.status(200).json({
-        message: "Bonuses generated successfully 1",
-        data: bonus
+        message: "Bonuses generated successfully",
+        batchId,
+        data: result
       })
-    } catch (err: any) {
-      switch (err?.code) {
-        case "INVALID_BONUS_AMOUNT":
-          return res.status(400).json(err)
+  
+    }catch (err: any) {
+      console.error("ERROR:", err) // ✅ ADD THIS
     
-        case "PENDING_BONUS":
-          return res.status(409).json(err)
-
-      case "NO_COMPANY_ASSIGNED":
-            return res.status(409).json(err)
-    
-        default:
-          return res.status(500).json({
-            message: "Internal server error"
-          })
-      }
+      return res.status(500).json({
+        message: err?.message || "Internal server error",
+        error: err // optional (for debugging)
+      })
     }
-    
   }
   
 
@@ -276,7 +333,15 @@ export async function resetBonusController(
   req: Request,
    res: Response) {
   try {
-    const result = await resetBonusService()
+
+    const user = req.user
+    const companyCode = user?.company_id
+    if(!companyCode){
+      return res.status(400).json({
+        message: "User has no company assigned"
+      })
+    }
+    const result = await resetBonusService(companyCode)
     return res.status(200).json(result)
   } catch (err) {
     console.error(err)
@@ -291,7 +356,14 @@ export async function submitBonusController(
   req: Request,
    res: Response) {
   try {
-    const result = await submitBonusSerive()
+    const user = req.user
+    const companyCode = user?.company_id
+    if(!companyCode){
+      return res.status(400).json({
+        message: "User has no company assigned"
+      })
+    }
+    const result = await submitBonusSerive(companyCode)
     return res.status(200).json(result)
   } catch (err) {
     console.error(err)
@@ -302,21 +374,51 @@ export async function submitBonusController(
 }
 
 export async function getBonusSummaryController(
-    req: Request,
-    res: Response
+  req: Request,
+  res: Response
 ) {
-  try{
-    const result = await getBonusSummaryService()
-    return res.status(200).json(result)
-    } catch (err) {
+  try {
+    const user = req.user
+    const companyCode = user?.company_id
+    const permissions = user?.permissions || []
+
+
+
+    const hasApproveAccess =
+      permissions.includes("BONUS_APPROVE") ||
+      permissions.includes("BONUS_RELEASE")
+
+    let result
+
+    if (hasApproveAccess) {
+      // ✅ ALL data
+      result = await getBonusSummaryService()
+    } else {
+      // ❌ must have company
+      if (!companyCode) {
+        return res.status(400).json({
+          message: "User has no company assigned"
+        })
+      }
+
+      // ✅ filtered
+      result = await getBonusSummaryService(companyCode)
+    }
+
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    })
+
+  } catch (err) {
     console.error(err)
     return res.status(500).json({
+      success: false,
       message: "Failed to fetch bonus summary"
     })
   }
-  
 }
-
 
 export async function approveBonusController(
   req: Request,
@@ -445,13 +547,31 @@ export async function getEmployeesByBonusSummaryController(
       ? Number(req.query.id)
       : undefined
 
-    const data =
-      await getEmployeesByBonusSummarySerive(companyCode, id)
+      const groupId = req.query.groupId
+        ? Number(req.query.groupId)
+        : undefined;
 
-    return res.status(200).json({
-      success: true,
-      data,
-    })
+        console.log("dawd", groupId)
+
+        let data;
+
+        if (companyCode === "FCH") {
+          data = await getFCHEmployeesByBonusSummaryService(
+            companyCode,
+            id,
+            groupId
+          ); 
+        } else {
+          data = await getEmployeesByBonusSummaryService(
+            companyCode,
+            id
+          );
+        }
+
+      return res.status(200).json({
+        success: true,
+        data,
+      })
 
   } catch (error: any) {
     return res.status(200).json({
@@ -528,6 +648,70 @@ export async function checkPayroll(req: Request, res: Response) {
 }
 
 
+
+
+
+export const exportBonusExcelController = async (req: Request, res: Response) => {
+  try {
+    const { bonusSummaryId, companyCode } = req.body
+    const { workbook, fileName } =
+      await exportBonusExcelServices({
+        bonusSummaryId,
+        companyCode,
+      })
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${fileName}`
+    )
+
+    await workbook.xlsx.write(res)
+    res.end()
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({
+      message: "Failed to export Excel",
+    })
+  }
+}
+
+
+export async function getCompanyBonusRulesController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const { companyCode, releasePeriod } = req.query
+
+    if (!companyCode || typeof companyCode !== "string") {
+      return res.status(400).json({
+        message: "companyCode is required"
+      })
+    }
+
+    const data = await getCompanyBonusRulesService(
+      companyCode,
+      typeof releasePeriod === "string" ? releasePeriod : undefined
+    )
+
+    return res.status(200).json({
+      message: "Bonus rules fetched successfully",
+      data
+    })
+  } catch (error) {
+    console.error(error)
+
+    return res.status(500).json({
+      message: "Failed to fetch bonus rules"
+    })
+  }
+}
 
 
 

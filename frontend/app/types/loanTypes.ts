@@ -1,15 +1,20 @@
 
 
 import { FilterKey } from "./FilterTypes";
+export type StartDeductLoan = "10" | "25" | "15" | "30"
 
 export type AddLoanPayload = {
   empCode: string;
   loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN" ;
+  rounding_type?: "Tens" | "Ones" | "Five" | "Two" | ""
+  start_deduction_cycle?:StartDeductLoan;
   principal: number;
   term_value: number;
   term_unit: "MONTHS" | "YEARS";
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay?:boolean;
+  deduct_sec_pay?:boolean;
   others_type:string;
 };
 
@@ -17,6 +22,7 @@ export interface LoanList{
     loan_id: number;
     principal: number;
     loan_type: "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
+    others_types: string;
     term_value: number;
     term_unit: "MONTHS" | "YEARS";
     start_date: string;
@@ -66,6 +72,7 @@ export type LedgerRow = {
   debit_amount: number;
   credit_amount: number;
   isPaid: boolean;
+  isSkipped?: boolean;
   isDeduction:boolean;
   isCreated:boolean;
 };
@@ -73,30 +80,40 @@ export type LedgerRow = {
 export type LoanLedgerItem = {
   loan_ledger_id: number | string;
   transaction_date: string | null;
+  created_at: string | null;
   transaction_type: string;
   payment_status: string | null;
   debit_amount: number;
   credit_amount: number;
   remarks: string | null;
   isPaid: boolean;
+  isSkipped: boolean;
   isDeduction: boolean;
   isCreated: boolean;
-  payroll_cycle?: "10" | "25";
+  payroll_cycle?: "10" | "25" | "15" | "30";
 };
 
 
 export type LoanType = "FCH_LOAN" | "SSS_LOAN" | "PAGIBIG_LOAN" | "RFC_LOAN" | "OTHERS" | "ARE_LOAN";
-export type AreType = "HOUSING" | "OTHERS";
+export type RoundingType = "Tens" | "Ones" | "Five" | "Two" | ""
+
+export type AreType = "HOUSING" | "CASH ADV." | "OTHERS";
 export type TermUnit = "MONTHS" | "YEARS";
 
 export type EmpLoanResponse = {
   loan_id: number;
   principal: number;
   loan_type: LoanType;
+  rounding_types: RoundingType;
+  start_deduction_cycle:StartDeductLoan;
   term_value: number;
+  override_term: number;
   term_unit: TermUnit;
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay:boolean;
+  deduct_sec_pay:boolean;
+  others_types: string; 
   per_payroll_deduct: number;
   status: string;
   totalPaid: number;
@@ -109,11 +126,15 @@ export type EmpLoanResponse = {
 
 export type UpdateLoanPayload = {
   loan_type: LoanType;
+  rounding_type?: RoundingType;
+  start_deduction_cycle?:StartDeductLoan;
   principal: number;
   term_value: number;
   term_unit: TermUnit;
   start_date: string;
   deduct_allowance: boolean;
+  deduct_first_pay?:boolean;
+  deduct_sec_pay?:boolean;
 };
 
 export type UpdateLoanVariables = {
@@ -220,4 +241,73 @@ export type EmployeeSearchItem = {
   Firstname: string;
   Lastname: string;
   basic_salary: number;
+};
+
+
+export type LoanSummaryParams = {
+  month: string;
+  period: "10" | "15" | "25" | "30";
+};
+
+export type LoanSummaryItem = {
+  loan_ledger_id: number
+  loan_id: number
+
+  EmpCode: string
+  Firstname: string
+  Lastname: string
+
+  loan_type: LoanType
+  principal: number
+  per_payroll_deduct: number
+
+  debit_amount: number
+  credit_amount: number
+
+  transaction_date: string
+  payroll_cycle: string
+}
+
+
+export type LoanMonitoringRow = {
+  loan_id: number
+  name: string
+  loan_type:string
+  description: string
+  principal: number
+  start: string
+  end: string
+  deduction: number
+  total_deduction: number
+  running_balance: number
+}
+
+
+export type RemoveLedgerPayload = {
+  loan_id: number;
+  ledger_id: number;
+  remarks: string;
+};
+
+export type UpdateLedgerDatePayload = {
+  ledger_id: number
+  transaction_date: string
+  remarks: string
+}
+
+export type UpdateLedgerDateVariables = {
+  loan_id: number
+  ledger_id: number
+  transaction_date: string
+  remarks: string
+}
+
+
+export type OverrideLoanPayload = {
+  newPerPayroll: number;
+};
+
+export type OverrideLoanVariables = {
+  loan_id: number;
+  payload: OverrideLoanPayload;
 };

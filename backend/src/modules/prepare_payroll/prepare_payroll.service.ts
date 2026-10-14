@@ -2,26 +2,54 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { addMonths, toMonth } from "../../helper/prepare_payroll_helper";
 import { computeAbsent, computeGrossPay, computeLate, computeOvertime, computePagibig, computePhilRateEmployee, computeSemiMonthlySalary, computeSSSContribution, computeSSSContributionEmployer } from "./prepare_payroll.computation";
-import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP } from "./prepare_payroll.types";
+import { convertPayrollLabelToPeriod, getCurrentPayrollLabel, PAYROLL_CYCLE_MAP, PayrollDeductions } from "./prepare_payroll.types";
 import { getBodPhilhealth, getSSSContributions } from "../general/general.services";
 import { nowPH } from "../../utils/timezone";
+import { displayCompletePayroll } from "../payroll_archive/payroll_archive.service";
+import { Decimal } from "@prisma/client/runtime/library";
+import { parseSummaryOverrideChanges } from "./prepare_payroll.helper";
 
-export async function fetchEmployeesByPayrollCycle({
-  cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
-  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
+export async function fetchEmployeesByPayrollCycle({company_id, page,limit,search,onlyNew,onlyMissingSetup}: 
+  { company_id:string; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean;}) {
+
+
+    // Special Leave Condition 
+    const summary = await prisma.employeeSummary.findFirst({
+      where: {
+        EmpCode:{
+          BranchCode:{
+             company_id
+          }
+        }
+      },
+      select: { selected_payroll_date: true },
+      orderBy:{
+        PayCode: "desc"
+      }
+    });
+
+    const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+
+    const cutoffStart = new Date(payrollDate?.start_date as string);
+    const cutoffEnd = new Date(payrollDate?.end_date as string);
+    
+ // END Special Leave Condition 
+
+
 
     const baseFilter = {
-        BranchCode: {
-          CompanyCode: {
-            CompanyCycle: cycle,
-          },
-        },
+      BranchCode: {
+        company_id: company_id
+      },
+       isAlien: false ,
         ...(onlyNew && { isNewEmployee: true }), 
         ...(onlyMissingSetup && {
           Disbursing: true,
           isNewEmployee:false
         }),
+      
       };
+      
 
   const searchFilter = search
     ? {
@@ -34,28 +62,88 @@ export async function fetchEmployeesByPayrollCycle({
     : {};
 
 
-  const statusFilter = {
-    OR: [
-      {
-        EmployeeStatus: {
-          notIn: ["Resigned", "Inactive", "Terminate"],
+    const statusFilter = {
+      OR: [
+        {
+          EmployeeStatus: {
+            notIn: ["Resigned", "Inactive", "Terminate"],
+          },
         },
-      },
-      {
-        bod_member: {
-          in: ["bod1", "bod2"],
+        {
+          bod_member: {
+            in: ["bod1", "bod2"],
+          },
         },
-      },
-    ],
-  };
+          // Special Leave Condition 
+          {
+            AND: [
+              {
+                  EmployeeStatus: "Inactive",
+              },
+              {
+                  specialLeaves: {
+                    some: {
+                      OR: [
+                        // 🔹 Case 1: use start/end
+                        {
+                          AND: [
+                            { start: { not: null } },
+                            { end: { not: null } },
+                            { start: { lte: cutoffEnd } },
+                            { end: { gte: cutoffStart } },
+                          ],
+                        },
+          
+                        // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                        {
+                          AND: [
+                            { expectedStart: { not: null } },
+                            { expectedEnd: { not: null } },
+                            { expectedStart: { lte: cutoffEnd } },
+                            { expectedEnd: { gte: cutoffStart } },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+              },
+            ],
+          }
+          //END Special Leave Condition 
+      ],
+    };
 
   const where = {
-    AND: [
-      baseFilter,
-      searchFilter,
-      statusFilter,
-    ],
+    OR: [
+      {
+        AND: [
+          baseFilter,
+          searchFilter,
+          statusFilter,
+        ],
+      },
+
+      {
+        AND: [
+          { 
+            isAlien: true 
+          },
+            {
+            secondaryBranch:{
+             company_id: company_id,
+            }
+          },
+          searchFilter,
+          statusFilter,
+        ],
+      },
+
+
+    ]
+  
   };
+
+
 
   const total = await prisma.employee.count({ where });
   const bodPhil = await getBodPhilhealth();
@@ -89,6 +177,7 @@ export async function fetchEmployeesByPayrollCycle({
       Taxable:true,
       Disbursing:true,
       WithAtm:true,
+      isSixDaysWork:true,
       loan_details: {
         select: {
           loan_type: true,
@@ -109,6 +198,7 @@ export async function fetchEmployeesByPayrollCycle({
           basic_salary: true,
           cash_assistance: true,
           ecola: true,
+          include_payroll:true,
         },
       },
       BranchCode: {
@@ -174,6 +264,7 @@ const bodMap = new Map(
   const pagibigId = emp.pagibig_list[0]?.pagibig_id ?? 'N/A';
   const isNewProbi = emp.EmploymentStatus === "Probationary" && emp.isNewEmployee;
   const isBod = emp.bod_member === "bod1";
+  const includePayroll = emp.employeepayroll?.include_payroll ?? false;
 
 
   const bodShare = bodMap.get(emp.EmpCode) ?? 0;
@@ -206,7 +297,7 @@ const bodMap = new Map(
   const payPeriod =
     convertPayrollLabelToPeriod(payCycleLabel);
 
-  console.log("convertPayrollLabelToPeriod input:", payCycleLabel);
+  //console.log("convertPayrollLabelToPeriod input:", payCycleLabel);
 
 // Loan Code ↑
 
@@ -231,6 +322,7 @@ const bodMap = new Map(
     // loan Code ↓
     next_payroll: nextPayrollCycle ,
     month_pay:payPeriod,
+     include_payroll: includePayroll, 
     // loan Code ↑
   };
 });
@@ -263,6 +355,7 @@ export async function updateEmployeeSalary({
   remarks,
   changed_by,
   cash_assistance,
+
 }: {
   empCode: string;
   old_salary: number;
@@ -270,6 +363,7 @@ export async function updateEmployeeSalary({
   remarks: string;
   changed_by: string;
   cash_assistance: number;
+
 }) {
   return await prisma.$transaction(async (tx) => {
 
@@ -290,38 +384,89 @@ export async function updateEmployeeSalary({
       where: { EmpCodeId: empCode },
       data: {
         basic_salary: new_salary,
-        cash_assistance,
+        cash_assistance:cash_assistance,
       },
     });
   });
 }
 
 
-export async function updateEmployeePayrollFields({
-  empCode,
-  basic_salary,
-  cash_assistance,
-  pagibig_employee_share,
-}: {
-  empCode: string;
-  basic_salary?: number;
-  cash_assistance?: number;
-  pagibig_employee_share?: number;
-}) {
-  return await prisma.$transaction(async (tx) => {
+export async function updateEmployeePayrollFields({empCode,basic_salary,pagibig_employee_share,include_payroll}: {
+      empCode: string;
+      basic_salary?: number;
+      pagibig_employee_share?: number;
+      include_payroll?: boolean;
+    }) {
 
-    if (
-      basic_salary !== undefined ||
-      cash_assistance !== undefined
-    ) {
-      await tx.employee_payroll.update({
+      return await prisma.$transaction(async (tx) => {
+
+      await tx.employee_payroll.upsert({
         where: { EmpCodeId: empCode },
-        data: {
+        update: {
           ...(basic_salary !== undefined && { basic_salary }),
-          ...(cash_assistance !== undefined && { cash_assistance }),
+          include_payroll, 
+          excluded_date: include_payroll === false ? new Date() : null,
+        },
+        create: {
+          EmpCodeId: empCode,
+          basic_salary: basic_salary ?? 0,
+          include_payroll: include_payroll ?? true,
+          excluded_date: include_payroll === false ? new Date() : null,
         },
       });
-    }
+
+
+       if (include_payroll === false) {   
+
+        const pendingRecord = await tx.employeeSummary.findFirst({
+          where: {
+            EmpCodeId: empCode,
+            status: "PENDING",
+          },
+          select: {
+            PayCode: true,
+            CycleCategory: true,
+          },
+        });
+
+  
+        if (pendingRecord) {
+          await tx.includePayrollLogs.create({
+            data: {
+              EmpCodeId: empCode,
+              PayCode: pendingRecord.PayCode,
+              CycleCategory: pendingRecord.CycleCategory,
+            },
+          });
+        }
+      }
+
+      if(include_payroll === false){
+          await tx.employeeSummary.updateMany({
+          where: {
+            EmpCodeId: empCode,
+            status: "PENDING",
+          },
+          data: {
+            status: "EXCLUDED",
+          },
+        });
+      }
+
+
+      if(include_payroll === true){
+          await tx.employeeSummary.updateMany({
+          where: {
+            EmpCodeId: empCode,
+            status: "EXCLUDED",
+          },
+          data: {
+            status: "PENDING",
+          },
+        });
+      }
+    
+
 
     if (pagibig_employee_share !== undefined) {
       await tx.pagIbig_List.upsert({
@@ -335,6 +480,7 @@ export async function updateEmployeePayrollFields({
         },
       });
     }
+
   });
 }
 
@@ -382,7 +528,504 @@ export async function searchEmployees(keyword: string) {
 
 
 
-export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
+export async function ComputePayroll({company_id,page,limit,search}: {  company_id: string; page: number; limit: number; search?: string}) {
+
+
+  
+    // Special Leave Condition 
+    const summary = await prisma.employeeSummary.findFirst({
+      where: {
+        EmpCode:{
+          BranchCode:{
+             company_id
+          }
+        }
+      },
+      select: { selected_payroll_date: true },
+      orderBy: { PayCode: "desc" }
+    });
+
+    const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+    const cutoffStart = new Date(payrollDate?.start_date as string);
+    const cutoffEnd = new Date(payrollDate?.end_date as string);
+    
+ // END Special Leave Condition 
+
+
+  const baseFilter = {
+    EmpCode: {
+      employeepayroll:{
+      include_payroll: true,
+      },
+      BranchCode: {
+        company_id: company_id,
+      },
+       isAlien: false ,
+    },
+  };
+
+;
+
+  const searchFilter = search
+  ? {
+      OR: [
+        { EmpCodeId: { contains: search } },
+        { EmpCode: { Firstname: { contains: search } } },
+        { EmpCode: { Lastname: { contains: search } } },
+      ],
+    }
+  : {};
+
+  const statusOverride = {
+    OR: [
+      // ✅ Active employees
+      {
+        EmpCode: {
+          EmployeeStatus: {
+            notIn: ["Resigned", "Inactive", "Terminate"],
+          },
+        },
+      },
+  
+      // ✅ BOD
+      {
+        EmpCode: {
+          bod_member: {
+            in: ["bod1", "bod2"],
+          },
+        },
+      },
+  
+      // Special Leave (FIXED - now controlled)
+      {
+        AND: [
+          {
+            EmpCode: {
+              EmployeeStatus: "Inactive",
+            },
+          },
+          {
+            EmpCode: {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+
+
+  const finalWhere: Prisma.EmployeeSummaryWhereInput = {
+    OR: [
+      {
+        AND: [
+          baseFilter,
+          { status: { in: ["PENDING"] } },
+          ...(search ? [searchFilter] : []),
+          statusOverride,
+        ],
+      },
+
+      {
+        AND: [
+          { 
+            EmpCode:{
+            isAlien: true
+            }
+          },
+
+          {
+              EmpCode:{
+                secondaryBranch:{
+                company_id: company_id,
+              }
+            }
+          },
+          ...(search ? [searchFilter] : []),
+        statusOverride,
+        { status: { in: ["PENDING"] } },
+      ],
+      },
+    ]
+    
+  };
+  
+
+  const [total, data] = await Promise.all([
+    prisma.employeeSummary.count({ where: finalWhere }),
+  
+    prisma.employeeSummary.findMany({
+      where: finalWhere,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { EmpCodeId: "asc" },
+      select: {
+        PayCode: true,
+        PayrollPeriod:true,
+        EmpCodeId: true,
+        LateCount: true,
+        TotalAbsentHours: true,
+        RegularAtt: true,
+        OvertimeAtt: true,
+        NightShiftAtt: true,
+        TotalUndertime:true,
+        NightShiftOtAtt: true,
+      
+        SummaryTableOverride:{
+          select:{
+            changes:true,
+          }
+        },
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Lastname: true,
+            BranchCode:true,
+            isSixDaysWork:true,
+            employeepayroll: {
+              select: {
+                basic_salary: true,
+                cash_assistance: true,
+                ecola: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+  
+
+  const normalized = data.map((emp) => {
+    const overrideRecord = emp.SummaryTableOverride?.[0];
+    const override = parseSummaryOverrideChanges(overrideRecord?.changes);
+
+    const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;
+    const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
+    //const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+    const totalLateCount = override?.LateCount ?? (emp.LateCount ? Number(emp.LateCount) : 0);
+
+    //const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
+    const totalUndertimeCount = override?.TotalUndertime ?? (emp.TotalUndertime ? Number(emp.TotalUndertime) : 0);
+    //const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+    const totalAbsent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
+      ? Number(override.TotalAbsentHours)
+      : emp.TotalAbsentHours
+      ? Number(emp.TotalAbsentHours)
+      : 0;
+    const isSixDaysWork  = emp.EmpCode.isSixDaysWork;
+
+    const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+    const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+    const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
+
+    const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
+    const semi_monthly = Number(semiMonthlyRate ?? 0);
+
+    const overTime = computeOvertime(basicSalary, {
+      regular: emp.RegularAtt,
+      overtime: emp.OvertimeAtt,
+      nightShift: emp.NightShiftAtt,
+      nightShiftOt: emp.NightShiftOtAtt,
+    });
+
+    const computedOvertime = overTime;
+
+    const finalOvertime = override?.TotalOvertime !== undefined && override?.TotalOvertime !== null
+        ? Number(override.TotalOvertime)
+        : computedOvertime
+        ? Number(computedOvertime)
+        : 0;
+
+
+   const FinalbasicSalary = override.basic_salary ?? semi_monthly;
+
+    const computedGrossPay = computeGrossPay(
+      finalOvertime,
+      FinalbasicSalary,
+      lateCount,
+      undertimeCount,
+      absent
+    );
+
+    // const grossPay = override?.gross_edited && override?.gross_pay_edit !== null
+    //     ? Number(override.gross_pay_edit)
+    //     : computedGrossPay;
+    
+    // const FinalbasicSalary = override?.basic_salary_edited && override?.basic_salary && override?.basic_salary !== null
+    // ? Number(override.basic_salary)
+    // : semi_monthly;
+
+   
+        
+    //const grossPay = computeGrossPay(finalOvertime,semi_monthly,lateCount,undertimeCount,absent);
+
+
+
+  
+
+
+    return {
+      ...emp,
+      late_count:lateCount,
+      absence_count:absent,
+      overtime:finalOvertime,
+      undertime:undertimeCount,
+      gross_pay:computedGrossPay,
+      LateCount: override?.LateCount ?? emp.LateCount ?? 0,
+      TotalAbsentHours: override?.TotalAbsentHours ?? emp.TotalAbsentHours ?? 0,
+      TotalUndertime: override?.TotalUndertime ?? emp.TotalUndertime ?? 0,
+      TotalOvertime: override?.TotalOvertime ?? computedOvertime,
+      //gross_pay_edit: override?.gross_pay_edit ?? grossPay,
+      philhealth_employee : override?.philhealth_employee ?? 0,
+      philhealth_employer : override?.philhealth_employer ?? 0,
+      pagibig_employee_share: override?.pagibig_employee_share ?? 0,
+      pagibig_employer_share: override?.pagibig_employer_share ?? 0,
+      final_wtax: override?.final_wtax ?? 0,
+      basic_salary:FinalbasicSalary,
+    };
+  });
+
+  return {
+    data: normalized,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//payroll initialize ***********************************************************
+
+export async function InitializeEmployeesbyCycle({cycle, page,limit,search,onlyNew,onlyMissingSetup}: 
+  {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string;  onlyNew?: boolean;  onlyMissingSetup?: boolean }) {
+
+    const baseFilter = {
+        BranchCode: {
+          CompanyCode: {
+            CompanyCycle: cycle,
+          },
+        },
+        isAlien: false,
+
+        ...(onlyNew && { isNewEmployee: true }), 
+        ...(onlyMissingSetup && {
+          Disbursing: true,
+          isNewEmployee:false
+        }),
+      };
+
+      const searchFilter = search
+        ? {
+            OR: [
+              { EmpCode: { contains: search } },
+              { Firstname: { contains: search } },
+              { Lastname: { contains: search } },
+            ],
+          }
+        : {};
+
+
+      const statusFilter = {
+        OR: [
+          {
+            EmployeeStatus: {
+              notIn: ["Resigned", "Inactive", "Terminate"],
+            },
+          },
+          {
+            bod_member: {
+              in: ["bod1", "bod2"],
+            },
+          },
+        ],
+      };
+
+      const where = {
+        OR: [
+          {
+            AND: [
+              baseFilter,
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+          {
+            AND: [
+              { isAlien: true },
+                {secondaryBranch:{
+                  CompanyCode: {
+                    CompanyCycle: cycle,
+                  },
+                }
+              },
+              searchFilter,
+              statusFilter,
+            ],
+          },
+
+        ]
+      
+      };
+
+  const total = await prisma.employee.count({ where });
+
+  
+
+  const data = await prisma.employee.findMany({
+    where,
+    skip: (page - 1) * limit,
+    take: limit,
+    orderBy: { EmpCode: "desc" },
+    select: {
+      EmpCode: true,
+      Firstname: true,
+      Lastname: true,
+      Department: true,
+      Position: true,
+      EmploymentStatus: true,
+      isNewEmployee: true,
+      bod_member:true,
+      Taxable:true,
+      Disbursing:true,
+      WithAtm:true,
+ 
+      employeepayroll: {
+        select: {
+          basic_salary: true,
+          cash_assistance: true,
+          ecola: true,
+        },
+      },
+      BranchCode: {
+        select: {
+          branchCode: true,
+          Location: true,
+          CompanyCode: {
+            select: {
+              CompanyName: true,
+              CompanyCycle: true,
+            },
+          },
+        },
+      },
+    },
+    
+  });
+
+
+
+
+      const normalized = data.map(emp => {
+        const basicSalary = emp.employeepayroll?.basic_salary?.toNumber() ?? 0;  
+     
+
+        return {
+          ...emp,
+          basic_salary: basicSalary,
+        };
+      });
+
+  return {
+    data:normalized,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+
+
+
+
+
+
+type PayrollDate = {
+  start_date: string;
+  end_date: string;
+};
+
+
+
+export async function InitializeComputePayroll({cycle,page,limit,search}: {cycle: "10-25-Cycle" | "15-30-Cycle"; page: number; limit: number; search?: string}) {
+
+  const summary = await prisma.employeeSummary.findFirst({
+    where: { CycleCategory: cycle },
+    select: { selected_payroll_date: true },
+    orderBy:{
+      PayCode: "desc"
+    }
+  });
+
+  const payrollDate = summary?.selected_payroll_date as PayrollDate | null;
+
+  if (
+    !payrollDate ||
+    !payrollDate.start_date ||
+    !payrollDate.end_date
+  ) {
+    throw new Error("Invalid payroll date");
+  }
+  
+  if (!payrollDate?.start_date || !payrollDate?.end_date) {
+    throw new Error("Payroll date is missing");
+  }
+  
+  const cutoffStart = new Date(`${payrollDate.start_date}T00:00:00.000Z`);
+  const cutoffEnd = new Date(`${payrollDate.end_date}T23:59:59.999Z`);
+  
+  if (isNaN(cutoffStart.getTime()) || isNaN(cutoffEnd.getTime())) {
+    throw new Error("Invalid payroll date format");
+  }
+  
+
 
   const searchFilter = search
   ? {
@@ -408,19 +1051,102 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
           bod_member: {
             in: ["bod1", "bod2"],
           },
+          
         },
       },
     ],
   };
 
+  
   const finalWhere: Prisma.EmployeeSummaryWhereInput = {
+    OR: [
+      {
+        AND: [
+          {
+             CycleCategory: cycle
+           },
+          {
+            EmpCode: {
+              BranchCode: {
+                CompanyCode: {
+                  CompanyCycle: cycle,
+                },
+              },
+            },
+          },
+          { status: { in: ["PENDING"] } },
+          searchFilter,
+          statusOverride,
+    
+        ],
+      },
+
+      {
     AND: [
-      { CycleCategory: cycle },
-      { status: { in: ["PENDING"] } },
-      searchFilter,
-      statusOverride,
-    ],
+          { 
+            EmpCode:{
+            isAlien: true
+            },
+            status:{ in: ["PENDING"] } 
+          },
+
+          {
+              EmpCode:{
+              secondaryBranch:{
+                CompanyCode: {
+                  CompanyCycle: cycle,
+                },
+              }
+            },
+            status:{ in: ["PENDING"] } 
+          },
+        searchFilter,
+        statusOverride,
+      ],
+      },
+      {
+        AND: [
+          {
+            EmpCode: {
+              EmployeeStatus: "Inactive",
+            },
+          },
+          {
+            EmpCode: {
+              specialLeaves: {
+                some: {
+                  OR: [
+                    // 🔹 Case 1: use start/end
+                    {
+                      AND: [
+                        { start: { not: null } },
+                        { end: { not: null } },
+                        { start: { lte: cutoffEnd } },
+                        { end: { gte: cutoffStart } },
+                      ],
+                    },
+      
+                    // 🔹 Case 2: fallback to expectedStart/expectedEnd
+                    {
+                      AND: [
+                        { expectedStart: { not: null } },
+                        { expectedEnd: { not: null } },
+                        { expectedStart: { lte: cutoffEnd } },
+                        { expectedEnd: { gte: cutoffStart } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      }
+    ]
+  
   };
+
+
   
 
   const [total, data] = await Promise.all([
@@ -445,6 +1171,8 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
           select: {
             Firstname: true,
             Lastname: true,
+            BranchCode:true,
+            isSixDaysWork:true,
             employeepayroll: {
               select: {
                 basic_salary: true,
@@ -465,10 +1193,11 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
     const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
     const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
     const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+    const isSixDaysWork  = emp.EmpCode.isSixDaysWork;
 
-    const undertimeCount = computeLate(totalUndertimeCount,basicSalary);
-    const lateCount = computeLate(totalLateCount,basicSalary);
-    const absent = computeAbsent(totalAbsent,basicSalary);
+    const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+    const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+    const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
 
     const overTime = computeOvertime(basicSalary, {
@@ -500,4 +1229,217 @@ export async function ComputePayroll({cycle,page,limit,search}: {  cycle: "10-25
 }
   
 
+
+
+export async function ViewDeduction(company_id:string){
+  try{
+    const computed = await displayCompletePayroll(["PENDING"]);
+    if (!computed || computed.length === 0) return 0;
+
+      const filtered = computed.filter((row) => {
+      const emp = row.EmpCode;
+      const normalMatch = emp?.BranchCode?.company_id === company_id;
+      const alienMatch = emp?.isAlien && emp?.secondaryBranch?.company_id === company_id;
+      return normalMatch || alienMatch;
+    });
+
+      const normalized: PayrollDeductions[] = filtered.map((row) => {
+        
+        const total_deductions =
+          (row.sss_contrib_employee ?? 0) +
+          (row.philhealth_contrib_employee ?? 0) +
+          (row.pagibig_contrib_employee ?? 0) +
+          (row.wtax ?? 0) +
+          (row.fch_loan ?? 0) +
+          (row.sss_loan ?? 0) +
+          (row.pagibig_loan ?? 0) +
+          (row.rfc_loan ?? 0) +
+          (row.are_loan ?? 0);
+
+        return {
+
+          EmpCodeId: row.EmpCodeId,
+          EmpCode: {
+            Firstname: row.EmpCode.Firstname,
+            Lastname: row.EmpCode.Lastname,
+          },
+          sss_contrib_employee: row.sss_contrib_employee,
+          philhealth_contrib_employee: row.philhealth_contrib_employee,
+          pagibig_contrib_employee: row.pagibig_contrib_employee,
+          wtax: row.wtax,
+          fch_loan: row.fch_loan,
+          sss_loan: row.sss_loan,
+          pagibig_loan: row.pagibig_loan,
+          rfc_loan: row.rfc_loan,
+          are_loan: row.are_loan,
+          total_deductions, 
+          
+        };
+      });
+
+    return normalized;
+  }
+
+  catch(error){
+    console.error("error occured",error);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// FOR EDITING SUMARY TABLE 
+
+// services/payroll.service.ts
+
+
+
+
+
+export type SummaryOverrideChanges = {
+  LateCount?: number;
+  TotalAbsentHours?: number;
+  TotalUndertime?: number;
+  TotalOvertime?: number;
+  philhealth_employee?: number;
+  philhealth_employer?: number;
+  final_wtax?: number;
+  basic_salary?: number;
+  pagibig_employee_share?:number;
+  pagibig_employer_share?:number;
+};
+
+
+export type UpdateDeductionPayload = {
+  PayCode: string;
+  EmpCodeId: string;
+  PayrollPeriod: string;
+  changes: SummaryOverrideChanges;
+};
+
+function parseOverrideChanges(value: Prisma.JsonValue | null | undefined): SummaryOverrideChanges {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return {};
+  }
+
+  const record = value as Record<
+    string,
+    Prisma.JsonValue
+  >;
+
+  const changes: SummaryOverrideChanges = {};
+
+  if (typeof record.LateCount === "number") {
+    changes.LateCount = record.LateCount;
+  }
+
+  if (
+    typeof record.TotalAbsentHours === "number"
+  ) {
+    changes.TotalAbsentHours =
+      record.TotalAbsentHours;
+  }
+
+  if (
+    typeof record.TotalUndertime === "number"
+  ) {
+    changes.TotalUndertime =
+      record.TotalUndertime;
+  }
+
+  if (
+    typeof record.TotalOvertime === "number"
+  ) {
+    changes.TotalOvertime =
+      record.TotalOvertime;
+  }
+
+  if (
+    typeof record.philhealth_employee === "number"
+  ) {
+    changes.philhealth_employee =
+      record.philhealth_employee;
+  }
+
+  if (
+    typeof record.philhealth_employer === "number"
+  ) {
+    changes.philhealth_employer =
+      record.philhealth_employer;
+  }
+
+  if (typeof record.final_wtax === "number") {
+    changes.final_wtax = record.final_wtax;
+  }
+
+   if (typeof record.pagibig_employee_share === "number") {
+    changes.pagibig_employee_share = record.pagibig_employee_share;
+  }
+
+  if (typeof record.basic_salary === "number") {
+    changes.basic_salary = record.basic_salary;
+  }
+
+  return changes;
+}
+
+export async function updateDeductionService({PayCode,EmpCodeId,PayrollPeriod,changes}: UpdateDeductionPayload) {
+  try {
+    const uniqueWhere = {
+      PayCode_EmpCodeId_PayrollPeriod: {
+        PayCode,
+        EmpCodeId,
+        PayrollPeriod,
+      },
+    };
+
+    const existingOverride = await prisma.summaryTableOverride.findUnique({
+        where: uniqueWhere,
+        select: {
+          changes: true,
+        },
+      });
+
+    const currentChanges = parseOverrideChanges(
+      existingOverride?.changes
+    );
+
+    const mergedChanges: SummaryOverrideChanges = {
+      ...currentChanges,
+      ...changes,
+    };
+
+    return await prisma.summaryTableOverride.upsert({
+      where: uniqueWhere,
+      update: {
+        changes:
+          mergedChanges as Prisma.InputJsonObject,
+      },
+
+      create: {
+        PayCode,
+        EmpCodeId,
+        PayrollPeriod,
+        changes:
+          mergedChanges as Prisma.InputJsonObject,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating summary override:",error);
+    throw error;
+  }
+}
 

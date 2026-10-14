@@ -1,4 +1,4 @@
-import { DisburseDetailsItem, GetMainDisburseParams, GetMainDisburseResponse, UpdateEmployeeSetupPayload } from "../types/disburseType";
+import { DisburseCompany, DisburseDetailsItem, GetDisburseCompaniesParams, GetMainDisburseParams, GetMainDisburseResponse, UpdateCompanySetupPayload, UpdateEmployeeSetupPayload } from "../types/disburseType";
 import api from "./axios";
 
 
@@ -35,6 +35,29 @@ export const getDisburseDetails = async (
 ): Promise<DisburseDetailsItem[]> => {
   const { data } = await api.get(
     `/Disburse/details/${mainDisburseID}`
+  );
+
+  return data;
+};
+
+
+export async function getDisburseCompanies(
+  params: GetDisburseCompaniesParams
+): Promise<DisburseCompany[]> {
+
+  const res = await api.get("/Disburse/disburse/companies", {
+    params
+  });
+
+  return res.data;
+}
+
+export const updateCompanySetup = async (
+  payload: UpdateCompanySetupPayload
+) => {
+  const { data } = await api.post(
+    "/Disburse/companies/update",
+    payload
   );
 
   return data;

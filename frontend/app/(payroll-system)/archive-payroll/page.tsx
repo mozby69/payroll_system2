@@ -11,7 +11,10 @@ import { Column } from "@/app/types/preparePayroll"
 import RequestModal from "@/app/components/Modal"
 import GeneratePayslipModal from "@/app/components/archive/GeneratePayslipModal"
 import ViewBank from "@/app/ModalContent/ArchivePayroll/BankRelease/ViewBank"
-import { BanknoteArrowDown, BookOpenCheck } from "lucide-react"
+import { BanknoteArrowDown, BookOpenCheck, PrinterCheckIcon } from "lucide-react"
+import ArchiveReportModal from "@/app/components/archive/ArchiveReportModal"
+import Select from "@/app/components/Select"
+import VarianceArchive from "@/app/ModalContent/ArchivePayroll/ViewVariance/VarianceArchive"
 
 
 export default function ArchivePayroll() {
@@ -23,9 +26,14 @@ export default function ArchivePayroll() {
   const [payslipModal, setPayslipModal] = useState(false)
   const [totalPayrollId, setTotalPayrollId] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen2, setIsModalOpen2] = useState(false);
+  const [openReportModal, setOpenReportModal] = useState(false);
   const [selectedPayCode, setSelectedPayCode] = useState<string | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<string | null>(null);
-
+  const [selectedArchive, setSelectedArchive] = useState<TotalPayroll>()
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [selectedAction, setSelectedAction] = useState("");
+  
   const debouncedSearch = useDebounce(search, 400)
 
   const payCodeOptions = useMemo(() => generatePayCodeOptions(5), [])
@@ -40,11 +48,11 @@ export default function ArchivePayroll() {
   // const paycycle = data?.data?.[0]?.PayCycle ?? "";
   // const cycleCategory = data?.data?.[0]?.cycle_category ?? "";
 
-  const { data: bank_data } = useFetchBank(selectedPayCode,selectedCycle);
+  const { data: bank_data = [] } = useFetchBank(selectedPayCode,selectedCycle,selectedCompany);
 
   
-  const bdo_data = bank_data?.BDO ?? [];
-  const pnb_data = bank_data?.PNB ?? [];
+
+  
 
  
 
@@ -62,10 +70,16 @@ export default function ArchivePayroll() {
   }
 
 
-  const handleGeneratePayslip = (data: TotalPayroll) => {
-    setTotalPayrollId(data.id)
-    setPayslipModal(true)
-}
+      const handleGeneratePayslip = (data: TotalPayroll) => {
+          setTotalPayrollId(data.id)
+          setPayslipModal(true)
+      }
+
+    const handleGenerateReport = (data: TotalPayroll) => {
+      setTotalPayrollId(data.id)
+      setOpenReportModal(true)
+      setSelectedArchive(data)
+    }
 
 
   const closeModal = () => {
@@ -99,17 +113,44 @@ export default function ArchivePayroll() {
         Number(row.Total_NetPay).toLocaleString(),
     },
     {
+      header: "Status",
+      render: (row) => {
+        const status = row.status?.toLowerCase();
+        const baseClass = "px-2.5 py-1 text-xs font-semibold rounded-full inline-block";
+        const statusClass = status === "completed"
+            ? "bg-green-100 text-green-700 border border-green-200"
+            : status === "in_progress"
+            ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+            : "bg-gray-100 text-gray-600 border border-gray-200";
+
+        return (
+          <span className={`${baseClass} ${statusClass}`}>
+            {row.status}
+          </span>
+        );
+      },
+    },
+    {
       header: "Actions",
       render: (row) => (
         <div className="flex items-center gap-2">
+          <button
+          onClick={() => handleGenerateReport(row)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
+                     text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
+                     border border-emerald-200 rounded-md 
+                     transition-colors duration-200"
+        >
+          <PrinterCheckIcon size={15} />
+          Report
+        </button>
       
         <button
           onClick={() => handleGeneratePayslip(row)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium 
                      text-emerald-700 bg-emerald-50 hover:bg-emerald-100 
                      border border-emerald-200 rounded-md 
-                     transition-colors duration-200"
-        >
+                     transition-colors duration-200">
           <BookOpenCheck size={15} />
           Payslip
         </button>
@@ -135,6 +176,33 @@ export default function ArchivePayroll() {
     },
   ]
   
+
+
+  //select
+  const options = [
+  {
+    label: "View Variance",
+    value: "variance",
+  },
+  {
+    label: "Others",
+    value: "others",
+  }
+]
+
+
+const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const value = event.target.value;
+  if (value === "variance") {
+    setIsModalOpen2(true);
+  }
+  setSelectedAction("");
+};
+
+  const closeModal2 = () => {
+    setIsModalOpen2(false);
+  };
+
 
   return (
     <div className="py-10 px-8 bg-gray-50 min-h-screen">
@@ -162,6 +230,15 @@ export default function ArchivePayroll() {
             ))}
           </select>
         </div>
+        
+        <div className="relative inline-block">
+         <Select
+          options={options}
+          placeholder="Select Action"
+          value={selectedAction}
+          onChange={handleSelectChange}
+        />
+        </div>
       </div>
 
       <Datatable
@@ -177,6 +254,7 @@ export default function ArchivePayroll() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
+      
 
     {payslipModal && (
             <RequestModal 
@@ -191,13 +269,41 @@ export default function ArchivePayroll() {
           )
           }
 
+          {openReportModal && selectedArchive && (
+            <RequestModal 
+            size="xxxl" 
+            title="Archive Report"
+            onClose={()=>{
+              setOpenReportModal(false); 
+              setTotalPayrollId(0)}
+            }>
+              <ArchiveReportModal totalPayrollId={totalPayrollId} archiveData={selectedArchive} />
+          </RequestModal>
+          )}
+
  
 
         {isModalOpen && (
             <RequestModal size="xxxl" title={`VIEW BANK RELEASE`} onClose={closeModal}>
-                <ViewBank BDOList={bdo_data} PNBList={pnb_data}   cycleCategory={selectedCycle}/>
+              <ViewBank
+                  data2={bank_data}
+                  cycleCategory={selectedCycle}
+                  company={selectedCompany}
+                  paycode={selectedPayCode}
+                  setCompany={setSelectedCompany}
+                />
             </RequestModal>
           )}
+
+
+          {isModalOpen2 && (
+            <RequestModal size="xxl" title={`View Variance`} onClose={closeModal2}>
+              <VarianceArchive></VarianceArchive>
+
+            </RequestModal>
+          )
+
+          }
 
 
     

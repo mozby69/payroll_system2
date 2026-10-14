@@ -1,4 +1,4 @@
-import { CompaniesResponse } from "../types/generalTypes";
+import { ApiResponse, BranchesType, CompaniesResponse, ReorderBranchesPayload } from "../types/generalTypes";
 import api from "./axios";
 
 export async function getCompanyDetailsServices() {
@@ -9,4 +9,99 @@ export async function getCompanyDetailsServices() {
 export async function getCompanyDetailsByCodeServices(CompanyCode: string) : Promise <CompaniesResponse> {
         const res = await api.get(`/general/companies-by-code/${CompanyCode}`)
         return res.data
+}
+
+export const fetchCompanies = async () => {
+  const { data } = await api.get("/general/companies");
+  return data.data;
+};
+
+
+export const fetchLoanTypes = async (): Promise<string[]> => {
+
+  const { data } = await api.get("/general/loan-types");
+
+  return data.data;
+};
+
+export async function getBranchesService(): Promise<BranchesType[]> {
+  const res = await api.get<ApiResponse<BranchesType[]>>("/general/branches")
+  return res.data.data
+}
+
+export const reorderBranchesService = async (
+  payload: ReorderBranchesPayload
+): Promise<ApiResponse<null>> => {
+
+  const res = await api.put<ApiResponse<null>>(
+    "/general/branches-reorder",
+    payload
+  )
+
+  return res.data
+}
+
+
+// GET
+export const getBranchGroups = async () => {
+  const res = await api.get("/general/branch-groups");
+  return res.data;
+};
+
+// CREATE
+export const createBranchGroup = async (name: string) => {
+  const res = await api.post("/general/branch-groups", { name });
+  return res.data;
+};
+
+// DELETE
+export const deleteBranchGroup = async (id: number) => {
+  await api.delete(`/general/branch-groups/${id}`);
+};
+
+// ASSIGN BRANCH
+
+export const assignBranchGroupService = async ({
+  branchCode,
+  groupId,
+}: {
+  branchCode: string;
+  groupId: number | null;
+}) => {
+  const res = await api.patch(
+    `/general/branch-groups/${branchCode}/assign`,
+    { groupId }
+  );
+
+  return res.data;
+};
+
+
+
+
+
+
+
+
+export async function updateLocalModeService(
+  local_mode: boolean
+) {
+
+  const response = await api.put(
+    "/general/local-mode",
+    {
+      local_mode,
+    }
+  );
+
+  return response.data;
+}
+
+export async function getLocalModeService() {
+
+  const response = await api.get(
+    "/general/local-mode"
+  );
+
+  return response.data;
 }

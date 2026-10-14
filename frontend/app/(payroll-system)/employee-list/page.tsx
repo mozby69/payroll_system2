@@ -2,13 +2,16 @@
 
 import { Filter, IndentIncreaseIcon, View } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEmployees } from "../../hooks/employees";
+import { useEmployees, useFetchGmailAccountList } from "../../hooks/employees";
 import FilterModal from "../../components/Filter";
 import ActiveFilters from "@/app/components/FilterObject";
 import GenButton from "@/app/components/Buttons";
 import { useState } from "react";
 import { FilterProvider, useFilters } from "@/app/components/FilterContext";
 import EmpIncrease from "@/app/components/empList/empIncrease";
+import Select from "@/app/components/Select";
+import RequestModal from "@/app/components/Modal";
+import GmailAccountList from "@/app/components/empList/gmailAccountList";
 
 
 const FILTER_KEYS = ["department", "company", "status"] as const;
@@ -30,9 +33,13 @@ function EmployeeListContent() {
     search,
     filters
   );
+  const { data: gmail_list } = useFetchGmailAccountList();
 
   const [open, setOpen] = useState(false);
   const [openSalary, setOpenSalary] = useState(false);
+  const [selectedAction, setSelectedAction] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+
 
   const updateParams = (fn: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -57,6 +64,28 @@ function EmployeeListContent() {
       params.set("page", String(p));
     });
   };
+
+
+
+  const options = [
+      {
+        label: "View Gmail Accounts",
+        value: "gmail",
+      },
+    
+    ]
+
+  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = event.target.value;
+        if (value === "gmail") {
+        setOpenModal(true);
+      }
+        setSelectedAction("");
+    };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+  }
 
   return (
     <div className="relative w-full min-h-screen flex flex-col items-center py-8 text-mainGray">
@@ -87,6 +116,14 @@ function EmployeeListContent() {
                 <IndentIncreaseIcon size={16}/> Salary Increase
               </GenButton>
             </div>
+            <div className="w-full">
+         <Select
+          options={options}
+          placeholder="Select Action"
+          value={selectedAction}
+          onChange={handleSelectChange}
+        />
+        </div>
           </div>
         </div>
 
@@ -134,7 +171,7 @@ function EmployeeListContent() {
                   <td className="p-4">
                     {emp.Lastname}, {emp.Firstname} {emp.Middlename}
                   </td>
-                  <td className="p-4">{emp.BranchCode ?? "-"}</td>
+                  <td className="p-4">{emp.BranchCode?.branchCode ?? "-"}</td>
                   <td className="p-4">{emp.Department ?? "-"}</td>
                   <td className="p-4">{emp.EmploymentStatus}</td>
                   <td className="p-4">
@@ -190,6 +227,14 @@ function EmployeeListContent() {
       <FilterModal open={open} onClose={() => setOpen(false)} />
 
       <EmpIncrease open={openSalary} onClose={() => setOpenSalary(false)} />
+
+      {openModal && (
+            <RequestModal size="xxl" title={`View Gmail Account`} onClose={handleCloseModal}>
+            <GmailAccountList   data={gmail_list ?? []}></GmailAccountList>
+            </RequestModal>
+          )
+
+          }
     </div>
   );
 }

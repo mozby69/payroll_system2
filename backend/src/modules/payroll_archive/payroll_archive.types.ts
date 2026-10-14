@@ -1,6 +1,8 @@
 
 // Loan Type Code ↓
 
+import { Decimal } from "@prisma/client/runtime/library";
+
 const MONTH_INDEX: Record<string, number> = {
   January: 0,
   February: 1,
@@ -44,17 +46,19 @@ export function convertPayrollLabelToPeriod(
 export interface EmployeeBankAccountsParams{
   PayCode:string;
   cycle_category: "10-25-Cycle" | "15-30-Cycle" | undefined;
-  
+  company_id:string;
 }
 
 export interface PayrollRow {
   PayCode: string;
   cycle_category: string | null;
-  Netpay: number; // ✅ number, not string
+  Netpay: number;
   BranchCodeId:string | null;
   EmpCode: {
     Firstname: string | null;
     Lastname: string | null;
+    isAlien?:boolean,
+    secondaryBranchId?:string,
     BranchCode: {
       company_id: string | null;
     } | null;
@@ -66,3 +70,137 @@ export interface BankFileRow {
   bankAccount: string;
   amount: number;
 }
+
+
+
+
+
+type MoneyValue =
+  | Decimal
+  | string
+  | number
+  | null
+  | undefined;
+
+export type SendPayslipType = {
+  id: number;
+  EmpCodeId: string;
+
+
+  PayCode: string | null;
+  Late: MoneyValue;
+  Absent: MoneyValue;
+
+  payroll_period: string | null;
+  selected_payroll_date: string | null;
+
+  undertime: MoneyValue;
+  Overtime: MoneyValue;
+  Grosspay: MoneyValue;
+  w_tax: MoneyValue;
+  Netpay: MoneyValue;
+  Basic_salary: MoneyValue;
+
+  SSS_employee_share: MoneyValue;
+  SSS_employer_share: MoneyValue;
+
+  Pagibig_employee_share: MoneyValue;
+  Pagibig_employer_share: MoneyValue;
+
+  philhealth_employee_share: MoneyValue;
+  philhealth_employer_share: MoneyValue;
+
+  ar_e: MoneyValue;
+  fch_loan: MoneyValue;
+  rfc_loan: MoneyValue;
+  pagibig_loan: MoneyValue;
+  sss_loan: MoneyValue;
+  sss_calamity_loan: MoneyValue;
+  pagibig_calamity_loan: MoneyValue;
+
+  total_deductions: MoneyValue;
+
+  payrollBranch?: {
+  branchCode: string;
+  Company: string | null;
+  Location: string | null;
+  company_id: string | null;
+
+  CompanyCode: {
+    CompanyCode: string;
+    CompanyCycle: string | null;
+    CompanyName: string | null;
+    isDisburse: boolean;
+    } | null;
+  }  | null;
+
+  EmpCode: {
+    Firstname: string | null;
+    Middlename: string | null;
+    Lastname: string | null;
+    isAlien?:boolean;
+  
+    // BranchCode: {
+    //   branchCode: string;
+    //   Company: string | null;
+    //   Location: string | null;
+    //   company_id: string | null;
+    // } | null;
+
+      secondaryBranch: {
+      branchCode: string;
+      Company: string | null;
+      Location: string | null;
+      company_id: string | null;
+    } | null;
+
+
+    employeepayroll: {
+      gmail_account: string | null;
+    } | null;
+  };
+};
+
+
+
+
+
+
+
+//bulk
+export type SendBulkPayslipParams = {
+  totalPayrollId: number;
+  selectedCompany?: string;
+  selectedBranch?: string;
+  search?: string;
+};
+
+export type FailedPayslipEmail = {
+  archiveId: number;
+  employeeCode: string;
+  message: string;
+};
+
+export type BulkPayslipResult = {
+  totalEmployees: number;
+  sentCount: number;
+  skippedCount: number;
+  failedCount: number;
+  failures: FailedPayslipEmail[];
+};
+
+
+
+export type BulkPayslipProgress = {
+  total: number;
+  completed: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+  percentage: number;
+  currentEmployeeCode?: string;
+};
+
+export type BulkPayslipProgressCallback = (
+  progress: BulkPayslipProgress
+) => void;

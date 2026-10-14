@@ -23,7 +23,9 @@ export const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
 
   roleIds: z.array(z.number().int().positive())
-    .min(1, "At least one role is required")
+    .min(1, "At least one role is required"),
+    
+    company_id: z.string().optional(),
 })
 
 export type RegisterSchema = z.infer<typeof registerSchema>

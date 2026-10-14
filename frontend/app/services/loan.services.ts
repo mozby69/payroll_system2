@@ -1,5 +1,5 @@
 import {api} from "./axios"
-import {AddLoanPayload, CloseLoanRequest, EmpLoansByCycleResponse, FetchEmpLoansPayload, LoanActionType, LoanFilters,UpdateLoanPayload} from "../types/loanTypes"
+import {AddLoanPayload, CloseLoanRequest, EmpLoansByCycleResponse, FetchEmpLoansPayload, LoanActionType, LoanFilters,LoanMonitoringRow,OverrideLoanPayload,UpdateLoanPayload} from "../types/loanTypes"
 
 
 export const addEmployeeLoan = async (payload: AddLoanPayload) => {
@@ -91,3 +91,77 @@ export const fetchBonusRules = async () => {
 export function loanSearchEmployees(q: string) {
   return api.get("/loans/employees/search", { params: { q } });
 }
+
+
+export const fetchLoanSummary = async (
+  month: string,
+  cycle:string,
+  period: string,
+  companyCode?: string,
+  loanType?: string,
+): Promise<LoanMonitoringRow[]> => {
+
+  const { data } = await api.get("/loans/get-loan-summary", {
+    params: {
+      month,
+      cycle,
+      period,
+      company: companyCode,
+      loanType:loanType
+    }
+  });
+
+  return data;
+};
+
+
+export const removeLoanLedger = async (
+  loan_id: number,
+  ledger_id: number,
+  remarks: string
+) => {
+  const { data } = await api.delete(`/loans/${loan_id}/ledger`, {
+    data: {
+      ledger_id,
+      remarks,
+    },
+  });
+
+  return data;
+};
+
+
+export const updateLedgerDate = async (
+  loan_id: number,
+  ledger_id: number,
+  transaction_date: string,
+  remarks: string
+) => {
+
+  const { data } = await api.patch(
+    `/loans/${loan_id}/ledger/date`,
+    {
+      ledger_id,
+      transaction_date,
+      remarks
+    }
+  );
+
+  return data;
+};
+
+
+
+
+export const overrideEmployeeLoan = async (
+  loan_id: number,
+  payload: OverrideLoanPayload
+) => {
+
+  const { data } = await api.patch(
+    `/loans/override-loan/${loan_id}`,
+    payload
+  );
+
+  return data;
+};

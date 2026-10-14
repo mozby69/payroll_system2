@@ -27,13 +27,16 @@ export async function loginUser(params: LoginDTO) {
     }
   })
 
+
   if (!user || !user.isActive) {
-    throw new Error("Invalid username or password")
+    throw new Error("INVALID_USER")
   }
+ 
 
   const isPasswordValid = await bcrypt.compare(password, user.password)
+  console.log("test: ", isPasswordValid)
   if (!isPasswordValid) {
-    throw new Error("Invalid username or password")
+    throw new Error("INVALID_PASSWORD")
   }
 
   const roles = user.roles.map(r => r.role.name)
@@ -50,6 +53,7 @@ export async function loginUser(params: LoginDTO) {
     id: user.id,
     username: user.username,
     roles,
+    company_id: user.company_id,
     permissions
   })
 
@@ -59,6 +63,7 @@ export async function loginUser(params: LoginDTO) {
       id: user.id,
       username: user.username,
       roles,
+      company_id: user.company_id,
       permissions
     }
   }
@@ -67,7 +72,7 @@ export async function loginUser(params: LoginDTO) {
 
 
 export async function createUserService(data: RegisterSchema) {
-  const { email, name, username, password, roleIds } = data
+  const { email, name, username, password, roleIds, company_id } = data
 
   const existing = await prisma.user.findFirst({
     where: {
@@ -102,7 +107,8 @@ export async function createUserService(data: RegisterSchema) {
         name,
         username,
         password: hashedPassword,
-        isActive: true
+        isActive: true,
+        company_id: company_id
     }
     })
 
@@ -135,6 +141,7 @@ export async function updateUserService(
     username?: string
     password?: string
     roleIds?: number[]
+    company_id?: string | null
   }
 ) {
   return prisma.$transaction(async tx => {
@@ -148,7 +155,8 @@ export async function updateUserService(
         email: data.email,
         name: data.name,
         username: data.username,
-        password: data.password
+        password: data.password,
+        company_id: data.company_id
       }
     })
 
@@ -212,6 +220,7 @@ export async function getUsersService() {
       username: true,
       name: true,
       email: true,
+      company_id: true,
       isActive: true,
       createdAt: true,
 

@@ -17,7 +17,9 @@ export interface EmployeeList{
     Email:string;
     Position:string;
     Department:string;
-    BranchCode:string;
+    BranchCode: {
+      branchCode: string;
+    };
     EmploymentStatus: string;
 
     employeepayroll?: {
@@ -79,7 +81,13 @@ export type EmpPayrollInfo = {
   philhealthRateEmployee: number;
   pagibigEmployeeShare: number;
   totalEdeduction:number;
+  isecola:boolean;
+  gmail_account?:string;
   bankAccount: string;
+};
+
+export type EmpOAInfo = {
+  OaBasicSalary: number;
 };
 
 
@@ -112,9 +120,13 @@ export type EmployeeProfile = {
   Disbursing: boolean;
   Taxable:boolean;      
   BranchCode?: BranchInfo | null;
+  isOfficerAllowance?:boolean;
+  isSixDaysWork?:boolean;
   employeepr: EmpDetails[];
   employeepayroll: EmpPayrollInfo | null;
+  officersAllowance: EmpOAInfo | null;
   loan_details: EmployeeLoan[];
+  isDisabled:boolean;
 };
 export type UpdateEmployeePayrollPayload = {
   empCode: string;
@@ -126,7 +138,13 @@ export type UpdateEmployeePayrollPayload = {
   Disbursing: boolean;
   Taxable:boolean;
   remarks?:string;
+  isOfficerAllowance?:boolean;
+  isSixDaysWork?:boolean;
+  isecola?:boolean;
+  gmail_account?:string;
+  OaBasicSalary?:string;
   bankAccount?: string;
+  isDisabled:boolean;
 };
 
 export type PayrollFormState = {
@@ -137,14 +155,15 @@ export type PayrollFormState = {
   WithAtm: boolean;
   Disbursing: boolean;
   Taxable:boolean;
+  isOfficerAllowance?:boolean;
+  isSixDaysWork?:boolean;
+  isecola?:boolean;
+  gmail_account?:string;
+  OaBasicSalary?: string;
   bankAccount?: string;
+  isDisabled:boolean;
 };
 
-
-export type Company = {
-  CompanyCode: string;
-  CompanyName: string;
-};
 
 export type EmployeeIncreaseItem = {
   EmpCode: string;
@@ -164,3 +183,13 @@ export type BulkIncreasePayload = {
   amount: number;
   reason: string;
 };
+
+
+
+export interface GmailAccountItem {
+  name: string;
+  gmail_account: string | null;
+  emp_code:string;
+}
+
+export type GmailAccountResponse = GmailAccountItem[];

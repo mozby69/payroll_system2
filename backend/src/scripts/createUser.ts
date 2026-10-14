@@ -1,20 +1,20 @@
 import "dotenv/config";
 import { prisma } from "../config/prismaClient.js";
 import bcrypt from "bcryptjs";
+import { createUserService } from "../modules/login/login.services.js";
 
 async function main() {
-  const hashedPassword = await bcrypt.hash("password123", 10);
+  const Password = "12345678";
 
-  const user = await prisma.user.create({
-    data: {
+  const user = await createUserService({
       email: "financial@example.com",
       name: "Trial User",
-      username: "financial",
-      password: hashedPassword,
-    },
+      username: "admin1234",
+      password: Password,
+      roleIds: [1],
+      company_id: null,
   });
 
-  console.log("User created:", user);
 }
 
 main()
@@ -25,3 +25,7 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+
+  

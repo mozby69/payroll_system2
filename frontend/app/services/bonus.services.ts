@@ -1,5 +1,5 @@
 import { bonusRuleListSchema, CreateBonusRuleCompanyForm, CreateBonusRuleForm, GenerateBonusInput, UpdateBonusRuleForm } from "../schema/bonus.schema";
-import { BonusCompanyRule } from "../types/bonusType";
+import { BonusCompanyRule, CompanyBonusRule, CompanyBonusRuleResponse } from "../types/bonusType";
 import api from "./axios";
 
 
@@ -77,17 +77,19 @@ export async function deleteBonusRuleServices(id: number) {
 
       export async function getBonusSummaryService() {
             const res = await api.get("/bonus/get-summary")
-            return res.data
+            return res.data.data
       }
 
       export async function getEmployeeGeneratedBonusService(
         companyCode?: string,
-        id?: number
+        selectedGroup?: number,
+        id?: number,
       ) {
         const res = await api.get("/bonus/employee-bonuses", {
           params: {
             companyCode,
-            id
+            groupId: selectedGroup,
+            id, 
           },
         })
         return res.data
@@ -98,6 +100,16 @@ export async function deleteBonusRuleServices(id: number) {
           const res = await api.post(`/bonus/approve/${id}`)
           return res.data
       }
+
+      export async function  rejectBonusService(id: number) {
+        const res = await api.post(`/bonus/reject/${id}`)
+        return res.data
+    }
+
+    export async function  releaseBonusService(id: number) {
+      const res = await api.post(`/bonus/release/${id}`)
+      return res.data
+  }
       
 
       export async function  updateBonusService(id: number, bonusAmount: number) {
@@ -105,4 +117,28 @@ export async function deleteBonusRuleServices(id: number) {
             bonusAmount
         })
         return res.data        
+      }
+
+      export async function exportBonusExcelService(payload: {
+        bonusSummaryId: number
+        companyCode: string
+      }) {
+        const res = await api.post("/bonus/export-bonus", payload, {
+          responseType: "blob",
+        })
+      
+        return res.data
+      }
+
+      export async function getCompanyBonusRules(
+        companyCode: string,
+        releasePeriod?: string
+      ): Promise<CompanyBonusRule[]> {
+        const res = await api.get<CompanyBonusRuleResponse>(
+          "/bonus/bonus-rules-company",
+          {
+            params: { companyCode, releasePeriod }
+          }
+        )
+        return res.data.data
       }

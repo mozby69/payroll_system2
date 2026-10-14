@@ -1,7 +1,8 @@
 
 import { useQuery, keepPreviousData, useQueryClient, useMutation } from "@tanstack/react-query";
-import { fetchEmployees, fetchEmployeeProfile, updateEmployeePayroll, fetchCompanies, fetchEmployeesByCompany, bulkIncreaseSalary } from "../services/employee.service";
-import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload, Company, EmployeeIncreaseItem, BulkIncreasePayload } from "../types/empTypes";
+import { fetchEmployees, fetchEmployeeProfile, updateEmployeePayroll, fetchEmployeesByCompany, bulkIncreaseSalary } from "../services/employee.service";
+import { EmployeeResponse ,EmployeeFilters, UpdateEmployeePayrollPayload, EmployeeIncreaseItem, BulkIncreasePayload, GmailAccountResponse } from "../types/empTypes";
+import api from "../services/axios";
 
 
 export const useEmployees = (
@@ -33,22 +34,27 @@ export const useUpdateEmployeePayroll = () => {
     mutationFn: (payload: UpdateEmployeePayrollPayload) =>
       updateEmployeePayroll(payload),
 
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["employee-profile", variables.empCode],
-      });
-    },
+   onSuccess: async (_, variables) => {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: ["employee-profile", variables.empCode],
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ["employees"],
+    }),
+  ]);
+},
   });
 };
 
 
-export const useCompanies = () => {
-  return useQuery<Company[], Error>({
-    queryKey: ["companies"],
-    queryFn: fetchCompanies,
-    staleTime: 1000 * 60 * 10,
-  });
-};
+// export const useCompanies = () => {
+//   return useQuery<Company[], Error>({
+//     queryKey: ["companies"],
+//     queryFn: fetchCompanies,
+//     staleTime: 1000 * 60 * 10,
+//   });
+// };
 
 
 
@@ -75,3 +81,16 @@ export const useBulkIncreaseSalary = () => {
     },
   });
 };
+
+
+
+
+export function useFetchGmailAccountList() {
+    return useQuery<GmailAccountResponse>({
+      queryKey: ["gmail-account-list",],
+      queryFn: async () => {
+        const res = await api.get("/list/gmail-account-list");
+        return res.data;
+      },
+    });
+  }

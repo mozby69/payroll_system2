@@ -1,4 +1,5 @@
-import { useBulkIncreaseSalary, useCompanies, useEmployeesByCompany } from "@/app/hooks/employees";
+import { useBulkIncreaseSalary, useEmployeesByCompany } from "@/app/hooks/employees";
+import {useCompanies} from "@/app/hooks/useGeneral";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { EmployeeIncreaseItem } from "@/app/types/empTypes";
@@ -120,6 +121,8 @@ export default function EmpIncrease({ open, onClose }: Props) {
         "Increase Employee Salary",
         "Select reason and enter increase amount.",
         [
+        { value: "None", label:"None"},
+        { value: "Regularization Increase", label: "Regularization Increase"},
         { value: "Salary Increase", label: "Salary Increase" },
         { value: "Goverment Increase", label: "Goverment Increase" },
         { value: "Merit Increase", label: "Merit Increase" },

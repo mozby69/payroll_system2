@@ -24,7 +24,7 @@ export default function CompanyFilter({ value, cycle,onChange }: Props) {
       className="border border-gray-400 rounded-md px-4 py-2 text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-blue-800"
       disabled={isLoading || !cycle}
     >
-      <option value="">All Companies</option>
+      <option value="" disabled>Select Company</option>
       {grouped &&
         Object.entries(grouped).map(([cycle, companies]) => (
           <optgroup key={cycle} label={cycle}>

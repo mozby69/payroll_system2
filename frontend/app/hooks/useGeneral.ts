@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { getCompanyDetailsByCodeServices, getCompanyDetailsServices } from "../services/general.services";
-import { CompaniesResponse, CompanyDetailsType } from "../types/generalTypes";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchCompanies, fetchLoanTypes, getBranchesService, getCompanyDetailsByCodeServices, getCompanyDetailsServices, getLocalModeService, reorderBranchesService, updateLocalModeService } from "../services/general.services";
+import { BranchesType, CompaniesResponse, CompanyDetailsType, FecthCompany, ReorderBranchesPayload } from "../types/generalTypes";
 import api from "../services/axios";
 
 
@@ -29,6 +29,21 @@ export function useGetCompanyDetails(){
   }
 
 
+
+  // cycle & company
+
+  export function useCompanyCycles() {
+    return useQuery({
+      queryKey: ["company-cycles"],
+      queryFn: async () => {
+        const res = await api.get("/general/fetch-company-cycle");
+        return res.data;
+      },
+    });
+  }
+
+
+
   export function useGetCompanyByCode(companyCode: string) {
     return useQuery({
       queryKey: ["companies-by-code", companyCode],
@@ -36,3 +51,98 @@ export function useGetCompanyDetails(){
       enabled: !!companyCode,
     })
   }
+
+export const useCompanies = () => {
+  return useQuery<FecthCompany[], Error>({
+    queryKey: ["companies"],
+    queryFn: fetchCompanies,
+    staleTime: 1000 * 60 * 10,
+  });
+};
+
+
+export const useLoanTypes = () => {
+
+  return useQuery<string[], Error>({
+    queryKey: ["loan-types"],
+    queryFn: fetchLoanTypes,
+    staleTime: 1000 * 60 * 10
+  });
+
+};
+
+
+export const useGetBranches = () => {
+  return useQuery<BranchesType[]>({
+    queryKey: ["branches"],
+    queryFn: getBranchesService,
+    staleTime: 1000 * 60 * 10
+  })
+}
+
+
+export const useReorderBranches = () => {
+
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ReorderBranchesPayload) =>
+      reorderBranchesService(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["branches"] })
+    }
+  })
+}
+
+
+
+
+
+type Branch = {
+  branchCode: string;
+  Location: string | null;
+};
+
+export function useFetchBranches() {
+  return useQuery<Branch[]>({
+    queryKey: ["branches-list"],
+    queryFn: async () => {
+      const res = await api.get("/general/branch-list");
+      return res.data;
+    },
+  });
+}
+
+
+
+
+
+export function useGetLocalMode() {
+
+  return useQuery({
+    queryKey: ["local-mode"],
+    queryFn: getLocalModeService,
+  });
+
+}
+
+export function useUpdateLocalMode() {
+
+  const queryClient =
+    useQueryClient();
+
+  return useMutation({
+
+    mutationFn:
+      updateLocalModeService,
+
+    onSuccess: () => {
+
+      queryClient.invalidateQueries({
+        queryKey: ["local-mode"],
+      });
+
+    },
+
+  });
+
+}

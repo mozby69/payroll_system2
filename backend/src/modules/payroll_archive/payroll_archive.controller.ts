@@ -1,72 +1,175 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import {  displayBankAdminBDO, displayCompletePayroll, employeeProbationary, getEmployeeArchivedService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, saveComputedFinalPayroll, saveComputedPayroll, ViewEmployeeBankAccounts } from "./payroll_archive.service";
-import { Request,Response } from "express";
-import { BankFileRow } from "./payroll_archive.types";
+import { buildPayslipData, displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendBulkPayslipService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import { Request, Response } from "express";
+import { BankFileRow, SendPayslipType } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
+import { generatePayslipPDF } from "../print/print.service";
+import { io } from "../../server";
 
 
+
+export async function saveWtaxOverrideController(req: Request, res: Response) {
+  const {
+    PayCode,
+    EmpCodeId,
+    PayrollPeriod,
+    computedWtax,
+    editedValue
+  } = req.body;
+
+  await saveWtaxOverrideService({
+    PayCode,
+    EmpCodeId,
+    PayrollPeriod,
+    computedWtax,
+    editedValue
+  });
+
+  res.json({ success: true });
+}
 
 
 
 export const displayCompletePayrollController = async (req: Request, res: Response) => {
-  try{
-    const res1 = await displayCompletePayroll(['PENDING']);
-    const res2 = await employeeProbationary();
-    return res.status(200).json({ status: "SUCCESS", data:res1, xxx:res2 });
+  try {
+    const company_id = req.query.company_id as string;
+    const res1 = await displayCompletePayroll(['PENDING'], company_id);
+
+    return res.status(200).json({ status: "SUCCESS", data: res1 });
   }
-  catch(error){
-    res.status(500).json({message:`SERVER ERROR: ${error}`})
+  catch (error) {
+    res.status(500).json({ message: `SERVER ERROR: ${error}` })
   }
 }
 
 
 export async function savePayrollController(req: Request, res: Response) {
   try {
-    const result = await saveComputedPayroll();
+    const company_id = req.query.company_id as string;
+
+    const result = await saveComputedPayroll(company_id);
     return res.json({ success: true, res: result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to save payroll" });
+  } catch (error: any) {
+    if (error.message === "PENDING_PAYROLL") {
+      return res.status(409).json({
+        message: "Cannot save: There is a previous pending payroll",
+      });
+    }
+
+    console.error("SAVE ALLOWANCE ERROR:", error);
+    return res.status(500).json({
+      message: "Failed to save allowance",
+    });
   }
 }
 
 
- 
-export async function saveComputedFinalPayrollController(req:Request, res:Response){
-  try{
-    const result = await saveComputedFinalPayroll();
+
+export async function saveComputedFinalPayrollController(req: Request, res: Response) {
+  try {
+    const cycle = req.query.cycle as "10-25-Cycle" | "15-30-Cycle" | undefined;
+    const companyId = req.query.companyId as string | undefined;
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
+    if (!cycle) {
+      return res.status(400).json({ message: "cycle is required" });
+    }
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    const result = await saveComputedFinalPayroll(cycle, companyId, approvedBy);
     return res.json({ success: true, res: result })
   }
-  catch(error){
-    console.error("error",error);
-    res.status(500).json({message:"failed to save final payroll"})
+  catch (error) {
+    console.error("SAVE FINAL PAYROLL ERROR:", error);
+
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to save final payroll"
+    });
   }
 }
+
+
+
+// export const displayForApprovalController = async (req: Request, res: Response) => {
+//   try{
+//     const company_id = req.query.company_id as string;
+
+//     const data = await displayCompletePayroll(company_id,['FOR_CHECKER']);
+
+//     return res.status(200).json({ status: "SUCCESS",data });
+//   }
+//   catch(error){
+//     res.status(500).json({message:`SERVER ERROR: ${error}`})
+//   }
+// }
 
 
 
 export const displayForApprovalController = async (req: Request, res: Response) => {
-  try{
-  
+  try {
+    const company_id = req.query.company_id as string;
+    const status = req.query.status as "PENDING" | "FOR_CHECKER" | "FOR_APPROVER";
 
-    const data = await displayCompletePayroll(['FOR_APPROVAL']);
+    const data = await displayCompletePayroll([status], company_id);
+    const availableCompany = await getAvailableCompanyCyclesService([status]);
 
-    return res.status(200).json({ status: "SUCCESS",data });
+    //console.log(availableCompany)
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      availableCompany,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({ message: `SERVER ERROR: ${error}` });
   }
-  catch(error){
-    res.status(500).json({message:`SERVER ERROR: ${error}`})
-  }
-}
+};
+
 
 
 
 export async function reCheckPayrollController(req: Request, res: Response) {
   try {
-    const result = await reCheckPayroll();
+    const company_id = req.query.company_id as string;
+    const result = await reCheckPayroll(company_id);
     return res.json({ success: true, res: result });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to save payroll" });
+  }
+}
+
+
+export async function reCheckPayrollToCheckerController(req: Request, res: Response) {
+  try {
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
+    const company_id = req.query.company_id as string;
+    const result = await reCheckPayrollToChecker(company_id, approvedBy);
+    return res.json({ success: true, res: result });
+  }
+  catch (error) {
+    console.error("SAVE FINAL PAYROLL ERROR:", error);
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to save final payroll"
+    });
   }
 }
 
@@ -101,24 +204,24 @@ export async function getEmployeeArchivedController(
   req: Request,
   res: Response
 ) {
-  try{
-      const page = Number(req.query.page) || 1
-      const pageSize = Number(req.query.pageSize) || 10
-      const search = req.query.search as string | undefined
-      const totalPayrollId = Number(req.query.totalPayrollId) || 0
-      const selectedCompany = req.query.selectedCompany as string | undefined;
-      const selectedBranch = req.query.selectedBranch as string | undefined;
+  try {
+    const page = Number(req.query.page) || 1
+    const pageSize = Number(req.query.pageSize) || 10
+    const search = req.query.search as string | undefined
+    const totalPayrollId = Number(req.query.totalPayrollId) || 0
+    const selectedCompany = req.query.selectedCompany as string | undefined;
+    const selectedBranch = req.query.selectedBranch as string | undefined;
 
-      const archived = await getEmployeeArchivedService({
-        page,
-        pageSize,
-        search,
-        totalPayrollId,
-        selectedCompany,
-        selectedBranch
-      })
+    const archived = await getEmployeeArchivedService({
+      page,
+      pageSize,
+      search,
+      totalPayrollId,
+      selectedCompany,
+      selectedBranch
+    })
 
-      return res.status(200).json(archived)
+    return res.status(200).json(archived)
   } catch (error) {
     return res.status(500).json({
       message: "Failed to fetch employee archived",
@@ -156,29 +259,32 @@ export async function printEmployeeArchivedController(
 
 
 
-export async function ViewEmployeeBankAccountsController(req:Request,res:Response){
+export async function ViewEmployeeBankAccountsController(req: Request, res: Response) {
 
-  try{
+  try {
     const cycle = req.query.cycle_category as "10-25-Cycle" | "15-30-Cycle" | undefined;
     const paycode = req.query.PayCode as string | undefined;
+    const company_id = req.query.company_id as string;
+
 
     if (!paycode || !cycle) {
-      return res.status(500).json({message:"no paycode or cycle"});
+      return res.status(500).json({ message: "no paycode or cycle" });
     }
 
     const data = await ViewEmployeeBankAccounts({
-      PayCode:paycode,
-       cycle_category:cycle
-      });
+      PayCode: paycode,
+      cycle_category: cycle,
+      company_id: company_id,
+    });
 
-   
+
 
     return res.status(200).json(data);
   }
 
-  catch(error){
-    console.error("Error Occured",error);
-    res.status(500).json({message:'failed to fetch data'})
+  catch (error) {
+    console.error("Error Occured", error);
+    res.status(500).json({ message: 'failed to fetch data' })
   }
 
 }
@@ -188,10 +294,11 @@ export async function ViewEmployeeBankAccountsController(req:Request,res:Respons
 
 
 
-export async function GenerateBankFileController(req: Request,res: Response) {
+export async function GenerateBankFileController(req: Request, res: Response) {
   try {
     const rows = req.body as BankFileRow[];
     const bank = String(req.query.bank).trim().toUpperCase();
+    const company_id = req.query.company_id as string;
 
     const bankAdmins = await displayBankAdminBDO();
 
@@ -211,9 +318,9 @@ export async function GenerateBankFileController(req: Request,res: Response) {
     // ================= BDO =================
     if (bank === "BDO") {
 
-    
+
       const fileContent = generateBankTxt(normalized);
-    
+
       const filename = `${bankAdmins?.[0].company_code}${today}${bankAdmins?.[0].batch}.txt`
 
       return res.json({
@@ -226,7 +333,7 @@ export async function GenerateBankFileController(req: Request,res: Response) {
     // ================= PNB =================
     if (bank === "PNB") {
       const buffer = await generatePNBExcel(normalized);
-      const filename = `PNB${today}.xlsx`;
+      const filename = `PNB${today}${company_id}.xlsx`;
 
       return res.json({
         filename,
@@ -239,5 +346,344 @@ export async function GenerateBankFileController(req: Request,res: Response) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Failed to generate file" });
+  }
+}
+
+
+
+
+//KIM
+
+export async function SaveToApproverPayrollController(req: Request, res: Response) {
+  try {
+    const company_id = req.query.company_id as string;
+
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Unauthorized"
+      })
+    }
+
+    const approvedBy = req.user.id
+
+    const result = await SaveToApproverPayroll(company_id, approvedBy);
+
+
+
+    return res.json({ success: true, res: result });
+  } catch (error) {
+    console.error("SAVE FINAL PAYROLL ERROR:", error);
+
+    return res.status(500).json({
+      message: error instanceof Error ? error.message : "Failed to save final payroll"
+    });
+  }
+}
+
+
+export async function getPayrollArchiveReportController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const payrollId = Number(req.params.id);
+    const companyId = req.query.company_id as string;
+
+    if (!payrollId) {
+      return res.status(400).json({
+        message: "Payroll ID is required"
+      });
+    }
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required"
+      });
+    }
+
+    const report = await getPayrollArchiveReportService(
+      payrollId,
+      companyId
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: report
+    });
+
+  } catch (err: any) {
+    switch (err?.code) {
+      case "PAYROLL_NOT_FOUND":
+        return res.status(400).json(err)
+      default:
+        return res.status(500).json({
+          message: "Internal server error"
+        })
+    }
+  }
+}
+
+
+
+
+
+
+type SendPayslipEmailBody = {
+  archiveId?: unknown;
+};
+
+export async function sendPayslipEmailController(
+  req: Request<
+    Record<string, never>,
+    unknown,
+    SendPayslipEmailBody
+  >,
+  res: Response
+) {
+  try {
+    const { archiveId } = req.body;
+
+    if (
+      typeof archiveId !== "number" ||
+      !Number.isInteger(archiveId) ||
+      archiveId <= 0
+    ) {
+      return res.status(400).json({
+        message: "Valid archive ID is required",
+      });
+    }
+
+    await sendPayslipEmailService(
+      archiveId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Payslip sent successfully",
+    });
+  } catch (error: unknown) {
+    console.error(
+      "Payslip email error:",
+      error
+    );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to send payslip";
+
+    if (
+      message ===
+      "Payslip archive record not found"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message,
+    });
+  }
+}
+
+
+// bulk send emial 
+type SendBulkPayslipBody = {
+  totalPayrollId?: unknown;
+  selectedCompany?: unknown;
+  selectedBranch?: unknown;
+  search?: unknown;
+  socketId?: unknown;
+};
+
+export async function sendBulkPayslipController(
+  req: Request<
+    Record<string, never>,
+    unknown,
+    SendBulkPayslipBody
+  >,
+  res: Response
+) {
+  try {
+    const {
+      totalPayrollId,
+      selectedCompany,
+      selectedBranch,
+      search,
+      socketId,
+    } = req.body;
+
+    if (
+      typeof totalPayrollId !== "number" ||
+      !Number.isInteger(totalPayrollId) ||
+      totalPayrollId <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Valid total payroll ID is required",
+      });
+    }
+
+    if (
+      typeof socketId !== "string" ||
+      socketId.trim().length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Socket ID is required",
+      });
+    }
+
+    const normalizedSocketId =
+      socketId.trim();
+
+    const result =
+      await sendBulkPayslipService(
+        {
+          totalPayrollId,
+
+          selectedCompany:
+            typeof selectedCompany === "string"
+              ? selectedCompany
+              : undefined,
+
+          selectedBranch:
+            typeof selectedBranch === "string"
+              ? selectedBranch
+              : undefined,
+
+          search:
+            typeof search === "string"
+              ? search
+              : undefined,
+        },
+
+        (progress) => {
+          io.to(normalizedSocketId).emit(
+            "bulk-payslip-progress",
+            progress
+          );
+        }
+      );
+
+    io.to(normalizedSocketId).emit(
+      "bulk-payslip-completed",
+      result
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        `${result.sentCount} payslips sent successfully`,
+      data: result,
+    });
+  } catch (error: unknown) {
+    console.error(
+      "Bulk payslip email error:",
+      error
+    );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to send bulk payslips";
+
+    const socketId =
+      typeof req.body.socketId === "string"
+        ? req.body.socketId.trim()
+        : "";
+
+    if (socketId) {
+      io.to(socketId).emit(
+        "bulk-payslip-error",
+        {
+          message,
+        }
+      );
+    }
+
+    return res.status(500).json({
+      success: false,
+      message,
+    });
+  }
+}
+
+
+
+
+
+
+
+
+export async function previewPayslipController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const archiveId = Number(req.query.archiveId);
+
+    if (!Number.isInteger(archiveId)) {
+      return res.status(400).json({
+        message: "Invalid archive ID",
+      });
+    }
+
+    const employee = await prisma.employeePayrollArchive.findUnique({
+      where: {
+        id: archiveId,
+      },
+      include: {
+        EmpCode: {
+          include: {
+            employeepayroll: true,
+            BranchCode: true,
+            secondaryBranch: true,
+          },
+        },
+        payrollBranch: {
+          include: {
+            CompanyCode: true,
+          },
+        },
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        message: "Payslip not found",
+      });
+    }
+
+    const payslipData =
+      buildPayslipData(employee);
+
+
+    const pdf = await generatePayslipPDF(
+      payslipData
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/pdf"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="Payslip-${employee.EmpCodeId}.pdf"`
+    );
+
+    return res.send(pdf);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Failed to preview payslip",
+    });
   }
 }

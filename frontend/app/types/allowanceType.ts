@@ -4,11 +4,17 @@ export interface AllowanceProps {
     Lastname: string | null;
     totalAbsentHours:string | null;
     total:string | null;
-    cash_assistance: string | null;
-    ecola: string | null;
+    cash_assistance: number | null;
+    ecola: number | null;
     totalDeduction:string | null;
     loan: string | null;
     deduct:string | null;
+    absent_hours?:number | null;
+    BranchCode:{
+      branchCode:string;
+    };
+    exclude:boolean;
+    absent_count:number;
 }
   
 
@@ -51,13 +57,35 @@ export interface ArchiveAllowance {
   totalDeduction: number | null;
   total: number | null;
   createdAt: string;
+  branchCode: string;
+  position: string | null;
+  loan: number | null;
+  deduct: number | null;
+  branchPosition: number;
+  company_id: string | null;
+  emergency_allowance_amount: number | null;
+  is_emergency: boolean | null;
+  absent_cash_assistance: number | null;
+  absent_ecola: number | null;
+}
+export interface ArchiveAllowanceDetails {
+  company_list: Record<string, unknown>;
+  loans: unknown[];
+  variance_allowance: unknown;
+  variance_employee: unknown;
 }
 
+// export interface ArchiveAllowanceResponse {
+//   data: {
+//     list: ArchiveAllowance[];
+//     details: ArchiveAllowanceDetails | null;
+//   };
+// }
 
-
-export interface ArchiveAllowanceResponse {
-  data: ArchiveAllowance[];
+export interface ArchiveAllowanceResponse{
+  data: ViewAllResponse;
 }
+
 
 
 
@@ -87,6 +115,15 @@ export interface PrintAllowanceRow {
   loan:number | null;
 }
 
+export interface VarianceEmpItem {
+  EmpCode: string;
+  name: string;
+  branch_code?: string | null;
+  cash_assistance_variance: number;
+  ecola_variance: number;
+  reasons: string[];
+  remarks: string;
+}
 
 export interface ViewAllItem {
   EmpCode: string;
@@ -101,20 +138,276 @@ export interface ViewAllItem {
   branch_code: string;
   bod_member: string | null;
   position: string | null;
-  fch_rfc_deducted: number;
   cash_assitance_deduct:number;
   ecola_deduct:number;
+  is_emergency:boolean;
+  emergency_allowance_amount:number;
+  absent_cash_assistance:number;
+  absent_ecola:number;
 }
-export interface LoanItem{
-  EmpCode:string;
-  Firstname:string;
-  Lastname:string;
-  per_payroll_deduct:number;
+// export interface LoanItem{
+//   EmpCode:string;
+//   Firstname:string;
+//   Lastname:string;
+//   per_payroll_deduct?:number;
+//   BranchCodeId:string;
+// }
+
+export interface CompanyData {
+  total_cash_allowance: number;
+  ecola: number;
+  total_num: number;
+  branches: Record<string, unknown>;
+  is_emergency:boolean;
+  emergency_allowance_amount:number;
+}
+
+// export interface allowanceTotals{
+//     cash_allowance:number;
+//     computed_ecola:number;
+//     total:number;
+// }
+export interface loanlistProps{
+    Firstname:string;
+    Lastname:string;
+    per_payroll_deduct:number;
+    loan_type:string;
+    others_types:string;
+}
+export type TotalPerCompany = Record<string, CompanyData>;
+
+export interface AllowanceTotals {
+  cash_allowance: number;
+  computed_ecola: number;
+  deduct:number;
+  total: number;
+}
+export interface AllowanceLoan {
+  EmpCode: string;
+  Firstname: string;
+  Lastname: string;
+  per_payroll_deduct: number;
+  BranchCodeId: string | null;
+  loan_type: string | null;
+  others_types: string | null;
+}
+
+export interface BranchSummary {
+  position:number;
+  employees: ViewAllItem[];
+  loans: AllowanceLoan[];
+  total_loans: number;
+  totals: AllowanceTotals;
+  disbursement:AllowanceTotals;
+}
+export interface CompanyBranchSummary {
+  position:number;
+  branches: Record<string, BranchSummary>;
+  grand_total: AllowanceTotals;
+}
+
+export type BranchesResponse = Record<
+  string,
+  CompanyBranchSummary
+>;
+
+export interface VarianceEmpResponse {
+  ADD: VarianceEmpItem[];
+  LESS: VarianceEmpItem[];
+}
+
+export interface FinalVariance {
+  final_ca_variance:number;
+  final_ecola_variance:number;
+  final_total_variance:number;
+}
+
+
+export interface SignatoryProp {
+  id: number;
+  signatory_type: "PREPARED_BY" | "CHECKED_BY" | "NOTED_BY";
+  category: string | null;
+  name: string | null;
 }
 
 export interface ViewAllResponse {
   BOARD_MEMBER: ViewAllItem[];
   MANCOM: ViewAllItem[];
-  BRANCHES: Record<string, ViewAllItem[]>;
-  LOANS: LoanItem[];
+  MH: ViewAllItem[];
+  mh_totals: AllowanceTotals;
+  board_mancom_totals:AllowanceTotals;
+  total_mh_boardmancom: AllowanceTotals;
+  mh_mancom_loans:loanlistProps [];
+  total_disburse:AllowanceTotals;
+
+  BRANCHES: BranchesResponse;
+
+  LOANS: loanlistProps[];
+  VARIANCE:VarianceAllowance;
+  VARIANCE_EMP: VarianceEmpResponse;
+  TOTAL_PER_COMPANY: TotalPerCompany;
+  totalmhAndMancomLoans:number;
+  FINAL_VARIANCE:FinalVariance;
+  SIGNATORY:SignatoryProp[];
+}
+
+
+interface VarianceAllowanceField{
+  selectedMonth:string;
+  cash_assistance:number;
+  ecola:number;
+  grand_total:number;
+}
+interface VarianceAllowanceGrandTotal{
+  cash_assistance:number;
+  ecola:number;
+  grand_total:number;
+}
+
+export interface VarianceAllowance{
+  previous: VarianceAllowanceField;
+  current: VarianceAllowanceField;
+  variance: VarianceAllowanceGrandTotal;
+}
+
+
+
+
+
+
+
+
+
+// export type LoanItem = {
+//     Firstname: string;
+//     Lastname: string;
+//     per_payroll_deduct: number;
+//     BranchCodeId: string;
+// };
+
+
+export type CompanyItem = {
+  total_cash_allowance: number;
+  ecola: number;
+  total_num: number;
+  branches: unknown;
+  emergency_allowance_amount: number;
+};
+
+export type VarianceAllowanceComplete = {
+  previous: {
+    selectedMonth: string;
+    cash_assistance: number;
+    ecola: number;
+    grand_total: number;
+  };
+  current: {
+    selectedMonth: string;
+    cash_assistance: number;
+    ecola: number;
+    grand_total: number;
+  };
+  variance: {
+    cash_assistance: number;
+    ecola: number;
+    grand_total: number;
+  };
+};
+
+export type VarianceAllowanceEmployee = {
+  name: string;
+  variance: {
+    cash_assistance: number;
+    ecola: number;
+    total: number;
+    action: {
+      type: "ADD" | "LESS";
+    };
+  };
+};
+
+
+
+
+export interface SignatoryProps {
+  id: number;
+  name: string | null;
+  category: string | null;
+  signatory_type: SignatoryType;
+}
+
+export interface SignatoryMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface SignatoryLIstResponse {
+  data: SignatoryProps[];
+  meta: SignatoryMeta;
+}
+
+
+
+export type SignatoryType =
+  | "PREPARED_BY"
+  | "CHECKED_BY"
+  | "NOTED_BY";
+
+export interface Signatory {
+  id: number;
+  name: string | null;
+  signatory_type: SignatoryType;
+  category: string | null;
+}
+
+export interface CreateSignatoryPayload {
+  name: string;
+  signatory_type: SignatoryType;
+  category: string;
+}
+
+export interface UpdateSignatoryPayload {
+  id: number;
+  name: string;
+  signatory_type: SignatoryType;
+  category: string;
+}
+
+export interface AllowanceApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+
+export interface AllowancePrintRow {
+  EmpCode: string;
+  name: string;
+
+  cash_allowance: number;
+  computed_ecola: number;
+
+  absent_cash_assistance: number;
+  absent_ecola: number;
+
+  fch_rfc_deducted: number;
+
+  total: number;
+
+  selectedMonth: string;
+  branch_code: string;
+  company_id: string;
+
+  bod_member: string | null;
+  position: string | null;
+  Department: string | null;
+
+  base_cash_assistance: number;
+  base_ecola: number;
+
+  isAlien: boolean;
+  secondaryBranchId: string | null;
+  positionEmp: string | null;
 }

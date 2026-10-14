@@ -1,5 +1,5 @@
 import api from "./axios";
-import { EmployeeRow, PaginatedResponse } from "../types/preparePayroll";
+import { EmployeeRow, PaginatedResponse, UpdateDeductionPayload } from "../types/preparePayroll";
 import { ImportAttendanceResponse, ImportResponse } from "../hooks/usePreparePayroll";
 import { DateRange } from "../types/utilsTypes";
 
@@ -15,8 +15,8 @@ import { DateRange } from "../types/utilsTypes";
 
 
 
-export const importAttendanceCount = async (): Promise<ImportAttendanceResponse> => {
-  const { data } = await api.post<ImportAttendanceResponse>("/import/attendance-count");
+export const importAttendanceCount = async (company_id:string): Promise<ImportAttendanceResponse> => {
+  const { data } = await api.post<ImportAttendanceResponse>(`/import/attendance-count?company_id=${company_id}`);
   return data;
 };
 
@@ -34,7 +34,7 @@ export const importBranches = async (): Promise<ImportResponse> => {
 
 export const fetchEmployeesByCycle = async (
   params: {
-    cycle: string;
+    company_id: string;
     page: number;
     limit: number;
     search?: string;
@@ -50,11 +50,31 @@ export const fetchEmployeesByCycle = async (
 };
 
 
+export const fetchInitializePayroll = async (
+  params: {
+    cycle: string;
+    page: number;
+    limit: number;
+    search?: string;
+    onlyNew?:boolean;
+    onlyMissingSetup?:boolean;
+  }
+): Promise<PaginatedResponse<EmployeeRow>> => {
+  const res = await api.get("/prepare-payroll/initialize-payroll", {
+    params,
+  });
+
+  return res.data;
+};
+
+
+
 export interface UpdateEmployeePayrollPayload {
   empCode: string;
   basic_salary?: number;
   pagibig_employee_share?: number;
   pagibig_employer_share?:number;
+  include_payroll?:boolean;
 }
 
 export const updateEmployeePayroll = async (
@@ -76,6 +96,9 @@ export function searchEmployees(q: string) {
 
 
 
+export interface AttendanceBreakdown {
+  [key: string]: string;
+}
 
 export interface ComputedProps{
   PayCode:string;
@@ -87,14 +110,31 @@ export interface ComputedProps{
   overtime:number;
   gross_pay:number;
   undertime:number;
+  TotalAbsentHours?:number;
+  TotalUndertime?:number;
+  TotalOvertime?:number;
+  //gross_pay_edit?:number;
+  philhealth_employee?:number;
+  philhealth_employer?:number;
+  final_wtax?:number;
+  basic_salary:number;
+  pagibig_employee_share?:number;
+  pagibig_employer_share?:number;
+  RegularAtt:AttendanceBreakdown;
+  OvertimeAtt:AttendanceBreakdown;
+  NightShiftAtt:AttendanceBreakdown;
+  NightShiftOtAtt:AttendanceBreakdown;
   EmpCode:{
     Firstname:string;
     Lastname:string;
+    BranchCode:{
+      branchCode:string;
+    }
   }
 }
 
 export const fetchComputedPayroll = async (params: {
-  cycle: string;
+  company_id: string;
   page: number;
   limit: number;
   search?: string;
@@ -110,3 +150,32 @@ export const fetchComputedPayroll = async (params: {
 
   return res.data;
 };
+
+
+
+export const fetchInitializeComputedPayroll = async (params: {
+  cycle: string;
+  page: number;
+  limit: number;
+  search?: string;
+  range: DateRange | null;
+}): Promise<PaginatedResponse<ComputedProps>> => {
+  const res = await api.get("/prepare-payroll/initialize-computed-payroll", {
+    params: {
+      ...params,
+      startDate: params.range?.startDate,
+      endDate: params.range?.endDate,
+    },
+  });
+
+  return res.data;
+};
+
+
+
+export async function updateDeduction(payload: UpdateDeductionPayload) {
+  const res = await api.put("/prepare-payroll/payroll-override", payload);
+  return res.data;
+}
+
+

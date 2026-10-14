@@ -16,6 +16,7 @@ export type TotalPayroll = {
     Total_PhilhealthContributionEmployee: string
     Total_PhilhealthContributionEmployer: string
     total_wtax: string
+    status?:string | null;
   }
   
   export type PaginatedResponse<T> = {
@@ -57,15 +58,34 @@ export type TotalPayroll = {
     pagibig_loan: string
     sss_loan: string
     sss_calamity_loan: string
+    pagibig_calamity_loan: string
     status: string
     created_at: string
     totalPayrollId: number
+    total_deductions:number;
     EmpCodeId: string
+    disburse_amount:number;
+    
     EmpCode: {
       Firstname: string
       Middlename: string
       Lastname: string
       BranchCodeId: string
+      isAlien: boolean
+      employeepayroll:{
+      gmail_account:string;
+      
+    }
+      BranchCode: {
+        CompanyCode:{
+          CompanyName: string
+        }
+      }
+      secondaryBranch: {
+        CompanyCode:{
+          CompanyName: string
+        }
+      }
     }
   }
 
@@ -92,6 +112,7 @@ export interface BankProps {
   cycle_category:"10-25-Cycle" | "15-30-Cycle";
   Netpay:number;
   BranchCodeId:string;
+  EmpCodeId:string;
   EmpCode:{
     Firstname:string;
     Lastname:string;

@@ -17,6 +17,12 @@ export type BranchDTO = {
     EmployementDate:string;
     EmploymentStatus:string;
     EmployeeStatus:string;
+    Position: string;
+    Department: string;
+    SecondaryBranch:string;
+    isAlien:boolean;
+    EndDate:string;
+    CivilStatus:string;
   };
 
   export type CompanyDTO = {
@@ -40,11 +46,25 @@ export type BranchDTO = {
   
 
 
+  export type SpecialleavesDTO = {
+    id:number;
+    EmpCode__EmpCode: string;
+    leaveName: string | null;
+    start: string | null;
+    end: string | null;
+    expectedStart:string | null;
+    expectedEnd:string | null;
+    status:string | null;
+
+  };
+
+
 export type DjangoExportResponse = {
     branches: BranchDTO[];
     employees: EmployeeDTO[];
     employees_details: EmployeeDetailsDTO[];
     company_details:CompanyDTO[];
+    special_leaves:SpecialleavesDTO[];
   };
 
 
