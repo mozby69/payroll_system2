@@ -1300,6 +1300,335 @@ export async function getEmployeesByBonusSummaryService(
   });
 }
 
+export async function getFCHEmployeesByBonusSummaryService(
+  companyCode?: string,
+  id?: number,
+  groupId?: number
+) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Find the reference summary
+    const referenceSummary = await tx.bonusSummary.findFirst({
+      where: {
+        ...(id != null
+          ? { id }
+          : { status: "GENERATED" }),
+        ...(companyCode ? { companyCode } : {}),
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    if (!referenceSummary) {
+      return {
+        summary: null,
+        summaries: [],
+        companies: [],
+        employees: [],
+        variance: [],
+      };
+    }
+
+    // 2. Find all summaries belonging to the same batch
+    const summaries = await tx.bonusSummary.findMany({
+      where: {
+        ...(referenceSummary.batchId
+          ? { batchId: referenceSummary.batchId }
+          : { id: referenceSummary.id }),
+
+        ...(companyCode ? { companyCode } : {}),
+      },
+      include: {
+        bonusRule: {
+          select: {
+            code: true,
+            name: true,
+            bonusType: true,
+            eligibleMonth: true,
+          },
+        },
+      },
+      orderBy: {
+        id: "asc",
+      },
+    });
+
+    const summaryIds = summaries.map((s) => s.id);
+
+    // 3. Get allowed companies
+    const ruleIds = [
+      ...new Set(summaries.map((s) => s.bonusRuleId)),
+    ];
+
+    const allowedCompanies =
+      await tx.bonusRuleCompany.findMany({
+        where: {
+          bonusRuleId: {
+            in: ruleIds,
+          },
+        },
+        select: {
+          companyCode: true,
+        },
+        orderBy: {
+          companyCode: "asc",
+        },
+      });
+
+        
+    const selectedCompanyCode = referenceSummary.companyCode
+    //  Use summary company directly
+
+
+    const groups = await tx.branchGroup.findMany({
+      orderBy: { name: "desc" }
+    });
+
+    const effectiveGroupId =
+    groupId ?? (groups.length > 0 ? groups[0].id : undefined);
+
+
+    // 4. Get all employee bonuses in this batch
+    const employeeBonuses = await tx.employeeBonus.findMany({
+      where: {
+        bonusSummaryId: referenceSummary.id,
+        companyCode: selectedCompanyCode, //  DIRECT FILTER (no joins)
+         // ✅ FILTER BY GROUP
+          ...(effectiveGroupId  && {
+                employee: {
+                  OR: [
+                    {
+                      isAlien: false,
+                      BranchCode: { groupId: effectiveGroupId }
+                    },
+                    {
+                      isAlien: true,
+                      secondaryBranch: { groupId: effectiveGroupId }
+                    }
+                  ]
+                }
+              })
+          },
+      include: {
+        employee: {
+          include: {
+            employeepayroll: true,
+            secondaryBranch: true,
+            BranchCode: {
+              select: {
+                branchCode: true,
+                position: true
+              }
+            }
+          },
+        },
+      },
+      orderBy: [
+        { employee: { Lastname: "asc" } },
+        { employee: { Firstname: "asc" } },
+      ],
+    });
+
+    // 5. Build summary lookup
+    const summaryMap = new Map(
+      summaries.map((summary) => [
+        summary.id,
+        summary,
+      ])
+    );
+
+    // 6. Merge employee bonuses
+    const employeeMap = new Map<string, any>();
+
+    for (const bonus of employeeBonuses) {
+      const emp = bonus.employee;
+      const summary = summaryMap.get(
+        bonus.bonusSummaryId
+      );
+
+      if (!summary) continue;
+
+      const key = `${bonus.companyCode}:${bonus.employeeCode}`;
+
+      const existing = employeeMap.get(key);
+
+      const bonusAmount = Number(bonus.amount);
+      const loanDeduction = Number(
+        bonus.loanDeduction
+      );
+      const netAmount = Number(bonus.netAmount);
+
+      if (existing) {
+        existing.bonusAmount += bonusAmount;
+        existing.fchLoan += loanDeduction;
+        existing.netAmount += netAmount;
+
+        existing.bonuses.push({
+          bonusId: bonus.id,
+          bonusSummaryId: bonus.bonusSummaryId,
+          bonusRule: summary.bonusRule,
+          bonusAmount,
+          loanDeduction,
+          netAmount,
+          status: bonus.status,
+          remarks: bonus.remarks,
+          notes: bonus.notes,
+        });
+
+        existing.hasLeave =
+          existing.hasLeave || bonus.hasLeave;
+
+        continue;
+      }
+
+      employeeMap.set(key, {
+        employeeCode: bonus.employeeCode,
+        companyCode: bonus.companyCode,
+      branchCode: emp?.isAlien
+        ? (emp?.secondaryBranchId ?? emp?.BranchCodeId)
+        : emp?.BranchCodeId,
+
+      branchPosition: emp?.isAlien
+  ? (emp?.secondaryBranch?.position ??
+      emp?.BranchCode?.position ??
+      9999)
+  : (emp?.BranchCode?.position ?? 9999),
+
+        fullName: `${emp?.Lastname ?? ""}, ${emp?.Firstname ?? ""}`,
+
+        employementDate: emp?.EmployementDate,
+
+        tenureYears: emp?.EmployementDate
+          ? getTenureInYears(
+              emp.EmployementDate,
+              getLastDayOfMonthFromPeriod(
+                summary.releasePeriod
+              )
+            )
+          : 0,
+
+        basicSalary:
+          emp?.employeepayroll?.basic_salary ?? 0,
+
+        bonusAmount,
+        fchLoan: loanDeduction,
+        netAmount,
+
+        bonusStatus: bonus.status,
+        bonusId: bonus.id,
+
+        hasLeave: bonus.hasLeave,
+        remarks: bonus.remarks,
+        notes: bonus.notes,
+
+        bonuses: [
+          {
+            bonusId: bonus.id,
+            bonusSummaryId: bonus.bonusSummaryId,
+            bonusRule: summary.bonusRule,
+            bonusAmount,
+            loanDeduction,
+            netAmount,
+            status: bonus.status,
+            remarks: bonus.remarks,
+            notes: bonus.notes,
+          },
+        ],
+      });
+    }
+
+   const employees = Array.from(
+  employeeMap.values()
+).sort((a, b) => {
+  // 1. Sort by company
+  const companyCompare =
+    (a.companyCode ?? "").localeCompare(
+      b.companyCode ?? ""
+    );
+
+  if (companyCompare !== 0) {
+    return companyCompare;
+  }
+
+  // 2. Sort by branch position
+  const positionA = Number(a.branchPosition ?? 9999);
+  const positionB = Number(b.branchPosition ?? 9999);
+
+  if (positionA !== positionB) {
+    return positionA - positionB;
+  }
+
+  // 3. Sort by branch code
+  const branchCompare =
+    (a.branchCode ?? "").localeCompare(
+      b.branchCode ?? ""
+    );
+
+  if (branchCompare !== 0) {
+    return branchCompare;
+  }
+
+  // 4. Sort employees alphabetically by full name
+  return (a.fullName ?? "").localeCompare(
+    b.fullName ?? "",
+    undefined,
+    {
+      sensitivity: "base",
+    }
+  );
+});
+    // 7. Reconcile each summary independently
+    const varianceResults = await Promise.all(
+      summaries.map(async (summary) => {
+        if (!summary.companyCode) return [];
+
+        const result =
+          await reconcileEmployeePayrollBonus(
+            tx,
+            summary.companyCode,
+            summary
+          );
+
+        return result;
+      })
+    );
+
+    const variance = varianceResults.flat();
+
+    // 8. Calculate batch totals
+    const totals = {
+      totalEmployees: employees.length,
+
+      totalBonusAmount: employees.reduce(
+        (sum, emp) => sum + emp.bonusAmount,
+        0
+      ),
+
+      totalLoanDeduction: employees.reduce(
+        (sum, emp) => sum + emp.fchLoan,
+        0
+      ),
+
+      totalNetAmount: employees.reduce(
+        (sum, emp) => sum + emp.netAmount,
+        0
+      ),
+    };
+
+    // 9. Return merged results
+    return {
+      summary: referenceSummary,
+      summaries,
+      batchId: referenceSummary.batchId,
+      companies: allowedCompanies,
+      employees,
+      variance,
+      totals,
+    };
+  });
+}
+
+
 
 export async function getEmployeesFCHBonusSummaryService(
   companyCode?: string,

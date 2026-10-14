@@ -412,7 +412,7 @@ const formatPeso = (amount: number) =>
                 <React.Fragment key={branch}>
                   {/* 🔹 Branch Header */}
                   <tr className="bg-gray-200 font-bold text-gray-800">
-                    <td colSpan={10} className="px-4 py-2">
+                    <td colSpan={visibleBonusColumns ? 12 : 10} className="px-4 py-2">
                       {branch}
                     </td>
                   </tr>
@@ -440,21 +440,17 @@ const formatPeso = (amount: number) =>
                         ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
                       </td>
                       {/* DYNAMIC BONUS AMOUNTS */}
-                   {bonusColumns.map((column) => (
-                          <td
-                            key={column.id}
-                            className="px-4 py-2 text-right font-semibold"
-                          >
-                            {formatPeso(
-                              branchEmployees.reduce(
-                                (total, employee) =>
-                                  total +
-                                  getBonusAmountByRule(employee, column.id),
-                                0
-                              )
-                            )}
-                          </td>
-                        ))}
+                      {visibleBonusColumns.map((column) => (
+                        <td
+                          key={column.id}
+                          className="px-4 py-3 text-right whitespace-nowrap"
+                        >
+                          {formatPeso(
+                            getBonusAmountByRule(bonus, column.id)
+                          )}
+                        </td>
+                      ))}
+             
                       {/* COMBINED BONUS AMOUNT */}
                     <td className="px-4 py-3 text-right font-semibold">
                       {formatPeso(Number(bonus.bonusAmount))}
@@ -474,6 +470,21 @@ const formatPeso = (amount: number) =>
                     <td colSpan={4} className="px-4 py-2 text-right">TOTAL</td>
                     <td className="px-4 py-2 text-right">₱{branchTotals.basicSalary.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">₱{branchTotals.halfMonth.toLocaleString()}</td>
+                      {visibleBonusColumns.map((column) => (
+                          <td
+                            key={column.id}
+                            className="px-4 py-2 text-right font-semibold"
+                          >
+                            {formatPeso(
+                              branchEmployees.reduce(
+                                (total, employee) =>
+                                  total +
+                                  getBonusAmountByRule(employee, column.id),
+                                0
+                              )
+                            )}
+                          </td>
+                        ))}
                     <td className="px-4 py-2 text-right">₱{branchTotals.bonusAmount.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-red-600">₱{branchTotals.fchLoan.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right text-green-700">₱{branchTotals.netAmount.toLocaleString()}</td>
