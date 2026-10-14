@@ -1,7 +1,7 @@
 import { AuditAction, AuditModule, BonusType, LeaveName, Prisma } from "@prisma/client"
 import { prisma } from "../../config/prismaClient"
 import { CreateBonusRuleCompanyInput, CreateBonusRuleInput, UpdateBonusRuleInput } from "./bonus.schema"
-import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getTenureInMonths, getTenureInYears } from "./bonus.utils"
+import { calculateBonusAmount, calculateBonusAmountWithLeave, countEligibleMonthsWithHalfRule, getBonusStartAndEndDate, getLastDayOfMonth, getPayCycleStart, getTenureInMonths, getTenureInYears } from "./bonus.utils"
 import { getLastDayOfMonthFromPeriod } from "../../helper/dateHelper"
 import { createAuditLog } from "../audit/audit.service"
 import { formatDateToMMDDYY } from "../../utils/formatDateToMMDDYY"
@@ -1520,13 +1520,19 @@ export async function reconcileEmployeePayrollBonus(
           lte: summary.generateDate
         }
       },
-        {
-          OR: [
-            { EmployeeStatus: "Active" },
-            { bod_member: "bod1" },
-            { bod_member: "bod2" },
-          ],
-        },
+       {
+        OR: [
+          { EmployeeStatus: "Active" },
+          {
+            EmployeeStatus: "Resigned",
+            EndDate: {
+              gt: summary.generateDate,
+            },
+          },
+          { bod_member: "bod1" },
+          { bod_member: "bod2" },
+        ],
+      },
       ],
     },
 
@@ -1577,22 +1583,48 @@ export async function reconcileEmployeePayrollBonus(
   })
 
 
+const generatedAt = summary.generateDate.getTime();
+
+if (Number.isNaN(generatedAt)) {
+  throw new Error("Invalid bonus generation date");
+}
+
+// Read the payroll summaries that have already been archived.
+const payrollSummaries = await tx.totalPayrollByCompany.findMany({
+  where: {
+    company_id: selectedCompanyCode,
+  },
+  select: {
+    total_payroll_id: true,
+    total_basic_salary: true,
+    PayCycle: true,
+    cycle_category: true,
+  },
+  orderBy: {
+    id: "desc",
+  },
+});
+
+// Select the latest eligible cycle.
+// For duplicate cycles, the highest ID wins because of the query order.
+let prevPayroll: (typeof payrollSummaries)[number] | null = null;
+let latestCycleStart = Number.NEGATIVE_INFINITY;
+
+for (const payroll of payrollSummaries) {
+  const cycleStart = getPayCycleStart(payroll.PayCycle);
+
+  if (cycleStart <= generatedAt && cycleStart > latestCycleStart) {
+    prevPayroll = payroll;
+    latestCycleStart = cycleStart;
+  }
+}
 
 
-  const prevPayroll = await tx.totalPayrollByCompany.findFirst({
-    where:{
-      company_id: selectedCompanyCode
-    },
-    select: {
-      total_payroll_id: true,
-      total_basic_salary: true,
-      PayCycle: true,
-      cycle_category: true
-    },
-    orderBy:{
-      id: "desc"
-    }
-  })
+if (!prevPayroll) {
+  throw new Error(
+    "No eligible payroll archive found for this bonus generation date",
+  );
+}
 
   // Payroll Archive
   const payrollArchive = await tx.employeePayrollArchive.findMany({
@@ -1629,17 +1661,6 @@ export async function reconcileEmployeePayrollBonus(
     },
   })
 
-
-  // Bonus Records (this summary only)
-  const bonusRecords = await tx.employeeBonus.findMany({
-    where: {
-      bonusSummaryId: summary.id,
-    },
-    select: {
-      employeeCode: true,
-      amount: true, // important
-    },
-  })
 
 
   // Build Sets
