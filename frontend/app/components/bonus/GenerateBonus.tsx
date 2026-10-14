@@ -696,12 +696,19 @@ const formatPeso = (amount: number) =>
       )}
 
 
-      {data && (
-        <div style={{ display: "none" }}>
-           <PrintBonusReport ref={printRef} data={data} />
-        </div>
-      )
-}      
+    {data && (
+  <div
+    style={{
+      position: "absolute",
+      left: "-10000px",
+      top: 0,
+      width: "297mm",
+      visibility: "hidden",
+    }}
+  >
+    <PrintBonusReport ref={printRef} data={data} />
+  </div>
+)}    
      
     </div>
   )
