@@ -65,6 +65,8 @@ const visibleBonusColumns = hasBatch
   ? bonusColumns
   : [];
 
+  const totalColumns = 10 + visibleBonusColumns.length;
+
 // Get employee amount for a particular bonus rule
 const getBonusAmountByRule = (
   employee: EmployeeWithBonuses,
@@ -234,15 +236,20 @@ const formatPeso = (amount: number) =>
       }
     }
 
-    const groupedByBranch =
-  companyCode === "PSPMI"
-    ? employees.reduce((acc, emp) => {
-        const key = emp.branchCode || "UNKNOWN"
-        if (!acc[key]) acc[key] = []
-        acc[key].push(emp)
-        return acc
-      }, {} as Record<string, typeof employees>)
-    : null
+const groupedByBranch = employees.reduce(
+  (acc, emp) => {
+    const key = `${emp.branchCode || "UNKNOWN"}`;
+
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+
+    acc[key].push(emp);
+
+    return acc;
+  },
+  {} as Record<string, typeof employees>
+);
        
 
   return (
@@ -384,156 +391,147 @@ const formatPeso = (amount: number) =>
             </thead>
 
       <tbody>
-          {employees.length === 0 && (
-            <tr>
-              <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
-                No bonuses generated yet
-              </td>
-            </tr>
-          )}
+                {Object.entries(groupedByBranch).map(
+  ([branch, branchEmployees]) => {
+    const branchTotals = branchEmployees.reduce(
+      (acc, emp) => {
+        acc.basicSalary += Number(emp.basicSalary || 0);
+        acc.halfMonth += Number(emp.basicSalary || 0) / 2;
+        acc.bonusAmount += Number(emp.bonusAmount || 0);
+        acc.fchLoan += Number(emp.fchLoan || 0);
+        acc.netAmount += Number(emp.netAmount || 0);
 
-        {/* ✅ PSPMI VIEW (GROUPED) */}
-        {companyCode === "PSPMI" && groupedByBranch &&
-          Object.entries(groupedByBranch).map(([branch, branchEmployees]) => {
+        return acc;
+      },
+      {
+        basicSalary: 0,
+        halfMonth: 0,
+        bonusAmount: 0,
+        fchLoan: 0,
+        netAmount: 0,
+      }
+    );
 
-            const branchTotals = branchEmployees.reduce(
-              (acc, emp) => {
-                acc.basicSalary += Number(emp.basicSalary || 0)
-                acc.halfMonth += Number(emp.basicSalary || 0) / 2
-                acc.bonusAmount += Number(emp.bonusAmount || 0)
-                acc.fchLoan += Number(emp.fchLoan || 0)
-                acc.netAmount += Number(emp.netAmount || 0)
-                return acc
-              },
-              { basicSalary: 0, halfMonth: 0, bonusAmount: 0, fchLoan: 0, netAmount: 0 }
-            )
+    return (
+      <React.Fragment key={branch}>
+        {/* BRANCH HEADER */}
+        <tr className="bg-gray-200 font-bold text-gray-800">
+          <td colSpan={totalColumns} className="px-4 py-2">
+            {branch}
+          </td>
+        </tr>
 
-      return (
-                <React.Fragment key={branch}>
-                  {/* 🔹 Branch Header */}
-                  <tr className="bg-gray-200 font-bold text-gray-800">
-                    <td colSpan={10} className="px-4 py-2">
-                      {branch}
-                    </td>
-                  </tr>
+        {/* EMPLOYEE ROWS */}
+        {branchEmployees.map((bonus, index) => (
+          <tr
+            key={`${bonus.companyCode}-${bonus.employeeCode}`}
+            className={`border-t hover:bg-gray-50 cursor-pointer ${
+              bonus.hasLeave ? "bg-red-100" : ""
+            }`}
+            onDoubleClick={() => handleEditBonus(bonus)}
+          >
+            <td className="px-4 py-3">{index + 1}</td>
 
-                  {/* 🔹 Employees */}
-                  {branchEmployees.map((bonus, index) => (
-                    <tr key={bonus.employeeCode}
-                      className={`border-t hover:bg-gray-50 cursor-pointer ${
-                        bonus.hasLeave ? "bg-red-100" : ""
-                      }`}
-                      onDoubleClick={() => handleEditBonus(bonus)}
-                    >
-                      <td className="px-4 py-3">{index + 1}</td>
-                      <td className="px-4 py-3 font-medium">{bonus.fullName}</td>
-                      <td className="px-4 py-3 text-center">
-                        {bonus.employementDate
-                          ? new Date(bonus.employementDate).toLocaleDateString()
-                          : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-center">{bonus.tenureYears}</td>
-                      <td className="px-4 py-3 text-right">
-                        ₱{Number(bonus.basicSalary).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
-                      </td>
-                      {/* DYNAMIC BONUS AMOUNTS */}
-                   {bonusColumns.map((column) => (
-                          <td
-                            key={column.id}
-                            className="px-4 py-2 text-right font-semibold"
-                          >
-                            {formatPeso(
-                              branchEmployees.reduce(
-                                (total, employee) =>
-                                  total +
-                                  getBonusAmountByRule(employee, column.id),
-                                0
-                              )
-                            )}
-                          </td>
-                        ))}
-                      {/* COMBINED BONUS AMOUNT */}
-                    <td className="px-4 py-3 text-right font-semibold">
-                      {formatPeso(Number(bonus.bonusAmount))}
-                    </td>
-                      <td className="px-4 py-3 text-right text-red-600">
-                        ₱{Number(bonus.fchLoan).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-green-600">
-                        ₱{Number(bonus.netAmount).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 truncate">{bonus.remarks}</td>
-                    </tr>
-                  ))}
+            <td className="px-4 py-3 font-medium">
+              {bonus.fullName}
+            </td>
 
-                  {/* 🔹 Branch Total */}
-                  <tr className="bg-gray-100 font-semibold">
-                    <td colSpan={4} className="px-4 py-2 text-right">TOTAL</td>
-                    <td className="px-4 py-2 text-right">₱{branchTotals.basicSalary.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right">₱{branchTotals.halfMonth.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right">₱{branchTotals.bonusAmount.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right text-red-600">₱{branchTotals.fchLoan.toLocaleString()}</td>
-                    <td className="px-4 py-2 text-right text-green-700">₱{branchTotals.netAmount.toLocaleString()}</td>
-                    <td></td>
-                  </tr>
+            <td className="px-4 py-3 text-center">
+              {bonus.employementDate
+                ? new Date(bonus.employementDate).toLocaleDateString()
+                : "-"}
+            </td>
 
-                </React.Fragment>
-              )
-            })
-          }
+            <td className="px-4 py-3 text-center">
+              {bonus.tenureYears}
+            </td>
 
-          {/* ✅ DEFAULT VIEW (NON-PSPMI) */}
-          {companyCode !== "PSPMI" &&
-            employees.map((bonus, index) => (
-              <tr key={bonus.employeeCode}
-                className={`border-t hover:bg-gray-50 cursor-pointer ${
-                  bonus.hasLeave ? "bg-red-100" : ""
-                }`}
-                onDoubleClick={() => handleEditBonus(bonus)}
+            <td className="px-4 py-3 text-right">
+              {formatPeso(Number(bonus.basicSalary))}
+            </td>
+
+            <td className="px-4 py-3 text-right">
+              {formatPeso(Number(bonus.basicSalary) / 2)}
+            </td>
+
+            {/* DYNAMIC BONUS COLUMNS */}
+            {visibleBonusColumns.map((column) => (
+              <td
+                key={column.id}
+                className="px-4 py-3 text-right whitespace-nowrap"
               >
-                <td className="px-4 py-3">{index + 1}</td>
-                <td className="px-4 py-3 font-medium">{bonus.fullName}</td>
-                <td className="px-4 py-3 text-center">
-                  {bonus.employementDate
-                    ? new Date(bonus.employementDate).toLocaleDateString()
-                    : "-"}
-                </td>
-                <td className="px-4 py-3 text-center">{bonus.tenureYears}</td>
-                <td className="px-4 py-3 text-right">
-                  ₱{Number(bonus.basicSalary).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  ₱{(Number(bonus.basicSalary) / 2).toLocaleString()}
-                </td>
-          {/* DYNAMIC BONUS AMOUNTS */}
+                {formatPeso(
+                  getBonusAmountByRule(bonus, column.id)
+                )}
+              </td>
+            ))}
+
+            <td className="px-4 py-3 text-right font-semibold">
+              {formatPeso(Number(bonus.bonusAmount))}
+            </td>
+
+            <td className="px-4 py-3 text-right text-red-600">
+              {formatPeso(Number(bonus.fchLoan))}
+            </td>
+
+            <td className="px-4 py-3 text-right font-semibold text-green-600">
+              {formatPeso(Number(bonus.netAmount))}
+            </td>
+
+            <td className="px-4 py-3">
+              {bonus.remarks}
+            </td>
+          </tr>
+        ))}
+
+        {/* BRANCH TOTALS */}
+        <tr className="bg-gray-100 font-semibold">
+          <td colSpan={4} className="px-4 py-2 text-right">
+            TOTAL
+          </td>
+
+          <td className="px-4 py-2 text-right">
+            {formatPeso(branchTotals.basicSalary)}
+          </td>
+
+          <td className="px-4 py-2 text-right">
+            {formatPeso(branchTotals.halfMonth)}
+          </td>
+
           {visibleBonusColumns.map((column) => (
             <td
               key={column.id}
-              className="px-4 py-3 text-right whitespace-nowrap"
+              className="px-4 py-2 text-right font-semibold"
             >
               {formatPeso(
-                getBonusAmountByRule(bonus, column.id)
+                branchEmployees.reduce(
+                  (total, employee) =>
+                    total +
+                    getBonusAmountByRule(employee, column.id),
+                  0
+                )
               )}
             </td>
           ))}
 
-              {/* COMBINED BONUS AMOUNT */}
-              <td className="px-4 py-3 text-right font-semibold">
-                {formatPeso(Number(bonus.bonusAmount))}
-              </td>
-              <td className="px-4 py-3 text-right text-red-600">
-                  ₱{Number(bonus.fchLoan).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right font-semibold text-green-600">
-                  ₱{Number(bonus.netAmount).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 truncate">{bonus.remarks}</td>
-              </tr>
-            ))
-          }
+          <td className="px-4 py-2 text-right">
+            {formatPeso(branchTotals.bonusAmount)}
+          </td>
+
+          <td className="px-4 py-2 text-right text-red-600">
+            {formatPeso(branchTotals.fchLoan)}
+          </td>
+
+          <td className="px-4 py-2 text-right text-green-700">
+            {formatPeso(branchTotals.netAmount)}
+          </td>
+
+          <td />
+        </tr>
+      </React.Fragment>
+    );
+  }
+)}
         </tbody>
 
             {employees.length > 0 && (
