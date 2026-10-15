@@ -1388,46 +1388,68 @@ export async function getFCHEmployeesByBonusSummaryService(
     groupId ?? (groups.length > 0 ? groups[0].id : undefined);
 
 
-    // 4. Get all employee bonuses in this batch
-    const employeeBonuses = await tx.employeeBonus.findMany({
-      where: {
-        bonusSummaryId: referenceSummary.id,
-        companyCode: selectedCompanyCode, //  DIRECT FILTER (no joins)
-         // ✅ FILTER BY GROUP
-          ...(effectiveGroupId  && {
-                employee: {
-                  OR: [
-                    {
-                      isAlien: false,
-                      BranchCode: { groupId: effectiveGroupId }
-                    },
-                    {
-                      isAlien: true,
-                      secondaryBranch: { groupId: effectiveGroupId }
-                    }
-                  ]
-                }
-              })
-          },
-      include: {
-        employee: {
-          include: {
-            employeepayroll: true,
-            secondaryBranch: true,
+   // 4. Get ALL employee bonuses belonging to the batch
+const employeeBonuses = await tx.employeeBonus.findMany({
+  where: {
+    bonusSummaryId: {
+      in: summaryIds,
+    },
+
+    ...(selectedCompanyCode
+      ? { companyCode: selectedCompanyCode }
+      : {}),
+
+    // Filter employees by selected branch group
+    ...(effectiveGroupId != null && {
+      employee: {
+        OR: [
+          {
+            isAlien: false,
             BranchCode: {
-              select: {
-                branchCode: true,
-                position: true
-              }
-            }
+              groupId: effectiveGroupId,
+            },
+          },
+          {
+            isAlien: true,
+            secondaryBranch: {
+              groupId: effectiveGroupId,
+            },
+          },
+        ],
+      },
+    }),
+  },
+
+  include: {
+    employee: {
+      include: {
+        employeepayroll: true,
+
+        secondaryBranch: true,
+
+        BranchCode: {
+          select: {
+            branchCode: true,
+            position: true,
           },
         },
       },
-      orderBy: [
-        { employee: { Lastname: "asc" } },
-        { employee: { Firstname: "asc" } },
-      ],
-    });
+    },
+  },
+
+  orderBy: [
+    {
+      employee: {
+        Lastname: "asc",
+      },
+    },
+    {
+      employee: {
+        Firstname: "asc",
+      },
+    },
+  ],
+});
 
     // 5. Build summary lookup
     const summaryMap = new Map(
