@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  BonusSignatories,
   EmployeeGenerateBonusResponse,
 } from "@/app/types/bonusType";
 
@@ -13,6 +14,7 @@ import {
 
 type BonusProps = {
   data: EmployeeGenerateBonusResponse;
+  signatories: BonusSignatories;
 };
 
 type BonusRule = {
@@ -88,7 +90,7 @@ const formatDate = (
 const PrintBonusReport = forwardRef<
   HTMLDivElement,
   BonusProps
->(({ data }, ref) => {
+>(({ data, signatories }, ref) => {
   const response = data?.data;
 
   const summary = response?.summary;
@@ -757,25 +759,63 @@ const PrintBonusReport = forwardRef<
       )}
 
       {/* SIGNATURE SECTION */}
-      <div className="signature-section mt-16 flex justify-between gap-6 text-sm">
-        <div className="flex-1">
-          <div className="border-t border-black text-center pt-1">
-            Prepared By
-          </div>
-        </div>
+<div className="signature-section mt-16 grid grid-cols-3 gap-8 text-sm">
 
-        <div className="flex-1">
-          <div className="border-t border-black text-center pt-1">
-            Checked By
-          </div>
-        </div>
+  {/* PREPARED BY */}
+  <div className="text-center">
+    <div className="mb-5 font-semibold">
+      PREPARED BY
+    </div>
 
-        <div className="flex-1">
-          <div className="border-t border-black text-center pt-1">
-            Approved By
+    <div className="font-bold uppercase">
+      {signatories.preparedBy.name}
+    </div>
+
+    <div className="border-t border-black pt-1 text-xs">
+      {signatories.preparedBy.position}
+    </div>
+  </div>
+
+  {/* CHECKED BY */}
+  <div className="text-center">
+    <div className="mb-5 font-semibold">
+      CHECKED BY
+    </div>
+
+    <div className="space-y-8">
+      {signatories.checkedBy.map((person, index) => (
+        <div
+          key={index}
+          className="break-inside-avoid"
+        >
+          <div className="font-bold uppercase">
+            {person.name}
+          </div>
+
+          <div className="border-t border-black pt-1 text-xs">
+            {person.position}
           </div>
         </div>
-      </div>
+      ))}
+    </div>
+  </div>
+
+  {/* APPROVED BY */}
+  <div className="text-center">
+    <div className="mb-5 font-semibold">
+      APPROVED BY
+    </div>
+
+    <div className="font-bold uppercase">
+      {signatories.approvedBy.name}
+    </div>
+
+    <div className="border-t border-black pt-1 text-xs">
+      {signatories.approvedBy.position}
+    </div>
+  </div>
+
+</div>
     </div>
   );
 });

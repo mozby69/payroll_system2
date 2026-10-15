@@ -9,7 +9,7 @@ import {
 } from "@/app/hooks/useBonus"
 import RequestModal from "../Modal"
 import CreateBonusModal from "./modals/CreateBonus"
-import { EmployeBonusType, EmployeeWithBonuses } from "@/app/types/bonusType"
+import { BonusSignatories, EmployeBonusType, EmployeeWithBonuses } from "@/app/types/bonusType"
 import EditBonusModal from "./modals/EditBonusModal"
 import SweetAlert from "../Swal"
 import toast from "react-hot-toast"
@@ -19,12 +19,33 @@ import { useReactToPrint } from "react-to-print"
 import PrintBonusReport from "../reports/BonusReport/PrintBonusReport"
 import { useAuth } from "../UserContext"
 import { useBranchGroups } from "@/app/hooks/useBranchGroup"
+import PrintBonusSignatoryModal from "./modals/PrintBonusSignatoryModal"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
   const [editModal, setIsOpenEditModal] = useState(false)
   const [selectedBonus, setSelectedBonus] = useState<EmployeBonusType | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<number | undefined>()
+
+  const [showPrintModal, setShowPrintModal] = useState(false);
+
+const [signatories, setSignatories] =
+  useState<BonusSignatories>({
+    preparedBy: {
+      name: "",
+      position: "",
+    },
+    checkedBy: [
+      {
+        name: "",
+        position: "",
+      },
+    ],
+    approvedBy: {
+      name: "",
+      position: "",
+    },
+  });
 
   const { data: groupBranch } = useBranchGroups(); // to get groups
   const groups = groupBranch?.groups ?? [];
@@ -204,9 +225,29 @@ const formatPeso = (amount: number) =>
 
 
     const handlePrint1 = useReactToPrint({
-          contentRef: printRef,
-          documentTitle: `Bonus`,
-        })
+  contentRef: printRef,
+  documentTitle: `Bonus_${companyCode ?? "Report"}`,
+});
+
+const [printRequested, setPrintRequested] = useState(false);
+
+const handleConfirmPrint = (values: BonusSignatories) => {
+  setSignatories(values);
+  setShowPrintModal(false);
+  setPrintRequested(true);
+};
+
+useEffect(() => {
+  if (!printRequested) return;
+
+  setPrintRequested(false);
+
+  const frame = requestAnimationFrame(() => {
+    handlePrint1();
+  });
+
+  return () => cancelAnimationFrame(frame);
+}, [printRequested, handlePrint1]);
 
     const handleExportExcel = async () => {
       if (!summary?.id || !activeGroup) return
@@ -339,11 +380,11 @@ const formatPeso = (amount: number) =>
 
           {groups.length > 0 && (
           <div className="flex gap-2">
-                <GenButton
-                          variant="main"
-                          onClick={handlePrint1}
-                          >
-                          Print Bonus
+             <GenButton
+                variant="main"
+                onClick={() => setShowPrintModal(true)}
+              >
+                Print Bonus
               </GenButton>
               <GenButton variant="primary" onClick={handleExportExcel}>
                  Export Excel
@@ -695,20 +736,46 @@ const formatPeso = (amount: number) =>
         </RequestModal>
       )}
 
+      {/* PRINT SIGNATORY MODAL */}
+<PrintBonusSignatoryModal
+  open={showPrintModal}
+  onClose={() => setShowPrintModal(false)}
+  onConfirm={handleConfirmPrint}
+  initialValues={signatories}
+/>
 
-    {data && (
-  <div
-    style={{
-      position: "absolute",
-      left: "-10000px",
-      top: 0,
-      width: "297mm",
-      visibility: "hidden",
-    }}
-  >
-    <PrintBonusReport ref={printRef} data={data} />
+
+{/* HIDDEN PRINT REPORT */}
+{data && (
+  <div className="bonus-print-container">
+    <PrintBonusReport
+      ref={printRef}
+      data={data}
+      signatories={signatories}
+    />
   </div>
-)}    
+)}
+
+<style jsx global>{`
+  @media screen {
+    .bonus-print-container {
+      position: absolute;
+      left: -10000px;
+      top: 0;
+      width: 277mm;
+      visibility: hidden;
+    }
+  }
+
+  @media print {
+    .bonus-print-container {
+      position: static !important;
+      left: auto !important;
+      width: 100% !important;
+      visibility: visible !important;
+    }
+  }
+`}</style>   
      
     </div>
   )

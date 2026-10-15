@@ -180,5 +180,18 @@ export type EmployeeWithBonuses =
   EmployeBonusType & {
     bonuses?: EmployeeBonusDetailType[];
   };
+
+
+
+export type SignatoryPerson = {
+  name: string;
+  position: string;
+};
+
+export type BonusSignatories = {
+  preparedBy: SignatoryPerson;
+  checkedBy: SignatoryPerson[];
+  approvedBy: SignatoryPerson;
+};
   
   
