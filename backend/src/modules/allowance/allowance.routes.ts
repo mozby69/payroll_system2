@@ -20,6 +20,7 @@ createSignatoryController,
 updateSignatoryController,
 getAllowanceSignatoriesController,
 fetchAllowanceRowController,
+getSignatoriesByCategoryController,
 } from "./allowance.controller";
 import { updateVarianceEmployeeRemark } from "./allowance.service";
 
@@ -49,5 +50,6 @@ router.post("/signatory",createSignatoryController);
 router.put("/update-signatory/:id",updateSignatoryController);
 router.get("/allowance-signatories",getAllowanceSignatoriesController);
 router.get("/allowance-list-row",fetchAllowanceRowController);
+router.get("/category/:category",getSignatoriesByCategoryController);
 
 export default router;

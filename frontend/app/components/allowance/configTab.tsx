@@ -93,12 +93,7 @@ export default function ConfigTab() {
        
         </div>
 
-             <div className="mt-4 py-2 w-full border-t border-slate-200">
-                <div className="mt-4">
-                    <SignatoryList/>
-                </div>
-               
-            </div>
+         
 
 
         </>

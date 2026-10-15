@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Building2, Layers, ShieldCheck, File } from "lucide-react";
+import { Users, Building2, Layers, ShieldCheck, File, FileSignature } from "lucide-react";
 
 import AccountConfigurationModal from "../users/modal/AccountConfigurationModal";
 import BranchList from "../general/BranchList";
 import RoleConfigurationModal from "../users/modal/RoleConfiguration";
 import BranchGroupManager from "../branch-groups/BranchGroupManager";
 import LocalModePage from "../general/LocalMode";
+import SignatoryList from "../allowance/signatoryList";
 
-type TabType = "users" | "branches" | "groups" | "permissions" | "local_data";
+type TabType = "users" | "branches" | "groups" | "permissions" | "local_data" | "signatories";
 
 export default function SettingsModal() {
   const [activeTab, setActiveTab] = useState<TabType>("users");
@@ -63,6 +64,12 @@ export default function SettingsModal() {
             activeTab === "local_data" ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
           }`}>
           <File size={16}/> Local Data
+        </button>
+        <button onClick={() => setActiveTab("signatories")}
+          className={`flex items-center gap-2 p-2 rounded-md ${
+            activeTab === "signatories" ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
+          }`}>
+          <FileSignature size={16}/> Signatories
         </button>
 
       </div>
@@ -143,6 +150,26 @@ export default function SettingsModal() {
        {activeTab === "local_data" && (
         <LocalModePage>
           </LocalModePage>
+          )}
+       {activeTab === "signatories" && (
+            <div className="w-full border-t border-slate-200 py-4">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800">
+                    Signatories Management
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Manage report signatories, positions, and approval roles
+                    across all companies.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <SignatoryList />
+              </div>
+            </div>
           )}
 
           

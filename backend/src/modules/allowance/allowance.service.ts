@@ -1,4 +1,4 @@
-import { Prisma, SalaryType, signatoryType } from "@prisma/client";
+import { Prisma, SalaryType, SignatoryCategory, signatoryType } from "@prisma/client";
 import { prisma } from "../../config/prismaClient";
 import { AllowanceLoan, allowanceprops, AllowanceRow, AllowanceTotals, ArchiveAllowanceDTO, ArchiveAllowanceFullResponse, BranchAllowanceSummary, BranchMeta, CompanyAllowanceSummary, EmployeeVariance, ExcelEmployee, ExcelTotals, SummaryAllowanceProps } from "./allowance.types";
 import { formatAllowanceMonth, getDaysInMonth, getPreviousMonth, normalizeEmail, parseAllowanceOverrideChanges, round2, to2, toNumber, toPrismaJson } from "./allowance.helper";
@@ -4020,54 +4020,129 @@ export async function updateAllowanceAmountOverride({
 
 
 
-//signatory 
+interface StatutoryProps {
+  page: number;
+  limit: number;
+  search?: string;
+  category?: string;
+}
+
 export async function displaySignatoryList({
   page,
   limit,
   search,
+  category,
 }: StatutoryProps) {
   try {
-    const searchFilter: Prisma.SignatoryListWhereInput = search
-      ? {
-          OR: [
-            {
-              name: {
-                contains: search,
-              },
-            },
-            {
-              category: {
-                contains: search,
-              },
-            },
-            
-          ],
-        }
-      : {};
+    const searchValue = search?.trim() ?? "";
 
-    const employeeList = await prisma.signatoryList.findMany({
-      where: searchFilter,
-      skip: (page - 1) * limit,
-      take: limit,
+    const normalizedSearch = searchValue
+      .toUpperCase()
+      .replace(/\s+/g, "_");
 
-      select: {
-        id: true,
-        signatory_type: true,
-        category: true,
-        name: true,
-      },
+    // Validate report category
+    const validCategory = Object.values(
+      SignatoryCategory
+    ).find((value) => value === category?.toUpperCase());
 
-      orderBy: {
-        id: "desc",
-      },
-    });
+    // Build search conditions
+    const searchConditions: Prisma.SignatoryListWhereInput[] = [];
 
-    const total = await prisma.signatoryList.count({
-      where: searchFilter,
-    });
+    if (searchValue) {
+      // Search by name
+      searchConditions.push({
+        name: {
+          contains: searchValue,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      });
+
+      // Search by position
+      searchConditions.push({
+        position: {
+          contains: searchValue,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      });
+
+      // Search by category enum
+      const matchedCategories = Object.values(
+        SignatoryCategory
+      ).filter((value) =>
+        value.includes(normalizedSearch)
+      );
+
+      if (matchedCategories.length > 0) {
+        searchConditions.push({
+          category: {
+            in: matchedCategories,
+          },
+        });
+      }
+
+      // Search by signatory type enum
+      const matchedTypes = Object.values(
+        signatoryType
+      ).filter((value) =>
+        value.includes(normalizedSearch)
+      );
+
+      if (matchedTypes.length > 0) {
+        searchConditions.push({
+          signatory_type: {
+            in: matchedTypes,
+          },
+        });
+      }
+    }
+
+    // Combine category filter and search conditions
+    const where: Prisma.SignatoryListWhereInput = {};
+
+    if (validCategory) {
+      where.category = validCategory;
+    }
+
+    if (searchConditions.length > 0) {
+      where.OR = searchConditions;
+    }
+
+    // Fetch signatories and total records
+    const [signatories, total] = await prisma.$transaction([
+      prisma.signatoryList.findMany({
+        where,
+
+        skip: (page - 1) * limit,
+        take: limit,
+
+        select: {
+          id: true,
+          signatory_type: true,
+          category: true,
+          name: true,
+          position: true,
+          sortOrder: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+
+        orderBy: [
+          { category: "asc" },
+          { signatory_type: "asc" },
+          { sortOrder: "asc" },
+          { name: "asc" },
+          { id: "asc" },
+        ],
+      }),
+
+      prisma.signatoryList.count({
+        where,
+      }),
+    ]);
 
     return {
-      data: employeeList,
+      data: signatories,
       meta: {
         total,
         page,
@@ -4086,62 +4161,176 @@ export async function displaySignatoryList({
 }
 
 
-
-
 export interface CreateSignatoryInput {
   name: string;
+  position: string;
   signatory_type: signatoryType;
-  category?: string | null;
+  category: SignatoryCategory;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
 export interface UpdateSignatoryInput {
   name: string;
+  position: string;
   signatory_type: signatoryType;
-  category?: string | null;
+  category: SignatoryCategory;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
+export async function createSignatoryService(
+  data: CreateSignatoryInput
+) {
+  return prisma.$transaction(async (tx) => {
+    const sortOrder = data.sortOrder ?? 1;
+    const isActive = data.isActive ?? true;
 
-export async function createSignatoryService(data: CreateSignatoryInput) {
-  return prisma.signatoryList.create({
-    data: {
-      name: data.name.trim(),
-      signatory_type: data.signatory_type,
-      category: data.category?.trim() || null,
-    },
-  });
-}
+    const maxAllowed =
+      data.signatory_type === "CHECKED_BY" ? 3 : 1;
 
+    if (isActive) {
+      const count = await tx.signatoryList.count({
+        where: {
+          category: data.category,
+          signatory_type: data.signatory_type,
+          isActive: true,
+        },
+      });
 
+      if (count >= maxAllowed) {
+        throw new Error(
+          `SIGNATORY_VALIDATION:Maximum of ${maxAllowed} active signatories allowed for ${data.signatory_type} in ${data.category}.`
+        );
+      }
 
-export async function updateSignatoryService(id: number,data: UpdateSignatoryInput) {
-  const existing =
-    await prisma.signatoryList.findUnique({
-      where: {
-        id,
+      const duplicateOrder =
+        await tx.signatoryList.findFirst({
+          where: {
+            category: data.category,
+            signatory_type: data.signatory_type,
+            sortOrder,
+            isActive: true,
+          },
+        });
+
+      if (duplicateOrder) {
+        throw new Error(
+          "SIGNATORY_VALIDATION:Display order already exists."
+        );
+      }
+    }
+
+    return tx.signatoryList.create({
+      data: {
+        name: data.name.trim(),
+        position: data.position.trim(),
+        signatory_type: data.signatory_type,
+        category: data.category,
+        sortOrder,
+        isActive,
       },
     });
-
-  if (!existing) {
-    throw new Error(
-      "Signatory not found"
-    );
-  }
-
-  return prisma.signatoryList.update({
-    where: {
-      id,
-    },
-
-    data: {
-      name: data.name.trim(),
-      signatory_type:
-        data.signatory_type,
-      category:
-        data.category?.trim() || null,
-    },
   });
 }
 
+
+
+export async function updateSignatoryService(
+  id: number,
+  data: UpdateSignatoryInput
+) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.signatoryList.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new Error("SIGNATORY_NOT_FOUND");
+    }
+
+    const sortOrder =
+      data.sortOrder ?? existing.sortOrder;
+
+    const isActive =
+      data.isActive ?? existing.isActive;
+
+    const maxAllowed =
+      data.signatory_type === "CHECKED_BY" ? 3 : 1;
+
+    if (isActive) {
+      const count = await tx.signatoryList.count({
+        where: {
+          id: { not: id },
+          category: data.category,
+          signatory_type: data.signatory_type,
+          isActive: true,
+        },
+      });
+
+      if (count >= maxAllowed) {
+        throw new Error(
+          `SIGNATORY_VALIDATION:Maximum of ${maxAllowed} active signatories allowed for ${data.signatory_type} in ${data.category}.`
+        );
+      }
+
+      const duplicateOrder =
+        await tx.signatoryList.findFirst({
+          where: {
+            id: { not: id },
+            category: data.category,
+            signatory_type: data.signatory_type,
+            sortOrder,
+            isActive: true,
+          },
+        });
+
+      if (duplicateOrder) {
+        throw new Error(
+          "SIGNATORY_VALIDATION:Display order already exists."
+        );
+      }
+    }
+
+    return tx.signatoryList.update({
+      where: { id },
+
+      data: {
+        name: data.name.trim(),
+        position: data.position.trim(),
+        signatory_type: data.signatory_type,
+        category: data.category,
+        sortOrder,
+        isActive,
+      },
+    });
+  });
+}
+
+
+export async function getSignatoriesByCategoryService(
+  category: SignatoryCategory
+) {
+  return prisma.signatoryList.findMany({
+    where: {
+      category,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      position: true,
+      signatory_type: true,
+      category: true,
+      sortOrder: true,
+      isActive: true,
+    },
+    orderBy: [
+      { sortOrder: "asc" },
+      { id: "asc" },
+    ],
+  });
+}
 
 
 

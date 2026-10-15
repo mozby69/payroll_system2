@@ -329,11 +329,20 @@ export type VarianceAllowanceEmployee = {
 
 
 
-export interface SignatoryProps {
-  id: number;
-  name: string | null;
-  category: string | null;
+export type SignatoryProps = Signatory;
+
+export interface CreateSignatoryPayload {
+  name: string;
+  position: string;
   signatory_type: SignatoryType;
+  category: SignatoryCategory;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface UpdateSignatoryPayload
+  extends CreateSignatoryPayload {
+  id: number;
 }
 
 export interface SignatoryMeta {
@@ -353,26 +362,24 @@ export interface SignatoryLIstResponse {
 export type SignatoryType =
   | "PREPARED_BY"
   | "CHECKED_BY"
-  | "NOTED_BY";
+  | "NOTED_BY"
+  | "APPROVED_BY";
+
+  export type SignatoryCategory =
+  | "BONUS"
+  | "PAYROLL"
+  | "ALLOWANCE";
 
 export interface Signatory {
   id: number;
   name: string | null;
+  position: string | null;
   signatory_type: SignatoryType;
-  category: string | null;
-}
-
-export interface CreateSignatoryPayload {
-  name: string;
-  signatory_type: SignatoryType;
-  category: string;
-}
-
-export interface UpdateSignatoryPayload {
-  id: number;
-  name: string;
-  signatory_type: SignatoryType;
-  category: string;
+  category: SignatoryCategory;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AllowanceApiResponse<T> {
@@ -410,4 +417,22 @@ export interface AllowancePrintRow {
   isAlien: boolean;
   secondaryBranchId: string | null;
   positionEmp: string | null;
+}
+
+
+export interface ReportSignatory {
+  id: number;
+  name: string | null;
+  position: string | null;
+  signatory_type: SignatoryType;
+  category: SignatoryCategory;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface ReportSignatories {
+  preparedBy: ReportSignatory | null;
+  checkedBy: ReportSignatory[];
+  notedBy: ReportSignatory[];
+  approvedBy: ReportSignatory | null;
 }

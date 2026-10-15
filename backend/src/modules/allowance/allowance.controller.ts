@@ -1,7 +1,8 @@
 import { getBranch } from "../general/general.services";
-import {  computeAllowanceForMonth, CreateSignatoryInput, createSignatoryService, displayAllowanceList, displayEmergencyAllowance, displaySignatoryList, exportAllowanceExcel, fetchAllowanceWithAbsent, getAllowanceSignatories, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceAmountOverride, updateAllowanceBranch, updateEmergencyAllowance, UpdateSignatoryInput, updateSignatoryService, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
+import {  computeAllowanceForMonth, CreateSignatoryInput, createSignatoryService, displayAllowanceList, displayEmergencyAllowance, displaySignatoryList, exportAllowanceExcel, fetchAllowanceWithAbsent, getAllowanceSignatories, getArchiveAllowanceByCompanyBranch, getArchiveAllowanceByMonth, getBranchesByCompany, getSignatoriesByCategoryService, getTotalPerCompany, getVarianceEmployees, getVarianceForAllowance, saveAllowanceArchive, sendBulkAllowanceService, updateAbsentOverride, updateAllowanceAmountOverride, updateAllowanceBranch, updateEmergencyAllowance, UpdateSignatoryInput, updateSignatoryService, updateVarianceEmployeeRemark, ViewAllList } from "./allowance.service";
 import { Request,Response } from "express";
 import { SendBulkAllowanceBody } from "./allowance.types";
+import { SignatoryCategory, signatoryType } from "@prisma/client";
 
 
 export const fetchAllowanceController = async (req: Request, res: Response) => {
@@ -590,48 +591,127 @@ export async function updateAllowanceAmountOverrideController(req: Request,res: 
 //signatory
 
 
-export const displaySignatoryListController = async (req: Request, res: Response) => {
-    try{
-      const page = Math.max(Number(req.query.page) || 1, 1);
-      const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
-      const search = typeof req.query.search === "string" ? req.query.search.trim() : undefined;
-  
-      const data = await displaySignatoryList({page,limit,search});
-  
-      return res.status(200).json(data);
-    }
-    catch(error){
-      res.status(500).json({message:`SERVER ERROR: ${error}`})
-    }
-  }
-
-
-
-
-
-
-  export async function createSignatoryController(req: Request<{}, {}, CreateSignatoryInput>,res: Response) {
+export const displaySignatoryListController = async (
+  req: Request,
+  res: Response
+) => {
   try {
-    const { name, signatory_type, category } = req.body;
+    const page = Math.max(
+      Number(req.query.page) || 1,
+      1
+    );
 
-    if (!name?.trim()) {
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 10, 1),
+      100
+    );
+
+    const search =
+      typeof req.query.search === "string"
+        ? req.query.search.trim()
+        : undefined;
+
+    const category =
+      typeof req.query.category === "string"
+        ? req.query.category.trim()
+        : undefined;
+
+    const data = await displaySignatoryList({
+      page,
+      limit,
+      search,
+      category,
+    });
+
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error(
+      "displaySignatoryListController:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch signatory list.",
+    });
+  }
+};
+
+
+
+
+
+
+ export async function createSignatoryController(
+  req: Request<{}, {}, CreateSignatoryInput>,
+  res: Response
+) {
+  try {
+    const {
+      name,
+      position,
+      signatory_type,
+      category,
+      sortOrder = 1,
+      isActive = true,
+    } = req.body;
+
+    if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({
         success: false,
         message: "Name is required.",
       });
     }
 
-    if (!signatory_type) {
+    if (typeof position !== "string" || !position.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Signatory type is required.",
+        message: "Position is required.",
+      });
+    }
+
+    if (
+      !Object.values(signatoryType).includes(signatory_type)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signatory type.",
+      });
+    }
+
+    if (
+      !Object.values(SignatoryCategory).includes(category)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid report category.",
+      });
+    }
+
+    if (
+      !Number.isInteger(sortOrder) ||
+      sortOrder < 1
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Sort order must be a positive integer.",
+      });
+    }
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid active status.",
       });
     }
 
     const signatory = await createSignatoryService({
-      name,
+      name: name.trim(),
+      position: position.trim(),
       signatory_type,
       category,
+      sortOrder,
+      isActive,
     });
 
     return res.status(201).json({
@@ -639,8 +719,22 @@ export const displaySignatoryListController = async (req: Request, res: Response
       message: "Signatory successfully added.",
       data: signatory,
     });
+
   } catch (error) {
     console.error("createSignatoryController:", error);
+
+    if (
+      error instanceof Error &&
+      error.message.startsWith("SIGNATORY_VALIDATION:")
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: error.message.replace(
+          "SIGNATORY_VALIDATION:",
+          ""
+        ),
+      });
+    }
 
     return res.status(500).json({
       success: false,
@@ -668,8 +762,11 @@ export async function updateSignatoryController(req: Request< { id: string },{},
 
     const {
       name,
+      position,
       signatory_type,
       category,
+      sortOrder,
+      isActive
     } = req.body;
 
     if (!name?.trim()) {
@@ -687,21 +784,20 @@ export async function updateSignatoryController(req: Request< { id: string },{},
       });
     }
 
-    const signatory =
-      await updateSignatoryService(
-        id,
-        {
-          name,
-          signatory_type,
-          category,
-        }
-      );
+        const updated = await updateSignatoryService(id, {
+          name: req.body.name,
+          position: req.body.position,
+          signatory_type: req.body.signatory_type,
+          category: req.body.category,
+          sortOrder: req.body.sortOrder,
+          isActive: req.body.isActive,
+      });
 
     return res.status(200).json({
       success: true,
       message:
         "Signatory updated successfully.",
-      data: signatory,
+      data: updated,
     });
   } catch (error) {
     console.error(
@@ -741,6 +837,53 @@ export async function getAllowanceSignatoriesController(
     return res.status(500).json({
       success: false,
       message: "Failed to fetch allowance signatories.",
+    });
+  }
+}
+
+
+export async function getSignatoriesByCategoryController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const category = String(
+      req.params.category ?? ""
+    ).toUpperCase();
+
+    const validCategories = Object.values(
+      SignatoryCategory
+    );
+
+    if (
+      !validCategories.includes(
+        category as SignatoryCategory
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signatory category.",
+      });
+    }
+
+    const signatories =
+      await getSignatoriesByCategoryService(
+        category as SignatoryCategory
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: signatories,
+    });
+  } catch (error) {
+    console.error(
+      "getSignatoriesByCategoryController:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch signatories.",
     });
   }
 }

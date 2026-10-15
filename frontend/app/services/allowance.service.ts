@@ -1,4 +1,4 @@
-import { AllowanceApiResponse, AllowancePrintRow, CreateSignatoryPayload, Signatory, UpdateSignatoryPayload } from "../types/allowanceType";
+import { AllowanceApiResponse, AllowancePrintRow, CreateSignatoryPayload, ReportSignatory, Signatory, SignatoryCategory, UpdateSignatoryPayload } from "../types/allowanceType";
 import api from "./axios";
 
 export interface UpdateVarianceRemarkPayload {
@@ -34,15 +34,21 @@ export async function createSignatory(
 }
 
 
+
 export async function updateSignatory(
   data: UpdateSignatoryPayload
 ) {
-  const response = await api.put<AllowanceApiResponse<Signatory>>(
+  const response = await api.put<
+    AllowanceApiResponse<Signatory>
+  >(
     `/allowance/update-signatory/${data.id}`,
     {
       name: data.name,
+      position: data.position,
       signatory_type: data.signatory_type,
       category: data.category,
+      sortOrder: data.sortOrder,
+      isActive: data.isActive,
     }
   );
 
@@ -85,4 +91,18 @@ export async function fetchAllowancePrintRows(
     );
 
   return response.data;
+}
+
+
+export async function fetchSignatoriesByCategory(
+  category: SignatoryCategory
+): Promise<ReportSignatory[]> {
+  const response = await api.get<{
+    success: boolean;
+    data: ReportSignatory[];
+  }>(
+    `/allowance/category/${category}`
+  );
+
+  return response.data.data;
 }

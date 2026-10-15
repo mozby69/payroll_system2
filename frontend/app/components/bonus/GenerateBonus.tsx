@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   useExportBonusExcel,
   useGetEmployeeGeneratedBonus,
@@ -19,33 +19,52 @@ import { useReactToPrint } from "react-to-print"
 import PrintBonusReport from "../reports/BonusReport/PrintBonusReport"
 import { useAuth } from "../UserContext"
 import { useBranchGroups } from "@/app/hooks/useBranchGroup"
-import PrintBonusSignatoryModal from "./modals/PrintBonusSignatoryModal"
+import { useSignatoriesByCategory } from "@/app/hooks/useAllowance"
+import { mapReportSignatories } from "@/app/helper/signatoryHelper"
 
 export default function GenerateBonusPage() {
   const [addModal, setIsOpenAddModal] = useState(false)
   const [editModal, setIsOpenEditModal] = useState(false)
   const [selectedBonus, setSelectedBonus] = useState<EmployeBonusType | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<number | undefined>()
+ const [printRequested, setPrintRequested] = useState(false);
 
-  const [showPrintModal, setShowPrintModal] = useState(false);
+  const {
+  data: savedSignatories = [],
+  isLoading: loadingSignatories,
+  isFetching: fetchingSignatories,
+  isError: signatoryError,
+  refetch: refetchSignatories,
+} = useSignatoriesByCategory("BONUS");
 
-const [signatories, setSignatories] =
-  useState<BonusSignatories>({
-    preparedBy: {
-      name: "",
-      position: "",
-    },
-    checkedBy: [
-      {
-        name: "",
-        position: "",
-      },
-    ],
-    approvedBy: {
-      name: "",
-      position: "",
-    },
-  });
+
+
+const mapBonusSignatories = useCallback(
+  (
+    records: typeof savedSignatories
+  ): BonusSignatories => {
+    const mapped = mapReportSignatories(records);
+
+    const person = (
+      value: { name: string | null; position: string | null } | null
+    ) => ({
+      name: value?.name ?? "",
+      position: value?.position ?? "",
+    });
+
+    return {
+      preparedBy: person(mapped.preparedBy),
+      checkedBy: mapped.checkedBy.map(person),
+      approvedBy: person(mapped.approvedBy),
+    };
+  },
+  []
+);
+
+const [printSignatories, setPrintSignatories] =
+  useState<BonusSignatories | null>(null);
+
+const [preparingPrint, setPreparingPrint] = useState(false);
 
   const { data: groupBranch } = useBranchGroups(); // to get groups
   const groups = groupBranch?.groups ?? [];
@@ -224,30 +243,103 @@ const formatPeso = (amount: number) =>
     const remainingVariance = varianceTotal - varianceBreakdownTotal
 
 
-    const handlePrint1 = useReactToPrint({
+ 
+
+
+const handlePrint1 = useReactToPrint({
   contentRef: printRef,
   documentTitle: `Bonus_${companyCode ?? "Report"}`,
+
+  onBeforePrint: async () => {
+    console.log("Preparing print document...");
+  },
+
+  onAfterPrint: () => {
+    console.log("Print dialog closed.");
+  },
+
+  onPrintError: (location, error) => {
+    console.error("Print error:", location, error);
+  },
 });
 
-const [printRequested, setPrintRequested] = useState(false);
+// FETCH SIGNATORIES AND PREPARE REPORT
+const handleBonusPrint = async () => {
+  if (!data || preparingPrint) return;
 
-const handleConfirmPrint = (values: BonusSignatories) => {
-  setSignatories(values);
-  setShowPrintModal(false);
-  setPrintRequested(true);
+  setPreparingPrint(true);
+
+  try {
+    const result = await refetchSignatories();
+
+    if (result.isError || !result.data) {
+      SweetAlert.errorAlert(
+        "Unable to load bonus signatories."
+      );
+      return;
+    }
+
+    const mapped = mapBonusSignatories(result.data);
+
+    console.log("Fetched signatories:", result.data);
+    console.log("Mapped signatories:", mapped);
+
+    if (
+      !mapped.preparedBy.name.trim() ||
+      !mapped.preparedBy.position.trim()
+    ) {
+      SweetAlert.errorAlert(
+        "Please configure an active Prepared By signatory."
+      );
+      return;
+    }
+
+    if (
+      mapped.checkedBy.length === 0 ||
+      mapped.checkedBy.length > 3 ||
+      mapped.checkedBy.some(
+        (person) =>
+          !person.name.trim() ||
+          !person.position.trim()
+      )
+    ) {
+      SweetAlert.errorAlert(
+        "Please configure 1 to 3 valid Checked By signatories."
+      );
+      return;
+    }
+
+    // React renders the printable component after this update
+    setPrintSignatories(mapped);
+
+  } catch (error) {
+    console.error("Bonus print error:", error);
+
+    SweetAlert.errorAlert(
+      "Failed to prepare the Bonus Report."
+    );
+  } finally {
+    setPreparingPrint(false);
+  }
 };
 
+// PRINT ONLY AFTER THE COMPONENT IS MOUNTED
 useEffect(() => {
-  if (!printRequested) return;
-
-  setPrintRequested(false);
+  if (!printSignatories || !data) return;
 
   const frame = requestAnimationFrame(() => {
-    handlePrint1();
+    if (!printRef.current) {
+      console.error("PrintBonusReport is not mounted.");
+      return;
+    }
+
+    console.log("Print element found:", printRef.current);
+
+    void handlePrint1();
   });
 
   return () => cancelAnimationFrame(frame);
-}, [printRequested, handlePrint1]);
+}, [printSignatories, data, handlePrint1]);
 
     const handleExportExcel = async () => {
       if (!summary?.id || !activeGroup) return
@@ -380,12 +472,17 @@ useEffect(() => {
 
           {groups.length > 0 && (
           <div className="flex gap-2">
-             <GenButton
-                variant="main"
-                onClick={() => setShowPrintModal(true)}
-              >
-                Print Bonus
-              </GenButton>
+   <GenButton
+  variant="main"
+  onClick={handleBonusPrint}
+  disabled={
+    preparingPrint ||
+    loadingSignatories ||
+    fetchingSignatories
+  }
+>
+  {preparingPrint ? "Preparing..." : "Print Bonus"}
+</GenButton>
               <GenButton variant="primary" onClick={handleExportExcel}>
                  Export Excel
             </GenButton>
@@ -736,22 +833,14 @@ useEffect(() => {
         </RequestModal>
       )}
 
-      {/* PRINT SIGNATORY MODAL */}
-<PrintBonusSignatoryModal
-  open={showPrintModal}
-  onClose={() => setShowPrintModal(false)}
-  onConfirm={handleConfirmPrint}
-  initialValues={signatories}
-/>
-
 
 {/* HIDDEN PRINT REPORT */}
-{data && (
+{data && printSignatories && (
   <div className="bonus-print-container">
     <PrintBonusReport
       ref={printRef}
       data={data}
-      signatories={signatories}
+      signatories={printSignatories}
     />
   </div>
 )}
@@ -759,11 +848,11 @@ useEffect(() => {
 <style jsx global>{`
   @media screen {
     .bonus-print-container {
-      position: absolute;
+      position: fixed;
       left: -10000px;
       top: 0;
       width: 277mm;
-      visibility: hidden;
+      background: white;
     }
   }
 
@@ -771,11 +860,13 @@ useEffect(() => {
     .bonus-print-container {
       position: static !important;
       left: auto !important;
+      top: auto !important;
       width: 100% !important;
+      display: block !important;
       visibility: visible !important;
     }
   }
-`}</style>   
+`}</style>
      
     </div>
   )

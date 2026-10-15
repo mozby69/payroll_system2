@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
-import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, SignatoryLIstResponse, ViewAllResponse } from "../types/allowanceType";
+import { AllowanceListResponse, AllowanceSummaryResponse, ArchiveAllowanceResponse, Branch, Company, PrintAllowanceRow, SignatoryCategory, SignatoryLIstResponse, ViewAllResponse } from "../types/allowanceType";
 import SweetAlert from "../components/Swal";
 import { ApiErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
-import { createSignatory, fetchAllowancePrintRows, fetchAllowanceSignatories, updateSignatory, updateVarianceRemark } from "../services/allowance.service";
+import { createSignatory, fetchAllowancePrintRows, fetchAllowanceSignatories, fetchSignatoriesByCategory, updateSignatory, updateVarianceRemark } from "../services/allowance.service";
 
 
 
@@ -526,5 +526,28 @@ export function useFetchAllowancePrintRows({
     enabled:
       Boolean(month) &&
       Boolean(company),
+  });
+}
+
+
+export function useSignatoriesByCategory(
+  category: SignatoryCategory | null
+) {
+  return useQuery({
+    queryKey: ["signatories", "category", category],
+
+    queryFn: () => {
+      if (!category) {
+        throw new Error("Signatory category is required.");
+      }
+
+      return fetchSignatoriesByCategory(category);
+    },
+
+    enabled: Boolean(category),
+
+    staleTime: 0,
+
+    refetchOnMount: "always",
   });
 }
