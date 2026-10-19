@@ -4020,12 +4020,6 @@ export async function updateAllowanceAmountOverride({
 
 
 
-interface StatutoryProps {
-  page: number;
-  limit: number;
-  search?: string;
-  category?: string;
-}
 
 export async function displaySignatoryList({
   page,
@@ -4053,7 +4047,7 @@ export async function displaySignatoryList({
       searchConditions.push({
         name: {
           contains: searchValue,
-          mode: Prisma.QueryMode.insensitive,
+       //   mode: Prisma.QueryMode.insensitive,
         },
       });
 
@@ -4061,7 +4055,7 @@ export async function displaySignatoryList({
       searchConditions.push({
         position: {
           contains: searchValue,
-          mode: Prisma.QueryMode.insensitive,
+      //   mode: Prisma.QueryMode.insensitive,
         },
       });
 

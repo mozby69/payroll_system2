@@ -209,6 +209,7 @@ export const saveEmployees = async (employees: EmployeeDTO[]): Promise<number> =
             EmpCodeId: empCode,
             basic_salary: new Prisma.Decimal(0),
             cash_assistance: new Prisma.Decimal(0),
+            ecola: new Prisma.Decimal(0),
           },
           update: {},
         });
