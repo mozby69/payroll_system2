@@ -656,7 +656,7 @@ model AuditLog {
   referenceId   Int
   referenceCode String? // optional (e.g., bonus month code)
 
-  description String?
+  description String? @db.Text
   metadata    Json?
 
   performedById Int
