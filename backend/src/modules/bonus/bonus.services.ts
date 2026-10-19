@@ -311,6 +311,7 @@ export async function generateBonusForAllEmployees({
       },
       include: { 
         employeepayroll: true,
+        officersAllowance: true,
          loan_details:{
             where: {
               status: "ACTIVE"
@@ -334,6 +335,14 @@ export async function generateBonusForAllEmployees({
       const payroll = emp.employeepayroll
       const basicSalary = Number(payroll?.basic_salary ?? 0)
 
+      const hasOfficerAllowance =
+          emp.isOfficerAllowance === true &&
+          emp.officersAllowance !== null;
+
+      const officerBasicSalary = hasOfficerAllowance
+          ? Number(emp.officersAllowance?.basic_salary ?? 0)
+          : 0;
+
       const tenure = emp.EmployementDate
       ? getTenureInYears(emp.EmployementDate, asOfDate)
       : 0
@@ -343,9 +352,8 @@ export async function generateBonusForAllEmployees({
       tenure >= rule.minTenureYear &&
       basicSalary > 0
 
-      let amount = 0
-      let remarks = ""
-      let hasLeave = false
+     let regularBonusAmount = 0;
+      let officerAllowanceAmount = 0;
 
 
       if (!payroll || !payroll.basic_salary){
@@ -358,8 +366,19 @@ export async function generateBonusForAllEmployees({
       } 
 
       if (isEligible) {
-        amount = calculateBonusAmount(rule.formulaType, basicSalary)
+        regularBonusAmount = calculateBonusAmount(
+          rule.formulaType,
+          basicSalary
+        );
+
+        if (hasOfficerAllowance && officerBasicSalary > 0) {
+          officerAllowanceAmount = calculateBonusAmount(
+            rule.formulaType,
+            officerBasicSalary
+          );
+        }
       }
+    let amount = regularBonusAmount + officerAllowanceAmount;
       
       if (amount <= 0) {
         invalidEmployees.push({
@@ -450,6 +469,7 @@ export async function generateBonusForAllEmployees({
         }
       },
       include: {
+        officersAllowance: true,
         specialLeaves: {
           where: {
             OR: [
@@ -478,15 +498,17 @@ export async function generateBonusForAllEmployees({
 
     const rows: Prisma.EmployeeBonusCreateManyInput[] = []
     
-    let remarks = ""
-    let hasLeave = false
+  
 
     for (const emp of employees) {
-      const tenure = emp.EmployementDate
-      ? getTenureInYears(emp.EmployementDate, asOfDate)
-      : 0
+        let remarks = ""
+        let hasLeave = false
+        let regularBonusAmount = 0;
+        let officerAllowanceAmount = 0;
+          const tenure = emp.EmployementDate
+          ? getTenureInYears(emp.EmployementDate, asOfDate)
+          : 0
 
-      
     
       const payroll = emp.employeepayroll
       const basicSalary = Number(payroll?.basic_salary ?? 0)
@@ -531,24 +553,64 @@ export async function generateBonusForAllEmployees({
                     leaveEnd
                   )
                   hasLeave= true
-                  const res = calculateBonusAmountWithLeave(rule.bonusType, eligibleMonth, Number(basicSalary))
+                 const regularResult = calculateBonusAmountWithLeave(
+  rule.bonusType,
+  eligibleMonth,
+  basicSalary
+);
+const hasOfficerAllowance =
+  emp.isOfficerAllowance === true &&
+  emp.officersAllowance !== null;
 
-                  if(isEligible){
-                    amount = res.amount
-                  }
+const officerBasicSalary = hasOfficerAllowance
+  ? Number(emp.officersAllowance?.basic_salary ?? 0)
+  : 0;
+
+const officerResult = hasOfficerAllowance
+  ? calculateBonusAmountWithLeave(
+      rule.bonusType,
+      eligibleMonth,
+      officerBasicSalary
+    )
+  : null;
+
+if (isEligible) {
+  regularBonusAmount = regularResult.amount;
+
+  officerAllowanceAmount =
+    officerResult?.amount ?? 0;
+
+  amount =
+    regularBonusAmount + officerAllowanceAmount;
+}
                  
-                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${res.count})` 
+                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${regularResult.count})` 
         })
       
-      } else {
-        if (isEligible) {
-          amount = calculateBonusAmount(rule.formulaType, basicSalary)
-        }
-     
+    } else {
+  if (isEligible) {
+    regularBonusAmount = calculateBonusAmount(
+      rule.formulaType,
+      basicSalary
+    );
 
-        remarks = ""
-        hasLeave= false
-      }
+    if (
+      emp.isOfficerAllowance === true &&
+      emp.officersAllowance &&
+      Number(emp.officersAllowance.basic_salary) > 0
+    ) {
+      officerAllowanceAmount = calculateBonusAmount(
+        rule.formulaType,
+        Number(emp.officersAllowance.basic_salary)
+      );
+    }
+
+    amount = regularBonusAmount + officerAllowanceAmount;
+  }
+
+  remarks = "";
+  hasLeave = false;
+}
 
 
       // Find matching active loans
@@ -576,7 +638,9 @@ export async function generateBonusForAllEmployees({
       rows.push({
         employeeCode: emp.EmpCode,
         bonusRuleId: rule.id,
-        amount: amount,
+        regularBonusAmount,
+        officerAllowanceAmount,
+        amount: regularBonusAmount + officerAllowanceAmount,
         bonusSummaryId: bonusSummary.id,
         generatedForMonth: rule.eligibleMonth,
         loanDeduction: totalPrincipal,
