@@ -1861,50 +1861,78 @@ export async function getEmployeesFCHBonusSummaryService(
 }
 
 
-
 export async function updateBonusService(
   id: number,
-  bonusAmount: number,
-  remarks: string,
-  performedById: number,
+  bonusAmount: number | undefined,
+  remarks: string | undefined,
+  performedById: number
 ) {
   return prisma.$transaction(async (tx) => {
-
     const existing = await tx.employeeBonus.findUnique({
-      where: { id }
-    })
+      where: { id },
+    });
 
     if (!existing) {
-      throw new Error("Bonus not found")
+      throw new Error("Bonus not found");
     }
 
-    const loanDeduction = existing.loanDeduction?.toNumber() ?? 0
+    const oldAmount = existing.amount.toNumber();
+    const oldNetAmount = existing.netAmount.toNumber();
 
-    const netAmount = bonusAmount - loanDeduction
+    const loanDeduction =
+      existing.loanDeduction?.toNumber() ?? 0;
+
+    // Preserve existing amount when editing remarks only
+    const newAmount =
+      bonusAmount !== undefined
+        ? bonusAmount
+        : oldAmount;
+
+    // Recalculate net amount only when bonus amount changes
+    const newNetAmount =
+      bonusAmount !== undefined
+        ? newAmount - loanDeduction
+        : oldNetAmount;
+
+    const newRemarks =
+      remarks !== undefined
+        ? remarks
+        : existing.remarks;
+
+    const changes: string[] = [];
+
+    if (oldAmount !== newAmount) {
+      changes.push(
+        `Amount: ${oldAmount} → ${newAmount}`
+      );
+    }
+
+    if (existing.remarks !== newRemarks) {
+      changes.push(
+        `Remarks: "${existing.remarks ?? ""}" → "${newRemarks ?? ""}"`
+      );
+    }
+
+    // No database update needed if nothing changed
+    if (changes.length === 0) {
+      return existing;
+    }
 
     const updated = await tx.employeeBonus.update({
       where: { id },
       data: {
-        amount: bonusAmount,
-        netAmount,
-        remarks,
-        updatedAt: new Date() // also fix field name if typo
-      }
-    })
+        ...(bonusAmount !== undefined && {
+          amount: newAmount,
+          netAmount: newNetAmount,
+        }),
 
-    const changes: string[] = [];
+        ...(remarks !== undefined && {
+          remarks: newRemarks,
+        }),
 
-if (existing.amount.toNumber() !== bonusAmount) {
-  changes.push(
-    `Amount: ${existing.amount} → ${bonusAmount}`
-  );
-}
-
-if (existing.remarks !== remarks) {
-  changes.push(
-    `Remarks: "${existing.remarks ?? ""}" → "${remarks}"`
-  );
-}
+        updatedAt: new Date(),
+      },
+    });
 
     await tx.auditLog.create({
       data: {
@@ -1912,23 +1940,26 @@ if (existing.remarks !== remarks) {
         action: "UPDATE",
         referenceId: id,
         referenceCode: existing.employeeCode ?? null,
-        description: changes.length
-          ? `Updated bonus: ${changes.join(", ")}`
-          : "Bonus updated without changes",
+
+        description: `Updated bonus: ${changes.join(", ")}`,
+
         metadata: {
-          oldAmount: existing.amount,
-          newAmount: bonusAmount,
+          oldAmount,
+          newAmount,
+          oldNetAmount,
+          newNetAmount,
           loanDeduction,
-          netAmount
+          oldRemarks: existing.remarks,
+          newRemarks,
         },
+
         performedById,
-      }
-    })
+      },
+    });
 
-    return updated
-  })
+    return updated;
+  });
 }
-
 
 export async function checkPayrollService() {
   const totalResult = await prisma.employeePayrollArchive.aggregate({

@@ -49,7 +49,7 @@ export const updateBonusRuleSchema = z.object({
 
   export const updateBonusSchema = z.object({
     id: z.number().int().positive(),
-    bonusAmount: z.number().min(0),
+    bonusAmount: z.number().finite().nonnegative().optional(),
     remarks: z.string()
   })
 

@@ -112,12 +112,22 @@ export async function deleteBonusRuleServices(id: number) {
   }
       
 
-      export async function  updateBonusService(id: number, bonusAmount: number, remarks: string) {
-        const res = await api.put(`/bonus/update-bonus/${id}`, {
-            bonusAmount,
-            remarks
-        })
-        return res.data        
+          export async function updateBonusService(
+          id: number,
+          bonusAmount?: number,
+          remarks?: string
+        ) {
+        const payload = {
+          ...(bonusAmount !== undefined && { bonusAmount }),
+          ...(remarks !== undefined && { remarks }),
+        };
+
+        const res = await api.put(
+          `/bonus/update-bonus/${id}`,
+          payload
+        );
+
+        return res.data;
       }
 
       export async function exportBonusExcelService(payload: {

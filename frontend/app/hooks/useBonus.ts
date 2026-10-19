@@ -219,21 +219,27 @@ export function useGetEmployeeGeneratedBonus(
   }
   
 
-  export function useUpdateBonus(){
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({
-            id, bonusAmount, remarks
-        }: {
-            id: number,
-            bonusAmount: number,
-            remarks: string
-        }) => updateBonusService(id, bonusAmount, remarks),
-        onSuccess:  () => {
-            queryClient.invalidateQueries({queryKey: ["generated-bonus"]})
-        }
-    })
-  }
+export function useUpdateBonus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      bonusAmount,
+      remarks,
+    }: {
+      id: number;
+      bonusAmount?: number;
+      remarks?: string;
+    }) => updateBonusService(id, bonusAmount, remarks),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["generated-bonus"],
+      });
+    },
+  });
+}
 
   export function useExportBonusExcel() {
     return useMutation({

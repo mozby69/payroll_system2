@@ -592,54 +592,66 @@ export async function updateBonusController(
   res: Response
 ) {
   try {
-    // Validate request body
-    const validated = updateBonusSchema.parse({
-      id: Number(req.params.id),
-      bonusAmount: Number(req.body.bonusAmount),
-      remarks: String(req.body.remarks)
-    })
-
-    // Ensure authenticated user exists
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized"
-      })
+        message: "Unauthorized",
+      });
     }
+
+    const validated = updateBonusSchema.parse({
+      id: Number(req.params.id),
+
+      // Preserve undefined when amount is not supplied
+      bonusAmount:
+        req.body.bonusAmount === undefined
+          ? undefined
+          : Number(req.body.bonusAmount),
+
+      remarks:
+        req.body.remarks === undefined
+          ? undefined
+          : req.body.remarks,
+    });
 
     const result = await updateBonusService(
       validated.id,
       validated.bonusAmount,
       validated.remarks,
       req.user.id
-    )
+    );
+
     return res.status(200).json({
       success: true,
       message: "Bonus updated successfully",
-      data: result
-    })
+      data: result,
+    });
 
-  } catch (error: any) {
-
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
         message: "Validation failed",
-        errors: error.issues
-      })
+        errors: error.issues,
+      });
     }
-    if (error.message === "Bonus not found") {
+
+    if (
+      error instanceof Error &&
+      error.message === "Bonus not found"
+    ) {
       return res.status(404).json({
         success: false,
-        message: error.message
-      })
+        message: error.message,
+      });
     }
-    console.error("Update Bonus Error:", error)
+
+    console.error("Update Bonus Error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
-    })
+      message: "Internal server error",
+    });
   }
 }
 

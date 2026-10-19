@@ -5,11 +5,12 @@ import { useState } from "react"
 import toast from "react-hot-toast"
 
 type Props = {
-  bonus: EmployeBonusType 
-  onClose: () => void
+  bonus: EmployeBonusType; 
+  isMerged: boolean;
+  onClose: () => void;
 }
 
-export default function EditBonusModal({ bonus, onClose }: Props) {
+export default function EditBonusModal({ bonus, isMerged, onClose }: Props) {
 
   const [bonusAmount, setBonusAmount] = useState<number>(bonus.bonusAmount)
   const [loan, setLoan] = useState<number>(bonus.fchLoan)
@@ -20,26 +21,29 @@ export default function EditBonusModal({ bonus, onClose }: Props) {
   const netAmount = bonusAmount - loan
 
   const handleSave = () => {
-    if (isPending) return
-    if (!bonus.bonusId) return
-    updateBonus(
-      {
+  if (isPending || !bonus.bonusId) return;
+
+  const payload = isMerged
+    ? {
         id: bonus.bonusId,
-        bonusAmount: bonusAmount,
-        remarks: remarks
-      },
-      {
-        onSuccess: (data) => {
-          toast.success(data.message)
-          onClose()   
-        },
-        onError: (error: unknown) => {
-          const message = handleApiError(error)
-          toast.error(message)
-        },
+        remarks,
       }
-    )
-  }
+    : {
+        id: bonus.bonusId,
+        bonusAmount,
+        remarks,
+      };
+
+  updateBonus(payload, {
+    onSuccess: (data) => {
+      toast.success(data.message);
+      onClose();
+    },
+    onError: (error: unknown) => {
+      toast.error(handleApiError(error));
+    },
+  });
+};
 
 
   return (
@@ -81,15 +85,25 @@ export default function EditBonusModal({ bonus, onClose }: Props) {
         </div>
 
         <div>
-          <label className="block mb-1 text-gray-600">
-            Bonus Amount
-          </label>
-          <input
-            type="number"
-            value={bonusAmount}
-            onChange={(e) => setBonusAmount(Number(e.target.value))}
-            className="w-full border rounded-md px-3 py-2"
-          />
+            <label className="block mb-1 text-gray-600">
+              Bonus Amount
+              {isMerged && (
+                <span className="ml-2 text-xs text-amber-600">
+                  (Merged Total - Read Only)
+                </span>
+              )}
+            </label>
+           <input
+              type="number"
+              value={bonusAmount}
+              disabled={isMerged}
+              onChange={(e) => setBonusAmount(Number(e.target.value))}
+              className={`w-full border rounded-md px-3 py-2 ${
+                isMerged
+                  ? "bg-gray-100 cursor-not-allowed"
+                  : "bg-white"
+              }`}
+            />
         </div>
 
         <div>

@@ -832,6 +832,7 @@ useEffect(() => {
          >
            <EditBonusModal
               bonus={selectedBonus}
+              isMerged={hasBatch}
               onClose={() => setIsOpenEditModal(false)}
              />
         </RequestModal>
