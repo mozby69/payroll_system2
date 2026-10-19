@@ -53,24 +53,25 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
   const [errors, setErrors] =
     useState<ZodFormattedError<CreateBonusRuleForm> | null>(null)
 
-    function handleChange(
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-      ) {
-        const { name, value, type, checked } = e.target as HTMLInputElement
-      
-        setForm(prev => ({
-          ...prev,
-          [name]:
-            type === "checkbox"
-              ? checked
-              : type === "number"
-                ? value === "" ? 0 : Number(value)
-                : value === ""
-                  ? null
-                  : value
-        }))
-      }
-      
+  function handleChange(
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+) {
+  const { name, value, type, checked } =
+    e.target as HTMLInputElement
+
+  setForm(prev => ({
+    ...prev,
+    [name]:
+      type === "checkbox"
+        ? checked
+        : name === "eligibleMonth" ||
+          name === "minTenureYear"
+        ? Number(value)
+        : value === ""
+        ? null
+        : value
+  }))
+}
 
       async function handleSubmit() {
         const result = bonusRuleBaseSchema.safeParse(form)
@@ -143,6 +144,21 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
           ? "Basic ÷ 1"
           : "Basic ÷ 2"
       }))
+
+const monthOptions = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+]
   return (
     <div className="relative">
       {showProcessing && (
@@ -205,13 +221,15 @@ export default function CreateBonusRulesModal({ mode, onClose, initialData }: Bo
 
         {/* Numbers */}
         <div className="grid grid-cols-2 gap-4">
-          <InputField
+         
+          <SelectField
             label="Eligible Month"
             name="eligibleMonth"
-            type="number"
-            value={form.eligibleMonth}
+            placeholder="Select eligible month"
+            value={String(form.eligibleMonth)}
             error={errors?.eligibleMonth?._errors?.[0]}
             onChange={handleChange}
+            options={monthOptions}
           />
 
           <InputField
