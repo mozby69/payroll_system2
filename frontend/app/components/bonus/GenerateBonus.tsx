@@ -260,6 +260,7 @@ const handlePrint1 = useReactToPrint({
 
   onPrintError: (location, error) => {
     console.error("Print error:", location, error);
+    setPrintRequested(false);
   },
 });
 
@@ -311,6 +312,7 @@ const handleBonusPrint = async () => {
 
     // React renders the printable component after this update
     setPrintSignatories(mapped);
+    setPrintRequested(true);
 
   } catch (error) {
     console.error("Bonus print error:", error);
@@ -325,9 +327,11 @@ const handleBonusPrint = async () => {
 
 // PRINT ONLY AFTER THE COMPONENT IS MOUNTED
 useEffect(() => {
-  if (!printSignatories || !data) return;
+  if (!printRequested || !printSignatories || !data) return;
 
   const frame = requestAnimationFrame(() => {
+    setPrintRequested(false);
+
     if (!printRef.current) {
       console.error("PrintBonusReport is not mounted.");
       return;
@@ -339,7 +343,7 @@ useEffect(() => {
   });
 
   return () => cancelAnimationFrame(frame);
-}, [printSignatories, data, handlePrint1]);
+}, [printRequested, printSignatories, data, handlePrint1]);
 
     const handleExportExcel = async () => {
       if (!summary?.id || !activeGroup) return
