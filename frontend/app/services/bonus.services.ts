@@ -112,9 +112,10 @@ export async function deleteBonusRuleServices(id: number) {
   }
       
 
-      export async function  updateBonusService(id: number, bonusAmount: number) {
+      export async function  updateBonusService(id: number, bonusAmount: number, remarks: string) {
         const res = await api.put(`/bonus/update-bonus/${id}`, {
-            bonusAmount
+            bonusAmount,
+            remarks
         })
         return res.data        
       }

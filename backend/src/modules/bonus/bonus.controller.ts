@@ -595,7 +595,8 @@ export async function updateBonusController(
     // Validate request body
     const validated = updateBonusSchema.parse({
       id: Number(req.params.id),
-      bonusAmount: Number(req.body.bonusAmount)
+      bonusAmount: Number(req.body.bonusAmount),
+      remarks: String(req.body.remarks)
     })
 
     // Ensure authenticated user exists
@@ -609,6 +610,7 @@ export async function updateBonusController(
     const result = await updateBonusService(
       validated.id,
       validated.bonusAmount,
+      validated.remarks,
       req.user.id
     )
     return res.status(200).json({

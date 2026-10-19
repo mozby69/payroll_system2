@@ -1801,6 +1801,7 @@ export async function getEmployeesFCHBonusSummaryService(
 export async function updateBonusService(
   id: number,
   bonusAmount: number,
+  remarks: string,
   performedById: number,
 ) {
   return prisma.$transaction(async (tx) => {
@@ -1822,9 +1823,24 @@ export async function updateBonusService(
       data: {
         amount: bonusAmount,
         netAmount,
+        remarks,
         updatedAt: new Date() // also fix field name if typo
       }
     })
+
+    const changes: string[] = [];
+
+if (existing.amount.toNumber() !== bonusAmount) {
+  changes.push(
+    `Amount: ${existing.amount} → ${bonusAmount}`
+  );
+}
+
+if (existing.remarks !== remarks) {
+  changes.push(
+    `Remarks: "${existing.remarks ?? ""}" → "${remarks}"`
+  );
+}
 
     await tx.auditLog.create({
       data: {
@@ -1832,7 +1848,9 @@ export async function updateBonusService(
         action: "UPDATE",
         referenceId: id,
         referenceCode: existing.employeeCode ?? null,
-        description: `Updated bonus amount from ${existing.amount} to ${bonusAmount}`,
+        description: changes.length
+          ? `Updated bonus: ${changes.join(", ")}`
+          : "Bonus updated without changes",
         metadata: {
           oldAmount: existing.amount,
           newAmount: bonusAmount,

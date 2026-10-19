@@ -223,11 +223,12 @@ export function useGetEmployeeGeneratedBonus(
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({
-            id, bonusAmount
+            id, bonusAmount, remarks
         }: {
             id: number,
-            bonusAmount: number
-        }) => updateBonusService(id, bonusAmount),
+            bonusAmount: number,
+            remarks: string
+        }) => updateBonusService(id, bonusAmount, remarks),
         onSuccess:  () => {
             queryClient.invalidateQueries({queryKey: ["generated-bonus"]})
         }

@@ -26,6 +26,7 @@ export default function EditBonusModal({ bonus, onClose }: Props) {
       {
         id: bonus.bonusId,
         bonusAmount: bonusAmount,
+        remarks: remarks
       },
       {
         onSuccess: (data) => {
