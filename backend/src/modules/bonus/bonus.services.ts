@@ -1241,7 +1241,11 @@ export async function getEmployeesByBonusSummaryService(
       if (existing) {
         existing.bonusAmount += bonusAmount;
         existing.fchLoan += loanDeduction;
-        existing.netAmount += netAmount;
+        // Recalculate using combined bonus and combined loan
+          existing.netAmount = Math.max(
+            0,
+            existing.bonusAmount - existing.fchLoan
+          );
 
         existing.bonuses.push({
           bonusId: bonus.id,
