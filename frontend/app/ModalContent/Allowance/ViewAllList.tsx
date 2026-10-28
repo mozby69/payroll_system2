@@ -1155,54 +1155,40 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
 
 
-             <div className="mt-4 py-4 px-2 grid grid-cols-3">
-                    <div>
-                        <h2 className="font-semibold">
-                        PREPARED BY:
-                        </h2>
+                    <div className="mt-4 grid grid-cols-3 px-4 py-4 text-xs">
+                        {/* LEFT */}
+                        <div className="justify-self-start">
+                            <h2 className="font-semibold">PREPARED BY:</h2>
 
-                        {preparedBy.map((item) => (
-                        <p
-                            key={item.id}
-                            className="uppercase mt-1"
-                        >
-                            {item.name}
-                        </p>
-                        ))}
+                            {preparedBy.map((item) => (
+                            <p key={item.id} className="mt-1 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+
+                        {/* CENTER */}
+                        <div className="justify-self-center">
+                            <h2 className="font-semibold">CHECKED BY:</h2>
+
+                            {checkedBy.map((item) => (
+                            <p key={item.id} className="mt-1 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+
+                        {/* RIGHT */}
+                        <div className="justify-self-end">
+                            <h2 className="font-semibold">NOTED BY:</h2>
+
+                            {notedBy.map((item) => (
+                            <p key={item.id} className="mt-1 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
                     </div>
-
-                    <div>
-                        <h2 className="font-semibold">
-                        CHECKED BY:
-                        </h2>
-
-                        {checkedBy.map((item) => (
-                        <p
-                            key={item.id}
-                            className="uppercase mt-1"
-                        >
-                            {item.name}
-                        </p>
-                        ))}
-                    </div>
-
-                    <div>
-                        <h2 className="font-semibold">
-                        NOTED BY:
-                        </h2>
-
-                        {notedBy.map((item) => (
-                        <p
-                            key={item.id}
-                            className="uppercase mt-1"
-                        >
-                            {item.name}
-                        </p>
-                        ))}
-                    </div>
-                    </div>
-
-
 
 
 
