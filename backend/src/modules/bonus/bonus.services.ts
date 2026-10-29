@@ -610,8 +610,13 @@ if (isEligible) {
 
   amount =
     regularBonusAmount + officerAllowanceAmount;
-    }      
-            remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${regularResult.count})`   })
+    }   
+    const divisor =
+         rule.formulaType === "BASIC_DIV_1" ? 1 : 2;
+
+          const computedBasicSalary = Number(basicSalary) / divisor;
+    
+            remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${computedBasicSalary} X ${eligibleMonth} / ${regularResult.count})`   })
       
     } else {
   if (isEligible) {
@@ -1653,46 +1658,35 @@ const employeeBonuses = await tx.employeeBonus.findMany({
       });
     }
 
-   const employees = Array.from(
+   
+const employees = Array.from(
   employeeMap.values()
 ).sort((a, b) => {
-  // 1. Sort by company
-  const companyCompare =
-    (a.companyCode ?? "").localeCompare(
-      b.companyCode ?? ""
-    );
+  const lastNameA = (a.fullName ?? "")
+    .split(",")[0]
+    .trim();
 
-  if (companyCompare !== 0) {
-    return companyCompare;
+  const lastNameB = (b.fullName ?? "")
+    .split(",")[0]
+    .trim();
+
+  const lastNameCompare = lastNameA.localeCompare(
+    lastNameB,
+    "en",
+    { sensitivity: "base" }
+  );
+
+  if (lastNameCompare !== 0) {
+    return lastNameCompare;
   }
 
-  // 2. Sort by branch position
-  const positionA = Number(a.branchPosition ?? 9999);
-  const positionB = Number(b.branchPosition ?? 9999);
-
-  if (positionA !== positionB) {
-    return positionA - positionB;
-  }
-
-  // 3. Sort by branch code
-  const branchCompare =
-    (a.branchCode ?? "").localeCompare(
-      b.branchCode ?? ""
-    );
-
-  if (branchCompare !== 0) {
-    return branchCompare;
-  }
-
-  // 4. Sort employees alphabetically by full name
   return (a.fullName ?? "").localeCompare(
     b.fullName ?? "",
-    undefined,
-    {
-      sensitivity: "base",
-    }
+    "en",
+    { sensitivity: "base" }
   );
 });
+
     // 7. Reconcile each summary independently
     const varianceResults = await Promise.all(
       summaries.map(async (summary) => {
@@ -2158,6 +2152,14 @@ export async function reconcileEmployeePayrollBonus(
           { bod_member: "bod2" },
         ],
       },
+      {
+        specialLeaves: {
+          none:{
+            leaveName: "SpecialChild"
+          }
+        }
+      }
+     
       ],
     },
 

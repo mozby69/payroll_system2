@@ -101,49 +101,77 @@ export function calculateBonusAmountWithLeave(
 }
 
 
+
 export function countEligibleMonthsWithHalfRule(
   bonusStart: Date,
   bonusEnd: Date,
   leaveStart: Date | null,
   leaveEnd: Date | null
 ): number {
+  const totalMonths =
+    (bonusEnd.getFullYear() - bonusStart.getFullYear()) * 12 +
+    (bonusEnd.getMonth() - bonusStart.getMonth()) +
+    1;
 
-  let total = 0
-  const current = new Date(bonusStart)
-
-  while (current <= bonusEnd) {
-
-    const monthStart = new Date(current.getFullYear(), current.getMonth(), 1)
-    const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0)
-
-    const overlapsLeave =
-      leaveStart &&
-      leaveEnd &&
-      monthStart <= leaveEnd &&
-      monthEnd >= leaveStart
-
-    if (!overlapsLeave) {
-      total += 1
-    } else {
-      // Check if employee returns inside this month
-      if (leaveEnd &&
-          leaveEnd >= monthStart &&
-          leaveEnd <= monthEnd) {
-
-        const returnDay = leaveEnd.getDate()
-
-        if (returnDay >= 1 && returnDay <= 15) {
-          total += 0.5
-        }
-        // 16+ → add 0
-      }
-      // If fully covered whole month → add 0
-    }
-
-    current.setMonth(current.getMonth() + 1)
+  if (!leaveStart || !leaveEnd) {
+    return totalMonths;
   }
 
-  return total
+  const normalize = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const bonusFrom = normalize(bonusStart);
+  const bonusTo = normalize(bonusEnd);
+  const leaveFrom = normalize(leaveStart);
+  const leaveTo = normalize(leaveEnd);
+
+  if (leaveTo < bonusFrom || leaveFrom > bonusTo) {
+    return totalMonths;
+  }
+
+  const start = leaveFrom < bonusFrom ? bonusFrom : leaveFrom;
+  const end = leaveTo > bonusTo ? bonusTo : leaveTo;
+
+  // Leave started before the bonus period:
+  // Deduct all calendar months affected by leave.
+  if (leaveFrom < bonusFrom) {
+    const affectedMonths =
+      (end.getFullYear() - start.getFullYear()) * 12 +
+      (end.getMonth() - start.getMonth()) +
+      1;
+
+    return Math.max(0, totalMonths - affectedMonths);
+  }
+
+  const addMonths = (date: Date, months: number): Date => {
+    const year = date.getFullYear();
+    const month = date.getMonth() + months;
+
+    const lastDay = new Date(year, month + 1, 0).getDate();
+
+    return new Date(
+      year,
+      month,
+      Math.min(date.getDate(), lastDay)
+    );
+  };
+
+  let completedMonths = 0;
+
+  while (addMonths(start, completedMonths + 1) <= end) {
+    completedMonths++;
+  }
+
+  let leaveDeduction = Math.max(1, completedMonths);
+
+  if (
+    completedMonths >= 1 &&
+    end > addMonths(start, completedMonths)
+  ) {
+    leaveDeduction += 0.5;
+  }
+
+  return Math.max(0, totalMonths - leaveDeduction);
 }
 
 export function generateBatchId(releasePeriod: string) {
