@@ -112,6 +112,7 @@ export type InvalidEmployees = {
 };
 
 
+
 export type EmployeeGenerateBonusResponse = {
   success: boolean;
   data: {
@@ -137,9 +138,10 @@ export type EmployeeGenerateBonusResponse = {
         remarks: string;
         date: string;
       }[];
-    };
+    }[];
   };
 };
+
 
   export type BonusRuleCompanyModalProps = {
     initialData?: { id?: number; name?: string }

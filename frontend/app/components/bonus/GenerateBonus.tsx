@@ -82,7 +82,7 @@ const [preparingPrint, setPreparingPrint] = useState(false);
   const summary = data?.data.summary;
 const summaries = data?.data.summaries ?? [];
 const employees = data?.data.employees ?? [];
-const variance = data?.data.variance;
+const variance = data?.data.variance?.[0];
 
 
 // Dynamic columns, one per bonus rule
@@ -228,19 +228,25 @@ const formatPeso = (amount: number) =>
       setIsOpenEditModal(true)
     }
       
-    const varianceEmployees = variance?.varianceEmployees ?? []
+   const varianceEmployees = variance?.varianceEmployees ?? [];
 
-    const varianceTotal = variance?.totalVarianceBasicSalary ?? 0
-    
-    const varianceBreakdownTotal = varianceEmployees.reduce((sum, e) => {
-      const amount = Number(e.basic_salary) || 0
-    
-      return e.type === "ARCHIVE_NO_BONUS"
-        ? sum - amount
-        : sum + amount
-    }, 0) 
-    
-    const remainingVariance = varianceTotal - varianceBreakdownTotal
+const varianceTotal = Number(
+  variance?.totalVarianceBasicSalary ?? 0
+);
+
+const varianceBreakdownTotal = varianceEmployees.reduce(
+  (sum, e) => {
+    const amount = Number(e.basic_salary) || 0;
+
+    return e.type === "ARCHIVE_NO_BONUS"
+      ? sum - amount
+      : sum + amount;
+  },
+  0
+);
+
+const remainingVariance =
+  varianceTotal - varianceBreakdownTotal;
 
 
  
