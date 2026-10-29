@@ -166,9 +166,15 @@ export default function ViewAllList({ selectedMonth }: Props) {
         item.signatory_type === "CHECKED_BY"
     );
 
-    const notedBy = signatories.filter(
+    // const notedBy = signatories.filter(
+    // (item) =>
+    //     item.signatory_type === "NOTED_BY"
+    // );
+
+
+      const approvedBy = signatories.filter(
     (item) =>
-        item.signatory_type === "NOTED_BY"
+        item.signatory_type === "APPROVED_BY"
     );
 
 
@@ -1155,51 +1161,39 @@ export default function ViewAllList({ selectedMonth }: Props) {
 
 
 
-             <div className="mt-4 py-4 px-2 grid grid-cols-3">
-                    <div>
-                        <h2 className="font-semibold">
-                        PREPARED BY:
-                        </h2>
+               <div className="mt-4 grid grid-cols-3 px-4 py-4 text-xs">
+                        {/* LEFT */}
+                        <div className="justify-self-start">
+                            <h2 className="font-semibold">PREPARED BY:</h2>
 
-                        {preparedBy.map((item) => (
-                        <p
-                            key={item.id}
-                            className="uppercase mt-1"
-                        >
-                            {item.name}
-                        </p>
-                        ))}
-                    </div>
+                            {preparedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
 
-                    <div>
-                        <h2 className="font-semibold">
-                        CHECKED BY:
-                        </h2>
+                        {/* CENTER */}
+                        <div className="justify-self-center">
+                            <h2 className="font-semibold">CHECKED BY:</h2>
 
-                        {checkedBy.map((item) => (
-                        <p
-                            key={item.id}
-                            className="uppercase mt-1"
-                        >
-                            {item.name}
-                        </p>
-                        ))}
-                    </div>
+                            {checkedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
 
-                    <div>
-                        <h2 className="font-semibold">
-                        NOTED BY:
-                        </h2>
+                        {/* RIGHT */}
+                        <div className="justify-self-end">
+                            <h2 className="font-semibold">APPROVED BY:</h2>
 
-                        {notedBy.map((item) => (
-                        <p
-                            key={item.id}
-                            className="uppercase mt-1"
-                        >
-                            {item.name}
-                        </p>
-                        ))}
-                    </div>
+                            {approvedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
                     </div>
 
 
