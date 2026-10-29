@@ -460,9 +460,10 @@ export async function generateBonusForAllEmployees({
                   ]
               },
                 {
-                    leaveName: {
-                      not: "Paternity"
-                    }
+                  leaveName:
+                    rule.bonusType === "ANNUAL"
+                      ? "Health"
+                      : { not: "Paternity" }
                 }
             ],
           }
@@ -553,11 +554,36 @@ export async function generateBonusForAllEmployees({
                     leaveEnd
                   )
                   hasLeave= true
+
                  const regularResult = calculateBonusAmountWithLeave(
   rule.bonusType,
   eligibleMonth,
   basicSalary
 );
+if (!Number.isFinite(regularResult.amount)) {
+  throw new Error(
+    `Invalid special leave bonus for ${emp.EmpCode}: ` +
+    `eligibleMonth=${eligibleMonth}, ` +
+    `count=${regularResult.count}, ` +
+    `basicSalary=${basicSalary}`
+  );
+}
+
+for (const row of rows) {
+  const amounts = [
+    row.regularBonusAmount,
+    row.officerAllowanceAmount,
+    row.amount,
+    row.loanDeduction,
+    row.netAmount,
+  ];
+
+  if (amounts.some(value => !Number.isFinite(Number(value)))) {
+    throw new Error(
+      `Invalid bonus calculation for employee ${row.employeeCode}`
+    );
+  }
+}
 const hasOfficerAllowance =
   emp.isOfficerAllowance === true &&
   emp.officersAllowance !== null;
@@ -565,6 +591,8 @@ const hasOfficerAllowance =
 const officerBasicSalary = hasOfficerAllowance
   ? Number(emp.officersAllowance?.basic_salary ?? 0)
   : 0;
+
+
 
 const officerResult = hasOfficerAllowance
   ? calculateBonusAmountWithLeave(
@@ -582,10 +610,8 @@ if (isEligible) {
 
   amount =
     regularBonusAmount + officerAllowanceAmount;
-}
-                 
-                  remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${regularResult.count})` 
-        })
+    }      
+            remarks = `${leave.leaveName} LEAVE (START: ${formatDateToMMDDYY(leaveStart)}) BACK TO WORK - ${formatDateToMMDDYY(leaveEnd)} = (${Number(basicSalary) / 2} X ${eligibleMonth} / ${regularResult.count})`   })
       
     } else {
   if (isEligible) {

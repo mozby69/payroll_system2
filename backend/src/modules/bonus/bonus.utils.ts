@@ -1,5 +1,6 @@
 import { BonusType, FormulaType } from "@prisma/client"
 import { formatDateOnly } from "../../utils/formatDateOnly"
+import e from "cors"
 
 export function getTenureInMonths(hireDate: Date, asOf: Date): number {
     return (
@@ -85,7 +86,11 @@ export function calculateBonusAmountWithLeave(
   } else if (bonusType === "MIDYEAR") {
     salary = basic_salary / 2
     count = 6
+  }else if (bonusType === "ANNUAL") {
+    salary = basic_salary / 1
+    count = 12
   }
+    
 
   const amount = (salary / count) * eligibleMonth
 
