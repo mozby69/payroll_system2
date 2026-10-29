@@ -228,7 +228,8 @@ const formatPeso = (amount: number) =>
       setIsOpenEditModal(true)
     }
       
-   const varianceEmployees = variance?.varianceEmployees ?? [];
+
+const varianceEmployees = variance?.varianceEmployees ?? [];
 
 const varianceTotal = Number(
   variance?.totalVarianceBasicSalary ?? 0
@@ -247,6 +248,7 @@ const varianceBreakdownTotal = varianceEmployees.reduce(
 
 const remainingVariance =
   varianceTotal - varianceBreakdownTotal;
+
 
 
  
