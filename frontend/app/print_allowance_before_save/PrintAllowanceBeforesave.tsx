@@ -39,13 +39,20 @@ const positionOrder: Record<string, number> = {
   mancom: 2,
 };
 
-const rows = useMemo(() => {
-  const filtered = (printResponse ?? []).filter(
-    (row) =>
-      row.Department?.trim().toUpperCase() !== "M2"
-  );
+const selectedBranch = branch?.trim().toUpperCase();
 
-  return [...filtered].sort((a, b) => {
+const rows = (printResponse ?? [])
+  .filter((row) => {
+    const isNotM2 =
+      row.Department?.trim().toUpperCase() !== "M2";
+
+    const matchesBranch =
+      !selectedBranch ||
+      row.branch_code?.trim().toUpperCase() === selectedBranch;
+
+    return isNotM2 && matchesBranch;
+  })
+  .sort((a, b) => {
     const aPosition =
       a.positionEmp?.trim().toLowerCase() ?? "";
 
@@ -61,7 +68,6 @@ const rows = useMemo(() => {
 
     return a.name.localeCompare(b.name);
   });
-}, [printResponse]);
 
 
 
