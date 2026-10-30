@@ -1689,22 +1689,21 @@ const employees = Array.from(
 
     // 7. Reconcile each summary independently
     const varianceResults = await Promise.all(
-      summaries.map(async (summary) => {
-        if (!summary.companyCode) return [];
+  summaries.map(async (summary) => {
+    if (!summary.companyCode || effectiveGroupId == null) {
+      return [];
+    }
 
-        const result =
-          await reconcileEmployeePayrollBonus(
-            tx,
-            summary.companyCode,
-            summary
-          );
-
-        return result;
-      })
+    return reconcileFCHEmployeePayrollBonus(
+      tx,
+      summary.companyCode,
+      summary,
+      effectiveGroupId
     );
+  })
+);
 
-    const variance = varianceResults.flat();
-
+const variance = varianceResults.flat();
     // 8. Calculate batch totals
     const totals = {
       totalEmployees: employees.length,
@@ -2424,6 +2423,377 @@ if (!prevPayroll) {
     totalVarianceBasicSalary
   }
 }
+
+
+export async function reconcileFCHEmployeePayrollBonus(
+  tx: Prisma.TransactionClient,
+  selectedCompanyCode: string,
+  summary: SummaryInput,
+  groupId: number
+) {
+  const startAndEnd = getBonusStartAndEndDate(
+    summary.bonusRule.eligibleMonth,
+    summary.bonusRule.bonusType,
+    summary.asOfDate
+  );
+
+  const bonusStart = new Date(startAndEnd.bonusStart);
+  const bonusEnd = new Date(startAndEnd.bonusEnd);
+
+  // 1. Get employees belonging to selected FCH group
+  const employees = await tx.employee.findMany({
+    where: {
+      AND: [
+        {
+          OR: [
+            {
+              isAlien: false,
+              BranchCode: {
+                CompanyCode: {
+                  CompanyCode: selectedCompanyCode,
+                },
+                groupId,
+              },
+            },
+            {
+              isAlien: true,
+              secondaryBranch: {
+                company_id: selectedCompanyCode,
+                groupId,
+              },
+            },
+          ],
+        },
+        {
+          EmployementDate: {
+            lte: summary.generateDate,
+          },
+        },
+        {
+          OR: [
+            { EmployeeStatus: "Active" },
+            {
+              EmployeeStatus: "Resigned",
+              EndDate: {
+                gt: summary.generateDate,
+              },
+            },
+            { bod_member: "bod1" },
+            { bod_member: "bod2" },
+          ],
+        },
+        {
+          specialLeaves: {
+            none: {
+              leaveName: "SpecialChild",
+            },
+          },
+        },
+      ],
+    },
+    select: {
+      EmpCode: true,
+      Firstname: true,
+      Lastname: true,
+      employeepayroll: {
+        select: {
+          basic_salary: true,
+        },
+      },
+      specialLeaves: {
+        where: {
+          OR: [
+            {
+              status: { not: "Expected" },
+              start: { not: null, lte: bonusEnd },
+              end: { not: null, gte: bonusStart },
+            },
+            {
+              status: "Expected",
+              expectedStart: {
+                not: null,
+                lte: bonusEnd,
+              },
+              expectedEnd: {
+                not: null,
+                gte: bonusStart,
+              },
+            },
+          ],
+        },
+        select: {
+          leaveName: true,
+          start: true,
+          end: true,
+          expectedStart: true,
+          expectedEnd: true,
+          status: true,
+        },
+      },
+      employee_salary_history: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+        select: {
+          remarks: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  // 2. Find previous payroll archive
+  const generatedAt = summary.generateDate.getTime();
+
+  if (Number.isNaN(generatedAt)) {
+    throw new Error("Invalid bonus generation date");
+  }
+
+  const payrollSummaries =
+    await tx.totalPayrollByCompany.findMany({
+      where: {
+        company_id: selectedCompanyCode,
+      },
+      select: {
+        total_payroll_id: true,
+        total_basic_salary: true,
+        PayCycle: true,
+        cycle_category: true,
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+  let prevPayroll:
+    | (typeof payrollSummaries)[number]
+    | null = null;
+
+  let latestCycleStart = Number.NEGATIVE_INFINITY;
+
+  for (const payroll of payrollSummaries) {
+    const cycleStart = getPayCycleStart(payroll.PayCycle);
+
+    if (
+      cycleStart <= generatedAt &&
+      cycleStart > latestCycleStart
+    ) {
+      prevPayroll = payroll;
+      latestCycleStart = cycleStart;
+    }
+  }
+
+  if (!prevPayroll) {
+    throw new Error(
+      "No eligible payroll archive found for FCH bonus generation"
+    );
+  }
+
+  // 3. Get payroll archive for selected FCH group
+  const payrollArchive =
+    await tx.employeePayrollArchive.findMany({
+      where: {
+        totalPayrollId: prevPayroll.total_payroll_id,
+        EmpCode: {
+          OR: [
+            {
+              isAlien: false,
+              BranchCode: {
+                company_id: selectedCompanyCode,
+                groupId,
+              },
+            },
+            {
+              isAlien: true,
+              secondaryBranch: {
+                company_id: selectedCompanyCode,
+                groupId,
+              },
+            },
+          ],
+        },
+      },
+      select: {
+        EmpCodeId: true,
+        Basic_salary: true,
+        EmpCode: {
+          select: {
+            Firstname: true,
+            Lastname: true,
+            EmployeeStatus: true,
+            EndDate: true,
+            employeepayroll: {
+              select: {
+                basic_salary: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+  // 4. Build comparison sets
+  const archiveSet = new Set(
+    payrollArchive.map((p) => p.EmpCodeId)
+  );
+
+  const bonusSetEmployee = new Set(
+    employees.map((e) => e.EmpCode)
+  );
+
+  const archiveSalaryMap = new Map(
+    payrollArchive.map((a) => [
+      a.EmpCodeId,
+      Number(a.Basic_salary),
+    ])
+  );
+
+  // 5. Employees with changed salaries
+
+const salaryChanged: VarianceEmployee[] = employees
+  .filter((emp) => archiveSalaryMap.has(emp.EmpCode))
+  .map((emp) => {
+    const currentMonthlySalary = Number(
+      emp.employeepayroll?.basic_salary ?? 0
+    );
+
+    const archivedHalfMonth = Number(
+      archiveSalaryMap.get(emp.EmpCode) ?? 0
+    );
+
+    // Round current half-month salary to 2 decimals
+    const currentHalfMonth =
+      Math.round((currentMonthlySalary / 2 + Number.EPSILON) * 100) / 100;
+
+    // Round archived half-month salary to 2 decimals
+    const previousHalfMonth =
+      Math.round((archivedHalfMonth + Number.EPSILON) * 100) / 100;
+
+    // Compare using integer centavos
+    const currentCents = Math.round(currentHalfMonth * 100);
+    const previousCents = Math.round(previousHalfMonth * 100);
+
+    if (currentCents === previousCents) {
+      return null;
+    }
+
+    const history = emp.employee_salary_history?.[0];
+
+    return {
+      EmpCode: emp.EmpCode,
+      name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+      basic_salary: (currentCents - previousCents) / 100,
+      type: "SALARY_CHANGED" as const,
+      remarks: history?.remarks ?? "Salary updated",
+      date: history?.createdAt
+        ? new Date(history.createdAt).toLocaleDateString()
+        : "",
+    };
+  })
+.filter((emp) => emp !== null);
+
+
+  // 6. Employees without payroll archive
+  const bonusWithoutArchive: VarianceEmployee[] = employees
+    .filter(
+      (emp) =>
+        bonusSetEmployee.has(emp.EmpCode) &&
+        !archiveSet.has(emp.EmpCode)
+    )
+    .map((emp) => {
+      const leave = emp.specialLeaves?.[0];
+
+      const start =
+        leave?.status === "Expected"
+          ? leave?.expectedStart
+          : leave?.start;
+
+      const end =
+        leave?.status === "Expected"
+          ? leave?.expectedEnd
+          : leave?.end;
+
+      const date =
+        start && end
+          ? `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
+          : "";
+
+      return {
+        EmpCode: emp.EmpCode,
+        name: `${emp.Lastname ?? ""}, ${emp.Firstname ?? ""}`,
+        basic_salary:
+          Number(emp.employeepayroll?.basic_salary ?? 0) / 2,
+        type: "BONUS_NO_ARCHIVE" as const,
+        remarks:
+          leave?.leaveName === "SpecialChild"
+            ? "Special Case"
+            : (leave?.leaveName ?? ""),
+        date,
+      };
+    });
+
+  // 7. Archive exists but employee is missing
+  const archiveWithoutBonus: VarianceEmployee[] =
+    payrollArchive
+      .filter(
+        (arch) => !bonusSetEmployee.has(arch.EmpCodeId)
+      )
+      .map((arch) => ({
+        EmpCode: arch.EmpCodeId,
+        name: `${arch.EmpCode.Lastname ?? ""}, ${arch.EmpCode.Firstname ?? ""}`,
+        basic_salary:
+          Number(
+            arch.EmpCode.employeepayroll?.basic_salary ?? 0
+          ) / 2,
+        type: "ARCHIVE_NO_BONUS" as const,
+        remarks: arch.EmpCode.EmployeeStatus ?? "",
+        date: arch.EmpCode.EndDate
+          ? new Date(
+              arch.EmpCode.EndDate
+            ).toLocaleDateString()
+          : "",
+      }));
+
+  // 8. Combine variance employees
+  const varianceEmployees: VarianceEmployee[] = [
+    ...bonusWithoutArchive,
+    ...archiveWithoutBonus,
+    ...salaryChanged,
+  ];
+
+  const totalVarianceBasicSalary =
+    varianceEmployees.reduce((sum, emp) => {
+      const amount = emp.basic_salary ?? 0;
+
+      if (emp.type === "ARCHIVE_NO_BONUS") {
+        return sum - amount;
+      }
+
+      return sum + amount;
+    }, 0);
+
+  // Calculate previous payroll for selected group
+  const groupPayrollTotal = payrollArchive.reduce(
+    (sum, archive) =>
+      sum + Number(archive.Basic_salary ?? 0),
+    0
+  );
+
+  return {
+    prevPayroll: groupPayrollTotal,
+    prevPayrollDate: getPreviousPayrollDate(
+      prevPayroll.PayCycle ?? "",
+      prevPayroll.cycle_category ?? ""
+    ),
+    totalEmployees: employees.length,
+    totalArchive: payrollArchive.length,
+    varianceCount: varianceEmployees.length,
+    varianceEmployees,
+    totalVarianceBasicSalary,
+  };
+}
+
 
 
 export async function generateMultipleBonuses({

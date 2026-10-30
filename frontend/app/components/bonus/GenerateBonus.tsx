@@ -201,7 +201,8 @@ const formatPeso = (amount: number) =>
     const totals = employees.reduce(
       (acc, emp) => {
         acc.basicSalary += Number(emp.basicSalary || 0)
-        acc.halfMonth += Number(emp.basicSalary || 0) / 2
+          acc.halfMonth +=
+      Math.round((Number(emp.basicSalary || 0) / 2) * 100) / 100;
         acc.bonusAmount += Number(emp.bonusAmount || 0)
         acc.fchLoan += Number(emp.fchLoan || 0)
         acc.netAmount += Number(emp.netAmount || 0)

@@ -372,8 +372,10 @@ const PrintBonusReport = forwardRef<
           {formatMoney(employee.netAmount)}
         </td>
 
-        <td className="border px-1 py-1">
-          {employee.remarks ?? ""}
+        <td className="border px-1 py-1 remarks-cell">
+          <div className="remarks-content">
+               {employee.remarks ?? ""}
+          </div>
         </td>
       </tr>
     ));
@@ -542,6 +544,23 @@ const PrintBonusReport = forwardRef<
           .bonus-print-wrapper .branch-total {
             background-color: #f3f4f6 !important;
           }
+.bonus-print-wrapper .remarks-cell {
+  width: 20%;
+  min-width: 170px;
+  vertical-align: middle;
+}
+
+.bonus-print-wrapper .remarks-content {
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-size: 8px;
+  line-height: 1.15;
+}
+
+.bonus-print-wrapper .print-table td {
+  padding: 3px 3px;
+}
+
         }
       `}</style>
 
