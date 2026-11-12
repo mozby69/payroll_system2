@@ -29,7 +29,7 @@ export async function fetchAllowanceWithAbsent({ page, limit, search, selectedMo
         OR: [
           {
             EmployeeStatus: {
-              notIn: ["Resigned", "Inactive", "Terminate"],
+              notIn: ["Resigned", "Terminate"],
             },
           },
           {

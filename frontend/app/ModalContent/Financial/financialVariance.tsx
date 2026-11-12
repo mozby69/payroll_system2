@@ -4,6 +4,7 @@ import EmployeeVariance from "./EmployeeVariance";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import SweetAlert from "@/app/components/Swal";
+import { useGetCompanyByCode } from "@/app/hooks/useGeneral";
 //import EmployeeVariance from "./EmployeeVariance";
 
 
@@ -94,6 +95,7 @@ export default function FinancialVarianceModal({ paycode, cycle, company_id }: P
   const { data, isLoading } = useDisplayVariance(company_id, cycle);
   const { data: all_variance } = useCompleteVariance(company_id, cycle);
   const { mutate: saveFinalVariance } = useSaveFinalVariance();
+    const { data: companyData } = useGetCompanyByCode(company_id ?? "")
 
   const variance = data?.data;
 
@@ -137,38 +139,97 @@ export default function FinancialVarianceModal({ paycode, cycle, company_id }: P
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: "Deductions",
-    pageStyle: `
+const handlePrint = useReactToPrint({
+  contentRef: printRef,
+  documentTitle: "Deductions",
+  pageStyle: `
     @page {
-      size: landscape;
-      margin: 20mm;
+      size: portrait;
+      margin: 10mm;
     }
 
     @media print {
-      .table-print-wrapper {
-        overflow: visible !important;
+      html,
+      body {
         width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
       }
 
       .print-area {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+      }
+
+      .table-print-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         overflow: visible !important;
       }
 
       table {
         width: 100% !important;
-        font-size: 10px;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        font-size: 7px !important;
       }
 
-      th, td {
-        padding: 4px !important;
-        white-space: nowrap;
+      th,
+      td {
+        padding: 3px 2px !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        vertical-align: middle !important;
+      }
+
+      th {
+        font-size: 6.5px !important;
+        font-weight: 700 !important;
+      }
+
+      tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      thead {
+        display: table-header-group !important;
+      }
+
+      .overflow-x-auto,
+      .overflow-auto {
+        overflow: visible !important;
+      }
+
+      .min-w-max,
+      .min-w-full {
+        min-width: 0 !important;
       }
     }
-  `,
-  });
 
+    /* Final Variance table */
+.final-variance-table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.final-variance-table tbody tr td:last-child {
+  text-align: right !important;
+  padding-right: 10px !important;
+}
+
+.final-variance-table tbody tr td:first-child {
+  text-align: center !important;
+}
+  `,
+});
 
 
 
@@ -271,7 +332,7 @@ export default function FinancialVarianceModal({ paycode, cycle, company_id }: P
 
           <div className="overflow-x-auto px-4">
             <div className="py-8 font-bold text-xs">
-              <h2>EMB CAPITAL LENDING CORP.</h2>
+              <h2 className="uppercase">{companyData?.data?.[0]?.CompanyName ?? ""}.</h2>
               <h2>PAYROLL EXPLANATION</h2>
               <h2>FOR THE PERIOD :{paycode}</h2>
             </div>
@@ -323,40 +384,51 @@ export default function FinancialVarianceModal({ paycode, cycle, company_id }: P
 
 
 
+<div className="final-variance-section px-4 pt-4">
+  <h2 className="mb-3 font-bold">
+    Final Variance
+  </h2>
 
-        <div className="pt-4 px-4">
-          <h2 className="mb-3 font-bold">
-            Final Variance
-          </h2>
+  <table className="final-variance-table w-full border-collapse text-sm">
+    <colgroup>
+      <col style={{ width: "50%" }} />
+      <col style={{ width: "50%" }} />
+    </colgroup>
 
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="border border-slate-400 px-3 py-2 text-left">
-                  Description
-                </th>
+    <thead>
+      <tr>
+        <th className="border border-slate-400 px-3 py-2 text-center">
+          Description
+        </th>
 
-                <th className="border border-slate-400 px-3 py-2 text-right">
-                  Variance
-                </th>
-              </tr>
-            </thead>
+        <th className="border border-slate-400 px-3 py-2 text-center">
+          Variance
+        </th>
+      </tr>
+    </thead>
 
-            <tbody>
-              {finalVarianceRows.map((item) => (
-                <tr key={item.key}>
-                  <td className="border border-slate-400 px-3 py-2">
-                    {item.label}
-                  </td>
+    <tbody>
+      {finalVarianceRows.map((item) => (
+        <tr key={item.key}>
+          <td className="border border-slate-400 px-3 py-2 text-center">
+            {item.label}
+          </td>
 
-                  <td className="border border-slate-400 px-3 py-2 text-right">
-                    {formatAmount(item.value)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <td
+  className="variance-amount border border-slate-400 px-3 py-2"
+  style={{
+    textAlign: "right",
+    paddingRight: "10px",
+    fontVariantNumeric: "tabular-nums",
+  }}
+>
+  {formatAmount(item.value)}
+</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
       </div>
 
