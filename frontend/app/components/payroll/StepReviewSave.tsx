@@ -1,6 +1,14 @@
 "use client";
 
 import {  useRef, useState } from "react";
+import {
+  BarChart3,
+  ReceiptText,
+  FileText,
+  Printer,
+  Save,
+  Loader2,
+} from "lucide-react";
 import SpreadSheet, { SpreadsheetRow } from "../reports/SpreadSheet";
 //import { printPayroll } from "@/app/utils/printPayrollUtils";
 //import { dummySummary } from "@/app/types/dummyData";
@@ -17,6 +25,7 @@ import { useReactToPrint } from "react-to-print";
 import PayrollSpreadsheetPrint from "../reports/PrintPayrollSpreadsheet";
 import ViewDeductionsOnly from "@/app/ModalContent/PreparePayroll/ViewDeductionsOnly";
 import { CycleCategory } from "@/app/types/varianceType";
+import PendingPayrollReportModal from "../archive/PendingPayrollReportModal";
 
 
 
@@ -32,6 +41,7 @@ export default function StepReviewSave({ onBack }: Props) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalOpen2, setIsModalOpen2] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const { hasPermission,user } = useAuth()
 
@@ -229,6 +239,16 @@ export default function StepReviewSave({ onBack }: Props) {
       setIsModalOpen2(false);
     };
 
+
+
+    const openReportModal = () => {
+  setIsReportModalOpen(true);
+};
+
+const closeReportModal = () => {
+  setIsReportModalOpen(false);
+};
+
   return (
     <div className="space-y-4">
 
@@ -254,33 +274,98 @@ export default function StepReviewSave({ onBack }: Props) {
 
       </div>
 
-      <div className="flex justify-between px-4 pt-4">
 
-      <div>
+<div className="mx-4 mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+
+    {/* LEFT: REVIEW ACTIONS */}
+    <div className="flex flex-wrap items-center gap-2">
       {hasPermission("SAVE_PAYROLL") && (
-           <div className="flex gap-x-2">
-                <GenButton variant="primary" onClick={openModal}>View Variance</GenButton>
-                <GenButton variant="danger" onClick={openModal2}>Deductions</GenButton>
-                <GenButton variant="positive" onClick={handleSave}   disabled={!companyId || savePayroll.isPending}>
-                  {savePayroll.isPending ? "Saving..." : "Save Payroll"}
-                </GenButton>
-                
-            </div>
+        <>
+          <GenButton
+            variant="primary"
+            onClick={openModal}
+            className="flex items-center gap-2"
+          >
+            <BarChart3 size={16} />
+            View Variance
+          </GenButton>
+
+          <GenButton
+            variant="main"
+            onClick={openModal2}
+            className="flex items-center gap-2"
+          >
+            <ReceiptText size={16} />
+            Deductions
+          </GenButton>
+
+          <GenButton
+            variant="main"
+            onClick={openReportModal}
+            disabled={!companyId}
+            className="flex items-center gap-2"
+          >
+            <FileText size={16} />
+            Report
+          </GenButton>
+        </>
+      )}
+    </div>
+
+    {/* RIGHT: COMPANY, PRINT AND SAVE */}
+    <div className="flex flex-wrap items-center gap-3">
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+        <span className="text-xs text-slate-500">
+          Company
+        </span>
+        <span className="ml-2 text-sm font-semibold text-slate-800">
+          {companyCode}
+        </span>
+      </div>
+
+      <GenButton
+        variant="main"
+        onClick={handlePrint1}
+        disabled={loading}
+        className="flex items-center gap-2"
+      >
+        {loading ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <Printer size={16} />
         )}
-      </div>
-      <div className="flex gap-5 justify-center items-center">
 
-            <h2><span className="font-bold">Company:</span> {companyCode}</h2>
-            <GenButton
-                        variant="main"
-                        onClick={handlePrint1}
-                        disabled={loading}
-                        >
-                        {loading ? "Generating PDF..." : "Print Payroll"}
-                    </GenButton>
-      </div> 
+        {loading ? "Generating PDF..." : "Print Payroll"}
+      </GenButton>
 
-      </div>
+      {hasPermission("SAVE_PAYROLL") && (
+        <>
+          <div className="hidden h-8 w-px bg-slate-200 xl:block" />
+
+          <GenButton
+            variant="positive"
+            onClick={handleSave}
+            disabled={!companyId || savePayroll.isPending}
+            className="flex items-center gap-2"
+          >
+            {savePayroll.isPending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+
+            {savePayroll.isPending
+              ? "Saving..."
+              : "Save Payroll"}
+          </GenButton>
+        </>
+      )}
+    </div>
+  </div>
+</div>
+
 
  
 
@@ -341,6 +426,19 @@ export default function StepReviewSave({ onBack }: Props) {
               <ViewDeductionsOnly/>
             </RequestModal>
           )}
+
+
+ {isReportModalOpen && final_currentCycle && (
+  <RequestModal
+    size="xxxl"
+    title="Pending Payroll Report"
+    onClose={closeReportModal}
+  >
+    <PendingPayrollReportModal
+      cycleCategory={final_currentCycle}
+    />
+  </RequestModal>
+)}
 
 
 

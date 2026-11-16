@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {  displayCompletePayrollController, savePayrollController,saveComputedFinalPayrollController,displayForApprovalController,reCheckPayrollController, getTotalPayrollController, getEmployeeArchivedController, ViewEmployeeBankAccountsController, GenerateBankFileController, printEmployeeArchivedController, saveWtaxOverrideController, SaveToApproverPayrollController, getPayrollArchiveReportController, reCheckPayrollToCheckerController, sendBulkPayslipController, sendPayslipEmailController, previewPayslipController } from "./payroll_archive.controller";
+import {  displayCompletePayrollController, savePayrollController,saveComputedFinalPayrollController,displayForApprovalController,reCheckPayrollController, getTotalPayrollController, getEmployeeArchivedController, ViewEmployeeBankAccountsController, GenerateBankFileController, printEmployeeArchivedController, saveWtaxOverrideController, SaveToApproverPayrollController, getPayrollArchiveReportController, reCheckPayrollToCheckerController, sendBulkPayslipController, sendPayslipEmailController, previewPayslipController, getPendingPayrollReportController } from "./payroll_archive.controller";
 import { authenticateToken } from "../../middleware/authMiddleware";
 
 const router = Router();
@@ -22,5 +22,6 @@ router.post("/recheck-back-to-checker",authenticateToken,reCheckPayrollToChecker
 router.post("/send-email-payslip",sendPayslipEmailController);
 router.post("/send-bulk-email-payslip",sendBulkPayslipController);
 router.get('/preview-payslip',previewPayslipController);
+router.get( "/pending-report/:company_id", getPendingPayrollReportController);
 
 export default router;

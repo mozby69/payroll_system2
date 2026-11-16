@@ -63,3 +63,17 @@ export async function getTotalPayrollRequest(
     
       return response.data.data;
     }
+
+
+export const getPendingPayrollReport = async (
+  company_id: string
+) => {
+  const response = await api.get(
+    `/payroll-archive/pending-report/${encodeURIComponent(company_id)}`,
+    {
+      withCredentials: true,
+    }
+  );
+
+  return response.data.data;
+};

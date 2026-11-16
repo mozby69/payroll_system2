@@ -18,6 +18,9 @@ export default function ArchiveReportView({ report, grandTotals }: Props) {
 
   const overallTotal = grandTotals.total + totalContributions
 
+
+  console.log("grandtotal: ", grandTotals)
+
   return (
     <div className="space-y-8">
 

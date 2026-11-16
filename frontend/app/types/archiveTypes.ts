@@ -22,6 +22,10 @@ export type PayrollArchiveEmployee = {
       type: string
     }
 
+      // Secondary branch information
+  secondBranch?: string | null;
+  secondBranchId?: string | null;
+
   };
 
   export type PayrollArchiveSummaries = {

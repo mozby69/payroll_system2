@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../services/axios";
 import SweetAlert from "../components/Swal";
 import {  PayrollResponse } from "../types/preparePayroll";
-import { getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
+import { getEmployeeArchivedService, getPayrollArchiveReportService, getPendingPayrollReport, getTotalPayrollRequest, printEmployeeArchivedService } from "../services/archive.services";
 import { BankProps, GetEmployeeArchivedParams } from "../types/totalPayroll";
 import { ApiErrorResponse, ErrorResponse } from "../types/generalTypes";
 import { AxiosError } from "axios";
-import { PayrollArchiveReport } from "../types/archiveTypes";
+import { PayrollArchiveEmployee, PayrollArchiveReport } from "../types/archiveTypes";
 
 
 
@@ -436,6 +436,29 @@ export function usePayrollArchiveReport(
   });
 }
 
+
+
+
+
+export const usePendingPayrollReport = (
+  company_id: string
+) => {
+  return useQuery<PayrollArchiveReport>({
+    queryKey: [
+      "pending-payroll-report",
+      company_id,
+    ],
+
+    queryFn: () =>
+      getPendingPayrollReport(company_id),
+
+    enabled: Boolean(company_id),
+
+    staleTime: 30_000,
+
+    refetchOnWindowFocus: false,
+  });
+};
 
 
 

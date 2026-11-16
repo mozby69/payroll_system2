@@ -3256,3 +3256,414 @@ const employees =
     failures,
   };
 }
+
+
+export async function getPendingPayrollReportService(
+  company_id: string
+) {
+  try {
+    // ==========================================
+    // 1. GET COMPANY
+    // ==========================================
+
+    const companyDetails =
+      await prisma.company_details.findUnique({
+        where: {
+          CompanyCode: company_id,
+        },
+      });
+
+    if (!companyDetails) {
+      throw {
+        code: "COMPANY_NOT_FOUND",
+        status: 404,
+        message: "Company not found",
+      };
+    }
+
+    // ==========================================
+    // 2. GET PENDING PAYROLL CALCULATIONS
+    // ==========================================
+
+    // Uses EmployeeSummary internally.
+    // No new parameters are added.
+    const payroll = await displayCompletePayroll(
+      ["PENDING"],
+      company_id
+    );
+
+    if (!payroll) {
+      throw {
+        code: "PAYROLL_CALCULATION_FAILED",
+        status: 500,
+        message: "Unable to retrieve pending payroll",
+      };
+    }
+
+    // ==========================================
+    // 3. GET EMPLOYEE DETAILS
+    // ==========================================
+
+    const empCodes = [
+      ...new Set(payroll.map((p) => p.EmpCodeId)),
+    ];
+
+    const employees = await prisma.employee.findMany({
+      where: {
+        EmpCode: {
+          in: empCodes,
+        },
+      },
+
+      include: {
+        BranchCode: true,
+        secondaryBranch: true,
+        employeepayroll: true,
+        specialLeaves: true,
+      },
+    });
+
+    const employeeMap = new Map(
+      employees.map((emp) => [emp.EmpCode, emp])
+    );
+
+    // ==========================================
+    // 4. NORMALIZE REPORT
+    // ==========================================
+
+    const rows = payroll.flatMap((item) => {
+      const emp = employeeMap.get(item.EmpCodeId);
+
+      if (!emp) return [];
+
+      const basicSalary = Number(
+        emp.employeepayroll?.basic_salary ?? 0
+      );
+
+      const netPay = Number(item.net_pay ?? 0);
+
+      const payrollDate = item.selected_payroll_date as
+        | {
+            start_date?: string;
+            end_date?: string;
+          }
+        | null;
+
+      const payrollStart = payrollDate?.start_date
+        ? new Date(payrollDate.start_date)
+        : null;
+
+      const payrollEnd = payrollDate?.end_date
+        ? new Date(payrollDate.end_date)
+        : null;
+
+      let reason: string | null = null;
+
+      let leaveInfo: {
+        type: string;
+        start: string;
+        end: string;
+        status: string;
+      } | null = null;
+
+      // ========================================
+      // SPECIAL LEAVE
+      // ========================================
+
+      if (netPay === 0 && payrollStart && payrollEnd) {
+        const leave = emp.specialLeaves.find((l) => {
+          const leaveStart =
+            l.status === "Expected"
+              ? l.expectedStart
+              : l.start;
+
+          const leaveEnd =
+            l.status === "Expected"
+              ? l.expectedEnd
+              : l.end;
+
+          if (!leaveStart || !leaveEnd) {
+            return false;
+          }
+
+          return (
+            new Date(leaveStart) <= payrollEnd &&
+            new Date(leaveEnd) >= payrollStart
+          );
+        });
+
+        if (leave) {
+          const leaveStart =
+            leave.status === "Expected"
+              ? leave.expectedStart
+              : leave.start;
+
+          const leaveEnd =
+            leave.status === "Expected"
+              ? leave.expectedEnd
+              : leave.end;
+
+          reason = "ON_LEAVE";
+
+          if (leaveStart && leaveEnd) {
+            leaveInfo = {
+              type: leave.leaveName,
+              start: new Date(
+                leaveStart
+              ).toLocaleDateString("en-PH"),
+              end: new Date(
+                leaveEnd
+              ).toLocaleDateString("en-PH"),
+              status: leave.status,
+            };
+          }
+        }
+      }
+
+      return [
+        {
+          empCode: emp.EmpCode,
+
+          name: [
+            emp.Lastname,
+            emp.Firstname,
+          ]
+            .filter(Boolean)
+            .join(", "),
+
+          isAlien: emp.isAlien,
+
+          board: emp.bod_member,
+          branch: emp.BranchCode?.branchCode ?? null,
+          department: emp.Department ?? null,
+
+          // Salary
+          basic: basicSalary,
+          halfBasic: Number(item.semi_monthly ?? 0),
+
+          // Payroll calculations
+          overtime: Number(item.overtime ?? 0),
+          late: Number(item.late_count ?? 0),
+          undertime: Number(item.undertime ?? 0),
+          absences: Number(item.absence ?? 0),
+          total: Number(item.gross_pay ?? 0),
+
+          // Employer contributions
+          pagIbigEmployeer: Number(
+            item.pagibig_contrib_employer ?? 0
+          ),
+
+          sssEmployeer: Number(
+            item.sss_contrib_employer ?? 0
+          ),
+
+          philhealthEmployeer: Number(
+            item.philhealth_contrib_employer ?? 0
+          ),
+
+          netPay,
+
+          totalDeductions: Number(
+            item.total_deductions ?? 0
+          ),
+
+          // Payroll period
+          payCode: item.PayCode,
+          payrollPeriod: item.PayrollPeriod,
+
+          reason,
+          leaveInfo,
+
+          secondBranch: emp.isAlien
+            ? emp.secondaryBranch?.company_id ?? ""
+            : "",
+
+          secondBranchId: emp.isAlien
+            ? emp.secondaryBranchId ?? ""
+            : "",
+        },
+      ];
+    });
+
+    // ==========================================
+    // 5. BOARD EMPLOYEES
+    // ==========================================
+
+    // const boardEmployees = rows.filter(
+    //   (r) => r.board === "bod1"
+    // );
+
+    // ==========================================
+    // 6. MANCOM EMPLOYEES
+    // ==========================================
+
+    const mancomEmployees = rows.filter(
+         (r) => ["Mancom", "bod1"].includes(r.board ?? "")
+    );
+
+    // ==========================================
+    // 7. HOLDING EMPLOYEES
+    // ==========================================
+
+const holdingEmployees = rows.filter((r) => {
+  if (r.board) return false;
+
+  const effectiveBranch =
+    r.isAlien && r.secondBranch === company_id
+      ? r.secondBranchId
+      : r.branch;
+
+  return (
+    (effectiveBranch === "EMB-MAIN" &&
+      r.department !== "M2") ||
+    (!r.isAlien && r.branch === "ASS")
+  );
+});
+    // ==========================================
+    // 8. BRANCH EMPLOYEES
+    // ==========================================
+
+const branchEmployees = rows.filter((r) => {
+  // Exclude Board and Mancom
+  if (r.board) return false;
+
+  // Exclude employees already in Holding
+  if (holdingEmployees.some(
+    (holding) => holding.empCode === r.empCode
+  )) {
+    return false;
+  }
+
+  const effectiveBranch =
+    r.isAlien && r.secondBranch === company_id
+      ? r.secondBranchId
+      : r.branch;
+
+  if (!effectiveBranch) return false;
+
+  // M2 employees belong to the Branch section
+  if (
+    effectiveBranch === "EMB-MAIN" &&
+    r.department === "M2"
+  ) {
+    return true;
+  }
+
+  // Exclude ASS unless the secondary branch
+  // identifies a different assigned branch.
+  if (effectiveBranch === "ASS") {
+    return false;
+  }
+
+  return effectiveBranch !== "EMB-MAIN";
+});
+
+    // ==========================================
+    // 9. GROUP BRANCH EMPLOYEES
+    // ==========================================
+type BranchGroup = Record<
+  string,
+  typeof branchEmployees
+>;
+
+const branchGroups =
+  branchEmployees.reduce<BranchGroup>(
+    (acc, emp) => {
+      const effectiveBranch =
+        emp.isAlien &&
+        emp.secondBranch === company_id
+          ? emp.secondBranchId
+          : emp.branch;
+
+      const branchKey =
+        effectiveBranch || "UNKNOWN";
+
+      acc[branchKey] ??= [];
+      acc[branchKey].push(emp);
+
+      return acc;
+    },
+    {}
+  );
+
+    // ==========================================
+    // 10. SORT BRANCH GROUPS
+    // ==========================================
+
+    Object.keys(branchGroups).forEach((key) => {
+      branchGroups[key].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+    });
+
+    const branchPositions = await prisma.branch.findMany({
+  where: {
+    company_id,
+  },
+  select: {
+    branchCode: true,
+    position: true,
+  },
+});
+
+const branchPositionMap = new Map<string, number>(
+  branchPositions.map((branch) => [
+    branch.branchCode,
+    branch.position,
+  ])
+);
+
+const sortedBranchGroups: BranchGroup =
+  Object.fromEntries(
+    Object.entries(branchGroups).sort(
+      ([branchA], [branchB]) => {
+        const positionA =
+          branchPositionMap.get(branchA) ??
+          Number.MAX_SAFE_INTEGER;
+
+        const positionB =
+          branchPositionMap.get(branchB) ??
+          Number.MAX_SAFE_INTEGER;
+
+        // Primary sort: Branch position
+        if (positionA !== positionB) {
+          return positionA - positionB;
+        }
+
+        // Secondary sort: Branch code
+        return branchA.localeCompare(branchB);
+      }
+    )
+  );
+
+    // ==========================================
+    // 11. RETURN REPORT
+    // ==========================================
+
+    return {
+      summaries: {
+        company: companyDetails.CompanyName,
+
+        // EmployeeSummary values
+        PayCycle: payroll[0]?.PayrollPeriod ?? null,
+        PayCode: payroll[0]?.PayCode ?? null,
+        PayrollPeriod: payroll[0]?.PayrollPeriod ?? null,
+      },
+
+      // boardEmployees,
+      mancomEmployees,
+      holdingEmployees,
+      branchGroups: sortedBranchGroups,
+    };
+  } catch (error) {
+    console.error(
+      "[PENDING PAYROLL REPORT] Error:",
+      error
+    );
+
+    throw error;
+  }
+}
+
+
+
