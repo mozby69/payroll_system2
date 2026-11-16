@@ -31,6 +31,8 @@ export type PayrollArchiveEmployee = {
   export type PayrollArchiveSummaries = {
     company: string;
     PayCycle: string;
+    PayCode: string;
+
   }
 
     export type PayrollArchiveReport = {
