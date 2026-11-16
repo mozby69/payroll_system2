@@ -79,44 +79,84 @@ export default function ArchiveReportModal({
   };
 
 
-  const grandTotals = useMemo(() => {
-    if (!report) return null;
-  
-    const allEmployees = [
-      ...(report.boardEmployees ?? []),
-      ...(report.mancomEmployees ?? []),
-      ...(report.holdingEmployees ?? []),
-      ...Object.values(report.branchGroups ?? {}).flat()
-    ];
-  
-    const toNumber = (v: unknown) => {
-      const n = Number(v);
-      return isNaN(n) ? 0 : n;
-    };
-  
-    return allEmployees.reduce(
-      (acc, e: PayrollArchiveEmployee) => ({
-        halfBasic: acc.halfBasic + toNumber(e.halfBasic),
-        overtime: acc.overtime + toNumber(e.overtime),
-        late: acc.late + toNumber(e.late),
-        absences: acc.absences + toNumber(e.absences),
-        total: acc.total + toNumber(e.total),
-        pagibig: acc.pagibig + toNumber(e.pagIbigEmployeer),
-        sss: acc.sss + toNumber(e.sssEmployeer),
-        philhealth: acc.philhealth + toNumber(e.philhealthEmployeer),
-      }),
-      {
-        halfBasic: 0,
-        overtime: 0,
-        late: 0,
-        absences: 0,
-        total: 0,
-        pagibig: 0,
-        sss: 0,
-        philhealth: 0,
-      }
-    );
-  }, [report]);
+const grandTotals = useMemo(() => {
+  if (!report) return null;
+
+  const allEmployees: PayrollArchiveEmployee[] = [
+    ...(report.boardEmployees ?? []),
+    ...(report.mancomEmployees ?? []),
+    ...(report.holdingEmployees ?? []),
+    ...Object.values(report.branchGroups ?? {}).flat(),
+  ];
+
+  const toCents = (value: unknown): number => {
+    const n = Number(value);
+
+    return Number.isFinite(n)
+      ? Math.round(n * 100)
+      : 0;
+  };
+
+  const totals = allEmployees.reduce(
+    (acc, employee) => {
+      acc.halfBasic += toCents(employee.halfBasic);
+      acc.overtime += toCents(employee.overtime);
+
+      // Combine Late and Undertime
+      acc.late +=
+        toCents(employee.late) +
+        toCents(employee.undertime);
+
+      acc.absences += toCents(employee.absences);
+
+      // Actual archived employee total
+      acc.total += toCents(employee.total);
+
+      acc.pagibig += toCents(employee.pagIbigEmployeer);
+      acc.sss += toCents(employee.sssEmployeer);
+      acc.philhealth += toCents(employee.philhealthEmployeer);
+
+      return acc;
+    },
+    {
+      halfBasic: 0,
+      overtime: 0,
+      late: 0,
+      absences: 0,
+      total: 0,
+      pagibig: 0,
+      sss: 0,
+      philhealth: 0,
+    }
+  );
+
+  const calculatedNet =
+    totals.halfBasic +
+    totals.overtime -
+    totals.late -
+    totals.absences;
+
+  const variance = totals.total - calculatedNet;
+
+  if (variance !== 0) {
+    console.warn("Payroll reconciliation variance:", {
+      calculatedNet: calculatedNet / 100,
+      archivedTotal: totals.total / 100,
+      variance: variance / 100,
+    });
+  }
+
+  return {
+    halfBasic: totals.halfBasic / 100,
+    overtime: totals.overtime / 100,
+    late: totals.late / 100,
+    absences: totals.absences / 100,
+    total: totals.total / 100,
+    pagibig: totals.pagibig / 100,
+    sss: totals.sss / 100,
+    philhealth: totals.philhealth / 100,
+  };
+}, [report]);
 
   
   return (

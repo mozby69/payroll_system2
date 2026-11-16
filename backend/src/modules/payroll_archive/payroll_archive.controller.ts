@@ -1,5 +1,5 @@
 import { formatMMDDYY, generateBankTxt, generatePNBExcel } from "./payroll_archive.helper";
-import { buildPayslipData, displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendBulkPayslipService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
+import { buildPayslipData, displayBankAdminBDO, displayCompletePayroll, getAvailableCompanyCyclesService, getEmployeeArchivedService, getPayrollArchiveReportService, getPendingPayrollReportService, getTotalPayrollService, printEmployeeArchivedService, reCheckPayroll, reCheckPayrollToChecker, saveComputedFinalPayroll, saveComputedPayroll, SaveToApproverPayroll, saveWtaxOverrideService, sendBulkPayslipService, sendPayslipEmailService, ViewEmployeeBankAccounts } from "./payroll_archive.service";
 import { Request, Response } from "express";
 import { BankFileRow, SendPayslipType } from "./payroll_archive.types";
 import { prisma } from "../../config/prismaClient";
@@ -687,3 +687,59 @@ export async function previewPayslipController(
     });
   }
 }
+
+
+
+export const getPendingPayrollReportController = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const company_id = req.params.company_id;
+
+    if (typeof company_id !== "string" || !company_id.trim()) {
+      res.status(400).json({
+        success: false,
+        message: "Company ID is required",
+      });
+      return;
+    }
+
+    const report = await getPendingPayrollReportService(
+      company_id.trim()
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Pending payroll report retrieved successfully",
+      data: report,
+    });
+  } catch (error: unknown) {
+    console.error(
+      "[PENDING PAYROLL REPORT CONTROLLER]",
+      error
+    );
+
+    const err = error as {
+      code?: string;
+      status?: number;
+      message?: string;
+    };
+
+    const status =
+      typeof err.status === "number" &&
+      err.status >= 400 &&
+      err.status <= 599
+        ? err.status
+        : 500;
+
+    res.status(status).json({
+      success: false,
+      code: err.code ?? "INTERNAL_SERVER_ERROR",
+      message:
+        status === 500
+          ? "Failed to retrieve pending payroll report"
+          : err.message ?? "Request failed",
+    });
+  }
+};
