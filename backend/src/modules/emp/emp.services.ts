@@ -388,24 +388,39 @@ export const updateEmployeePayroll = async (
 
 
 
-export const getEmployeesByCompanyGrouped = async (companyCode: string) => {
+
+export const getEmployeesByCompanyGrouped = async (
+  companyCode: string
+) => {
   const employees = await prisma.employee.findMany({
     where: {
-      BranchCode: {
-        company_id: companyCode,
-      },
-      EmployeeStatus: "Active"
+      EmployeeStatus: "Active",
+      OR: [
+        {
+          BranchCode: {
+            company_id: companyCode,
+          },
+        },
+        {
+          BranchCodeId: "ASS",
+          secondaryBranch: {
+            company_id: companyCode,
+          },
+        },
+      ],
     },
     select: {
       EmpCode: true,
       Firstname: true,
       Middlename: true,
       Lastname: true,
+      Department: true,
       BranchCode: {
         select: {
           branchCode: true,
         },
       },
+      secondaryBranchId: true,
       employeepayroll: {
         select: {
           basic_salary: true,
@@ -418,8 +433,37 @@ export const getEmployeesByCompanyGrouped = async (companyCode: string) => {
     ],
   });
 
+  employees.forEach((employee) => {
+    const primaryBranch =
+      employee.BranchCode?.branchCode;
+
+    const secondaryBranch =
+      employee.secondaryBranchId?.trim();
+
+    if (
+      primaryBranch === "ASS" &&
+      secondaryBranch &&
+      employee.BranchCode
+    ) {
+      employee.BranchCode.branchCode = secondaryBranch;
+    }
+  });
+
+  employees.sort((a, b) => {
+    const branchA = a.BranchCode?.branchCode ?? "";
+    const branchB = b.BranchCode?.branchCode ?? "";
+
+    return (
+      branchA.localeCompare(branchB) ||
+      (a.Lastname ?? "").localeCompare(
+        b.Lastname ?? ""
+      )
+    );
+  });
+
   return employees;
 };
+
 
 
 export const bulkIncreaseSalary = async (
