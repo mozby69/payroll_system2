@@ -394,6 +394,7 @@ export const getEmployeesByCompanyGrouped = async (companyCode: string) => {
       BranchCode: {
         company_id: companyCode,
       },
+      EmployeeStatus: "Active"
     },
     select: {
       EmpCode: true,
