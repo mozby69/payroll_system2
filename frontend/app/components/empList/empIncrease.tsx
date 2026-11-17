@@ -41,27 +41,41 @@ export default function EmpIncrease({ open, onClose }: Props) {
     return Array.from(unique).sort();
     }, [employees]);
 
-    const grouped = useMemo(() => {
-    if (!employees) return {};
 
-    const filteredEmployees = selectedBranch
+    const grouped = useMemo(() => {
+      if (!employees) return {};
+
+      const filteredEmployees = selectedBranch
         ? employees.filter(
             (e) =>
-            (e.BranchCode?.branchCode || "NO BRANCH") ===
-            selectedBranch
-        )
+              (e.BranchCode?.branchCode || "NO BRANCH") ===
+              selectedBranch
+          )
         : employees;
 
-    return filteredEmployees.reduce((acc, emp) => {
+      return filteredEmployees.reduce((acc, emp) => {
         const branch =
-        emp.BranchCode?.branchCode || "NO BRANCH";
+          emp.BranchCode?.branchCode || "NO BRANCH";
 
-        if (!acc[branch]) acc[branch] = [];
-        acc[branch].push(emp);
+        const department =
+          emp.Department?.trim().toUpperCase();
+
+        // Separate M2 employees only when primary branch is EMB-MAIN
+        const groupKey =
+          branch === "EMB-MAIN" && department === "M2"
+            ? "EMB-MAIN - M2"
+            : branch;
+
+        if (!acc[groupKey]) {
+          acc[groupKey] = [];
+        }
+
+        acc[groupKey].push(emp);
 
         return acc;
-    }, {} as Record<string, EmployeeIncreaseItem[]>);
+      }, {} as Record<string, EmployeeIncreaseItem[]>);
     }, [employees, selectedBranch]);
+
 
   const toggleEmployee = (empCode: string) => {
     setSelectedEmployees((prev) => {

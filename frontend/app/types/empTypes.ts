@@ -164,19 +164,23 @@ export type PayrollFormState = {
   isDisabled:boolean;
 };
 
-
-export type EmployeeIncreaseItem = {
+export interface EmployeeIncreaseItem {
   EmpCode: string;
-  Firstname: string;
-  Middlename: string;
-  Lastname: string;
+  Firstname: string | null;
+  Middlename: string | null;
+  Lastname: string | null;
+  Department: string | null;
+
   BranchCode: {
     branchCode: string;
-  };
-  employeepayroll?: {
-    basic_salary: number;
   } | null;
-};
+
+  secondaryBranchId: string | null;
+
+  employeepayroll: {
+    basic_salary: number | null;
+  } | null;
+}
 
 export type BulkIncreasePayload = {
   empCodes: string[];
