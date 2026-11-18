@@ -549,16 +549,16 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
         const override = parseSummaryOverrideChanges(overrideRecord?.changes);
 
         const basicSalary = Number(emp.EmpCode.employeepayroll?.basic_salary ?? 0);
-        //const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
-        const totalLateCount = override?.LateCount ?? (emp.LateCount ? Number(emp.LateCount) : 0);
-        //const totalUndertimeCount = emp.TotalUndertime ? Number(emp.TotalUndertime): 0;
-        const totalUndertimeCount = override?.TotalUndertime ?? (emp.TotalUndertime ? Number(emp.TotalUndertime) : 0);
-        //const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
-        const totalAbsent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
-          ? Number(override.TotalAbsentHours)
-          : emp.TotalAbsentHours
-          ? Number(emp.TotalAbsentHours)
-          : 0;
+        const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+        //const totalLateCount = override?.LateCount ?? (emp.LateCount ? Number(emp.LateCount) : 0);
+        const totalUndertimeCount = emp.TotalUndertime ? Number(emp.TotalUndertime): 0;
+        //const totalUndertimeCount = override?.TotalUndertime ?? (emp.TotalUndertime ? Number(emp.TotalUndertime) : 0);
+        const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+        // const totalAbsent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
+        //   ? Number(override.TotalAbsentHours)
+        //   : emp.TotalAbsentHours
+        //   ? Number(emp.TotalAbsentHours)
+        //   : 0;
         const phil_percentage = phil?.SettingPercentage?.toNumber() ?? 0;
         const rawPagibigEmployee = emp.EmpCode.pagibig_list[0]?.pagibig_employee_share?.toNumber() ?? 0;
         const rawPagibigEmployer = emp.EmpCode.pagibig_list[0]?.pagibig_employer_share?.toNumber() ?? 0;
@@ -597,10 +597,13 @@ export async function displayCompletePayroll(statuses:("PENDING" | "FOR_CHECKER"
 
 
      
+        const absent = override?.TotalAbsentHours != null ? Number(override.TotalAbsentHours) : computeAbsent(totalAbsent, basicSalary, isSixDaysWork);
+        //const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
+        //const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+        const lateCount = override?.LateCount ?? computeLate(totalLateCount,basicSalary,isSixDaysWork);
 
-        const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
-        const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
-        const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+        //const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+        const undertimeCount = override?.TotalUndertime ?? computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);;
         const semiMonthly =  computeSemiMonthlySalary(basicSalary);
    
         const sssContribEmployee = Number(computeSSSContribution(basicSalary, sssTable,isNewProbi,Paycodes));

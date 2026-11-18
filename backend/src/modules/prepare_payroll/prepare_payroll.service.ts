@@ -724,22 +724,34 @@ export async function ComputePayroll({company_id,page,limit,search}: {  company_
 
     const salaryDecimal = emp.EmpCode.employeepayroll?.basic_salary;
     const basicSalary = salaryDecimal ? salaryDecimal.toNumber() : 0;
-    //const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
-    const totalLateCount = override?.LateCount ?? (emp.LateCount ? Number(emp.LateCount) : 0);
+    const totalLateCount = emp.LateCount ? Number(emp.LateCount): 0;
+    //const totalLateCount = override?.LateCount ?? (emp.LateCount ? Number(emp.LateCount) : 0);
 
-    //const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
-    const totalUndertimeCount = override?.TotalUndertime ?? (emp.TotalUndertime ? Number(emp.TotalUndertime) : 0);
-    //const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
-    const totalAbsent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
-      ? Number(override.TotalAbsentHours)
-      : emp.TotalAbsentHours
-      ? Number(emp.TotalAbsentHours)
-      : 0;
+    const totalUndertimeCount = emp.TotalUndertime? Number(emp.TotalUndertime): 0;
+    //const totalUndertimeCount = override?.TotalUndertime ?? (emp.TotalUndertime ? Number(emp.TotalUndertime) : 0);
+    const totalAbsent = emp.TotalAbsentHours ? Number(emp.TotalAbsentHours) : 0;
+    // const totalAbsent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
+    //   ? Number(override.TotalAbsentHours)
+    //   : emp.TotalAbsentHours
+    //   ? Number(emp.TotalAbsentHours)
+    //   : 0;
+
+
     const isSixDaysWork  = emp.EmpCode.isSixDaysWork;
 
-    const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
-    const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
-    const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
+    //const undertimeCount = computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+    const undertimeCount = override?.TotalUndertime ?? computeLate(totalUndertimeCount,basicSalary,isSixDaysWork);
+    //const lateCount = computeLate(totalLateCount,basicSalary,isSixDaysWork);
+    const lateCount = override?.LateCount ?? computeLate(totalLateCount,basicSalary,isSixDaysWork);
+
+    //const absent = computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
+    //   const absent = override?.TotalAbsentHours !== null && override?.TotalAbsentHours !== undefined
+    // ? Number(override.TotalAbsentHours)
+    // : emp.TotalAbsentHours
+    // ? Number(emp.TotalAbsentHours)
+    // : 0;
+
+    const absent =  override?.TotalAbsentHours != null ? Number(override.TotalAbsentHours):computeAbsent(totalAbsent,basicSalary,isSixDaysWork);
 
     const semiMonthlyRate = computeSemiMonthlySalary(basicSalary);
     const semi_monthly = Number(semiMonthlyRate ?? 0);
