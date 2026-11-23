@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import SweetAlert from "@/app/components/Swal";
 import { useGetCompanyByCode } from "@/app/hooks/useGeneral";
+import { useAllowanceSignatories } from "@/app/hooks/useAllowance";
 //import EmployeeVariance from "./EmployeeVariance";
 
 
@@ -305,6 +306,36 @@ const handlePrint = useReactToPrint({
     );
   };
 
+
+
+  //signatories
+
+  const { data: signatoryResponse } = useAllowanceSignatories();
+
+  const signatories = signatoryResponse?.data ?? [];
+
+  // Get only VARIANCE signatories
+  const varianceSignatories = signatories.filter(
+    (item) => item.category === "VARIANCE" && item.isActive
+  );
+
+  const preparedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "PREPARED_BY"
+  );
+
+  const checkedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "CHECKED_BY"
+  );
+
+  const notedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "NOTED_BY"
+  );
+
+  // const approvedBy = varianceSignatories.filter(
+  //   (item) => item.signatory_type === "APPROVED_BY"
+  // );
+
+
   return (
     <div className="p-1">
 
@@ -384,51 +415,92 @@ const handlePrint = useReactToPrint({
 
 
 
-<div className="final-variance-section px-4 pt-4">
-  <h2 className="mb-3 font-bold">
-    Final Variance
-  </h2>
+        <div className="final-variance-section px-4 pt-4">
+          <h2 className="mb-3 font-bold">
+            Final Variance
+          </h2>
 
-  <table className="final-variance-table w-full border-collapse text-sm">
-    <colgroup>
-      <col style={{ width: "50%" }} />
-      <col style={{ width: "50%" }} />
-    </colgroup>
+          <table className="final-variance-table w-full border-collapse text-sm">
+            <colgroup>
+              <col style={{ width: "50%" }} />
+              <col style={{ width: "50%" }} />
+            </colgroup>
 
-    <thead>
-      <tr>
-        <th className="border border-slate-400 px-3 py-2 text-center">
-          Description
-        </th>
+            <thead>
+              <tr>
+                <th className="border border-slate-400 px-3 py-2 text-center">
+                  Description
+                </th>
 
-        <th className="border border-slate-400 px-3 py-2 text-center">
-          Variance
-        </th>
-      </tr>
-    </thead>
+                <th className="border border-slate-400 px-3 py-2 text-center">
+                  Variance
+                </th>
+              </tr>
+            </thead>
 
-    <tbody>
-      {finalVarianceRows.map((item) => (
-        <tr key={item.key}>
-          <td className="border border-slate-400 px-3 py-2 text-center">
-            {item.label}
-          </td>
+            <tbody>
+              {finalVarianceRows.map((item) => (
+                <tr key={item.key}>
+                  <td className="border border-slate-400 px-3 py-2 text-center">
+                    {item.label}
+                  </td>
 
-          <td
-  className="variance-amount border border-slate-400 px-3 py-2"
-  style={{
-    textAlign: "right",
-    paddingRight: "10px",
-    fontVariantNumeric: "tabular-nums",
-  }}
->
-  {formatAmount(item.value)}
-</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+                  <td
+                    className="variance-amount border border-slate-400 px-3 py-2"
+                    style={{
+                      textAlign: "right",
+                      paddingRight: "10px",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {formatAmount(item.value)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+
+
+
+
+
+               <div className="mt-4 grid grid-cols-3 px-4 py-4 text-xs">
+                        {/* LEFT */}
+                        <div className="justify-self-start">
+                            <h2 className="font-semibold">PREPARED BY:</h2>
+
+                            {preparedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+
+                        {/* CENTER */}
+                        <div className="justify-self-center">
+                            <h2 className="font-semibold">CHECKED BY:</h2>
+
+                            {checkedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+
+                        {/* RIGHT */}
+                        <div className="justify-self-end">
+                            <h2 className="font-semibold">NOTED BY:</h2>
+
+                            {notedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+                    </div>
+
 
       </div>
 

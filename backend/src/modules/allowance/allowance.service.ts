@@ -4331,15 +4331,14 @@ export async function getSignatoriesByCategoryService(
 
 export async function getAllowanceSignatories() {
   return prisma.signatoryList.findMany({
-    where: {
-      category: "ALLOWANCE",
-    },
-
     select: {
       id: true,
       name: true,
+      position: true,
       signatory_type: true,
       category: true,
+      sortOrder: true,
+      isActive: true,
     },
 
     orderBy: {

@@ -368,7 +368,8 @@ export type SignatoryType =
   export type SignatoryCategory =
   | "BONUS"
   | "PAYROLL"
-  | "ALLOWANCE";
+  | "ALLOWANCE"
+  | "VARIANCE";
 
 export interface Signatory {
   id: number;

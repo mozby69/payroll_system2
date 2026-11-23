@@ -39,6 +39,7 @@ const CATEGORIES: {
   { value: "BONUS", label: "Bonus" },
   { value: "PAYROLL", label: "Payroll" },
   { value: "ALLOWANCE", label: "Allowance" },
+  { value: "VARIANCE", label: "Variance" },
 ];
 
 function SignatoryForm({

@@ -152,31 +152,32 @@ export default function ViewAllList({ selectedMonth }: Props) {
 });
 
 
-    const {data: signatoryResponse} = useAllowanceSignatories();
+   const { data: signatoryResponse } = useAllowanceSignatories();
 
-    const signatories = signatoryResponse?.data ?? [];
+  const signatories = signatoryResponse?.data ?? [];
 
-    const preparedBy = signatories.filter(
-    (item) =>
-        item.signatory_type === "PREPARED_BY"
-    );
+  // Get only VARIANCE signatories
+  const varianceSignatories = signatories.filter(
+    (item) => item.category === "ALLOWANCE" && item.isActive
+  );
 
-    const checkedBy = signatories.filter(
-    (item) =>
-        item.signatory_type === "CHECKED_BY"
-    );
+  const preparedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "PREPARED_BY"
+  );
 
-    // const notedBy = signatories.filter(
-    // (item) =>
-    //     item.signatory_type === "NOTED_BY"
-    // );
+  const checkedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "CHECKED_BY"
+  );
 
+  const notedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "NOTED_BY"
+  );
 
-      const approvedBy = signatories.filter(
-    (item) =>
-        item.signatory_type === "APPROVED_BY"
-    );
+  const approvedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "APPROVED_BY"
+  );
 
+  console.log("variance",varianceSignatories)
 
 
     return (

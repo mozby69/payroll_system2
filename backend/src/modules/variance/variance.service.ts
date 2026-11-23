@@ -7,27 +7,33 @@ import { isSecondCutoff } from "../prepare_payroll/prepare_payroll.computation";
 import { empty } from "@prisma/client/runtime/library";
 import { PayrollCycle, SaveVarianceOverrideParams, UserAccount, VarianceArchiveProps } from "./variance.types";
 
-export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "15-30-Cycle", userAcc: string) {
-  try {
 
+export async function fetchVariance(
+  company_id: string,
+  cycle: "10-25-Cycle" | "15-30-Cycle",
+  userAcc: string
+) {
+  try {
     let pre_computed: any[] = [];
 
     if (userAcc === "PAYROLL_CHECKER") {
-      pre_computed = (await displayCompletePayroll(["PENDING"])) ?? [];
+      pre_computed =
+        (await displayCompletePayroll(["PENDING"])) ?? [];
     }
 
     if (userAcc === "FINANCIAL_CHECKER") {
-      pre_computed = (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
+      pre_computed =
+        (await displayCompletePayroll(["FOR_CHECKER"])) ?? [];
     }
 
     if (userAcc === "FINANCE_APPROVER") {
-      pre_computed = (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
+      pre_computed =
+        (await displayCompletePayroll(["FOR_APPROVER"])) ?? [];
     }
-
 
     const data = await prisma.totalPayrollByCompany.findMany({
       where: {
-        company_id: company_id,
+        company_id,
         cycle_category: cycle,
       },
       select: {
@@ -47,11 +53,10 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
       take: 2,
     });
 
-    //const pre_computed = await displayCompletePayroll(["PENDING"]);
-
     const computed = (pre_computed ?? []).filter((e) => {
       const isRegularCompany =
-        e.company_id === company_id && e.EmpCode?.isAlien === false;
+        e.company_id === company_id &&
+        e.EmpCode?.isAlien === false;
 
       const isAlienSecondaryCompany =
         e.EmpCode?.isAlien === true &&
@@ -60,44 +65,121 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
       return isRegularCompany || isAlienSecondaryCompany;
     });
 
-    const PayCode = computed[0].PayCode;
+    // MODIFIED: Prevent an error when no payroll records exist.
+    const PayCode = computed[0]?.PayCode?.trim();
 
-    const currentBasicPay = computed.reduce((total, employee) => {
-      return total + Number(employee.semi_monthly ?? 0);
-    }, 0);
+    if (!PayCode) {
+      throw new Error(
+        `No computed payroll found for company ${company_id}`
+      );
+    }
 
-    const currentSSSEmployee = computed.reduce((total, employee) => {
-      return total + Number(employee.sss_contrib_employee ?? 0)
-    }, 0)
 
-    const currentSSSEmployer = computed.reduce((total, employee) => {
-      return total + Number(employee.sss_contrib_employer ?? 0);
-    }, 0);
+const calculateMoneyVariance = (
+  currentValue: number | string | Prisma.Decimal | null | undefined,
+  previousValue: number | string | Prisma.Decimal | null | undefined
+): number => {
+  const currentCentavos = Math.round(
+    Number(currentValue ?? 0) * 100
+  );
 
-    const currentPhilEmployee = computed.reduce((total, employee) => {
-      return total + Number(employee.philhealth_contrib_employee ?? 0);
-    }, 0);
+  const previousCentavos = Math.round(
+    Number(previousValue ?? 0) * 100
+  );
 
-    const currentPhilEmployer = computed.reduce((total, employee) => {
-      return total + Number(employee.philhealth_contrib_employer ?? 0);
-    }, 0);
+  return (currentCentavos - previousCentavos) / 100;
+};
 
-    const currentPagibigEmployee = computed.reduce((total, employee) => {
-      return total + Number(employee.pagibig_contrib_employee ?? 0);
-    }, 0);
+    const currentBasicPay = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.semi_monthly ?? 0),
+      0
+    );
 
-    const currentPagibigEmployer = computed.reduce((total, employee) => {
-      return total + Number(employee.pagibig_contrib_employer ?? 0);
-    }, 0);
+    const currentSSSEmployee = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.sss_contrib_employee ?? 0),
+      0
+    );
 
-    const currentWtax = computed.reduce((total, employee) => {
-      return total + Number(employee.wtax ?? 0);
-    }, 0);
+    const currentSSSEmployer = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.sss_contrib_employer ?? 0),
+      0
+    );
 
+    const currentPhilEmployee = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.philhealth_contrib_employee ?? 0),
+      0
+    );
+
+    const currentPhilEmployer = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.philhealth_contrib_employer ?? 0),
+      0
+    );
+
+    const currentPagibigEmployee = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.pagibig_contrib_employee ?? 0),
+      0
+    );
+
+    const currentPagibigEmployer = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.pagibig_contrib_employer ?? 0),
+      0
+    );
+
+    const currentWtax = computed.reduce(
+      (total, employee) =>
+        total + Number(employee.wtax ?? 0),
+      0
+    );
 
     const recentPrev = data[0] ?? null;
     const olderPrev = data[1] ?? null;
 
+    // MODIFIED: Use the same historical comparison period
+    // as FetchEmployeeVariance().
+    const previousSSSEmployee = Number(
+      olderPrev?.Total_SSSContributionEmployee ?? 0
+    );
+
+    const previousSSSEmployer = Number(
+      olderPrev?.Total_SSSContributionEmployer ?? 0
+    );
+
+    const previousPhilEmployee = Number(
+      olderPrev?.Total_PhilhealthContributionEmployee ?? 0
+    );
+
+    const previousPhilEmployer = Number(
+      olderPrev?.Total_PhilhealthContributionEmployer ?? 0
+    );
+
+    // MODIFIED: Calculate actual differences regardless
+    // of first or second cutoff.
+    const sssEmployeeVariance = calculateMoneyVariance(
+      currentSSSEmployee,
+      previousSSSEmployee
+    );
+
+    const sssEmployerVariance = calculateMoneyVariance(
+      currentSSSEmployer,
+      previousSSSEmployer
+    );
+
+    const philEmployeeVariance = calculateMoneyVariance(
+      currentPhilEmployee,
+      previousPhilEmployee
+    );
+
+    const philEmployerVariance = calculateMoneyVariance(
+      currentPhilEmployer,
+      previousPhilEmployer
+    );
 
     if (isSecondCutoff(PayCode)) {
       return {
@@ -112,42 +194,83 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
           pagibig_employer: currentPagibigEmployer,
           wtax: currentWtax,
         },
+
         recent_prev: {
           paycode: recentPrev?.PayCycle ?? null,
-          basic_pay: Number(recentPrev?.total_basic_salary ?? 0),
+          basic_pay: Number(
+            recentPrev?.total_basic_salary ?? 0
+          ),
           sss_employee: 0,
           sss_employer: 0,
           phil_employee: 0,
           phil_employer: 0,
-          pagibig_employee: Number(recentPrev?.Total_PagibigContributionEmployee ?? 0),
-          pagibig_employer: Number(recentPrev?.Total_PagibigContributionEmployer ?? 0),
+          pagibig_employee: Number(
+            recentPrev?.Total_PagibigContributionEmployee ?? 0
+          ),
+          pagibig_employer: Number(
+            recentPrev?.Total_PagibigContributionEmployer ?? 0
+          ),
           wtax: Number(recentPrev?.total_wtax ?? 0),
         },
+
         older_prev: {
           paycode: olderPrev?.PayCycle ?? null,
           basic_pay: 0,
-          sss_employee: 0,
-          sss_employer: 0,
-          phil_employee: 0,
-          phil_employer: 0,
-          pagibig_employee: Number(olderPrev?.Total_PagibigContributionEmployee ?? 0),
-          pagibig_employer: Number(olderPrev?.Total_PagibigContributionEmployer ?? 0),
+
+          // MODIFIED: Display actual historical contributions.
+          sss_employee: previousSSSEmployee,
+          sss_employer: previousSSSEmployer,
+          phil_employee: previousPhilEmployee,
+          phil_employer: previousPhilEmployer,
+
+          pagibig_employee: Number(
+            olderPrev?.Total_PagibigContributionEmployee ?? 0
+          ),
+          pagibig_employer: Number(
+            olderPrev?.Total_PagibigContributionEmployer ?? 0
+          ),
           wtax: Number(olderPrev?.total_wtax ?? 0),
         },
+
         variance: {
           paycode: "VARIANCE",
-          basic_pay_variance: currentBasicPay - Number(recentPrev?.total_basic_salary),
-          sss_employee: currentSSSEmployee,
-          sss_employer: currentSSSEmployer,
-          phil_employee: MathRound(currentPhilEmployee),
-          phil_employer: MathRound(currentPhilEmployer),
-          pagibig_employee: currentPagibigEmployee - Number(olderPrev?.Total_PagibigContributionEmployee ?? 0),
-          pagibig_employer: currentPagibigEmployer - Number(olderPrev?.Total_PagibigContributionEmployer ?? 0),
-          wtax: currentWtax - Number(olderPrev?.total_wtax ?? 0),
-        }
-      }
-    }
-    else {
+
+          basic_pay_variance: calculateMoneyVariance(
+            currentBasicPay,
+            recentPrev?.total_basic_salary
+          ),
+
+          // MODIFIED: Keep existing field names for
+          // compatibility with the payroll explanation UI.
+          sss_employee: sssEmployeeVariance,
+          sss_employer: sssEmployerVariance,
+          phil_employee: philEmployeeVariance,
+          phil_employer: philEmployerVariance,
+
+          // MODIFIED: Add the field names expected
+          // by CompleteVariance().
+          sss_employee_variance: sssEmployeeVariance,
+          sss_employer_variance: sssEmployerVariance,
+          phil_employee_variance: philEmployeeVariance,
+          phil_employer_variance: philEmployerVariance,
+
+          pagibig_employee: calculateMoneyVariance(
+            currentPagibigEmployee,
+            olderPrev?.Total_PagibigContributionEmployee
+          ),
+
+          pagibig_employer: calculateMoneyVariance(
+            currentPagibigEmployer,
+            olderPrev?.Total_PagibigContributionEmployer
+          ),
+
+          wtax: calculateMoneyVariance(
+            currentWtax,
+            olderPrev?.total_wtax
+          ),
+        },
+      };
+    } else {
       return {
         current: {
           paycode: PayCode,
@@ -157,36 +280,47 @@ export async function fetchVariance(company_id: string, cycle: "10-25-Cycle" | "
           phil_employee: MathRound(currentPhilEmployee),
           phil_employer: MathRound(currentPhilEmployer),
         },
+
         recent_prev: {
           paycode: recentPrev?.PayCycle ?? null,
-          basic_pay: Number(recentPrev?.total_basic_salary ?? 0),
+          basic_pay: Number(
+            recentPrev?.total_basic_salary ?? 0
+          ),
           sss_employee: 0,
           sss_employer: 0,
           phil_employee: 0,
           phil_employer: 0,
         },
+
         older_prev: {
           paycode: olderPrev?.PayCycle ?? null,
           basic_pay: 0,
-          sss_employee: Number(olderPrev?.Total_SSSContributionEmployee ?? 0),
-          sss_employer: Number(olderPrev?.Total_SSSContributionEmployer ?? 0),
-          phil_employee: Number(olderPrev?.Total_PhilhealthContributionEmployee ?? 0),
-          phil_employer: Number(olderPrev?.Total_PhilhealthContributionEmployer ?? 0),
+          sss_employee: previousSSSEmployee,
+          sss_employer: previousSSSEmployer,
+          phil_employee: previousPhilEmployee,
+          phil_employer: previousPhilEmployer,
         },
+
         variance: {
           paycode: "VARIANCE",
-          basic_pay_variance: currentBasicPay - Number(recentPrev?.total_basic_salary),
-          sss_employee_variance: currentSSSEmployee - Number(olderPrev?.Total_SSSContributionEmployee),
-          sss_employer_variance: currentSSSEmployer - Number(olderPrev?.Total_SSSContributionEmployer),
-          phil_employee_variance: MathRound(currentPhilEmployee - Number(olderPrev?.Total_PhilhealthContributionEmployee)),
-          phil_employer_variance: MathRound(currentPhilEmployer - Number(olderPrev?.Total_PhilhealthContributionEmployer)),
-        }
+
+          basic_pay_variance: calculateMoneyVariance(
+            currentBasicPay,
+            recentPrev?.total_basic_salary
+          ),
+
+          // MODIFIED: Reuse the same contribution calculations.
+          sss_employee_variance: sssEmployeeVariance,
+          sss_employer_variance: sssEmployerVariance,
+          phil_employee_variance: philEmployeeVariance,
+          phil_employer_variance: philEmployerVariance,
+        },
       };
     }
-
-
   } catch (error) {
-    console.error(`error occurred in service ${error}`);
+    console.error(
+      `error occurred in service ${error}`
+    );
     throw error;
   }
 }
@@ -465,6 +599,13 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
       const secondCutoff = isSecondCutoff(getPaycode);
 
+      const isProbationary =
+        (current?.EmpCode?.EmploymentStatus ??
+          info?.EmploymentStatus) === "Probationary";
+
+      const shouldCalculateSSSAndPhilhealth =
+        !secondCutoff || isProbationary;
+
       return {
         EmpCode: empCode,
         Lastname:
@@ -496,24 +637,35 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
 
         current_sss_employee: currentSSSEmployee,
         previous_sss_employee: previousSSSEmployee,
-        sss_employee_variance: secondCutoff ? 0 : MathRound(currentSSSEmployee - previousSSSEmployee),
-        //sss_employee_variance:  MathRound(currentSSSEmployee - previousSSSEmployee),
+        //sss_employee_variance: secondCutoff ? 0 : MathRound(currentSSSEmployee - previousSSSEmployee),
+        sss_employee_variance: shouldCalculateSSSAndPhilhealth
+        ? calculateMoneyVariance(currentSSSEmployee, previousSSSEmployee)
+        : 0,
 
         current_sss_employer: currentSSSEmployer,
         previous_sss_employer: previousSSSEmployer,
-        sss_employer_variance: secondCutoff ? 0 : MathRound(currentSSSEmployer - previousSSSEmployer),
-        //sss_employer_variance: MathRound(currentSSSEmployer - previousSSSEmployer),
+        //sss_employer_variance: secondCutoff ? 0 : MathRound(currentSSSEmployer - previousSSSEmployer),
+        sss_employer_variance: shouldCalculateSSSAndPhilhealth
+        ? calculateMoneyVariance(currentSSSEmployer, previousSSSEmployer)
+        : 0,
+
 
         current_phil_employee: currentPhilEmployee,
         previous_phil_employee: previousPhilEmployee,
-        phil_employee_variance: secondCutoff ? 0 : MathRound(currentPhilEmployee - previousPhilEmployee),
-        //phil_employee_variance: MathRound(currentPhilEmployee - previousPhilEmployee),
+        //phil_employee_variance: secondCutoff ? 0 : MathRound(currentPhilEmployee - previousPhilEmployee),
+        phil_employee_variance: shouldCalculateSSSAndPhilhealth
+        ? calculateMoneyVariance(currentPhilEmployee, previousPhilEmployee)
+        : 0,
+
 
 
         current_phil_employer: currentPhilEmployer,
         previous_phil_employer: previousPhilEmployer,
-        phil_employer_variance: secondCutoff ? 0 : MathRound(currentPhilEmployer - previousPhilEmployer),
-        //phil_employer_variance: MathRound(currentPhilEmployer - previousPhilEmployer),
+        //phil_employer_variance: secondCutoff ? 0 : MathRound(currentPhilEmployer - previousPhilEmployer),
+        phil_employer_variance: shouldCalculateSSSAndPhilhealth
+        ? calculateMoneyVariance(currentPhilEmployer, previousPhilEmployer)
+        : 0,
+  
 
         current_pagibig_employee: currentPagibigEmployee,
         previous_pagibig_employee: previousPagibigEmployee,
@@ -523,9 +675,7 @@ export async function FetchEmployeeVariance(company_id: string, cycle: "10-25-Cy
         previous_pagibig_employer: previousPagibigEmployer,
         pagibig_employer_variance: MathRound(currentPagibigEmployer - previousPagibigEmployer),
 
-        // current_wtax: currentEmployeeWTax,
-        // previous_wtax: previousEmployeeWTax,
-        // wtax_variance: (currentEmployeeWTax - previousEmployeeWTax),
+
         wtax_variance: calculateMoneyVariance(
           currentEmployeeWTax,
           previousEmployeeWTax
