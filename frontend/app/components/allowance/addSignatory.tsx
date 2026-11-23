@@ -40,6 +40,7 @@ const CATEGORIES: {
   { value: "PAYROLL", label: "Payroll" },
   { value: "ALLOWANCE", label: "Allowance" },
   { value: "VARIANCE", label: "Variance" },
+   { value: "SL_VL_CONVERSION", label: "SL,VL Conversion" },
 ];
 
 function SignatoryForm({

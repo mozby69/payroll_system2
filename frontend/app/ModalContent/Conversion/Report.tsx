@@ -1,5 +1,7 @@
 import { useAuth } from "@/app/components/UserContext";
+import { useAllowanceSignatories } from "@/app/hooks/useAllowance";
 import { useConversionReport } from "@/app/hooks/useConversion";
+import { useGetCompanyByCode } from "@/app/hooks/useGeneral";
 import { formatCurrency } from "@/app/utils/currencyConverter";
 import { formatDate } from "@/app/utils/DateFormatter";
 import { useRef } from "react";
@@ -14,7 +16,7 @@ export default function ConversionReport() {
     const { user } = useAuth();
     const company_id = user?.company_id;
     const { data: conversion_report_data } = useConversionReport(company_id);
-
+    const { data: companyData } = useGetCompanyByCode(company_id ?? "")
 
     const totals = conversion_report_data?.reduce(
         (acc, item) => {
@@ -41,8 +43,8 @@ export default function ConversionReport() {
   documentTitle: "conversion report",
   pageStyle: `
     @page {
-      size: A4;
-      margin: 10mm;
+    size: portrait;
+            margin: 15mm;
     }
     body {
       -webkit-print-color-adjust: exact;
@@ -51,13 +53,43 @@ export default function ConversionReport() {
 });
         
 
+
+
+ const { data: signatoryResponse } = useAllowanceSignatories();
+
+  const signatories = signatoryResponse?.data ?? [];
+
+  // Get only VARIANCE signatories
+  const varianceSignatories = signatories.filter(
+    (item) => item.category === "SL_VL_CONVERSION" && item.isActive
+  );
+
+  const preparedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "PREPARED_BY"
+  );
+
+  const checkedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "CHECKED_BY"
+  );
+
+  const notedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "NOTED_BY"
+  );
+
+  const approvedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "APPROVED_BY"
+  );
+
+
+
+
     return (
         <>
             <div ref={printRef} className="p-2 print-deductions print:bg-white print:shadow-none print:p-2">
 
                 <div className="flex justify-between">
                     <div  >
-                        <h2 className="font-semibold">EMB CAPITAL LENDING CORPORATION</h2>
+                        <h2 className="font-semibold uppercase">{companyData?.data?.[0]?.CompanyName ?? ""}.</h2>
                         <h2>VL AND SL CREDITS PLUS SL CONVERSION</h2>
                         LEAVE CREDITS AS OF: {formatDate(asOfDate)}
                         <h2>Date: {formatDate(new Date())}</h2>
@@ -127,6 +159,47 @@ export default function ConversionReport() {
                         </tbody>
                     </table>
                 </div>
+
+
+
+
+
+                {/* signatories */}
+                    <div className="mt-4 grid grid-cols-3 px-4 py-4 text-xs">
+                        {/* LEFT */}
+                        <div className="justify-self-start">
+                            <h2 className="font-semibold">PREPARED BY:</h2>
+
+                            {preparedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+
+                        {/* CENTER */}
+                        <div className="justify-self-center">
+                            <h2 className="font-semibold">CHECKED BY:</h2>
+
+                            {checkedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+
+                        {/* RIGHT */}
+                        <div className="justify-self-end">
+                            <h2 className="font-semibold">APPROVED BY:</h2>
+
+                            {approvedBy.map((item) => (
+                            <p key={item.id} className="mt-10 uppercase">
+                                {item.name}
+                            </p>
+                            ))}
+                        </div>
+                    </div>
+
 
 
 

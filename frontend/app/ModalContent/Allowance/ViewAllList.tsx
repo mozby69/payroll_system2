@@ -177,7 +177,7 @@ export default function ViewAllList({ selectedMonth }: Props) {
     (item) => item.signatory_type === "APPROVED_BY"
   );
 
-  console.log("variance",varianceSignatories)
+
 
 
     return (

@@ -369,7 +369,8 @@ export type SignatoryType =
   | "BONUS"
   | "PAYROLL"
   | "ALLOWANCE"
-  | "VARIANCE";
+  | "VARIANCE"
+  | "SL_VL_CONVERSION";
 
 export interface Signatory {
   id: number;

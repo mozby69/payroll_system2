@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `siganatory_list` MODIFY `category` ENUM('BONUS', 'PAYROLL', 'ALLOWANCE', 'VARIANCE', 'SL_VL_CONVERSION') NOT NULL;

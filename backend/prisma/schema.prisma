@@ -1228,6 +1228,7 @@ enum SignatoryCategory {
   PAYROLL
   ALLOWANCE
   VARIANCE
+  SL_VL_CONVERSION
 }
 
 

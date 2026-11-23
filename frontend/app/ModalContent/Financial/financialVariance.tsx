@@ -331,9 +331,9 @@ const handlePrint = useReactToPrint({
     (item) => item.signatory_type === "NOTED_BY"
   );
 
-  // const approvedBy = varianceSignatories.filter(
-  //   (item) => item.signatory_type === "APPROVED_BY"
-  // );
+  const approvedBy = varianceSignatories.filter(
+    (item) => item.signatory_type === "APPROVED_BY"
+  );
 
 
   return (
@@ -491,9 +491,9 @@ const handlePrint = useReactToPrint({
 
                         {/* RIGHT */}
                         <div className="justify-self-end">
-                            <h2 className="font-semibold">NOTED BY:</h2>
+                            <h2 className="font-semibold">APPROVED BY:</h2>
 
-                            {notedBy.map((item) => (
+                            {approvedBy.map((item) => (
                             <p key={item.id} className="mt-10 uppercase">
                                 {item.name}
                             </p>
