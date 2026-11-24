@@ -59,6 +59,8 @@ export function useUpdateVacationLeave() {
 
 
 interface ConversionReportResponse{
+    EmpCode: string;
+
   Sick:number;
   Vacation:number;
   EmployementDate:string;
@@ -72,6 +74,11 @@ interface ConversionReportResponse{
   as_of_date:{
     as_of_date:string;
   };
+    // Branch grouping
+  isAlien: boolean;
+  effective_branch_code: string | null;
+  branch_group_id: number | null;
+  branch_group_name: string;
 }
 
 

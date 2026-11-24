@@ -57,7 +57,10 @@ export const useImportAttendanceCount = (company_id?: string) => {
     mutationFn: importAttendanceCount,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["conversion-list", company_id],
+        queryKey: ["conversion-list"],
+      });
+       queryClient.invalidateQueries({
+        queryKey: ["conversion-report-list"],
       });
     },
   });

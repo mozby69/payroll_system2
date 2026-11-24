@@ -387,51 +387,117 @@ export const saveSpecialLeaves = async (
   };
 
 
-  export const saveAttendanceCount = async (records: attendance_countDTO[],company_id:string): Promise<number> => {
-    if (!Array.isArray(records)) {
-      throw new Error("Invalid new table payload");
-    }
+export const saveAttendanceCount = async (
+  records: attendance_countDTO[],
+  company_id: string
+): Promise<number> => {
+  if (!Array.isArray(records)) {
+    throw new Error("Invalid attendance count payload");
+  }
 
-     const employees = await prisma.employee.findMany({
-        where: {
+
+  const employees = await prisma.employee.findMany({
+    where: {
+      OR: [
+
+        {
+          isAlien: false,
           BranchCode: {
             company_id,
           },
         },
-        select: {
-          EmpCode: true,
+
+
+        {
+          isAlien: true,
+          secondaryBranch: {
+            company_id,
+          },
         },
-      });
+      ],
+    },
+    select: {
+      EmpCode: true,
+    },
+  });
 
   const employeeCodes = new Set(
-    employees.map((e) => e.EmpCode)
+    employees.map((employee) => employee.EmpCode)
   );
+
 
   const filteredRecords = records.filter((record) =>
     employeeCodes.has(record.EmpCode__EmpCode)
   );
 
+  await prisma.$transaction(
+    filteredRecords.map((record) =>
+      prisma.attendanceCount.upsert({
+        where: {
+          EmpCodeId: record.EmpCode__EmpCode,
+        },
+        create: {
+          EmpCodeId: record.EmpCode__EmpCode,
+          Vacation: new Prisma.Decimal(record.Vacation ?? 0),
+          Sick: new Prisma.Decimal(record.Sick ?? 0),
+        },
+        update: {
+          Vacation: new Prisma.Decimal(record.Vacation ?? 0),
+          Sick: new Prisma.Decimal(record.Sick ?? 0),
+        },
+      })
+    )
+  );
+
+  return filteredRecords.length;
+};
+
+
+  // export const saveAttendanceCount = async (records: attendance_countDTO[],company_id:string): Promise<number> => {
+  //   if (!Array.isArray(records)) {
+  //     throw new Error("Invalid new table payload");
+  //   }
+
+  //    const employees = await prisma.employee.findMany({
+  //       where: {
+  //         BranchCode: {
+  //           company_id,
+  //         },
+  //       },
+  //       select: {
+  //         EmpCode: true,
+  //       },
+  //     });
+
+  // const employeeCodes = new Set(
+  //   employees.map((e) => e.EmpCode)
+  // );
+
+  // const filteredRecords = records.filter((record) =>
+  //   employeeCodes.has(record.EmpCode__EmpCode)
+  // );
+
   
-    await prisma.$transaction(
-      filteredRecords.map((r) =>
-        prisma.attendanceCount.upsert({
-          where: { ID: r.ID },
-          create: {
-            ID: r.ID,
-            Vacation: new Prisma.Decimal(r.Vacation),
-            Sick: new Prisma.Decimal(r.Sick),
-            EmpCodeId: r.EmpCode__EmpCode, 
-          },
-          update: {
-            Vacation: new Prisma.Decimal(r.Vacation),
-            Sick: new Prisma.Decimal(r.Sick),
-          },
-        })
-      )
-    );
+  //   await prisma.$transaction(
+  //     filteredRecords.map((r) =>
+  //       prisma.attendanceCount.upsert({
+  //         where: { ID: r.ID },
+  //         create: {
+  //           ID: r.ID,
+  //           Vacation: new Prisma.Decimal(r.Vacation),
+  //           Sick: new Prisma.Decimal(r.Sick),
+  //           EmpCodeId: r.EmpCode__EmpCode, 
+  //         },
+  //         update: {
+  //           Vacation: new Prisma.Decimal(r.Vacation),
+  //           Sick: new Prisma.Decimal(r.Sick),
+  //         },
+  //       })
+  //     )
+  //   );
   
-    return filteredRecords.length;
-  };
+  //   return filteredRecords.length;
+  // };
 
 
   // export const importAttendanceCountService = async () => {

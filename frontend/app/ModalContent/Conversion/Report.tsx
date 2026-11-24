@@ -4,211 +4,506 @@ import { useConversionReport } from "@/app/hooks/useConversion";
 import { useGetCompanyByCode } from "@/app/hooks/useGeneral";
 import { formatCurrency } from "@/app/utils/currencyConverter";
 import { formatDate } from "@/app/utils/DateFormatter";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
+const FCH_GROUPS = [
+  "FCH MANILA",
+  "FCH ANTIPOLO",
+  "FCH VISAYAS",
+] as const;
 
+type ReportEmployee = NonNullable<
+  ReturnType<typeof useConversionReport>["data"]
+>[number];
 
+type ReportSection = {
+  title: string | null;
+  employees: ReportEmployee[];
+};
+
+const calculateTotals = (employees: ReportEmployee[]) =>
+  employees.reduce(
+    (acc, item) => ({
+      basic:
+        acc.basic + Number(item.basic_salary ?? 0),
+      daily:
+        acc.daily + Number(item.daily_rate ?? 0),
+      amount:
+        acc.amount +
+        Number(item.leave_amount_for_conversion ?? 0),
+    }),
+    {
+      basic: 0,
+      daily: 0,
+      amount: 0,
+    }
+  );
+
+function ConversionReportTable({
+  employees,
+}: {
+  employees: ReportEmployee[];
+}) {
+  const totals = calculateTotals(employees);
+
+  const headerClass =
+    "p-4 border border-gray-200 text-center text-xs font-semibold uppercase";
+
+  const cellClass =
+    "p-2 border border-gray-200";
+
+  const totalClass =
+    "font-semibold border border-gray-200 p-2";
+
+  return (
+    <div className="overflow-x-auto print:overflow-visible">
+      <table className="w-full border-collapse border-gray-100 bg-white shadow-sm rounded-lg overflow-hidden print:shadow-none">
+        <thead>
+          <tr>
+            <th className={headerClass}>
+              EMPLOYEE NAME
+            </th>
+            <th className={headerClass}>
+              DATE HIRED
+            </th>
+            <th className={headerClass}>
+              TENURE
+            </th>
+            <th className={headerClass}>
+              MONTHLY BASIC
+            </th>
+            <th className={headerClass}>
+              DAILY RATE
+            </th>
+            <th className={headerClass}>
+              REMAINING LEAVE
+            </th>
+            <th className={headerClass}>
+              VL FOR CONVERT
+            </th>
+            <th className={headerClass}>
+              SL PER DTR
+            </th>
+            <th className={headerClass}>
+              TOTAL LEAVE CREDITS FOR CONVERSION
+            </th>
+            <th className={headerClass}>
+              AMOUNT FOR CONVERSION
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {employees.map((item) => (
+            <tr key={item.EmpCode}>
+              <td className={cellClass}>
+                {item.fullname}
+              </td>
+
+              <td className={cellClass}>
+                {formatDate(item.EmployementDate)}
+              </td>
+
+              <td className={`${cellClass} text-center`}>
+                {item.tenure}
+              </td>
+
+              <td className={`${cellClass} text-right`}>
+                {item.basic_salary == null
+                  ? 0
+                  : Number(item.basic_salary)}
+              </td>
+
+              <td className={`${cellClass} text-right`}>
+                {item.daily_rate}
+              </td>
+
+              <td className={`${cellClass} text-center`}>
+                {Number(item.Vacation ?? 0)}
+              </td>
+
+              <td className={`${cellClass} text-center`}>
+                {item.leave_convert == null
+                  ? ""
+                  : Number(item.leave_convert)}
+              </td>
+
+              <td className={`${cellClass} text-center`}>
+                {Number(item.Sick ?? 0)}
+              </td>
+
+              <td className={`${cellClass} text-center`}>
+                {item.total_leave_for_conversion}
+              </td>
+
+              <td className={`${cellClass} text-right`}>
+                {formatCurrency(
+                  item.leave_amount_for_conversion
+                )}
+              </td>
+            </tr>
+          ))}
+
+          {employees.length === 0 && (
+            <tr>
+              <td
+                colSpan={10}
+                className="border border-gray-200 p-6 text-center text-gray-500"
+              >
+                No employees found.
+              </td>
+            </tr>
+          )}
+
+          {/* ORIGINAL TOTAL ROW */}
+          <tr>
+            <td className={totalClass} colSpan={3}>
+              TOTAL
+            </td>
+
+            <td className={`${totalClass} text-right`}>
+              {formatCurrency(totals.basic)}
+            </td>
+
+            <td className={`${totalClass} text-right`}>
+              {formatCurrency(totals.daily)}
+            </td>
+
+            <td className={totalClass} colSpan={4} />
+
+            <td className={`${totalClass} text-right`}>
+              {formatCurrency(totals.amount)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function ConversionReport() {
+  const { user } = useAuth();
+  const company_id = user?.company_id;
 
+  const { data: conversion_report_data } =
+    useConversionReport(company_id);
 
-    const { user } = useAuth();
-    const company_id = user?.company_id;
-    const { data: conversion_report_data } = useConversionReport(company_id);
-    const { data: companyData } = useGetCompanyByCode(company_id ?? "")
+  const { data: companyData } =
+    useGetCompanyByCode(company_id ?? "");
 
-    const totals = conversion_report_data?.reduce(
-        (acc, item) => {
-            return {
-                basic: acc.basic + Number(item.basic_salary ?? 0),
-                daily: acc.daily + Number(item.daily_rate ?? 0),
-                amount: acc.amount + Number(item.leave_amount_for_conversion ?? 0),
-            };
-        },
+  const { data: signatoryResponse } =
+    useAllowanceSignatories();
+
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // ==========================================
+  // REPORT DATA
+  // ==========================================
+
+  const reportData = useMemo(
+    () => conversion_report_data ?? [],
+    [conversion_report_data]
+  );
+
+  const asOfDate =
+    reportData[0]?.as_of_date?.as_of_date;
+
+  // ==========================================
+  // GROUP REPORT FOR FCH
+  // ==========================================
+
+  const reportSections = useMemo<ReportSection[]>(() => {
+    if (company_id !== "FCH") {
+      return [
         {
-            basic: 0,
-            daily: 0,
-            amount: 0,
-        }
+          title: null,
+          employees: reportData,
+        },
+      ];
+    }
+
+    const sections: ReportSection[] =
+      FCH_GROUPS.map((groupName) => ({
+        title: groupName,
+        employees: reportData.filter(
+          (employee) =>
+            employee.branch_group_name
+              ?.trim()
+              .toUpperCase() === groupName
+        ),
+      }));
+
+    // Include employees without a recognized
+    // group so they are not lost from the report.
+    const ungrouped = reportData.filter(
+      (employee) =>
+        !FCH_GROUPS.some(
+          (groupName) =>
+            employee.branch_group_name
+              ?.trim()
+              .toUpperCase() === groupName
+        )
     );
 
-    const asOfDate = conversion_report_data?.[0]?.as_of_date?.as_of_date;
-
-
-      const printRef = useRef<HTMLDivElement>(null);
-    
-    const handlePrint = useReactToPrint({
-  contentRef: printRef,
-  documentTitle: "conversion report",
-  pageStyle: `
-    @page {
-    size: portrait;
-            margin: 15mm;
+    if (ungrouped.length > 0) {
+      sections.push({
+        title: "UNGROUPED",
+        employees: ungrouped,
+      });
     }
-    body {
-      -webkit-print-color-adjust: exact;
-    }
-  `,
-});
-        
 
+    return sections;
+  }, [company_id, reportData]);
 
+  // ==========================================
+  // PRINT
+  // ==========================================
 
- const { data: signatoryResponse } = useAllowanceSignatories();
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: "conversion report",
+    pageStyle: `
+      @page {
+        size: portrait;
+        margin: 15mm;
+      }
+
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .report-section {
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+
+      .report-section-title {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .signatory-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    `,
+  });
+
+  // ==========================================
+  // SIGNATORIES
+  // ==========================================
 
   const signatories = signatoryResponse?.data ?? [];
 
-  // Get only VARIANCE signatories
-  const varianceSignatories = signatories.filter(
-    (item) => item.category === "SL_VL_CONVERSION" && item.isActive
+  const conversionSignatories = signatories.filter(
+    (item) =>
+      item.category === "SL_VL_CONVERSION" &&
+      item.isActive
   );
 
-  const preparedBy = varianceSignatories.filter(
+  const preparedBy = conversionSignatories.filter(
     (item) => item.signatory_type === "PREPARED_BY"
   );
 
-  const checkedBy = varianceSignatories.filter(
+  const checkedBy = conversionSignatories.filter(
     (item) => item.signatory_type === "CHECKED_BY"
   );
 
-  const notedBy = varianceSignatories.filter(
-    (item) => item.signatory_type === "NOTED_BY"
-  );
-
-  const approvedBy = varianceSignatories.filter(
+  const approvedBy = conversionSignatories.filter(
     (item) => item.signatory_type === "APPROVED_BY"
   );
 
+  // ==========================================
+  // RENDER
+  // ==========================================
+
+  const grandTotals = useMemo(() => {
+  if (company_id !== "FCH") return null;
+
+  return calculateTotals(reportData);
+}, [company_id, reportData]);
+
+  return (
+    <div
+      ref={printRef}
+      className="p-2 print-deductions print:bg-white print:shadow-none print:p-2"
+    >
+      {/* REPORT HEADER */}
+      <div className="flex justify-between">
+        <div>
+          <h2 className="font-semibold uppercase">
+            {companyData?.data?.[0]?.CompanyName ?? ""}.
+          </h2>
+
+          <h2>
+            VL AND SL CREDITS PLUS SL CONVERSION
+          </h2>
+
+          <div>
+            LEAVE CREDITS AS OF: {formatDate(asOfDate)}
+          </div>
+
+          <h2>
+            Date: {formatDate(new Date())}
+          </h2>
+        </div>
+
+        <div className="print:hidden">
+          <button
+            type="button"
+            className="bg-blue-700 hover:bg-blue-600 px-8 py-2 text-white rounded"
+            onClick={() => handlePrint()}
+          >
+            Print
+          </button>
+        </div>
+      </div>
+
+      {/* ======================================
+          REPORT TABLES
+         ====================================== */}
+
+  
+<div className="py-4">
+  {/* INDIVIDUAL BRANCH GROUP REPORTS */}
+  {reportSections.map((section, index) => (
+    <div
+      key={section.title ?? "default"}
+      className={
+        index === 0
+          ? "report-section"
+          : "report-section mt-8"
+      }
+    >
+      {section.title && (
+        <h3 className="report-section-title mb-3 border-b border-gray-300 pb-2 text-sm font-bold uppercase text-gray-800">
+          {section.title}
+        </h3>
+      )}
+
+      <ConversionReportTable
+        employees={section.employees}
+      />
+    </div>
+  ))}
+
+  {/* FCH GRAND TOTAL */}
+  {company_id === "FCH" && grandTotals && (
+    <div className="mt-8">
+      <h3 className="mb-3 text-sm font-bold uppercase text-gray-800">
+        FCH GRAND TOTAL
+      </h3>
+
+      <div className="overflow-x-auto print:overflow-visible">
+        <table className="w-full border-collapse bg-white">
+          <tbody>
+            <tr className="bg-gray-100 print:bg-gray-100">
+              <td
+                colSpan={3}
+                className="border border-gray-300 p-3 font-bold"
+              >
+                GRAND TOTAL
+              </td>
+
+              {/* MONTHLY BASIC */}
+              <td className="border border-gray-300 p-3 text-right font-bold">
+                {formatCurrency(grandTotals.basic)}
+              </td>
+
+              {/* DAILY RATE */}
+              <td className="border border-gray-300 p-3 text-right font-bold">
+                {formatCurrency(grandTotals.daily)}
+              </td>
+
+              {/* EMPTY COLUMNS */}
+              <td
+                colSpan={4}
+                className="border border-gray-300 p-3"
+              />
+
+              {/* AMOUNT FOR CONVERSION */}
+              <td className="border border-gray-300 p-3 text-right font-bold">
+                {formatCurrency(grandTotals.amount)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+</div>
 
 
+      {/* ======================================
+          SIGNATORIES
+          DISPLAY ONCE AT THE BOTTOM
+         ====================================== */}
 
-    return (
-        <>
-            <div ref={printRef} className="p-2 print-deductions print:bg-white print:shadow-none print:p-2">
+      <div className="signatory-section mt-4 grid grid-cols-3 px-4 py-4 text-xs">
+        {/* PREPARED BY */}
+        <div className="justify-self-start">
+          <h2 className="font-semibold">
+            PREPARED BY:
+          </h2>
 
-                <div className="flex justify-between">
-                    <div  >
-                        <h2 className="font-semibold uppercase">{companyData?.data?.[0]?.CompanyName ?? ""}.</h2>
-                        <h2>VL AND SL CREDITS PLUS SL CONVERSION</h2>
-                        LEAVE CREDITS AS OF: {formatDate(asOfDate)}
-                        <h2>Date: {formatDate(new Date())}</h2>
-                    </div>
-                    <div className="print:hidden">
-                        <button className="bg-blue-700 hover:bg-blue-600 px-8 py-2 text-white rounded" onClick={handlePrint}>Print</button>
-                    </div>
+          {preparedBy.map((item) => (
+            <p
+              key={item.id}
+              className="mt-10 uppercase"
+            >
+              {item.name}
+            </p>
+          ))}
+        </div>
 
-                </div>
+        {/* CHECKED BY */}
+        <div className="justify-self-center">
+          <h2 className="font-semibold">
+            CHECKED BY:
+          </h2>
 
-                <div className="py-4">
-                    <table className="w-full border-collapse border-gray-100 bg-white shadow-sm rounded-lg overflow-hidden">
-                        <thead>
-                            <tr>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">EMPLOYEE NAME</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">DATE HIRED</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">TENURE</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">MONTHLY BASIC</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">DAILY RATE</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">REMAINING LEAVE</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">VL FOR CONVERT</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">SL PER DTR</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">TOTAL LEAVE CREDITS FOR CONVERSION</th>
-                                <th className="p-4 border border-gray-200 text-center text-xs font-semibold uppercase">AMOUNT FOR CONVERSION</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {conversion_report_data?.map((item, index) => (
-                                <tr key={index} className="">
-                                    <td className="p-2 border border-gray-200">{item.fullname}</td>
-                                    <td className="p-2 border border-gray-200">
-                                        {formatDate(item.EmployementDate)}
-                                    </td>
-                                    <td className="p-2 border border-gray-200 text-center">{item.tenure}</td>
-                                    <td className="p-2 border border-gray-200 text-right">{item.basic_salary}</td>
-                                    <td className="p-2 border border-gray-200 text-right">{item.daily_rate}</td>
-                                    <td className="p-2 border border-gray-200 text-center">{item.Vacation}</td>
-                                    <td className="p-2 border border-gray-200 text-center">{item.leave_convert}</td>
-                                    <td className="p-2 border border-gray-200 text-center">{item.Sick}</td>
-                                    <td className="p-2 border border-gray-200 text-center">
-                                        {item.total_leave_for_conversion}
-                                    </td>
-                                    <td className="p-2 border border-gray-200 text-right">
-                                        {formatCurrency(item.leave_amount_for_conversion)}
-                                    </td>
-                                </tr>
-                            ))}
-                            <tr>
-                                <td className="font-semibold border border-gray-200 p-2" colSpan={3}>
-                                    TOTAL
-                                </td>
+          {checkedBy.map((item) => (
+            <p
+              key={item.id}
+              className="mt-10 uppercase"
+            >
+              {item.name}
+            </p>
+          ))}
+        </div>
 
-                                <td className="font-semibold border border-gray-200 p-2 text-right">
-                                    {formatCurrency(totals?.basic)}
-                                </td>
+        {/* APPROVED BY */}
+        <div className="justify-self-end">
+          <h2 className="font-semibold">
+            APPROVED BY:
+          </h2>
 
-                                <td className="font-semibold border border-gray-200 p-2 text-right">
-                                    {formatCurrency(totals?.daily)}
-                                </td>
-
-                                <td className="font-semibold border border-gray-200 p-2" colSpan={4}></td>
-
-                                <td className="font-semibold border border-gray-200 p-2 text-right">
-                                    {formatCurrency(totals?.amount)}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-
-
-
-
-                {/* signatories */}
-                    <div className="mt-4 grid grid-cols-3 px-4 py-4 text-xs">
-                        {/* LEFT */}
-                        <div className="justify-self-start">
-                            <h2 className="font-semibold">PREPARED BY:</h2>
-
-                            {preparedBy.map((item) => (
-                            <p key={item.id} className="mt-10 uppercase">
-                                {item.name}
-                            </p>
-                            ))}
-                        </div>
-
-                        {/* CENTER */}
-                        <div className="justify-self-center">
-                            <h2 className="font-semibold">CHECKED BY:</h2>
-
-                            {checkedBy.map((item) => (
-                            <p key={item.id} className="mt-10 uppercase">
-                                {item.name}
-                            </p>
-                            ))}
-                        </div>
-
-                        {/* RIGHT */}
-                        <div className="justify-self-end">
-                            <h2 className="font-semibold">APPROVED BY:</h2>
-
-                            {approvedBy.map((item) => (
-                            <p key={item.id} className="mt-10 uppercase">
-                                {item.name}
-                            </p>
-                            ))}
-                        </div>
-                    </div>
-
-
-
-
-
-            </div>
-
-
-
-
-        </>
-    );
+          {approvedBy.map((item) => (
+            <p
+              key={item.id}
+              className="mt-10 uppercase"
+            >
+              {item.name}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }

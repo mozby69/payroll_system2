@@ -182,128 +182,270 @@ export async function updateVacationLeave(ID: number, data: { leave_convert: num
 
 
 
-export async function conversionReport({ company_id }: conversionReportProps) {
-  try {
 
-    const statusOverride = {
+export async function conversionReport({
+  company_id,
+}: conversionReportProps) {
+  try {
+    // ==========================================
+    // 1. EMPLOYEE FILTERING
+    // ==========================================
+
+    const statusOverride: Prisma.AttendanceCountWhereInput = {
       OR: [
+        // NORMAL EMPLOYEES - PRIMARY BRANCH
         {
           EmpCode: {
             is: {
               EmployeeStatus: {
                 notIn: ["Resigned", "Inactive", "Terminate"],
               },
-              BranchCode: {
-                company_id: company_id,
-              },
               isAlien: false,
+              BranchCode: {
+                company_id,
+              },
             },
           },
         },
-        (company_id === "EMB") ?
-          {
-            EmpCode: {
-              bod_member: {
-                in: ["bod1", "bod2"],
-              },
-              BranchCode: {
-                company_id: "EMB",
-              },
-            },
-          } : {},
 
+        // ALIEN EMPLOYEES - SECONDARY BRANCH
         {
           EmpCode: {
-            isAlien: true,
-            secondaryBranch: {
-              company_id: company_id,
-            }
+            is: {
+              isAlien: true,
+              secondaryBranch: {
+                company_id,
+              },
+            },
           },
-        }
+        },
+
+        // EMB BOARD MEMBERS
+        ...(company_id === "EMB"
+          ? [
+              {
+                EmpCode: {
+                  is: {
+                    bod_member: {
+                      in: ["bod1", "bod2"],
+                    },
+                    BranchCode: {
+                      company_id: "EMB",
+                    },
+                  },
+                },
+              },
+            ]
+          : []),
       ],
     };
 
+    // ==========================================
+    // 2. GET LATEST CONVERSION DATE
+    // ==========================================
 
-    const finalWhere: Prisma.AttendanceCountWhereInput = {
-      AND: [statusOverride]
-    };
+    const as_of_date =
+      await prisma.conversionAsOfDate.findFirst({
+        where: {
+          company_id,
+        },
+        select: {
+          as_of_date: true,
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+      });
 
-    const as_of_date = await prisma.conversionAsOfDate.findFirst({
-      where: {
-        company_id: company_id,
-      },
-      select: {
-        as_of_date: true,
-      },
-      orderBy: {
-        created_at: 'desc'
-      }
-    });
-
+    // ==========================================
+    // 3. FETCH ATTENDANCE COUNT
+    // ==========================================
 
     const data = await prisma.attendanceCount.findMany({
-      where: finalWhere,
+      where: statusOverride,
+
       select: {
         EmpCodeId: true,
         Sick: true,
         Vacation: true,
+
         EmpCode: {
           select: {
             EmployementDate: true,
             Firstname: true,
             Lastname: true,
             isSixDaysWork: true,
+            isAlien: true,
+
             BranchCodeId: true,
+
+            // PRIMARY BRANCH
             BranchCode: {
               select: {
+                branchCode: true,
                 company_id: true,
-              }
+
+                group: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
             },
+
+            // SECONDARY BRANCH
+            secondaryBranch: {
+              select: {
+                branchCode: true,
+                company_id: true,
+
+                group: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+
             employeepayroll: {
               select: {
                 basic_salary: true,
-              }
+              },
             },
+
             attendance_count: {
               select: {
                 leave_convert: true,
-              }
-            }
+              },
+            },
           },
-
-        }
+        },
       },
+
       orderBy: {
         EmpCode: {
-          Lastname: 'asc'
-        }
-      }
-    })
+          Lastname: "asc",
+        },
+      },
+    });
 
+    // ==========================================
+    // 4. REFERENCE DATE AND CUT-OFF
+    // ==========================================
 
-    const referenceDate = as_of_date?.as_of_date ? new Date(as_of_date.as_of_date) : new Date();
-    //const referenceDate = new Date("2026-04-14");
-    const june30 = getCompanyCutOffDate(referenceDate, company_id);
+    const referenceDate = as_of_date?.as_of_date
+      ? new Date(as_of_date.as_of_date)
+      : new Date();
+
+    const june30 = getCompanyCutOffDate(
+      referenceDate,
+      company_id
+    );
+
+    const normalizeDate = (date: Date) =>
+      new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+      );
+
+    // ==========================================
+    // 5. NORMALIZE EMPLOYEE DATA
+    // ==========================================
 
     const normalized = data.map((emp) => {
-      const fullName = `${emp.EmpCode.Lastname} ${emp.EmpCode.Firstname}`;
-      const branchCode = emp.EmpCode.BranchCodeId;
-      const basic = emp.EmpCode.employeepayroll?.basic_salary?.toNumber() ?? 0;
-      const isSixDaysWork = emp.EmpCode.isSixDaysWork;
-      const dailyRate = computeDailyRate(basic, isSixDaysWork);
-      const employmentDate = emp.EmpCode.EmployementDate;
-      const tenure = employmentDate ? computeTenure(new Date(employmentDate), referenceDate, company_id) : 0;
-      const leaveForConvert = emp.EmpCode?.attendance_count?.leave_convert?.toNumber() ?? 0;
-      let sickLeave = emp.Sick?.toNumber?.() ?? Number(emp.Sick) ?? 0;
-      let vacationLeave = emp.Vacation?.toNumber?.() ?? Number(emp.Vacation) ?? 0;
+      // ----------------------------------------
+      // EMPLOYEE INFORMATION
+      // ----------------------------------------
 
-      const baseTenure = employmentDate ? computeCustomTenure(new Date(employmentDate), referenceDate) : 0;
+      const fullName = [
+        emp.EmpCode.Lastname,
+        emp.EmpCode.Firstname,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
+      const employmentDate =
+        emp.EmpCode.EmployementDate;
 
-      const normalizeDate = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const isSixDaysWork =
+        emp.EmpCode.isSixDaysWork;
+
+      // ----------------------------------------
+      // EFFECTIVE BRANCH
+      // ----------------------------------------
+
+      const effectiveBranch = emp.EmpCode.isAlien
+        ? emp.EmpCode.secondaryBranch
+        : emp.EmpCode.BranchCode;
+
+      const branchGroup = effectiveBranch?.group;
+
+      const branchGroupId =
+        branchGroup?.id ?? null;
+
+      const branchGroupName =
+        branchGroup?.name ?? "UNGROUPED";
+
+      const effectiveBranchCode =
+        effectiveBranch?.branchCode ?? null;
+
+      // ----------------------------------------
+      // SALARY AND DAILY RATE
+      // ----------------------------------------
+
+      const basic =
+        emp.EmpCode.employeepayroll
+          ?.basic_salary?.toNumber() ?? 0;
+
+      const dailyRate = computeDailyRate(
+        basic,
+        isSixDaysWork
+      );
+
+      // ----------------------------------------
+      // TENURE
+      // ----------------------------------------
+
+      const tenure = employmentDate
+        ? computeTenure(
+            new Date(employmentDate),
+            referenceDate,
+            company_id
+          )
+        : 0;
+
+      const baseTenure = employmentDate
+        ? computeCustomTenure(
+            new Date(employmentDate),
+            referenceDate
+          )
+        : 0;
+
+      // ----------------------------------------
+      // LEAVE VALUES
+      // ----------------------------------------
+
+      const leaveForConvert =
+        emp.EmpCode.attendance_count
+          ?.leave_convert?.toNumber() ?? 0;
+
+      let sickLeave =
+        emp.Sick?.toNumber() ?? 0;
+
+      let vacationLeave =
+        emp.Vacation?.toNumber() ?? 0;
+
+      // ----------------------------------------
+      // ADDITIONAL LEAVE ELIGIBILITY
+      // ----------------------------------------
 
       const shouldAddLeave = (() => {
-        if (!employmentDate) return false;
+        if (!employmentDate) {
+          return false;
+        }
 
         const anniversaryThisYear = new Date(
           referenceDate.getFullYear(),
@@ -312,7 +454,11 @@ export async function conversionReport({ company_id }: conversionReportProps) {
         );
 
         const ref = normalizeDate(referenceDate);
-        const anniv = normalizeDate(anniversaryThisYear);
+
+        const anniv = normalizeDate(
+          anniversaryThisYear
+        );
+
         const june = normalizeDate(june30);
 
         return (
@@ -327,37 +473,82 @@ export async function conversionReport({ company_id }: conversionReportProps) {
         vacationLeave += 5;
       }
 
+      // ----------------------------------------
+      // LEAVE CONVERSION CALCULATIONS
+      // ----------------------------------------
 
+      const totalLeaveForConversion =
+        leaveForConvert + sickLeave;
 
-      const totalLeavForConversion = (leaveForConvert + sickLeave);
-      const leaveAmountForConversion = (totalLeavForConversion * dailyRate);
+      const leaveAmountForConversion =
+        totalLeaveForConversion * dailyRate;
 
+      // ----------------------------------------
+      // RETURN EMPLOYEE REPORT
+      // ----------------------------------------
 
       return {
-        Sick: emp.Sick,
-        Vacation: emp.Vacation,
-        EmployementDate: emp.EmpCode.EmployementDate,
-        basic_salary: emp.EmpCode.employeepayroll?.basic_salary,
-        fullname: fullName,
-        daily_rate: dailyRate,
-        tenure: tenure,
-        leave_convert: emp.EmpCode?.attendance_count?.leave_convert,
-        total_leave_for_conversion: totalLeavForConversion,
-        leave_amount_for_conversion: leaveAmountForConversion,
-        as_of_date: as_of_date,
         EmpCode: emp.EmpCodeId,
-        company_id: company_id,
-      }
+
+        fullname: fullName,
+
+        EmployementDate: employmentDate,
+
+        basic_salary:
+          emp.EmpCode.employeepayroll
+            ?.basic_salary ?? null,
+
+        daily_rate: dailyRate,
+
+        tenure,
+
+        Sick: emp.Sick,
+
+        Vacation: emp.Vacation,
+
+        leave_convert:
+          emp.EmpCode.attendance_count
+            ?.leave_convert ?? null,
+
+        total_leave_for_conversion:
+          totalLeaveForConversion,
+
+        leave_amount_for_conversion:
+          leaveAmountForConversion,
+
+        as_of_date,
+
+        company_id,
+
+        // NEW: BRANCH GROUP INFORMATION
+        isAlien: emp.EmpCode.isAlien,
+
+        effective_branch_code:
+          effectiveBranchCode,
+
+        branch_group_id:
+          branchGroupId,
+
+        branch_group_name:
+          branchGroupName,
+      };
     });
 
+    // ==========================================
+    // 6. RETURN REPORT
+    // ==========================================
+
     return normalized;
-  }
+  } catch (error) {
+    console.error(
+      "Error generating conversion report:",
+      error
+    );
 
-
-  catch (error) {
-    console.error("server error occured", error);
+    throw error;
   }
 }
+
 
 
 
