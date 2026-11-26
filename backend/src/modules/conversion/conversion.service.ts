@@ -468,10 +468,10 @@ export async function conversionReport({
         );
       })();
 
-      if (shouldAddLeave) {
-        sickLeave += 5;
-        vacationLeave += 5;
-      }
+      // if (shouldAddLeave) {
+      //   sickLeave += 5;
+      //   vacationLeave += 5;
+      // }
 
       // ----------------------------------------
       // LEAVE CONVERSION CALCULATIONS
