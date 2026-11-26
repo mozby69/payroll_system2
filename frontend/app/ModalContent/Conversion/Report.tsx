@@ -13,6 +13,15 @@ const FCH_GROUPS = [
   "FCH VISAYAS",
 ] as const;
 
+const PSPMI_BRANCHES = [
+  "PSPMI",
+  "SGI",
+  "NAH",
+  "TLH"
+] as const;
+
+
+
 type ReportEmployee = NonNullable<
   ReturnType<typeof useConversionReport>["data"]
 >[number];
@@ -213,48 +222,68 @@ export default function ConversionReport() {
   // GROUP REPORT FOR FCH
   // ==========================================
 
-  const reportSections = useMemo<ReportSection[]>(() => {
-    if (company_id !== "FCH") {
-      return [
-        {
-          title: null,
-          employees: reportData,
-        },
-      ];
-    }
+// ==========================================
+// GROUP REPORT BY COMPANY CONFIGURATION
+// ==========================================
 
-    const sections: ReportSection[] =
-      FCH_GROUPS.map((groupName) => ({
-        title: groupName,
-        employees: reportData.filter(
-          (employee) =>
-            employee.branch_group_name
-              ?.trim()
-              .toUpperCase() === groupName
-        ),
-      }));
+const reportSections = useMemo<ReportSection[]>(() => {
+  // Determine the categories for the company
+  const categories =
+    company_id === "FCH"
+      ? FCH_GROUPS
+      : company_id === "PSPMI"
+      ? PSPMI_BRANCHES
+      : null;
 
-    // Include employees without a recognized
-    // group so they are not lost from the report.
-    const ungrouped = reportData.filter(
-      (employee) =>
-        !FCH_GROUPS.some(
-          (groupName) =>
-            employee.branch_group_name
-              ?.trim()
-              .toUpperCase() === groupName
-        )
-    );
+  // Other companies retain the original report
+  if (!categories) {
+    return [
+      {
+        title: null,
+        employees: reportData,
+      },
+    ];
+  }
 
-    if (ungrouped.length > 0) {
-      sections.push({
-        title: "UNGROUPED",
-        employees: ungrouped,
-      });
-    }
+  // Determine which property to use for grouping
+  const getCategory = (employee: ReportEmployee): string => {
+    const category =
+      company_id === "FCH"
+        ? employee.branch_group_name
+        : employee.effective_branch_code;
 
-    return sections;
-  }, [company_id, reportData]);
+    return category?.trim().toUpperCase() ?? "";
+  };
+
+  // Generate individual report sections
+  const sections: ReportSection[] = categories.map(
+    (category) => ({
+      title: category,
+
+      employees: reportData.filter(
+        (employee) => getCategory(employee) === category
+      ),
+    })
+  );
+
+  // Include employees without a recognized category
+  const ungrouped = reportData.filter(
+    (employee) =>
+      !categories.some(
+        (category) => getCategory(employee) === category
+      )
+  );
+
+  // Prevent employees from being excluded
+  if (ungrouped.length > 0) {
+    sections.push({
+      title: "UNGROUPED",
+      employees: ungrouped,
+    });
+  }
+
+  return sections;
+}, [company_id, reportData]);
 
   // ==========================================
   // PRINT
@@ -333,11 +362,15 @@ export default function ConversionReport() {
   // RENDER
   // ==========================================
 
-  const grandTotals = useMemo(() => {
-  if (company_id !== "FCH") return null;
+const isGroupedCompany =
+  company_id === "FCH" ||
+  company_id === "PSPMI";
+
+const grandTotals = useMemo(() => {
+  if (!isGroupedCompany) return null;
 
   return calculateTotals(reportData);
-}, [company_id, reportData]);
+}, [isGroupedCompany, reportData]);
 
   return (
     <div
@@ -380,8 +413,13 @@ export default function ConversionReport() {
          ====================================== */}
 
   
+{/* ======================================
+    REPORT TABLES
+====================================== */}
+
 <div className="py-4">
-  {/* INDIVIDUAL BRANCH GROUP REPORTS */}
+
+  {/* INDIVIDUAL REPORT SECTIONS */}
   {reportSections.map((section, index) => (
     <div
       key={section.title ?? "default"}
@@ -403,17 +441,21 @@ export default function ConversionReport() {
     </div>
   ))}
 
-  {/* FCH GRAND TOTAL */}
-  {company_id === "FCH" && grandTotals && (
+  {/* COMPANY GRAND TOTAL */}
+  {isGroupedCompany && grandTotals && (
     <div className="mt-8">
+
       <h3 className="mb-3 text-sm font-bold uppercase text-gray-800">
-        FCH GRAND TOTAL
+        {company_id} GRAND TOTAL
       </h3>
 
       <div className="overflow-x-auto print:overflow-visible">
+
         <table className="w-full border-collapse bg-white">
+
           <tbody>
             <tr className="bg-gray-100 print:bg-gray-100">
+
               <td
                 colSpan={3}
                 className="border border-gray-300 p-3 font-bold"
@@ -441,12 +483,17 @@ export default function ConversionReport() {
               <td className="border border-gray-300 p-3 text-right font-bold">
                 {formatCurrency(grandTotals.amount)}
               </td>
+
             </tr>
           </tbody>
+
         </table>
+
       </div>
+
     </div>
   )}
+
 </div>
 
 
